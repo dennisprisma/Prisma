@@ -1,0 +1,35 @@
+name: Build Mac App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compila (Apple Silicon + Intel)
+        run: swift build -c release --arch arm64 --arch x86_64
+
+      - name: Crea MiaApp.app
+        run: |
+          BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/MiaApp"
+          APP=MiaApp.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp "$BIN" "$APP/Contents/MacOS/MiaApp"
+          cp Info.plist "$APP/Contents/Info.plist"
+          if [ -f AppIcon.icns ]; then
+            cp AppIcon.icns "$APP/Contents/Resources/"
+            /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
+          fi
+          codesign --force --deep --sign - "$APP"
+          ditto -c -k --keepParent "$APP" MiaApp.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MiaApp
+          path: MiaApp.zip
+          retention-days: 7
