@@ -58,6 +58,23 @@ enum Istantanee {
             s.attivitaSelezionata = "task-casa"
             s.apri(.attivita)
         }),
+        ("14-simulazioni", { s in
+            if let p = s.posizioni.first(where: { $0.id == "pos-giulia-etf-azionario-globale" }) { s.simula(p) }
+        }),
+        ("15-simulazioni-scenari", { s in
+            s.schedaSimulazioni = .scenari
+            s.apri(.simulazioni)
+        }),
+        ("16-confronti", { s in
+            s.clienteAttivoId = "marco"
+            s.apri(.confronti)
+        }),
+        ("17-analisi360", { $0.apri(.analisi360) }),
+        ("18-analisi360-protezione", { s in
+            s.clienteAttivoId = "marco"
+            s.areaAnalisi = .protezione
+            s.apri(.analisi360)
+        }),
     ]
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:

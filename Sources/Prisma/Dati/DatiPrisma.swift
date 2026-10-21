@@ -8,16 +8,23 @@ struct DatiPrisma: Codable, Equatable {
     var appuntamenti: [Appuntamento]
     var attivita: [Attivita]
     var posizioni: [Posizione] = []
+    var simulazioni: [Simulazione] = []
+    /// Analisi 360 salvate, per cliente (chi non ce l'ha la vede ricavata dalle posizioni).
+    var analisi: [String: Analisi360] = [:]
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
     /// 2: anagrafica completa, nucleo familiare, profilo e consensi dei clienti.
     /// 3: posizioni in essere e in proposta.
     /// 4: tipo, canale e posizione degli appuntamenti; note e appuntamento collegato delle attività.
-    static let versioneAttuale = 4
+    /// 5: scenari del simulatore e Analisi 360 dei clienti.
+    static let versioneAttuale = 5
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
+         simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:],
          clienteAttivoId: String, impostazioni: Impostazioni) {
+        self.simulazioni = simulazioni
+        self.analisi = analisi
         self.clienti = clienti
         self.appuntamenti = appuntamenti
         self.attivita = attivita
@@ -32,13 +39,14 @@ struct DatiPrisma: Codable, Equatable {
             appuntamenti: DatiDemo.appuntamenti(),
             attivita: DatiDemo.attivita(),
             posizioni: DatiDemo.posizioni(),
+            simulazioni: DatiDemo.simulazioni(),
             clienteAttivoId: "giulia",
             impostazioni: Impostazioni()
         )
     }
 
     private enum CodingKeys: String, CodingKey {
-        case versione, clienti, appuntamenti, attivita, posizioni, clienteAttivoId, impostazioni
+        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, clienteAttivoId, impostazioni
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -49,6 +57,8 @@ struct DatiPrisma: Codable, Equatable {
         appuntamenti = try c.decodeIfPresent([Appuntamento].self, forKey: .appuntamenti) ?? []
         attivita = try c.decodeIfPresent([Attivita].self, forKey: .attivita) ?? []
         posizioni = try c.decodeIfPresent([Posizione].self, forKey: .posizioni) ?? []
+        simulazioni = try c.decodeIfPresent([Simulazione].self, forKey: .simulazioni) ?? []
+        analisi = try c.decodeIfPresent([String: Analisi360].self, forKey: .analisi) ?? [:]
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }

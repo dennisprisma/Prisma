@@ -14,6 +14,9 @@ struct ContenutoApp: View {
                 case .impostazioni: AppImpostazioni()
                 case .agenda: AppAgenda()
                 case .attivita: AppAttivita()
+                case .simulazioni: AppSimulazioni()
+                case .confronti: AppConfronti()
+                case .analisi360: AppAnalisi360()
                 default: AppSegnaposto(app: app)
                 }
             }

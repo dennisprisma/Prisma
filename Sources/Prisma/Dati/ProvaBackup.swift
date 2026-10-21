@@ -12,7 +12,16 @@ enum ProvaBackup {
         defer { try? fm.removeItem(at: radice) }
         do {
             try fm.createDirectory(at: dati.appendingPathComponent("Documenti"), withIntermediateDirectories: true)
-            let originale = DatiPrisma.demo()
+            var originale = DatiPrisma.demo()
+            // Anche un'Analisi 360 salvata deve tornare identica
+            var analisi = Analisi360(cliente: originale.clienti.first, posizioni: originale.posizioni)
+            analisi.confermate = [.protezione]
+            analisi.aggiornataIl = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
+            originale.analisi[originale.clienti.first?.id ?? ""] = analisi
+            guard !originale.simulazioni.isEmpty else {
+                print("ERRORE: i dati di prova non hanno scenari del simulatore")
+                return 1
+            }
             try Archivio.codificatore.encode(originale).write(to: dati.appendingPathComponent("archivio.json"))
             try Data("documento di prova".utf8).write(to: dati.appendingPathComponent("Documenti/prova.txt"))
 
@@ -55,7 +64,8 @@ enum ProvaBackup {
             let letto = try Archivio.decodifica(Data(vecchio.utf8))
             guard letto.clienti.first?.famiglia.isEmpty == true, letto.clienti.first?.canali.isEmpty == true,
                   letto.appuntamenti.first?.tipo == .altro, letto.appuntamenti.first?.canale == nil,
-                  letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil else {
+                  letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil,
+                  letto.simulazioni.isEmpty, letto.analisi.isEmpty else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }
