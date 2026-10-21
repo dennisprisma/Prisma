@@ -141,8 +141,8 @@ struct AppAnalisi360: View {
                 Text(nota).font(Tipo.schedaAreaNota).foregroundColor(Colori.Strumenti.schedaNota).lineLimit(2)
                 Spacer(minLength: 4)
                 HStack(spacing: 6) {
-                    Text(inEssere.isEmpty ? "Nessuna posizione in essere"
-                         : "\(inEssere.count) in essere" + (proposte > 0 ? " · \(proposte) \(proposte == 1 ? "proposta" : "proposte")" : ""))
+                    Text((inEssere.isEmpty ? "Nessuna in essere" : "\(inEssere.count) in essere")
+                         + (proposte > 0 ? " · \(proposte) \(proposte == 1 ? "proposta aperta" : "proposte aperte")" : ""))
                     ForEach(Canale.allCases.filter { canali.contains($0) }) { c in EtichettaCanale(canale: c, compatta: true) }
                     Spacer()
                     Text("↗").font(Tipo.ipotesiTitolo)
@@ -381,7 +381,10 @@ struct AppAnalisi360: View {
         let e = MotoreAnalisi.protezione(i, posizioni: posizioni)
         let rischi = RischioCoperto.allCases.filter { $0 != .altro }
         return VStack(alignment: .leading, spacing: 14) {
-            TitoloStrumento(occhiello: "Se succede qualcosa", titolo: e.divario > 0 ? "La famiglia è protetta a metà." : "La famiglia è protetta.",
+            TitoloStrumento(occhiello: "Se succede qualcosa",
+                            titolo: e.divario <= 0 ? "La famiglia è protetta."
+                                : e.capitaleVita <= 0 ? "La famiglia non è protetta."
+                                : "Protetta al \(Int((e.capitaleVita / max(e.fabbisogno, 1) * 100).rounded(.down)))%.",
                             testo: "Due scenari distinti, da non sommare: la perdita del reddito per sempre e la sua interruzione per un periodo.")
             FasciaKPI {
                 KPI(titolo: "Fabbisogno caso morte", valore: Formati.euro(e.fabbisogno)) { Text("debiti, spese e sostegno") }

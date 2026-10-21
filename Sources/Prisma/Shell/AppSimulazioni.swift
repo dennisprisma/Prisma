@@ -144,8 +144,10 @@ struct AppSimulazioni: View {
         return HStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    ComandoSimulatore(etichetta: "Capitale iniziale", valore: b.capitale, unita: "€", intervallo: 0...10_000_000, passo: 1_000)
-                    ComandoSimulatore(etichetta: "Versamento mensile", valore: b.versamentoMensile, unita: "€", intervallo: 0...100_000, passo: 50)
+                    ComandoSimulatore(etichetta: "Capitale iniziale", valore: b.capitale, unita: "€", intervallo: 0...10_000_000, passo: 1_000,
+                                      fineCursore: 500_000)
+                    ComandoSimulatore(etichetta: "Versamento mensile", valore: b.versamentoMensile, unita: "€", intervallo: 0...100_000, passo: 50,
+                                      fineCursore: 3_000)
                     ComandoSimulatore(etichetta: "Orizzonte",
                                       valore: Binding(get: { Double(b.wrappedValue.anni) }, set: { b.wrappedValue.anni = max(1, Int($0.rounded())) }),
                                       unita: "anni", intervallo: 1...40, passo: 1)

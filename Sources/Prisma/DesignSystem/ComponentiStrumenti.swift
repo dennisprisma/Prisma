@@ -221,7 +221,7 @@ struct CampoIpotesi: View {
     var nota: String? = nil
     var intervallo: ClosedRange<Double> = 0...1_000_000_000
 
-    private static let formato = FloatingPointFormatStyle<Double>.number.locale(Formati.italiano).precision(.fractionLength(0...2))
+    private static let formato = FloatingPointFormatStyle<Double>.number.locale(Formati.localeImporti).precision(.fractionLength(0...2))
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -241,7 +241,9 @@ struct CampoIpotesi: View {
             Text(unita)
                 .font(Tipo.ipotesiNota)
                 .foregroundColor(Colori.Strumenti.ipotesiNota)
-                .frame(width: 34, alignment: .leading)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minWidth: 30, alignment: .leading)
         }
         .padding(.vertical, 6)
         .bordoBasso(Colori.Strumenti.ipotesiRiga)
@@ -379,8 +381,11 @@ struct ComandoSimulatore: View {
     let intervallo: ClosedRange<Double>
     let passo: Double
     var decimali = 0
+    /// Fine corsa del cursore, se più corta dell'intervallo (il display accetta comunque tutto l'intervallo).
+    var fineCursore: Double? = nil
 
     var body: some View {
+        let corsa = intervallo.lowerBound...min(fineCursore ?? intervallo.upperBound, intervallo.upperBound)
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(etichetta)
@@ -390,9 +395,9 @@ struct ComandoSimulatore: View {
                 Spacer(minLength: 6)
                 DisplayLCD(valore: $valore, unita: unita, intervallo: intervallo, decimali: decimali)
             }
-            Slider(value: Binding(get: { min(max(valore, intervallo.lowerBound), intervallo.upperBound) },
+            Slider(value: Binding(get: { min(max(valore, corsa.lowerBound), corsa.upperBound) },
                                   set: { valore = ($0 / passo).rounded() * passo }),
-                   in: intervallo)
+                   in: corsa)
                 .controlSize(.small)
         }
     }
