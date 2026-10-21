@@ -43,6 +43,21 @@ enum Istantanee {
             s.posizioneInDettaglio = "pos-marco-infortuni-famiglia"
             s.apri(.posizioni)
         }),
+        ("11-agenda", { s in
+            s.appuntamentoSelezionato = "event-marco"
+            s.apri(.agenda)
+        }),
+        ("12-agenda-mese-scadenza", { s in
+            if let d = s.posizioni.first(where: { $0.id == "pos-marco-infortuni-famiglia" })?.scadenza {
+                s.giornoAgenda = Calendar.current.startOfDay(for: d)
+            }
+            s.vistaAgenda = .mese
+            s.apri(.agenda)
+        }),
+        ("13-attivita", { s in
+            s.attivitaSelezionata = "task-casa"
+            s.apri(.attivita)
+        }),
     ]
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:

@@ -81,6 +81,39 @@ enum Misure {
         static let avatarCliente: CGFloat = 54
     }
 
+    enum Agenda {
+        static let margine: CGFloat = 14
+        static let cuoioMargine = EdgeInsets(top: 10, leading: 20, bottom: 14, trailing: 20)
+        static let cuoioRaggio: CGFloat = 4
+        static let cucitura: CGFloat = 7
+        static let targhetta: CGFloat = 50
+        static let anello = CGSize(width: 10, height: 26)
+        static let anelli = 4
+        static let rientroAnelli: CGFloat = 0.12
+        static let rigatura: CGFloat = 49
+        static let segno: CGFloat = 3
+        static let colonnaOra: CGFloat = 40
+        static let dettaglioMinimo: CGFloat = 300
+        static let quotaPagina: CGFloat = 0.55
+        static let etichettaVoce: CGFloat = 58
+        static let cellaMese: CGFloat = 34
+        static let puntino: CGFloat = 4
+        static let modulo = CGSize(width: 620, height: 600)
+    }
+
+    enum Attivita {
+        static let margine: CGFloat = 14
+        static let margineRiga: CGFloat = 43
+        static let rigatura: CGFloat = 40
+        static let rigaMinima: CGFloat = 62
+        static let spunta: CGFloat = 19
+        static let colonnaScadenza: CGFloat = 96
+        static let dettaglioMinimo: CGFloat = 330
+        static let quotaElenco: CGFloat = 0.57
+        static let progresso: CGFloat = 7
+        static let modulo = CGSize(width: 580, height: 470)
+    }
+
     enum Colonna {
         static let raggio: CGFloat = 6
         static let avatar: CGFloat = 39

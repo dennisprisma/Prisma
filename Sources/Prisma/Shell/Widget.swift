@@ -154,7 +154,7 @@ struct WidgetCalendario: View {
                     ForEach(eventi) { e in
                         Button {
                             stato.clienteAttivoId = e.clienteId
-                            stato.apri(.agenda)
+                            stato.mostraInAgenda(e)
                         } label: {
                             HStack(alignment: .firstTextBaseline, spacing: 14) {
                                 VStack(alignment: .trailing, spacing: 2) {
@@ -413,9 +413,7 @@ struct WidgetScadenze: View {
                 }
                 ForEach(scadenze) { p in
                     Button {
-                        stato.clienteAttivoId = p.clienteId
-                        stato.posizioneInDettaglio = p.id
-                        stato.apri(.posizioni)
+                        stato.apriPosizione(p)
                     } label: {
                         HStack(spacing: 6) {
                             Text(p.scadenza.map { "\(Formati.giorno.string(from: $0)) \(Formati.meseBreve.string(from: $0))" } ?? "")

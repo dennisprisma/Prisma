@@ -13,7 +13,8 @@ struct DatiPrisma: Codable, Equatable {
 
     /// 2: anagrafica completa, nucleo familiare, profilo e consensi dei clienti.
     /// 3: posizioni in essere e in proposta.
-    static let versioneAttuale = 3
+    /// 4: tipo, canale e posizione degli appuntamenti; note e appuntamento collegato delle attività.
+    static let versioneAttuale = 4
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          clienteAttivoId: String, impostazioni: Impostazioni) {
