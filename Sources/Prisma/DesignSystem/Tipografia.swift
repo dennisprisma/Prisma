@@ -53,6 +53,13 @@ enum Tipo {
     static let eveTesto = contenuto(10)
     static let avatar = contenuto(13, .medium)
 
+    // Widget
+    static let widgetTitolo = sistema(11, .bold)
+    static let widgetGiorno = contenuto(30, .bold)
+    static let widgetGiornoNome = contenuto(13, .medium)
+    static let widgetTesto = contenuto(12)
+    static let widgetNumero = contenuto(22, .medium)
+
     // Dock
     static let dockSuggerimento = sistema(11, .bold)
 

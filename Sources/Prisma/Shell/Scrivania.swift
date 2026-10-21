@@ -11,14 +11,11 @@ struct Scrivania: View {
                 Spacer(minLength: 20)
                 pulsantiRapidi
             }
-            HStack(alignment: .top, spacing: Misure.Scrivania.colonnaSpazio) {
-                VStack(alignment: .leading, spacing: 0) {
-                    intestazioneApp
-                    GrigliaApp()
-                    piede
-                }
-                ColonnaCliente()
-                    .frame(width: Misure.Scrivania.colonnaLarghezza)
+            VStack(alignment: .leading, spacing: 0) {
+                intestazioneBacheca
+                BachecaWidget()
+                    .padding(.vertical, 6)
+                piede
             }
             .padding(.top, 12)
         }
@@ -84,9 +81,9 @@ struct Scrivania: View {
         .padding(.top, 15)
     }
 
-    private var intestazioneApp: some View {
+    private var intestazioneBacheca: some View {
         HStack {
-            Text("Le tue applicazioni")
+            Text("La tua giornata")
                 .font(Tipo.scrivaniaSezione)
                 .foregroundColor(Colori.Scrivania.intestazione)
                 .ombraCSS(Colori.Scrivania.intestazioneOmbra, y: 1, sfocatura: 3)
@@ -107,9 +104,10 @@ struct Scrivania: View {
 
     private var piede: some View {
         HStack {
-            Text("Un clic per entrare. Il dock per cambiare app.")
+            Text("Le app sono nel dock. Un clic per entrare.")
             Spacer()
-            Text("Dati demo · archivio locale")
+            Text(stato.dati.impostazioni.backup.ultimo.map { "Ultimo backup: \(Formati.dataOra.string(from: $0)) · archivio locale" }
+                 ?? "Nessun backup ancora · archivio locale")
         }
         .font(Tipo.scrivaniaPiede)
         .foregroundColor(Colori.Scrivania.piede)
@@ -126,68 +124,5 @@ struct EtichettaPulsante: LabelStyle {
             configuration.icon
             configuration.title
         }
-    }
-}
-
-/// Griglia 4×4 delle app; le righe si dividono l'altezza disponibile come nel template.
-struct GrigliaApp: View {
-    @EnvironmentObject var stato: StatoShell
-
-    var body: some View {
-        GeometryReader { geo in
-            let colonne = Misure.Scrivania.colonne
-            let righe = Int((Double(AppPrisma.allCases.count) / Double(colonne)).rounded(.up))
-            let altezzaRiga = max(110, (geo.size.height - CGFloat(righe - 1) * Misure.Scrivania.spazioRighe) / CGFloat(righe))
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: Misure.Scrivania.spazioColonne), count: colonne),
-                spacing: Misure.Scrivania.spazioRighe
-            ) {
-                ForEach(AppPrisma.allCases) { app in
-                    Lanciatore(app: app, badge: app == .attivita ? stato.attivitaAperte.count : 0)
-                        .frame(height: altezzaRiga)
-                }
-            }
-        }
-        .padding(.vertical, 6)
-    }
-}
-
-/// Un'app sulla scrivania (.os-app-launcher).
-struct Lanciatore: View {
-    @EnvironmentObject var stato: StatoShell
-    let app: AppPrisma
-    var badge = 0
-    @State var sopra = false
-
-    var body: some View {
-        Button {
-            stato.apri(app)
-        } label: {
-            VStack(spacing: Misure.Scrivania.lanciatoreSpazio) {
-                IconaApp(app: app, lato: Misure.Scrivania.icona)
-                    .ombraCSS(Colori.Scrivania.iconaOmbra1, y: 2, sfocatura: 1)
-                    .ombraCSS(Colori.Scrivania.iconaOmbra2, y: sopra ? 6 : 5, sfocatura: sopra ? 5 : 4)
-                    .overlay(alignment: .topTrailing) {
-                        if badge > 0 { Badge(numero: badge).offset(x: 7, y: -7) }
-                    }
-                Text(app.titolo)
-                    .font(Tipo.lanciatoreNome)
-                    .foregroundColor(.white)
-                    .ombraCSS(Colori.Scrivania.etichettaOmbra, y: 1, sfocatura: 2)
-                Text(app.sottotitolo)
-                    .font(Tipo.lanciatoreSottotitolo)
-                    .foregroundColor(.white)
-                    .opacity(0.92)
-                    .ombraCSS(Colori.Scrivania.sottotitoloOmbra, y: 1, sfocatura: 2)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .frame(maxWidth: 180)
-            }
-            .padding(4)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .buttonStyle(StileSemplice())
-        .onHover { s in withAnimation(Animazioni.passaggio) { sopra = s } }
-        .help(app.titolo)
     }
 }

@@ -110,6 +110,23 @@ enum Colori {
         static let eveTesto = Color(hex: "#c0c1ce")
     }
 
+    /// Widget della scrivania.
+    enum Widget {
+        static let bordo = Color(hex: "#777")
+        static let ombra = Color(hex: "#0004")
+        static let carta = Color(hex: "#f6f4ef")
+        static let cartaBianca = Color(hex: "#fffdf7")
+        /// Rosso del calendario iOS 5 (agenda-red dell'icona Agenda).
+        static let calendario = [Color(hex: "#ff7767"), Color(hex: "#ef352d"), Color(hex: "#cc171d"), Color(hex: "#a50c12")]
+        static let calendarioBordo = Color(hex: "#7c1317")
+        static let calendarioLuce = Color(hex: "#ffb7a2")
+        static let calendarioTesto = Color(hex: "#fffaf0")
+        static let calendarioSecondario = Color(hex: "#ffd9cf")
+        static let titolo = Color(hex: "#303030")
+        static let secondario = Color(hex: "#666")
+        static let numero = Color(hex: "#203f67")
+    }
+
     enum Lino {
         static let alto = Color(hex: "#4b4e51")
         static let basso = Color(hex: "#35383b")

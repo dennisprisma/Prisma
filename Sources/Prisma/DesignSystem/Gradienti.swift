@@ -95,5 +95,10 @@ enum Gradienti {
     static let interruttoreAcceso = LinearGradient.lucido(Colori.Impostazioni.interruttoreAcceso, salto: (0.49, 0.50))
     static let segmentoImpostazioni = LinearGradient.verticale(Colori.Impostazioni.segmentoAttivoAlto, Colori.Impostazioni.segmentoAttivoBasso)
 
+    static let calendario = LinearGradient.verticale([
+        (Colori.Widget.calendario[0], 0), (Colori.Widget.calendario[1], 0.17),
+        (Colori.Widget.calendario[2], 0.68), (Colori.Widget.calendario[3], 1),
+    ])
+
     static let agendaInchiostro = LinearGradient.verticale(Colori.Agenda.inchiostroAlto, Colori.Agenda.inchiostroBasso)
 }

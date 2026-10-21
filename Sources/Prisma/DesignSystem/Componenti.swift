@@ -337,6 +337,8 @@ enum Formati {
     static let ora = formato("HH:mm")
     static let dataOra = formato("d MMM yyyy, HH:mm")
     static let dataLunga = formato("EEEE d MMMM")
+    static let giornoSettimana = formato("EEEE")
+    static let meseAnno = formato("MMMM yyyy")
     /// Per i nomi dei file (nessun carattere vietato dal Finder).
     static let nomeFile = formato("yyyy-MM-dd HH.mm.ss")
 
