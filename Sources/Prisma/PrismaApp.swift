@@ -10,7 +10,8 @@ struct PrismaApp: App {
             exit(Risorse.verifica())
         }
         if let i = argomenti.firstIndex(of: "--istantanee"), i + 1 < argomenti.count {
-            exit(Istantanee.genera(in: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true)))
+            let metodo = argomenti.firstIndex(of: "--metodo").flatMap { $0 + 1 < argomenti.count ? argomenti[$0 + 1] : nil } ?? "finestra"
+            exit(Istantanee.genera(in: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true), metodo: metodo))
         }
     }
 

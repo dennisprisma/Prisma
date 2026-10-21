@@ -88,14 +88,23 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 
+      # Facoltative: se nessun metodo di disegno funziona sul runner, la build resta verde.
       - name: Anteprime (istantanee delle schermate)
+        id: anteprime
         run: |
-          mkdir -p anteprime
-          "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime"
-          ls -la anteprime
+          for metodo in finestra livello renderer; do
+            rm -rf anteprime && mkdir anteprime
+            if "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime" --metodo "$metodo"; then
+              echo "Anteprime create con il metodo $metodo"
+              echo "ok=1" >> "$GITHUB_OUTPUT"
+              ls -la anteprime
+              break
+            fi
+            echo "Metodo $metodo non riuscito"
+          done
 
       - name: Pubblica le anteprime sul branch anteprime
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.anteprime.outputs.ok == '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
