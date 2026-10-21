@@ -69,12 +69,16 @@ enum Misure {
     }
 
     enum Widget {
-        static let raggio: CGFloat = 6
-        static let spazio: CGFloat = 14
+        static let raggio: CGFloat = 10
+        static let spazio: CGFloat = 16
         static let intestazione: CGFloat = 40
         /// Quota d'altezza della fila alta (Oggi, Cliente in primo piano).
-        static let quotaAlta: CGFloat = 0.62
-        static let margine = EdgeInsets(top: 12, leading: 15, bottom: 12, trailing: 15)
+        static let quotaAlta: CGFloat = 0.56
+        static let margine = EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
+        static let paginaCalendario: CGFloat = 210
+        static let rigaFoglietto: CGFloat = 26
+        static let rilegatura: CGFloat = 26
+        static let avatarCliente: CGFloat = 54
     }
 
     enum Colonna {

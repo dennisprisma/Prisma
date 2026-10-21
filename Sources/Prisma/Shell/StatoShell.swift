@@ -91,6 +91,10 @@ final class StatoShell: ObservableObject {
             .sorted { $0.inizio < $1.inizio }
     }
 
+    var appuntamentiDiOggi: [Appuntamento] {
+        appuntamenti.filter { Calendar.current.isDateInToday($0.inizio) && $0.stato == .pianificato }
+    }
+
     var attivitaAperte: [Attivita] {
         attivita.filter { !$0.completata }.sorted { $0.scadenza < $1.scadenza }
     }

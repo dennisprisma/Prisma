@@ -100,6 +100,21 @@ enum Tipo {
     static let widgetGiornoNome = contenuto(13, .medium)
     static let widgetTesto = contenuto(12)
     static let widgetNumero = contenuto(22, .medium)
+    static let calendarioMese = contenuto(13, .bold)
+    static let calendarioGiornoSettimana = contenuto(17, .medium)
+    static let calendarioNumero = Font.custom("HelveticaNeue-CondensedBold", fixedSize: 96)
+    static let calendarioAnno = contenuto(12)
+    static let calendarioOra = contenuto(13, .bold)
+    static let clienteNome = contenuto(21, .bold)
+    static let cartoncinoValore = contenuto(19, .medium)
+    static let borsaTotale = contenuto(30, .light)
+    static let borsaRiga = contenuto(13, .medium)
+    static let borsaPillola = contenuto(12, .bold)
+    /// Scrittura a mano delle note (come l'app Note di iOS 5).
+    static let manoTitolo = Font.custom("Noteworthy-Bold", fixedSize: 19)
+    static let mano = Font.custom("Noteworthy-Light", fixedSize: 14)
+    static let manoPiccola = Font.custom("Noteworthy-Light", fixedSize: 12)
+    static let promemoriaTitolo = contenuto(18, .bold)
 
     // Dock
     static let dockSuggerimento = sistema(11, .bold)
