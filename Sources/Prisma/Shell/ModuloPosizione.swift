@@ -1,0 +1,208 @@
+import SwiftUI
+
+/// Modulo per aggiungere o modificare una posizione (in essere o proposta).
+struct ModuloPosizione: View {
+    @Environment(\.dismiss) var chiudi
+    @State var bozza: Posizione
+    let nuova: Bool
+    let salva: (Posizione) -> Void
+
+    private var valida: Bool { !bozza.nome.trimmingCharacters(in: .whitespaces).isEmpty }
+    private static let numero = FloatingPointFormatStyle<Double>.number.locale(Formati.italiano)
+
+    var body: some View {
+        CorniceModulo(titolo: titolo) {
+            VStack(alignment: .leading, spacing: 20) {
+                sezione("La posizione") {
+                    CampoModulo(etichetta: "Stato") {
+                        Picker("", selection: $bozza.stato) {
+                            ForEach(StatoPosizione.allCases) { Text($0.nome).tag($0) }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(width: 300)
+                    }
+                    if bozza.stato == .proposta {
+                        CampoModulo(etichetta: "Esito della proposta") {
+                            Picker("", selection: Binding(get: { bozza.esito ?? .bozza }, set: { bozza.esito = $0 })) {
+                                ForEach(EsitoProposta.allCases) { Text($0.nome).tag($0) }
+                            }
+                            .labelsHidden()
+                            .frame(width: 220)
+                        }
+                    }
+                    CampoModulo(etichetta: "Canale") {
+                        HStack(spacing: 14) {
+                            ForEach(Canale.allCases) { c in
+                                Button { bozza.canale = c } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: bozza.canale == c ? "largecircle.fill.circle" : "circle")
+                                            .foregroundColor(Colori.Analisi.navBasso)
+                                        EtichettaCanale(canale: c, compatta: true)
+                                    }
+                                }
+                                .buttonStyle(StileSemplice())
+                            }
+                        }
+                    }
+                    CampoModulo(etichetta: "Area") {
+                        Picker("", selection: $bozza.area) {
+                            ForEach(AreaPosizione.allCases) { Text($0.nome).tag($0) }
+                        }
+                        .labelsHidden()
+                        .frame(width: 220)
+                    }
+                    CampoModulo(etichetta: "Nome del prodotto") {
+                        TextField("Per esempio Piano di risparmio rivalutabile", text: $bozza.nome).textFieldStyle(.roundedBorder)
+                    }
+                    CampoModulo(etichetta: "Tipologia") {
+                        TextField("Per esempio Polizza rivalutabile (Ramo I), ETF, PIP", text: $bozza.tipologia).textFieldStyle(.roundedBorder)
+                    }
+                    CampoModulo(etichetta: "Compagnia o emittente") {
+                        TextField("", text: $bozza.emittente).textFieldStyle(.roundedBorder)
+                    }
+                    CampoModulo(etichetta: "Numero di contratto") {
+                        TextField("", text: $bozza.numeroContratto).textFieldStyle(.roundedBorder)
+                    }
+                }
+                if bozza.area != .liquidita && bozza.area != .immobili {
+                    sezione("Persone e date") {
+                        if bozza.area != .debiti {
+                            CampoModulo(etichetta: "Contraente") { TextField("", text: $bozza.contraente).textFieldStyle(.roundedBorder) }
+                            CampoModulo(etichetta: "Assicurato") { TextField("", text: $bozza.assicurato).textFieldStyle(.roundedBorder) }
+                            CampoModulo(etichetta: "Beneficiari") { TextField("", text: $bozza.beneficiari).textFieldStyle(.roundedBorder) }
+                        }
+                        CampoModulo(etichetta: "Decorrenza") {
+                            CampoDataFacoltativa(data: $bozza.decorrenza, predefinita: Date())
+                        }
+                        CampoModulo(etichetta: "Scadenza") {
+                            CampoDataFacoltativa(data: $bozza.scadenza,
+                                                 predefinita: Calendar.current.date(byAdding: .year, value: 10, to: Date()) ?? Date())
+                        }
+                    }
+                }
+                sezione("Importi") {
+                    if bozza.area != .liquidita && bozza.area != .immobili {
+                        CampoModulo(etichetta: bozza.area == .protezione ? "Premio unico" : "Versamento iniziale") {
+                            campoEuro($bozza.versamentoIniziale)
+                        }
+                        CampoModulo(etichetta: bozza.area == .debiti ? "Rata" : "Premio periodico") {
+                            HStack(spacing: 10) {
+                                campoEuro($bozza.premio)
+                                Picker("", selection: $bozza.frequenza) {
+                                    ForEach(Frequenza.allCases) { Text($0.nome).tag($0) }
+                                }
+                                .labelsHidden()
+                                .frame(width: 220)
+                            }
+                        }
+                    }
+                    if bozza.area != .protezione {
+                        CampoModulo(etichetta: bozza.area == .debiti ? "Debito residuo" : "Valore attuale") {
+                            HStack(spacing: 10) {
+                                campoEuroFacoltativo($bozza.controvalore)
+                                if bozza.controvalore != nil {
+                                    Text("al").font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                                    CampoDataFacoltativa(data: $bozza.dataValore, predefinita: Date())
+                                }
+                            }
+                        }
+                    }
+                    if bozza.area.proiettabile || bozza.area == .protezione {
+                        CampoModulo(etichetta: "Totale versato") { campoEuroFacoltativo($bozza.totaleVersato) }
+                    }
+                    if bozza.area == .protezione {
+                        CampoModulo(etichetta: "Capitale assicurato") { campoEuroFacoltativo($bozza.capitaleAssicurato) }
+                        CampoModulo(etichetta: "Rischio coperto") {
+                            Picker("", selection: $bozza.rischio) {
+                                Text("Non indicato").tag(RischioCoperto?.none)
+                                ForEach(RischioCoperto.allCases) { Text($0.nome).tag(Optional($0)) }
+                            }
+                            .labelsHidden()
+                            .frame(width: 240)
+                        }
+                    }
+                }
+                if bozza.area.proiettabile {
+                    sezione("Ipotesi e costi (dal KID o dal prospetto)") {
+                        CampoModulo(etichetta: "Rendimento atteso") { campoPercento($bozza.rendimentoAtteso, "% annuo") }
+                        CampoModulo(etichetta: "Costo d'ingresso") { campoPercento($bozza.costoIngresso, "% dei versamenti") }
+                        CampoModulo(etichetta: "Costo annuo") { campoPercento($bozza.costoAnnuo, "% all'anno") }
+                        CampoModulo(etichetta: "Fiscalità") { campoPercento($bozza.aliquotaFiscale, "% sul rendimento") }
+                        CampoModulo(etichetta: "Rischio (SRI)") {
+                            Picker("", selection: $bozza.sri) {
+                                Text("Non indicato").tag(Int?.none)
+                                ForEach(1...7, id: \.self) { Text("\($0)").tag(Optional($0)) }
+                            }
+                            .labelsHidden()
+                            .frame(width: 140)
+                        }
+                    }
+                }
+                sezione("Altro") {
+                    CampoModulo(etichetta: "Garanzie") { TextField("", text: $bozza.garanzie).textFieldStyle(.roundedBorder) }
+                    CampoModulo(etichetta: "Note") { TextField("", text: $bozza.note).textFieldStyle(.roundedBorder) }
+                }
+            }
+        } piede: {
+            Spacer()
+            Button("Annulla") { chiudi() }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .keyboardShortcut(.cancelAction)
+            Button(nuova ? "Aggiungi" : "Salva") {
+                var p = bozza
+                p.nome = p.nome.trimmingCharacters(in: .whitespacesAndNewlines)
+                if p.stato != .proposta { p.esito = p.esito == .accettata ? .accettata : nil }
+                salva(p)
+                chiudi()
+            }
+            .buttonStyle(StileBlu())
+            .disabled(!valida)
+            .opacity(valida ? 1 : 0.5)
+            .keyboardShortcut(.defaultAction)
+        }
+        .frame(width: Misure.Analisi.modulo.width, height: Misure.Analisi.modulo.height)
+    }
+
+    private var titolo: String {
+        if nuova { return bozza.stato == .proposta ? "Nuova proposta" : "Nuova posizione" }
+        return bozza.stato == .proposta ? "Modifica la proposta" : "Modifica la posizione"
+    }
+
+    private func sezione<C: View>(_ titolo: String, @ViewBuilder _ contenuto: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            OcchielloSezione(titolo: titolo)
+            contenuto()
+        }
+    }
+
+    private func campoEuro(_ valore: Binding<Double>) -> some View {
+        HStack(spacing: 6) {
+            TextField("0", value: valore, format: Self.numero)
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 120)
+            Text("€").font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+        }
+    }
+
+    private func campoEuroFacoltativo(_ valore: Binding<Double?>) -> some View {
+        HStack(spacing: 6) {
+            TextField("—", value: valore, format: Self.numero)
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 120)
+            Text("€").font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+        }
+    }
+
+    private func campoPercento(_ valore: Binding<Double?>, _ unita: String) -> some View {
+        HStack(spacing: 6) {
+            TextField("—", value: valore, format: Self.numero)
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 70)
+            Text(unita).font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+        }
+    }
+}

@@ -111,5 +111,16 @@ enum Gradienti {
     static let schedaApp = LinearGradient.verticale(Colori.Rubrica.schedaAppAlto, Colori.Rubrica.schedaAppBasso)
     static let aqua = LinearGradient.lucido(Colori.Rubrica.aqua, salto: (0.48, 0.49))
 
+    static let railAnalisi = LinearGradient.verticale(Colori.Analisi.railAlto, Colori.Analisi.railBasso)
+    /// --prisma-lion-control
+    static let controlloLion = LinearGradient.verticale([
+        (Color.white, 0), (Color(hex: "#f5f5f5"), 0.48), (Color(hex: "#dedede"), 0.49), (Color(hex: "#efefef"), 1),
+    ])
+    static let segAnalisiAttivo = LinearGradient.verticale(Colori.Analisi.segAttivoAlto, Colori.Analisi.segAttivoBasso)
+    static let navAnalisi = LinearGradient.verticale(Colori.Analisi.navAlto, Colori.Analisi.navBasso)
+    static let kpi = LinearGradient.verticale(Colori.Analisi.kpiAlto, Colori.Analisi.kpiBasso)
+    static let testaTabella = LinearGradient.verticale(Colori.Analisi.tabellaTestaAlto, Colori.Analisi.tabellaTestaBasso)
+    static let barraStato = LinearGradient.verticale(Colori.Analisi.statoAlto, Colori.Analisi.statoBasso)
+
     static let agendaInchiostro = LinearGradient.verticale(Colori.Agenda.inchiostroAlto, Colori.Agenda.inchiostroBasso)
 }

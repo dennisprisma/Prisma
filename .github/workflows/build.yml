@@ -87,6 +87,8 @@ jobs:
           fi
           # Prova reale di backup, rotazione e ripristino in cartelle temporanee
           "$APP/Contents/MacOS/Prisma" --prova-backup
+          # Prova dei motori di calcolo contro risultati calcolati a parte
+          "$APP/Contents/MacOS/Prisma" --prova-calcoli
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 

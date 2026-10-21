@@ -22,6 +22,10 @@ final class StatoShell: ObservableObject {
     @Published var schermoIntero = false
     @Published var schedaImpostazioni: SchedaImpostazioni = .esperienza
     @Published var schedaCliente: SchedaCliente = .panoramica
+    /// Posizione aperta nel dettaglio (usata anche dalle istantanee).
+    @Published var posizioneInDettaglio: String?
+    /// Il pulsante dell'intestazione di Posizioni chiede di aprire il modulo (nuova posizione o proposta).
+    @Published var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     @Published var richiestaNuovoCliente = false
 
@@ -200,6 +204,7 @@ final class StatoShell: ObservableObject {
         dati.clienti.removeAll { $0.id == id }
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
+        dati.posizioni.removeAll { $0.clienteId == id }
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
@@ -227,6 +232,36 @@ final class StatoShell: ObservableObject {
 
     func attivitaCliente(_ id: String) -> [Attivita] {
         attivita.filter { $0.clienteId == id }.sorted { $0.scadenza < $1.scadenza }
+    }
+
+    // MARK: - Posizioni
+
+    var posizioni: [Posizione] { dati.posizioni }
+
+    func posizioniCliente(_ id: String) -> [Posizione] {
+        dati.posizioni.filter { $0.clienteId == id }
+    }
+
+    func salvaPosizione(_ posizione: Posizione) {
+        if let i = dati.posizioni.firstIndex(where: { $0.id == posizione.id }) {
+            dati.posizioni[i] = posizione
+        } else {
+            dati.posizioni.append(posizione)
+        }
+    }
+
+    func eliminaPosizione(_ id: String) {
+        dati.posizioni.removeAll { $0.id == id }
+    }
+
+    /// Una proposta accettata diventa una posizione in essere.
+    func attivaProposta(_ id: String) {
+        guard let i = dati.posizioni.firstIndex(where: { $0.id == id }) else { return }
+        dati.posizioni[i].stato = .inEssere
+        dati.posizioni[i].esito = .accettata
+        if dati.posizioni[i].decorrenza == nil { dati.posizioni[i].decorrenza = Date() }
+        if dati.posizioni[i].totaleVersato == nil { dati.posizioni[i].totaleVersato = dati.posizioni[i].versamentoIniziale }
+        if dati.posizioni[i].controvalore == nil { dati.posizioni[i].controvalore = dati.posizioni[i].versamentoIniziale }
     }
 
     // MARK: - Attività

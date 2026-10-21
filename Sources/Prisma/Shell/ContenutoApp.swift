@@ -10,6 +10,7 @@ struct ContenutoApp: View {
             Group {
                 switch app {
                 case .clienti: AppClienti()
+                case .posizioni: AppPosizioni()
                 case .impostazioni: AppImpostazioni()
                 default: AppSegnaposto(app: app)
                 }
@@ -33,8 +34,10 @@ extension ContenutoApp {
 
     /// Pulsanti a destra nell'intestazione dell'app.
     @ViewBuilder var azioni: some View {
-        if app == .clienti {
-            AzioneNuovoCliente()
+        switch app {
+        case .clienti: AzioneNuovoCliente()
+        case .posizioni: AzioniPosizioni()
+        default: EmptyView()
         }
     }
 }
@@ -109,5 +112,18 @@ struct AppSegnaposto: View {
         .padding(28)
         .background(RoundedRectangle(cornerRadius: Misure.Pannello.raggio).fill(Colori.Pannello.sfondo))
         .overlay(RoundedRectangle(cornerRadius: Misure.Pannello.raggio).strokeBorder(Colori.Pannello.bordo, lineWidth: 1))
+    }
+}
+
+struct AzioniPosizioni: View {
+    @EnvironmentObject var stato: StatoShell
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button("＋ Proposta") { stato.richiestaNuovaPosizione = .proposta }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+            Button("＋ Posizione") { stato.richiestaNuovaPosizione = .inEssere }
+                .buttonStyle(StileBlu())
+        }
     }
 }

@@ -35,6 +35,23 @@ enum Misure {
         static let altezzaSezione: CGFloat = 28
     }
 
+    enum Analisi {
+        static let rail: CGFloat = 210
+        static let margineRail: CGFloat = 10
+        static let segAltezza: CGFloat = 28
+        static let navAltezza: CGFloat = 34
+        static let raggio: CGFloat = 4
+        static let kpiMargine = EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
+        static let cellaMargine = EdgeInsets(top: 8, leading: 9, bottom: 8, trailing: 9)
+        static let testaMargine = EdgeInsets(top: 7, leading: 9, bottom: 7, trailing: 9)
+        static let anello: CGFloat = 150
+        static let spessoreAnello: CGFloat = 23
+        static let grafico: CGFloat = 200
+        static let barraStato: CGFloat = 36
+        static let dettaglio = CGSize(width: 820, height: 680)
+        static let modulo = CGSize(width: 680, height: 640)
+    }
+
     enum Rubrica {
         static let indice: CGFloat = 220
         static let raggioLibro: CGFloat = 5

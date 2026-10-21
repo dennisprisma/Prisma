@@ -234,7 +234,7 @@ struct WidgetCliente: View {
                         .incisione(Color.black.opacity(0.45), y: -1)
                     }
                     .buttonStyle(StileSemplice())
-                    .popover(isPresented: $sceltaCliente, arrowEdge: .bottom) { elencoClienti }
+                    .popover(isPresented: $sceltaCliente, arrowEdge: .bottom) { ElencoClienti(aperto: $sceltaCliente) }
                 }
                 Spacer(minLength: 0)
             }
@@ -250,38 +250,6 @@ struct WidgetCliente: View {
         .luceInterna(Colori.Colonna.pelleLuce, bordo: 0)
         .ombraInternaBasso(Colori.Colonna.pelleOmbra, spessore: 2, bordo: 1)
         .bordoBasso(Colori.Colonna.pelleBordo)
-    }
-
-    private var elencoClienti: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(stato.clienti) { c in
-                Button {
-                    stato.clienteAttivoId = c.id
-                    sceltaCliente = false
-                } label: {
-                    HStack(spacing: 10) {
-                        AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: 28)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(c.nome).font(Tipo.rigaNome).foregroundColor(Colori.Colonna.rigaNome)
-                            Text(c.tema).font(Tipo.rigaSecondario).foregroundColor(Colori.Colonna.rigaSecondario)
-                        }
-                        Spacer(minLength: 12)
-                        if c.id == stato.clienteAttivoId {
-                            Image(systemName: "checkmark").foregroundColor(Colori.Colonna.collegamento)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                }
-                .buttonStyle(StileSemplice())
-                if c.id != stato.clienti.last?.id {
-                    Rectangle().fill(Colori.Colonna.rigaBordo).frame(height: 1)
-                }
-            }
-        }
-        .frame(width: 270)
-        .padding(.vertical, 4)
-        .background(Colori.Colonna.sfondo)
     }
 }
 

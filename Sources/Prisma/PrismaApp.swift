@@ -12,6 +12,9 @@ struct PrismaApp: App {
         if argomenti.contains("--prova-backup") {
             exit(ProvaBackup.esegui())
         }
+        if argomenti.contains("--prova-calcoli") {
+            exit(ProvaCalcoli.esegui())
+        }
         if let i = argomenti.firstIndex(of: "--istantanee"), i + 1 < argomenti.count {
             let metodo = argomenti.firstIndex(of: "--metodo").flatMap { $0 + 1 < argomenti.count ? argomenti[$0 + 1] : nil } ?? "finestra"
             exit(Istantanee.genera(in: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true), metodo: metodo))

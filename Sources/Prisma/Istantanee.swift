@@ -30,6 +30,19 @@ enum Istantanee {
             s.schedaCliente = .profilo
             s.apri(.clienti)
         }),
+        ("8-posizioni-dettaglio", { s in
+            s.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
+            s.apri(.posizioni)
+        }),
+        ("9-posizioni-marco", { s in
+            s.clienteAttivoId = "marco"
+            s.apri(.posizioni)
+        }),
+        ("10-posizioni-copertura", { s in
+            s.clienteAttivoId = "marco"
+            s.posizioneInDettaglio = "pos-marco-infortuni-famiglia"
+            s.apri(.posizioni)
+        }),
     ]
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:

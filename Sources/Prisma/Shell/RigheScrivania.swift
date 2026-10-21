@@ -104,3 +104,42 @@ extension TintaAvatar {
         }
     }
 }
+
+/// Elenco dei clienti in un riquadro a comparsa, per scegliere il cliente in primo piano.
+struct ElencoClienti: View {
+    @EnvironmentObject var stato: StatoShell
+    @Binding var aperto: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(stato.clienti) { c in
+                Button {
+                    stato.clienteAttivoId = c.id
+                    aperto = false
+                } label: {
+                    HStack(spacing: 10) {
+                        AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: 28)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(c.nome).font(Tipo.rigaNome).foregroundColor(Colori.Colonna.rigaNome)
+                            Text(c.tema).font(Tipo.rigaSecondario).foregroundColor(Colori.Colonna.rigaSecondario)
+                        }
+                        Spacer(minLength: 12)
+                        if c.id == stato.clienteAttivoId {
+                            Image(systemName: "checkmark").foregroundColor(Colori.Colonna.collegamento)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(StileSemplice())
+                if c.id != stato.clienti.last?.id {
+                    Rectangle().fill(Colori.Colonna.rigaBordo).frame(height: 1)
+                }
+            }
+        }
+        .frame(width: 270)
+        .padding(.vertical, 4)
+        .background(Colori.Colonna.sfondo)
+    }
+}

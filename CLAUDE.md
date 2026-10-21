@@ -16,7 +16,7 @@ Tutto resta in locale sul Mac: niente server, niente cloud.
 - Non proporre mai di installare Xcode o i Command Line Tools sul Mac dell'utente.
 - Il codice non si compila in questo ambiente (Linux). Compila GitHub Actions (.github/workflows/build.yml, runner macos-15-intel) a ogni push e pull request. Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
 - Dopo ogni push controlla l'esito della build (gh run list, gh run view --log-failed) e correggi finché non è verde. Un lavoro con la build rossa non è finito.
-- Lavora su un branch e apri una pull request; main deve restare sempre compilabile.
+- Lavora su un branch e apri una pull request; main deve restare sempre compilabile. L'utente ti autorizza a unire tu la pull request in main quando la build è verde (e solo allora).
 - Nessuna dipendenza esterna senza chiedere prima.
 - Target minimo macOS 13. Il Mac dell'utente è un MacBook Pro M1 con 8 GB di RAM (macOS 27): codice leggero, attenzione alla memoria.
 - Non puoi avviare l'app, ma puoi vederne le schermate: a ogni push il workflow esegue `Prisma --istantanee` e pubblica le PNG sul branch `anteprime` (`git fetch origin anteprime`). Guardale prima di chiedere screenshot all'utente e aggiorna la pagina online delle anteprime (https://claude.ai/artifact/EauRU1ohEGjHj4zvTomDvb). Per ciò che le istantanee non mostrano (ombre, menu, interazioni) chiedi uno screenshot.
