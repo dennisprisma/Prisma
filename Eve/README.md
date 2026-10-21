@@ -46,5 +46,7 @@ Eve non calcola da sola: chiede all'app. Esempi:
 - `Esempi/` — esempi per verticalizzare Eve, con documenti anonimizzati: mai dati veri di clienti.
 - `Valutazione/` — casi di prova con il risultato atteso, per misurare la qualità dell'estrazione e confrontare i motori.
 
-## Da verificare quando si arriva a Eve
-- Il framework FoundationModels si compila solo con l'SDK di macOS 26 (Xcode 26) sul server di build GitHub. Va controllato quali versioni ha il runner `macos-15-intel` e, se serve, selezionarla nel workflow. Riguarda solo il server di build, non il Mac dell'utente.
+## Build
+- Il framework FoundationModels si compila solo con l'SDK di macOS 26.
+- Verificato il 21/10/2026: il runner `macos-15-intel` ha installati anche Xcode 26.0–26.3 (il predefinito è 16.4). Quando si arriva a Eve basta selezionare Xcode 26.3 nel workflow con `DEVELOPER_DIR`, senza cambiare runner. Riguarda solo il server di build, non il Mac dell'utente.
+- Il codice che usa FoundationModels va protetto con `#if canImport(FoundationModels)` e `@available(macOS 26, *)`, così l'app resta compatibile con macOS 13.
