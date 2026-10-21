@@ -126,6 +126,25 @@ enum ProvaCalcoli {
             verifica("Bisogno scartato: la pensione esce dalla ruota", Double(MotoreBisogni.ruota(rg, profilo: scartato)[.pensione]?.rawValue ?? 9), 0)
         }
 
+        // 14. Estrazione dagli appunti di un incontro (regole)
+        let anno = Calendar(identifier: .gregorian).component(.year, from: Date())
+        let appunti = """
+        Mi preoccupa molto il mutuo se dovesse succedere qualcosa a mio marito.
+        Vorremmo comprare casa nel \(anno + 2), una villetta da 300.000 €.
+        Preparare il confronto tra le due polizze
+        """
+        let proposte = EstrattoreIncontro.conRegole(appunti)
+        verifica("Appunti: bisogno casa con importanza alta (preoccupazione)",
+                 proposte.contains { $0.tipo == .bisogno(.casa, .alta) } ? 1 : 0, 1)
+        verifica("Appunti: evento acquisto casa con l'anno citato",
+                 proposte.contains { $0.tipo == .evento(.acquistoCasa, anno + 2) } ? 1 : 0, 1)
+        verifica("Appunti: decisione trasformata in attività",
+                 proposte.contains { if case .attivita = $0.tipo { return true } else { return false } } ? 1 : 0, 1)
+        verifica("Appunti: i numeri come 300.000 non spezzano le frasi",
+                 EstrattoreIncontro.frasi("Una villetta da 300.000 €. Poi altro").count, 2)
+        let dalModello = EstrattoreIncontro.daRisposta("BISOGNO|pensione|alta|vuole smettere presto\nEVENTO|pensione|\(anno + 9)|\nVOCE|non valida\nBISOGNO|marte|alta|x")
+        verifica("Risposta del modello: righe valide accettate, le altre scartate", dalModello.count, 2)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

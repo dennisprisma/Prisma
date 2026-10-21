@@ -637,6 +637,24 @@ enum Colori {
         static let vuotoTesto = Color(hex: "#9c907e")
     }
 
+    /// App Incontri (.os-app-meetings, passata "2011": quaderno di lavoro su carta).
+    enum Incontri {
+        static let fondoAlto = Color(hex: "#e4e1d7")
+        static let fondoBasso = Color(hex: "#d9d8cd")
+        static let testo = Color(hex: "#4f574c")
+        static let secondario = Color(hex: "#7a7f72")
+        static let cartaBordo = Color(hex: "#b7b6a7")
+        static let cartaLato = Color(hex: "#f1ede0")
+        static let carta = Color(hex: "#fffdf3")
+        static let rigatura = Color(r: 135, g: 156, b: 156, a: 0.22)
+        static let margine = Color(r: 198, g: 140, b: 140, a: 0.35)
+        static let filo = Color(hex: "#cfcbbd")
+        static let citazione = Color(hex: "#8a7f62")
+        static let citazioneFondo = Color(hex: "#f4efdf")
+        static let concluso = Color(hex: "#5f7f4f")
+        static let piede = Color(hex: "#ebe8de")
+    }
+
     /// Profilo dei bisogni (scheda del cliente).
     enum Bisogni {
         static func area(_ a: AreaBisogno) -> Color {

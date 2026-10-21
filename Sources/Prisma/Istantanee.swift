@@ -75,6 +75,24 @@ enum Istantanee {
             s.schedaCliente = .bisogni
             s.apri(.clienti)
         }),
+        ("21-incontri-ascolto", { s in
+            s.clienteAttivoId = "giulia"
+            s.incontroAperto = "incontro-giulia-analisi"
+            s.schedaIncontro = .ascolto
+            s.apri(.incontri)
+        }),
+        ("22-incontri-passi", { s in
+            s.clienteAttivoId = "giulia"
+            if var i = s.incontro("incontro-giulia-analisi") {
+                // Si riapre l'incontro di prova per mostrare le proposte ricavate dagli appunti
+                i.stato = .preparazione
+                s.salvaIncontro(i)
+                s.estraiProposte(i)
+            }
+            s.incontroAperto = "incontro-giulia-analisi"
+            s.schedaIncontro = .passi
+            s.apri(.incontri)
+        }),
         ("19-eve", { s in
             s.dati.impostazioni.eve.motore = .sintesi
             s.clienteAttivoId = "giulia"

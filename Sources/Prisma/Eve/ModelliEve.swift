@@ -78,6 +78,7 @@ struct FonteEve {
     let analisi: Analisi360
     let analisiSalvata: Bool
     let simulazioni: [Simulazione]
+    var incontri: [Incontro] = []
 }
 
 struct RichiestaEve {

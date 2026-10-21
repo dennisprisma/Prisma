@@ -173,6 +173,25 @@ enum DatiDemo {
         ]
     }
 
+    /// Incontri di prova: uno concluso con Giulia, uno da preparare per quello di oggi.
+    static func incontri() -> [Incontro] {
+        var concluso = Incontro(clienteId: "giulia", titolo: "Analisi delle posizioni in essere", data: data(-6, 17, 0),
+                                appuntamentoId: "event-giulia-analisi")
+        concluso.id = "incontro-giulia-analisi"
+        concluso.stato = .concluso
+        concluso.preoccupazioni = "Il mutuo: se succedesse qualcosa a uno dei due, Luca da solo non ce la farebbe con la rata."
+        concluso.progetti = "Comprare un trilocale in città nel \(Calendar(identifier: .gregorian).component(.year, from: Date()) + 3). Forse un figlio tra qualche anno."
+        concluso.esperienza = "Nel 2020 ha venduto in perdita un fondo azionario: preferisce andare per gradi."
+        concluso.appunti = "Raccolti estratti conto, polizze e piano del mutuo. L'ETF le piace, il fondo obbligazionario meno."
+        concluso.decisioni = "Preparare il confronto tra il piano previdenziale Alleanza e il fondo pensione aperto. Verificare i capitali della temporanea caso morte."
+        concluso.prossimaAttivita = "Preparare il confronto per la previdenza"
+        concluso.aggiornatoIl = data(-6, 18, 0)
+        var oggi = Incontro(clienteId: "giulia", titolo: "Il punto sul progetto casa", data: data(0, 9, 30), appuntamentoId: "event-giulia")
+        oggi.id = "incontro-giulia-casa"
+        oggi.temi = [.risparmio, .protezione]
+        return [concluso, oggi]
+    }
+
     /// Scenari di prova nel simulatore.
     static func simulazioni() -> [Simulazione] {
         func s(_ id: String, _ cliente: String, _ titolo: String, _ configura: (inout Simulazione) -> Void) -> Simulazione {

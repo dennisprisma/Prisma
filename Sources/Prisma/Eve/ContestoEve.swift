@@ -80,6 +80,15 @@ enum ContestoEve {
         righe.append("- Investimenti: \(Formati.euro(a.investimenti.capitale)) per \(a.investimenti.anni) anni → netto \(Formati.euro(inv.esito.netto)), costi che tolgono \(Formati.euro(inv.impattoCosti)).")
         righe.append("- Risparmio: obiettivo \(Formati.euro(a.risparmio.obiettivo)) in \(a.risparmio.anni) anni, coperto al \(Int(ris.copertura.rounded()))%, versamento teorico \(ris.versamentoTeorico.map { Formati.euro($0) + "/mese" } ?? "n.d.").")
 
+        // Ultimo incontro concluso
+        if let u = f.incontri.filter({ $0.stato == .concluso }).max(by: { $0.data < $1.data }) {
+            var r = "ULTIMO INCONTRO (\(Formati.dataEstesa.string(from: u.data))): \(u.titolo)."
+            if !u.preoccupazioni.isEmpty { r += " Preoccupazioni: \(u.preoccupazioni.prefix(200))" }
+            if !u.progetti.isEmpty { r += " Progetti: \(u.progetti.prefix(200))" }
+            if !u.decisioni.isEmpty { r += " Decisioni: \(u.decisioni.prefix(240))" }
+            righe.append(r)
+        }
+
         // Agenda e attività
         let futuri = f.appuntamenti.filter { $0.inizio >= Calendar.current.startOfDay(for: f.oggi) && $0.stato == .pianificato }
             .sorted { $0.inizio < $1.inizio }

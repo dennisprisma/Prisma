@@ -111,7 +111,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .clienti: return "La rubrica e il dossier dei clienti arrivano con il modulo Clienti."
         case .agenda, .attivita: return "Appuntamenti, attività e scadenze delle posizioni."
-        case .incontri: return "Il verbale degli incontri (appunti, decisioni e seguiti) arriva nelle prossime fasi, collegato all'Agenda."
+        case .incontri: return "Preparazione, ascolto, appunti e decisioni, prossimi passi."
         case .posizioni:
             return "Il cuore di Prisma: le posizioni dei clienti, in essere e in proposta, con il canale Alleanza / indipendente sempre in vista."
         case .analisi360, .prodotti, .confronti, .simulazioni, .obiettivi:

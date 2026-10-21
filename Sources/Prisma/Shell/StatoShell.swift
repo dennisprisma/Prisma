@@ -9,6 +9,8 @@ enum FiltroAttivita: Hashable { case aperte, completate, tutte }
 
 enum SchedaSimulazioni: Hashable { case simulatore, scenari }
 
+enum SchedaIncontro: Hashable { case preparazione, ascolto, passi }
+
 /// Ciò che si può mettere a confronto: una posizione (in essere o proposta) o uno scenario salvato.
 enum VoceConfronto: Hashable {
     case posizione(String)
@@ -67,6 +69,14 @@ final class StatoShell: ObservableObject {
     @Published var confrontoB: VoceConfronto?
     /// Orizzonte comune del confronto (nil = ognuno il suo).
     @Published var orizzonteConfronto: Int?
+
+    // Incontri
+    @Published var incontroAperto: String?
+    @Published var schedaIncontro: SchedaIncontro = .preparazione
+    /// Proposte ricavate dagli appunti (per incontro) e quelle scelte per entrare nel dossier.
+    @Published var proposteIncontro: [String: [PropostaIncontro]] = [:]
+    @Published var proposteScelte: Set<String> = []
+    @Published var estrazioneInCorso = false
 
     // Eve
     @Published var eveInCorso = false
@@ -257,6 +267,7 @@ final class StatoShell: ObservableObject {
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
         dati.conversazioni[id] = nil
+        dati.incontri.removeAll { $0.clienteId == id }
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
@@ -337,6 +348,139 @@ final class StatoShell: ObservableObject {
             guard p.stato == .inEssere, let s = p.scadenza else { return false }
             return cal.isDate(s, inSameDayAs: giorno) && (filtroClienteAgenda == nil || p.clienteId == filtroClienteAgenda)
         }
+    }
+
+    // MARK: - Incontri
+
+    func incontriCliente(_ id: String) -> [Incontro] {
+        dati.incontri.filter { $0.clienteId == id }.sorted { $0.data > $1.data }
+    }
+
+    func incontro(_ id: String?) -> Incontro? {
+        guard let id else { return nil }
+        return dati.incontri.first { $0.id == id }
+    }
+
+    func salvaIncontro(_ i: Incontro) {
+        var x = i
+        x.aggiornatoIl = Appuntamento.alMinuto(Date())
+        if let k = dati.incontri.firstIndex(where: { $0.id == x.id }) {
+            dati.incontri[k] = x
+        } else {
+            dati.incontri.append(x)
+        }
+    }
+
+    func eliminaIncontro(_ id: String) {
+        dati.incontri.removeAll { $0.id == id }
+        if incontroAperto == id { incontroAperto = nil }
+    }
+
+    /// Nuovo incontro: dal prossimo appuntamento del cliente, con i temi delle sue priorità.
+    func nuovoIncontro(cliente id: String, appuntamento: Appuntamento? = nil) {
+        let a = appuntamento ?? prossimiAppuntamenti.first { $0.clienteId == id }
+        var i = Incontro(clienteId: id, titolo: a?.titolo ?? "Incontro di consulenza", data: a?.inizio ?? Appuntamento.alMinuto(Date()),
+                         appuntamentoId: a?.id)
+        if let c = cliente(id) {
+            let priorita = MotoreBisogni.priorita(bisogniRilevati(id), profilo: c.bisogni).map(\.areaAnalisi)
+            var temi: [AreaAnalisi] = []
+            for t in priorita where !temi.contains(t) { temi.append(t) }
+            if !temi.isEmpty { i.temi = temi }
+        }
+        salvaIncontro(i)
+        incontroAperto = i.id
+        schedaIncontro = .preparazione
+    }
+
+    /// Apre l'incontro legato a un appuntamento (lo crea se manca).
+    func apriIncontro(per a: Appuntamento) {
+        clienteAttivoId = a.clienteId
+        if let i = dati.incontri.first(where: { $0.appuntamentoId == a.id }) {
+            incontroAperto = i.id
+            schedaIncontro = i.stato == .concluso ? .passi : .preparazione
+        } else {
+            nuovoIncontro(cliente: a.clienteId, appuntamento: a)
+        }
+        apri(.incontri)
+    }
+
+    /// Legge gli appunti: regole di Prisma subito, il modello Apple (se c'è) si aggiunge.
+    func estraiProposte(_ i: Incontro) {
+        let regole = EstrattoreIncontro.conRegole(i.testoAscolto)
+        proposteIncontro[i.id] = regole
+        proposteScelte = Set(regole.map(\.id))
+        guard persistente, dati.impostazioni.eve.motore != .sintesi, MotoriEve.motivoAppleNonDisponibile == nil, !i.vuoto else { return }
+        estrazioneInCorso = true
+        let testo = i.testoAscolto
+        Task { @MainActor in
+            if let risposta = try? await MotoriEve.generaConApple(istruzioni: EstrattoreIncontro.istruzioniModello,
+                                                                    richiesta: "APPUNTI DELL'INCONTRO\n" + testo) {
+                let modello = EstrattoreIncontro.daRisposta(risposta)
+                let unite = EstrattoreIncontro.unisci(regole, modello)
+                self.proposteIncontro[i.id] = unite
+                self.proposteScelte.formUnion(modello.map(\.id))
+            }
+            self.estrazioneInCorso = false
+        }
+    }
+
+    /// Chiude l'incontro: le proposte scelte entrano nel profilo, nascono attività e seguito in agenda.
+    func chiudiIncontro(_ id: String) {
+        guard var i = incontro(id) else { return }
+        let scelte = (proposteIncontro[id] ?? []).filter { proposteScelte.contains($0.id) }
+        aggiornaBisogni(i.clienteId) { p in
+            for s in scelte {
+                switch s.tipo {
+                case .bisogno(let area, let importanza):
+                    var v = p.valutazione(area)
+                    if importanza > v.importanza { v.importanza = importanza }
+                    if v.orizzonte == nil { v.orizzonte = .medio }
+                    p.imposta(v)
+                case .evento(let tipo, let anno):
+                    if !p.eventi.contains(where: { $0.tipo == tipo && $0.anno == anno }) {
+                        p.eventi.append(EventoVita(tipo: tipo, anno: anno, nota: String(s.fonte.prefix(120))))
+                    }
+                case .attivita:
+                    break
+                }
+            }
+        }
+        let scadenza = i.scadenzaAttivita ?? Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        for s in scelte {
+            if case .attivita(let titolo) = s.tipo {
+                var t = Attivita.nuova(clienteId: i.clienteId, scadenza: scadenza)
+                t.titolo = titolo
+                t.appuntamentoId = i.appuntamentoId
+                t.note = "Dall'incontro «\(i.titolo)»"
+                dati.attivita.append(t)
+            }
+        }
+        let attivita = i.prossimaAttivita.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !attivita.isEmpty {
+            var t = Attivita.nuova(clienteId: i.clienteId, scadenza: scadenza)
+            t.titolo = attivita
+            t.appuntamentoId = i.appuntamentoId
+            t.priorita = .alta
+            t.note = i.decisioni
+            dati.attivita.append(t)
+            i.attivitaCreataId = t.id
+        }
+        if let quando = i.prossimoIncontro {
+            var a = Appuntamento.nuovo(clienteId: i.clienteId, giorno: quando)
+            a.inizio = Appuntamento.alMinuto(quando)
+            a.titolo = "Seguito · \(i.titolo)"
+            a.note = i.decisioni
+            a.tipo = .revisione
+            dati.appuntamenti.append(a)
+            i.appuntamentoCreatoId = a.id
+        }
+        if let k = dati.appuntamenti.firstIndex(where: { $0.id == i.appuntamentoId }) {
+            dati.appuntamenti[k].stato = .concluso
+        }
+        i.stato = .concluso
+        salvaIncontro(i)
+        proposteIncontro[id] = nil
+        mostraAvviso("Incontro archiviato: profilo, attività e agenda aggiornati")
     }
 
     // MARK: - Profilo dei bisogni
@@ -446,7 +590,8 @@ final class StatoShell: ObservableObject {
         guard let c = cliente(id) else { return nil }
         return FonteEve(oggi: Date(), nomeUtente: nomeUtente, cliente: c, posizioni: posizioniCliente(id),
                         appuntamenti: appuntamentiCliente(id), attivita: attivitaCliente(id),
-                        analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id))
+                        analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id),
+                        incontri: incontriCliente(id))
     }
 
     /// Manda una domanda a Eve per il cliente attivo.

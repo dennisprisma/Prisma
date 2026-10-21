@@ -692,6 +692,13 @@ struct DettaglioAppuntamento: View {
                     PulsanteAzione(titolo: "＋ Attività collegata", azione: nuovaAttivita)
                     PulsanteAzione(titolo: "Scheda cliente") { stato.apriCliente(evento.clienteId) }
                 }
+                GridRow {
+                    PulsanteAzione(titolo: stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
+                                   ? "◷ Apri l'incontro: appunti e decisioni" : "◷ Prepara l'incontro: temi, ascolto, prossimi passi") {
+                        stato.apriIncontro(per: evento)
+                    }
+                    .gridCellColumns(3)
+                }
             }
             .padding(.top, 7)
             .bordoAlto(Colori.Agenda.azioniBordo)

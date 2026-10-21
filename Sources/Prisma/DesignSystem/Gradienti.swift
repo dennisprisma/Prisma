@@ -158,6 +158,12 @@ enum Gradienti {
         .init(color: Colori.Agenda.dettaglioAlto, location: 0), .init(color: Colori.Agenda.dettaglioFondo, location: 0.05),
     ], startPoint: .leading, endPoint: .trailing)
 
+    // Incontri
+    static let fondoIncontri = LinearGradient.verticale(Colori.Incontri.fondoAlto, Colori.Incontri.fondoBasso)
+    static let cartaIncontri = LinearGradient(stops: [
+        .init(color: Colori.Incontri.cartaLato, location: 0), .init(color: Colori.Incontri.carta, location: 0.02),
+    ], startPoint: .leading, endPoint: .trailing)
+
     // Eve
     static let linoEve = LinearGradient.verticale(Colori.Eve.linoAlto, Colori.Eve.linoBasso)
     static let testataEve = LinearGradient.verticale(Colori.Eve.testataAlto, Colori.Eve.testataBasso)

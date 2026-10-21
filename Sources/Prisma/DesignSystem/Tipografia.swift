@@ -162,6 +162,14 @@ enum Tipo {
     static let attivitaSotto = contenuto(11)
     static let spunta = Font.custom("Arial", fixedSize: 12).weight(.bold)
 
+    // Incontri
+    static let incontroDomanda = serif(17)
+    static let incontroTitolo = contenuto(14, .semibold)
+    static let incontroTesto = contenuto(13)
+    static let incontroNota = contenuto(11)
+    static let incontroOcchiello = contenuto(10, .semibold)
+    static let incontroScrittura = Font.custom("Noteworthy-Light", fixedSize: 15)
+
     // Profilo dei bisogni
     static let bisognoTitolo = contenuto(13, .bold)
     static let bisognoTesto = contenuto(12)
