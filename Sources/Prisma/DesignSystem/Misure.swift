@@ -101,6 +101,14 @@ enum Misure {
         static let modulo = CGSize(width: 620, height: 600)
     }
 
+    enum Incontri {
+        static let colonna: CGFloat = 300
+        static let rigatura: CGFloat = 24
+        static let margine: CGFloat = 34
+        static let raggio: CGFloat = 2
+        static let campo: CGFloat = 110
+    }
+
     enum Bisogni {
         static let ruota: CGFloat = 200
         static let foro: CGFloat = 0.38

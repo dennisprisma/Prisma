@@ -31,6 +31,18 @@ enum MotoriEve {
 
     static let sintesi = MotoreSintesi()
 
+    /// Testo libero dal modello Apple (per l'estrazione dagli appunti); nil se il modello non c'è.
+    static func generaConApple(istruzioni: String, richiesta: String) async throws -> String? {
+        #if canImport(FoundationModels)
+        if #available(macOS 26.0, *) {
+            let m = MotoreApple()
+            guard m.disponibilita.pronto else { return nil }
+            return try await m.genera(istruzioni: istruzioni, richiesta: richiesta)
+        }
+        #endif
+        return nil
+    }
+
     /// Motivo per cui il modello Apple non si può usare (nil se è pronto).
     static var motivoAppleNonDisponibile: String? {
         guard let a = apple else {
@@ -75,6 +87,11 @@ struct MotoreApple: MotoreEve {
                 return .nonDisponibile("Il modello Apple non è disponibile su questo Mac.")
             }
         }
+    }
+
+    func genera(istruzioni: String, richiesta: String) async throws -> String {
+        let session = LanguageModelSession(instructions: istruzioni)
+        return try await session.respond(to: richiesta).content
     }
 
     func rispondi(_ r: RichiestaEve) async throws -> RispostaEve {

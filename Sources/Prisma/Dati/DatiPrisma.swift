@@ -11,6 +11,7 @@ struct DatiPrisma: Codable, Equatable {
     var simulazioni: [Simulazione] = []
     /// Analisi 360 salvate, per cliente (chi non ce l'ha la vede ricavata dalle posizioni).
     var analisi: [String: Analisi360] = [:]
+    var incontri: [Incontro] = []
     /// Conversazioni con Eve, per cliente.
     var conversazioni: [String: [MessaggioEve]] = [:]
     var clienteAttivoId: String
@@ -22,11 +23,13 @@ struct DatiPrisma: Codable, Equatable {
     /// 5: scenari del simulatore e Analisi 360 dei clienti.
     /// 6: conversazioni e impostazioni di Eve.
     /// 7: profilo dei bisogni dei clienti (mappa, eventi di vita, bisogni rilevati confermati).
-    static let versioneAttuale = 7
+    /// 8: incontri (preparazione, ascolto, appunti, decisioni, prossimi passi).
+    static let versioneAttuale = 8
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
-         simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:],
+         simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
          clienteAttivoId: String, impostazioni: Impostazioni) {
+        self.incontri = incontri
         self.simulazioni = simulazioni
         self.analisi = analisi
         self.clienti = clienti
@@ -44,13 +47,14 @@ struct DatiPrisma: Codable, Equatable {
             attivita: DatiDemo.attivita(),
             posizioni: DatiDemo.posizioni(),
             simulazioni: DatiDemo.simulazioni(),
+            incontri: DatiDemo.incontri(),
             clienteAttivoId: "giulia",
             impostazioni: Impostazioni()
         )
     }
 
     private enum CodingKeys: String, CodingKey {
-        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, conversazioni, clienteAttivoId, impostazioni
+        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, conversazioni, clienteAttivoId, impostazioni
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -63,6 +67,7 @@ struct DatiPrisma: Codable, Equatable {
         posizioni = try c.decodeIfPresent([Posizione].self, forKey: .posizioni) ?? []
         simulazioni = try c.decodeIfPresent([Simulazione].self, forKey: .simulazioni) ?? []
         analisi = try c.decodeIfPresent([String: Analisi360].self, forKey: .analisi) ?? [:]
+        incontri = (try? c.decodeIfPresent([Incontro].self, forKey: .incontri)) ?? []
         conversazioni = (try? c.decodeIfPresent([String: [MessaggioEve]].self, forKey: .conversazioni)) ?? [:]
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
