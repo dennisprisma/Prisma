@@ -6,9 +6,10 @@ struct ContenutoApp: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            IntestazioneApp(app: app)
+            IntestazioneApp(app: app) { azioni }
             Group {
                 switch app {
+                case .clienti: AppClienti()
                 case .impostazioni: AppImpostazioni()
                 default: AppSegnaposto(app: app)
                 }
@@ -23,17 +24,34 @@ struct ContenutoApp: View {
 
 extension ContenutoApp {
     @ViewBuilder var sfondo: some View {
-        if app == .impostazioni {
-            FondoRighe()
-        } else {
-            Colori.IntestazioneApp.corpo
+        switch app {
+        case .impostazioni: FondoRighe()
+        case .clienti: Colori.Rubrica.fondoApp
+        default: Colori.IntestazioneApp.corpo
+        }
+    }
+
+    /// Pulsanti a destra nell'intestazione dell'app.
+    @ViewBuilder var azioni: some View {
+        if app == .clienti {
+            AzioneNuovoCliente()
         }
     }
 }
 
-/// Intestazione dentro la finestra (.os-app-header): titolo e occhiello.
-struct IntestazioneApp: View {
+struct AzioneNuovoCliente: View {
+    @EnvironmentObject var stato: StatoShell
+
+    var body: some View {
+        Button("＋ Nuovo cliente") { stato.richiestaNuovoCliente = true }
+            .buttonStyle(StileAqua())
+    }
+}
+
+/// Intestazione dentro la finestra (.os-app-header): titolo, occhiello e azioni a destra.
+struct IntestazioneApp<Azioni: View>: View {
     let app: AppPrisma
+    @ViewBuilder let azioni: () -> Azioni
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Misure.IntestazioneApp.spazio) {
@@ -44,6 +62,7 @@ struct IntestazioneApp: View {
                 .font(Tipo.appOcchiello)
                 .foregroundColor(Colori.IntestazioneApp.occhiello)
             Spacer()
+            azioni()
         }
         .incisione(Colori.IntestazioneApp.incisione)
         .padding(.horizontal, Misure.IntestazioneApp.margineOrizzontale)

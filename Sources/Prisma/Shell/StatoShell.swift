@@ -21,6 +21,9 @@ final class StatoShell: ObservableObject {
     @Published private(set) var avviso: String?
     @Published var schermoIntero = false
     @Published var schedaImpostazioni: SchedaImpostazioni = .esperienza
+    @Published var schedaCliente: SchedaCliente = .panoramica
+    /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
+    @Published var richiestaNuovoCliente = false
 
     // Backup
     @Published private(set) var elencoBackup: [VoceBackup] = []
@@ -175,6 +178,55 @@ final class StatoShell: ObservableObject {
         r.origin.x = min(max(r.minX, 0), area.width - r.width)
         r.origin.y = min(max(r.minY, 0), area.height - r.height)
         return r
+    }
+
+    // MARK: - Clienti
+
+    /// Aggiunge o aggiorna un cliente e lo mette in primo piano.
+    func salvaCliente(_ cliente: Cliente) {
+        var c = cliente
+        c.nome = c.nome.trimmingCharacters(in: .whitespacesAndNewlines)
+        if c.iniziali.trimmingCharacters(in: .whitespaces).isEmpty { c.iniziali = Cliente.iniziali(di: c.nome) }
+        if let i = dati.clienti.firstIndex(where: { $0.id == c.id }) {
+            dati.clienti[i] = c
+        } else {
+            dati.clienti.append(c)
+        }
+        dati.clienteAttivoId = c.id
+    }
+
+    /// Elimina un cliente con i suoi appuntamenti e attività.
+    func eliminaCliente(_ id: String) {
+        dati.clienti.removeAll { $0.id == id }
+        dati.appuntamenti.removeAll { $0.clienteId == id }
+        dati.attivita.removeAll { $0.clienteId == id }
+        if dati.clienteAttivoId == id {
+            dati.clienteAttivoId = dati.clienti.first?.id ?? ""
+        }
+    }
+
+    func alternaPreferito(_ id: String) {
+        guard let i = dati.clienti.firstIndex(where: { $0.id == id }) else { return }
+        dati.clienti[i].preferito.toggle()
+    }
+
+    func aggiornaNota(_ id: String, _ testo: String) {
+        guard let i = dati.clienti.firstIndex(where: { $0.id == id }), dati.clienti[i].nota != testo else { return }
+        dati.clienti[i].nota = testo
+    }
+
+    /// Tinta per un nuovo cliente, a rotazione.
+    var prossimaTinta: TintaAvatar {
+        let tinte: [TintaAvatar] = [.blu, .rosa, .verde, .viola, .oro]
+        return tinte[dati.clienti.count % tinte.count]
+    }
+
+    func appuntamentiCliente(_ id: String) -> [Appuntamento] {
+        appuntamenti.filter { $0.clienteId == id }.sorted { $0.inizio < $1.inizio }
+    }
+
+    func attivitaCliente(_ id: String) -> [Attivita] {
+        attivita.filter { $0.clienteId == id }.sorted { $0.scadenza < $1.scadenza }
     }
 
     // MARK: - Attività
@@ -349,4 +401,18 @@ final class StatoShell: ObservableObject {
 
 enum SchedaImpostazioni: Hashable {
     case esperienza, archivio, scorciatoie
+}
+
+enum SchedaCliente: String, CaseIterable, Hashable {
+    case panoramica, anagrafica, famiglia, profilo, note
+
+    var titolo: String {
+        switch self {
+        case .panoramica: return "Panoramica"
+        case .anagrafica: return "Anagrafica"
+        case .famiglia: return "Famiglia"
+        case .profilo: return "Profilo"
+        case .note: return "Note"
+        }
+    }
 }

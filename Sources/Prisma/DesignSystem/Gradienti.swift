@@ -95,5 +95,21 @@ enum Gradienti {
     static let interruttoreAcceso = LinearGradient.lucido(Colori.Impostazioni.interruttoreAcceso, salto: (0.49, 0.50))
     static let segmentoImpostazioni = LinearGradient.verticale(Colori.Impostazioni.segmentoAttivoAlto, Colori.Impostazioni.segmentoAttivoBasso)
 
+    static let calendario = LinearGradient.verticale([
+        (Colori.Widget.calendario[0], 0), (Colori.Widget.calendario[1], 0.17),
+        (Colori.Widget.calendario[2], 0.68), (Colori.Widget.calendario[3], 1),
+    ])
+
+    static let selezioneRubrica = LinearGradient.verticale(Colori.Rubrica.selezioneAlto, Colori.Rubrica.selezioneBasso)
+    static let contatoreRubrica = LinearGradient.verticale(Colori.Rubrica.contatoreAlto, Colori.Rubrica.contatoreBasso)
+    static let selleria = LinearGradient.verticale([
+        (Colori.Rubrica.selleriaAlto, 0), (Colori.Rubrica.selleriaMezzo, 0.48), (Colori.Rubrica.selleriaBasso, 1),
+    ])
+    static let schedeRubrica = LinearGradient.verticale(Colori.Rubrica.schedeAlto, Colori.Rubrica.schedeBasso)
+    static let schedaRubricaAttiva = LinearGradient.verticale(Colori.Rubrica.schedaAttivaAlto, Colori.Rubrica.schedaAttivaBasso)
+    static let schedaRubrica = LinearGradient.verticale(Colori.Rubrica.schedaAlto, Colori.Rubrica.schedaBasso)
+    static let schedaApp = LinearGradient.verticale(Colori.Rubrica.schedaAppAlto, Colori.Rubrica.schedaAppBasso)
+    static let aqua = LinearGradient.lucido(Colori.Rubrica.aqua, salto: (0.48, 0.49))
+
     static let agendaInchiostro = LinearGradient.verticale(Colori.Agenda.inchiostroAlto, Colori.Agenda.inchiostroBasso)
 }

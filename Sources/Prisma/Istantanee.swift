@@ -16,8 +16,19 @@ enum Istantanee {
             s.schedaImpostazioni = .archivio
         }),
         ("4-finestra-non-ingrandita", { s in
+            s.apri(.prodotti)
+            s.alternaIngrandimento(.prodotti)
+        }),
+        ("5-clienti-panoramica", { $0.apri(.clienti) }),
+        ("6-clienti-famiglia", { s in
+            s.clienteAttivoId = "marco"
+            s.schedaCliente = .famiglia
             s.apri(.clienti)
-            s.alternaIngrandimento(.clienti)
+        }),
+        ("7-clienti-profilo", { s in
+            s.clienteAttivoId = "sofia"
+            s.schedaCliente = .profilo
+            s.apri(.clienti)
         }),
     ]
 

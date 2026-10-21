@@ -337,6 +337,11 @@ enum Formati {
     static let ora = formato("HH:mm")
     static let dataOra = formato("d MMM yyyy, HH:mm")
     static let dataLunga = formato("EEEE d MMMM")
+    static let giornoSettimana = formato("EEEE")
+    static let dataEstesa = formato("d MMMM yyyy")
+    /// Data proposta quando si indica una data di nascita (1 gennaio 1980).
+    static let dataPredefinitaNascita = Calendar(identifier: .gregorian).date(from: DateComponents(year: 1980, month: 1, day: 1)) ?? Date()
+    static let meseAnno = formato("MMMM yyyy")
     /// Per i nomi dei file (nessun carattere vietato dal Finder).
     static let nomeFile = formato("yyyy-MM-dd HH.mm.ss")
 

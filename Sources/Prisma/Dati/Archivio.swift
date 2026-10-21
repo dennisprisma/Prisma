@@ -56,7 +56,9 @@ enum Archivio {
             return (d, nil)
         }
         do {
-            return (try decodifica(Data(contentsOf: file)), nil)
+            var dati = try decodifica(Data(contentsOf: file))
+            dati.versione = DatiPrisma.versioneAttuale
+            return (dati, nil)
         } catch {
             let copia = cartella.appendingPathComponent("archivio-non-leggibile \(Formati.nomeFile.string(from: Date())).json")
             try? fm.moveItem(at: file, to: copia)

@@ -40,6 +40,19 @@ enum ProvaBackup {
                 return 1
             }
 
+            // Un archivio della versione 1 (senza anagrafica estesa) si legge ancora
+            let vecchio = """
+            {"versione":1,"clienteAttivoId":"a","appuntamenti":[],"attivita":[],
+             "impostazioni":{"nomeUtente":"Dennis","inizialiUtente":"DV","backup":{"automatico":true}},
+             "clienti":[{"id":"a","nome":"Cliente Vecchio","iniziali":"CV","tinta":"blu","tema":"","email":"",
+                         "telefono":"","preferito":false,"nota":"","creatoIl":"2026-01-01T00:00:00Z"}]}
+            """
+            let letto = try Archivio.decodifica(Data(vecchio.utf8))
+            guard letto.clienti.first?.famiglia.isEmpty == true, letto.clienti.first?.canali.isEmpty == true else {
+                print("ERRORE: archivio della versione 1 non letto correttamente")
+                return 1
+            }
+
             // Un file che non è un backup di Prisma viene rifiutato
             let estraneo = radice.appendingPathComponent("estraneo.zip")
             try Data("non sono uno zip".utf8).write(to: estraneo)

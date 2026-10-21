@@ -10,7 +10,8 @@ struct DatiPrisma: Codable, Equatable {
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
-    static let versioneAttuale = 1
+    /// 2: anagrafica completa, nucleo familiare, profilo e consensi dei clienti.
+    static let versioneAttuale = 2
 
     static func demo() -> DatiPrisma {
         DatiPrisma(
