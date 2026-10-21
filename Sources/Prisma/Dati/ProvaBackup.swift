@@ -40,15 +40,22 @@ enum ProvaBackup {
                 return 1
             }
 
-            // Un archivio della versione 1 (senza anagrafica estesa) si legge ancora
+            // Un archivio della versione 1 (senza anagrafica estesa, con appuntamenti e attività
+            // senza i campi della versione 4) si legge ancora
             let vecchio = """
-            {"versione":1,"clienteAttivoId":"a","appuntamenti":[],"attivita":[],
+            {"versione":1,"clienteAttivoId":"a",
+             "appuntamenti":[{"id":"e","clienteId":"a","titolo":"Incontro","inizio":"2026-01-02T09:00:00Z",
+                              "durataMinuti":45,"luogo":"In studio","note":"","stato":"pianificato"}],
+             "attivita":[{"id":"t","clienteId":"a","titolo":"Telefonare","scadenza":"2026-01-03T00:00:00Z",
+                          "priorita":"alta","completata":false}],
              "impostazioni":{"nomeUtente":"Dennis","inizialiUtente":"DV","backup":{"automatico":true}},
              "clienti":[{"id":"a","nome":"Cliente Vecchio","iniziali":"CV","tinta":"blu","tema":"","email":"",
                          "telefono":"","preferito":false,"nota":"","creatoIl":"2026-01-01T00:00:00Z"}]}
             """
             let letto = try Archivio.decodifica(Data(vecchio.utf8))
-            guard letto.clienti.first?.famiglia.isEmpty == true, letto.clienti.first?.canali.isEmpty == true else {
+            guard letto.clienti.first?.famiglia.isEmpty == true, letto.clienti.first?.canali.isEmpty == true,
+                  letto.appuntamenti.first?.tipo == .altro, letto.appuntamenti.first?.canale == nil,
+                  letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }

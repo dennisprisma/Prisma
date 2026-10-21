@@ -183,6 +183,25 @@ struct Consensi: Codable, Hashable {
     var marketing = false
 }
 
+/// Tipo di appuntamento: aiuta a capire a che punto è la relazione con il cliente.
+enum TipoAppuntamento: String, Codable, CaseIterable, Identifiable {
+    case primoIncontro, analisi, proposta, firma, revisione, telefonata, altro
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .primoIncontro: return "Primo incontro"
+        case .analisi: return "Analisi delle posizioni"
+        case .proposta: return "Presentazione di una proposta"
+        case .firma: return "Firma"
+        case .revisione: return "Revisione periodica"
+        case .telefonata: return "Telefonata"
+        case .altro: return "Altro"
+        }
+    }
+}
+
 struct Appuntamento: Identifiable, Codable, Hashable {
     enum Stato: String, Codable { case pianificato, concluso }
 
@@ -194,10 +213,85 @@ struct Appuntamento: Identifiable, Codable, Hashable {
     var luogo: String
     var note: String
     var stato: Stato
+    // Dalla versione 4 dell'archivio
+    var tipo: TipoAppuntamento = .altro
+    /// Canale su cui verte l'incontro (nil = entrambi o non indicato).
+    var canale: Canale?
+    /// Posizione di cui si parla (per esempio una polizza in scadenza o una proposta).
+    var posizioneId: String?
+
+    init(id: String, clienteId: String, titolo: String, inizio: Date, durataMinuti: Int, luogo: String,
+         note: String, stato: Stato, tipo: TipoAppuntamento = .altro, canale: Canale? = nil, posizioneId: String? = nil) {
+        self.id = id
+        self.clienteId = clienteId
+        self.titolo = titolo
+        self.inizio = inizio
+        self.durataMinuti = durataMinuti
+        self.luogo = luogo
+        self.note = note
+        self.stato = stato
+        self.tipo = tipo
+        self.canale = canale
+        self.posizioneId = posizioneId
+    }
+
+    var fine: Date { inizio.addingTimeInterval(TimeInterval(durataMinuti * 60)) }
+
+    /// Nuovo appuntamento proposto dal modulo: prossima mezz'ora libera del giorno scelto.
+    static func nuovo(clienteId: String, giorno: Date) -> Appuntamento {
+        let cal = Calendar.current
+        var inizio = cal.date(bySettingHour: 9, minute: 30, second: 0, of: giorno) ?? giorno
+        if cal.isDateInToday(giorno) {
+            let adesso = Date()
+            let minuti = cal.component(.minute, from: adesso)
+            let prossima = cal.date(byAdding: .minute, value: minuti < 30 ? 30 - minuti : 60 - minuti, to: adesso) ?? adesso
+            inizio = max(inizio, alMinuto(prossima))
+        }
+        return Appuntamento(id: "event-\(UUID().uuidString.prefix(8).lowercased())", clienteId: clienteId, titolo: "",
+                            inizio: inizio, durataMinuti: 45, luogo: "In studio", note: "", stato: .pianificato)
+    }
+
+    /// Toglie secondi e frazioni (l'archivio JSON conserva solo i secondi interi).
+    static func alMinuto(_ d: Date) -> Date {
+        Date(timeIntervalSinceReferenceDate: (d.timeIntervalSinceReferenceDate / 60).rounded(.down) * 60)
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        clienteId = try c.decode(String.self, forKey: .clienteId)
+        titolo = try c.decodeIfPresent(String.self, forKey: .titolo) ?? ""
+        inizio = try c.decode(Date.self, forKey: .inizio)
+        durataMinuti = try c.decodeIfPresent(Int.self, forKey: .durataMinuti) ?? 45
+        luogo = try c.decodeIfPresent(String.self, forKey: .luogo) ?? ""
+        note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+        stato = try c.decodeIfPresent(Stato.self, forKey: .stato) ?? .pianificato
+        tipo = try c.decodeIfPresent(TipoAppuntamento.self, forKey: .tipo) ?? .altro
+        canale = try c.decodeIfPresent(Canale.self, forKey: .canale)
+        posizioneId = try c.decodeIfPresent(String.self, forKey: .posizioneId)
+    }
 }
 
 struct Attivita: Identifiable, Codable, Hashable {
-    enum Priorita: String, Codable { case alta, normale, bassa }
+    enum Priorita: String, Codable, CaseIterable, Identifiable {
+        case alta, normale, bassa
+
+        var id: String { rawValue }
+        var nome: String {
+            switch self {
+            case .alta: return "Alta"
+            case .normale: return "Normale"
+            case .bassa: return "Bassa"
+            }
+        }
+        var ordine: Int {
+            switch self {
+            case .alta: return 0
+            case .normale: return 1
+            case .bassa: return 2
+            }
+        }
+    }
 
     let id: String
     var clienteId: String
@@ -205,4 +299,37 @@ struct Attivita: Identifiable, Codable, Hashable {
     var scadenza: Date
     var priorita: Priorita
     var completata: Bool
+    // Dalla versione 4 dell'archivio
+    var note = ""
+    /// Appuntamento da cui è nata l'attività.
+    var appuntamentoId: String?
+
+    init(id: String, clienteId: String, titolo: String, scadenza: Date, priorita: Priorita, completata: Bool,
+         note: String = "", appuntamentoId: String? = nil) {
+        self.id = id
+        self.clienteId = clienteId
+        self.titolo = titolo
+        self.scadenza = scadenza
+        self.priorita = priorita
+        self.completata = completata
+        self.note = note
+        self.appuntamentoId = appuntamentoId
+    }
+
+    static func nuova(clienteId: String, scadenza: Date = Date()) -> Attivita {
+        Attivita(id: "task-\(UUID().uuidString.prefix(8).lowercased())", clienteId: clienteId, titolo: "",
+                 scadenza: Calendar.current.startOfDay(for: scadenza), priorita: .normale, completata: false)
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        clienteId = try c.decode(String.self, forKey: .clienteId)
+        titolo = try c.decodeIfPresent(String.self, forKey: .titolo) ?? ""
+        scadenza = try c.decode(Date.self, forKey: .scadenza)
+        priorita = try c.decodeIfPresent(Priorita.self, forKey: .priorita) ?? .normale
+        completata = try c.decodeIfPresent(Bool.self, forKey: .completata) ?? false
+        note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+        appuntamentoId = try c.decodeIfPresent(String.self, forKey: .appuntamentoId)
+    }
 }

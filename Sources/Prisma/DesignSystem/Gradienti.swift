@@ -139,4 +139,33 @@ enum Gradienti {
     static let onda = LinearGradient(colors: Colori.Widget.onda, startPoint: .top, endPoint: .bottom)
 
     static let agendaInchiostro = LinearGradient.verticale(Colori.Agenda.inchiostroAlto, Colori.Agenda.inchiostroBasso)
+
+    // Agenda
+    static let cuoioAgenda = LinearGradient.verticale([
+        (Colori.Agenda.cuoioAlto, 0), (Colori.Agenda.cuoioMezzo, 0.48), (Colori.Agenda.cuoioBasso, 1),
+    ])
+    static let targhettaRossa = LinearGradient.verticale(Colori.Agenda.targhettaRossoAlto, Colori.Agenda.targhettaRossoBasso)
+    /// --apple-2011-paper: bordi appena più scuri ai lati.
+    static let cartaAgenda = LinearGradient(stops: [
+        .init(color: Colori.Agenda.cartaBordo, location: 0), .init(color: Colori.Agenda.carta, location: 0.03),
+        .init(color: Colori.Agenda.carta, location: 0.98), .init(color: Colori.Agenda.cartaBordo, location: 1),
+    ], startPoint: .leading, endPoint: .trailing)
+    static let anelloAgenda = LinearGradient(stops: zip(Colori.Agenda.anello, [0, 0.13, 0.28, 0.35, 0.55, 0.70, 0.88, 1])
+        .map { Gradient.Stop(color: $0.0, location: $0.1) }, startPoint: .leading, endPoint: .trailing)
+    static let settimanaAgenda = LinearGradient.verticale(Colori.Agenda.settimanaAlto, Colori.Agenda.settimanaBasso)
+    static let giornoSelezionato = LinearGradient.verticale(Colori.Agenda.selezioneAlto, Colori.Agenda.selezioneBasso)
+    static let dettaglioAgenda = LinearGradient(stops: [
+        .init(color: Colori.Agenda.dettaglioAlto, location: 0), .init(color: Colori.Agenda.dettaglioFondo, location: 0.05),
+    ], startPoint: .leading, endPoint: .trailing)
+
+    // Attività
+    static let linoAttivita = LinearGradient.verticale(Colori.Attivita.linoAlto, Colori.Attivita.linoBasso)
+    static let testataAttivita = LinearGradient.verticale(Colori.Attivita.testataAlto, Colori.Attivita.testataBasso)
+    static let progressoAttivita = LinearGradient.verticale(Colori.Attivita.progressoAlto, Colori.Attivita.progressoBasso)
+    static let metalloAttivita = LinearGradient.verticale(Colori.Attivita.metalloAlto, Colori.Attivita.metalloBasso)
+    static let spunta = LinearGradient.verticale(Colori.Attivita.spuntaAlto, .white)
+    static let spuntaFatta = LinearGradient.verticale(Colori.Attivita.spuntaFattaAlto, Colori.Attivita.spuntaFattaBasso)
+    static let dettaglioAttivita = LinearGradient(stops: [
+        .init(color: Colori.Attivita.dettaglioAlto, location: 0), .init(color: Colori.Attivita.dettaglioFondo, location: 0.05),
+    ], startPoint: .leading, endPoint: .trailing)
 }

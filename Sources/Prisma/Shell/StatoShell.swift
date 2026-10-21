@@ -3,6 +3,10 @@ import Combine
 import SwiftUI
 
 /// Stato della finestra Prisma: dati dell'archivio, finestre interne, backup, avvisi.
+enum VistaAgenda: Hashable { case settimana, mese }
+
+enum FiltroAttivita: Hashable { case aperte, completate, tutte }
+
 final class StatoShell: ObservableObject {
     struct Finestra: Identifiable, Equatable {
         let app: AppPrisma
@@ -28,6 +32,20 @@ final class StatoShell: ObservableObject {
     @Published var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     @Published var richiestaNuovoCliente = false
+
+    // Agenda e Attività (stato delle viste, non salvato)
+    /// Giornata aperta in agenda.
+    @Published var giornoAgenda = Calendar.current.startOfDay(for: Date())
+    @Published var vistaAgenda: VistaAgenda = .settimana
+    @Published var appuntamentoSelezionato: String?
+    /// nil = tutti i clienti.
+    @Published var filtroClienteAgenda: String?
+    @Published var attivitaSelezionata: String?
+    @Published var filtroStatoAttivita: FiltroAttivita = .aperte
+    @Published var filtroClienteAttivita: String?
+    @Published var filtroPrioritaAttivita: Attivita.Priorita?
+    /// Il pulsante dell'intestazione di Attività chiede di aprire il modulo.
+    @Published var richiestaNuovaAttivita = false
 
     // Backup
     @Published private(set) var elencoBackup: [VoceBackup] = []
@@ -268,11 +286,108 @@ final class StatoShell: ObservableObject {
         if dati.posizioni[i].controvalore == nil { dati.posizioni[i].controvalore = dati.posizioni[i].versamentoIniziale }
     }
 
+    /// Apre una posizione nel dettaglio di Posizioni.
+    func apriPosizione(_ p: Posizione) {
+        clienteAttivoId = p.clienteId
+        apri(.posizioni)
+        // Dopo il cambio di cliente, che in Posizioni chiude il dettaglio aperto
+        DispatchQueue.main.async { self.posizioneInDettaglio = p.id }
+    }
+
+    func apriCliente(_ id: String) {
+        clienteAttivoId = id
+        schedaCliente = .panoramica
+        apri(.clienti)
+    }
+
+    /// Posizioni in essere che scadono nel giorno indicato (lo scadenzario dell'agenda).
+    func scadenzeDelGiorno(_ giorno: Date) -> [Posizione] {
+        let cal = Calendar.current
+        return dati.posizioni.filter { p in
+            guard p.stato == .inEssere, let s = p.scadenza else { return false }
+            return cal.isDate(s, inSameDayAs: giorno) && (filtroClienteAgenda == nil || p.clienteId == filtroClienteAgenda)
+        }
+    }
+
+    // MARK: - Agenda
+
+    /// Appuntamenti del giorno, filtrati per cliente, in ordine d'orario.
+    func appuntamentiDelGiorno(_ giorno: Date) -> [Appuntamento] {
+        let cal = Calendar.current
+        return appuntamenti
+            .filter { cal.isDate($0.inizio, inSameDayAs: giorno) && (filtroClienteAgenda == nil || $0.clienteId == filtroClienteAgenda) }
+            .sorted { $0.inizio < $1.inizio }
+    }
+
+    func appuntamento(_ id: String?) -> Appuntamento? {
+        guard let id else { return nil }
+        return appuntamenti.first { $0.id == id }
+    }
+
+    /// Mostra in agenda il giorno di un appuntamento e lo seleziona.
+    func mostraInAgenda(_ a: Appuntamento) {
+        giornoAgenda = Calendar.current.startOfDay(for: a.inizio)
+        appuntamentoSelezionato = a.id
+        if filtroClienteAgenda != nil && filtroClienteAgenda != a.clienteId { filtroClienteAgenda = nil }
+        apri(.agenda)
+    }
+
+    func salvaAppuntamento(_ a: Appuntamento) {
+        var x = a
+        x.titolo = x.titolo.trimmingCharacters(in: .whitespacesAndNewlines)
+        x.luogo = x.luogo.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let i = dati.appuntamenti.firstIndex(where: { $0.id == x.id }) {
+            dati.appuntamenti[i] = x
+        } else {
+            dati.appuntamenti.append(x)
+        }
+        giornoAgenda = Calendar.current.startOfDay(for: x.inizio)
+        appuntamentoSelezionato = x.id
+        if filtroClienteAgenda != nil && filtroClienteAgenda != x.clienteId { filtroClienteAgenda = x.clienteId }
+    }
+
+    /// Elimina un appuntamento; le attività collegate restano, senza collegamento.
+    func eliminaAppuntamento(_ id: String) {
+        dati.appuntamenti.removeAll { $0.id == id }
+        for i in dati.attivita.indices where dati.attivita[i].appuntamentoId == id {
+            dati.attivita[i].appuntamentoId = nil
+        }
+        if appuntamentoSelezionato == id { appuntamentoSelezionato = nil }
+    }
+
+    func alternaConcluso(_ id: String) {
+        guard let i = dati.appuntamenti.firstIndex(where: { $0.id == id }) else { return }
+        dati.appuntamenti[i].stato = dati.appuntamenti[i].stato == .concluso ? .pianificato : .concluso
+    }
+
     // MARK: - Attività
 
     func alternaCompletata(_ id: String) {
         guard let i = dati.attivita.firstIndex(where: { $0.id == id }) else { return }
         dati.attivita[i].completata.toggle()
+    }
+
+    func salvaAttivita(_ a: Attivita) {
+        var x = a
+        x.titolo = x.titolo.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let i = dati.attivita.firstIndex(where: { $0.id == x.id }) {
+            dati.attivita[i] = x
+        } else {
+            dati.attivita.append(x)
+        }
+        attivitaSelezionata = x.id
+        if filtroClienteAttivita != nil && filtroClienteAttivita != x.clienteId { filtroClienteAttivita = x.clienteId }
+        if filtroPrioritaAttivita != nil && filtroPrioritaAttivita != x.priorita { filtroPrioritaAttivita = nil }
+        if filtroStatoAttivita == .completate && !x.completata { filtroStatoAttivita = .aperte }
+    }
+
+    func eliminaAttivita(_ id: String) {
+        dati.attivita.removeAll { $0.id == id }
+        if attivitaSelezionata == id { attivitaSelezionata = nil }
+    }
+
+    func attivitaCollegate(_ appuntamentoId: String) -> [Attivita] {
+        attivita.filter { $0.appuntamentoId == appuntamentoId }.sorted { $0.scadenza < $1.scadenza }
     }
 
     // MARK: - Salvataggio

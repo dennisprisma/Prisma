@@ -341,6 +341,8 @@ enum Formati {
     static let dataEstesa = formato("d MMMM yyyy")
     static let dataBreve = formato("dd/MM/yyyy")
     static let giornoBreve = formato("EEE d")
+    static let giornoMese = formato("d MMMM")
+    static let giornoMeseBreve = formato("d MMM")
 
     /// "oggi", "domani", "ieri" oppure "gio 23".
     static func giornoRelativo(_ data: Date) -> String {

@@ -12,6 +12,8 @@ struct ContenutoApp: View {
                 case .clienti: AppClienti()
                 case .posizioni: AppPosizioni()
                 case .impostazioni: AppImpostazioni()
+                case .agenda: AppAgenda()
+                case .attivita: AppAttivita()
                 default: AppSegnaposto(app: app)
                 }
             }
@@ -28,6 +30,12 @@ extension ContenutoApp {
         switch app {
         case .impostazioni: FondoRighe()
         case .clienti: Colori.Rubrica.fondoApp
+        case .agenda: Colori.Agenda.fondoApp
+        case .attivita:
+            ZStack {
+                Gradienti.linoAttivita
+                Materiale.Trama(nome: "Lino_trama")
+            }
         default: Colori.IntestazioneApp.corpo
         }
     }
