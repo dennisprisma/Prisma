@@ -63,7 +63,7 @@ enum CompositoreReport {
             .compactMap { a -> BarraProspetto? in
                 let v = r.perArea[a] ?? 0
                 guard v > 0, r.attivita > 0 else { return nil }
-                return BarraProspetto(etichetta: a.nome, valore: euro(v), quota: v / r.attivita, nota: percentuale(v / r.attivita))
+                return BarraProspetto(etichetta: a.nome, valore: "\(euro(v)) · \(percentuale(v / r.attivita))", quota: v / r.attivita)
             }
             .sorted { $0.quota > $1.quota }
         if !aree.isEmpty {
@@ -134,7 +134,7 @@ enum CompositoreReport {
 
         // Che cos'è e a che cosa serve
         capitolo("Che cos'è e a che cosa serve.")
-        let cosa = [p.tipologia.isEmpty ? nil : p.tipologia.lowercased(), p.emittente.isEmpty ? nil : "di \(p.emittente)"]
+        let cosa = [p.tipologia.isEmpty ? nil : p.tipologia, p.emittente.isEmpty ? nil : "di \(p.emittente)"]
             .compactMap { $0 }.joined(separator: " ")
         b.append(.paragrafo("\(nome.isEmpty ? "Ti" : "\(nome), ti") propongo «\(p.nome)»" + (cosa.isEmpty ? "." : ": \(cosa).")
                             + " " + fraseArea(p.area)))

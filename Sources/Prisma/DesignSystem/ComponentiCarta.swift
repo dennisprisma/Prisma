@@ -395,10 +395,12 @@ struct BloccoCarta: View {
                 HStack(alignment: .center, spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(verbatim: "IL TUO CONSULENTE").font(Tipo.Carta.firmaRuolo).tracking(0.8).foregroundColor(Colori.Carta.testoTenue)
-                        Text(verbatim: nome).font(Tipo.Carta.firmaNome).foregroundColor(Colori.Carta.titolo)
+                        Text(verbatim: nome).font(Tipo.Carta.firmaNome).foregroundColor(Colori.Carta.titolo).fixedSize()
                     }
-                    Spacer()
-                    ForEach(canali, id: \.self) { EtichettaCanale(canale: $0) }
+                    Spacer(minLength: 12)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        ForEach(canali, id: \.self) { EtichettaCanale(canale: $0, compatta: canali.count > 1) }
+                    }
                 }
                 .frame(maxHeight: .infinity)
             }
