@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// (testo vettoriale, selezionabile e ricercabile). Tutto sul Mac.
 enum StampaCarta {
     @MainActor
-    static func pdf(_ contenuto: ContenutoProspetto, genere: String = "Prospetto di dettaglio") -> Data? {
+    static func pdf(_ contenuto: ContenutoProspetto) -> Data? {
         let pagine = ImpaginatoreProspetto.pagine(contenuto)
         let dati = NSMutableData()
         guard let consumatore = CGDataConsumer(data: dati as CFMutableData) else { return nil }
@@ -15,12 +15,12 @@ enum StampaCarta {
         let info: [String: Any] = [
             kCGPDFContextTitle as String: "\(contenuto.titolo) · \(contenuto.cliente)",
             kCGPDFContextCreator as String: "Prisma",
-            kCGPDFContextSubject as String: genere,
+            kCGPDFContextSubject as String: contenuto.genere,
         ]
         guard let contesto = CGContext(consumer: consumatore, mediaBox: &riquadro, info as CFDictionary) else { return nil }
         for (i, blocchi) in pagine.enumerated() {
             let renderer = ImageRenderer(content: PaginaCarta(contenuto: contenuto, blocchi: blocchi, numero: i + 1,
-                                                              totale: pagine.count, genere: genere))
+                                                              totale: pagine.count))
             renderer.proposedSize = ProposedViewSize(Misure.Carta.pagina)
             contesto.beginPDFPage(nil)
             renderer.render { _, disegna in disegna(contesto) }
@@ -31,9 +31,9 @@ enum StampaCarta {
     }
 
     /// "Prospetto · Giulia Rossi · Piano previdenziale integrativo · 2026-10-21.pdf"
-    static func nomeFile(_ c: ContenutoProspetto, genere: String = "Prospetto") -> String {
+    static func nomeFile(_ c: ContenutoProspetto) -> String {
         let data = Formati.formato("yyyy-MM-dd").string(from: c.data)
-        let pulito = "\(genere) · \(c.cliente) · \(c.titolo) · \(data)"
+        let pulito = "\(c.perCliente ? "Report" : "Prospetto") · \(c.cliente) · \(c.titolo) · \(data)"
             .replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         return pulito + ".pdf"
     }

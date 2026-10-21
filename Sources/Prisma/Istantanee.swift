@@ -114,6 +114,14 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             if let c = s.confrontoPredefinito() { s.apriProspetto(c) }
         }),
+        ("30-report-quadro", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.reportQuadro)
+        }),
+        ("31-report-proposta", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.reportProposta("pos-giulia-piano-previdenziale-integrativo"))
+        }),
         ("25-documenti-kid", { s in
             s.clienteAttivoId = "giulia"
             s.documentoSelezionato = "doc-giulia-kid"

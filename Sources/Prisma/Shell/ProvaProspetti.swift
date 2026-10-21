@@ -21,6 +21,9 @@ enum ProvaProspetti {
             ("posizione-giulia-etf", "giulia", .posizione("pos-giulia-etf-azionario-globale")),
             ("copertura-marco-infortuni", "marco", .posizione("pos-marco-infortuni-famiglia")),
             ("quadro-marco", "marco", .quadro),
+            ("report-quadro-giulia", "giulia", .reportQuadro),
+            ("report-proposta-giulia", "giulia", .reportProposta("pos-giulia-piano-previdenziale-integrativo")),
+            ("report-quadro-marco", "marco", .reportQuadro),
         ]
         var tutti = casi
         let voci = ElementoConfronto.elenco(dati, cliente: "marco")
@@ -48,7 +51,7 @@ enum ProvaProspetti {
                 if usato > spazio + 0.5 {
                     verifica("\(nome): pagina \(i + 1) entro i margini", false, "\(Int(usato)) su \(Int(spazio)) punti")
                 }
-                if case .sezione = p.last?.blocco {
+                if let ultimo = p.last?.blocco, ultimo.eTitolo {
                     verifica("\(nome): pagina \(i + 1) non finisce con un titolo", false)
                 }
             }
@@ -86,6 +89,20 @@ enum ProvaProspetti {
                 verifica("\(nome): entrambi i canali nella ripartizione", testo.contains("Alleanza") && testo.contains("Indipendente"))
             case .confronto:
                 verifica("\(nome): differenza B − A presente", testo.contains("B − A"))
+            case .reportQuadro:
+                let r = RiepilogoPosizioni(dati.posizioni.filter { $0.clienteId == cliente && $0.stato != .chiusa })
+                verifica("\(nome): patrimonio netto nel report", testo.contains(spazi(Formati.euro(r.patrimonioNetto))))
+                verifica("\(nome): firma del consulente", testo.contains(CompositoreReport.consulente))
+                verifica("\(nome): niente tabelle fitte", !c.blocchi.contains { if case .tabella = $0 { return true } else { return false } })
+            case .reportProposta(let id):
+                guard let p = dati.posizioni.first(where: { $0.id == id }) else { break }
+                let par = ParametriProiezione(posizione: p, orizzonteCliente: dati.clienti.first { $0.id == cliente }?.profilo.orizzonteAnni)
+                let s = MotoreProiezione.scenari(par)
+                for (i, sc) in s.enumerated() {
+                    verifica("\(nome): scenario \(i + 1) \(Formati.euro(sc.esito.netto))", testo.contains(spazi(Formati.euro(sc.esito.netto))))
+                }
+                if let sri = p.sri { verifica("\(nome): classe di rischio \(sri) su 7", testo.contains("Classe \(sri) su 7")) }
+                verifica("\(nome): al massimo 3 pagine", pagine.count <= 3, "\(pagine.count)")
             }
         }
 
@@ -97,7 +114,7 @@ enum ProvaProspetti {
         return 1
     }
 
-    private static func spazi(_ s: String) -> String {
+    static func spazi(_ s: String) -> String {
         s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")
     }
 }

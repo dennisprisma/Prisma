@@ -58,11 +58,12 @@ enum ImpaginatoreProspetto {
                     inizio += n
                     nuovaPagina()
                 }
-            case .sezione:
+            case .sezione, .capitolo:
                 // Il titolo resta con l'inizio del blocco che segue
+                let h = altezza(b)
                 let seguito = i + 1 < c.blocchi.count ? altezzaMinima(c.blocchi[i + 1]) : 0
-                if M.sezione + M.spazioBlocchi + seguito > resto && !paginaVuota { nuovaPagina() }
-                metti(b, M.sezione)
+                if h + M.spazioBlocchi + seguito > resto && !paginaVuota { nuovaPagina() }
+                metti(b, h)
             default:
                 let h = altezza(b)
                 if h > resto && !paginaVuota { nuovaPagina() }
@@ -99,7 +100,19 @@ enum ImpaginatoreProspetto {
         case .avviso(let s):
             return altezzaTesto(s, font: Tipo.Carta.nsTesto, larghezza: larghezzaAvviso, interlinea: M.interlinea) + M.riquadroMargine * 2
         case .nota(let s): return altezzaTesto(s, font: Tipo.Carta.nsNota, larghezza: w, interlinea: 1.5) + 7
+        case .capitolo: return M.capitolo
+        case .paragrafo(let s): return altezzaTesto(s, font: Tipo.Carta.nsParagrafo, larghezza: w, interlinea: M.interlineaReport)
+        case .cifre: return M.cifre
+        case .barre(let elenco): return CGFloat(elenco.count) * M.barra
+        case .rischio: return M.rischio
+        case .punti(let elenco):
+            return elenco.reduce(0) { $0 + altezzaPunto($1) } + CGFloat(max(0, elenco.count - 1)) * M.spazioPunti
+        case .firma: return M.firma
         }
+    }
+
+    static func altezzaPunto(_ s: String) -> CGFloat {
+        altezzaTesto(s, font: Tipo.Carta.nsPunto, larghezza: M.larghezzaUtile - M.rientroPunto, interlinea: M.interlineaReport)
     }
 
     static var larghezzaAvviso: CGFloat { M.larghezzaUtile - M.riquadroMargine * 2 - 20 }
@@ -136,7 +149,7 @@ struct PaginaCarta: View {
     let blocchi: [BloccoImpaginato]
     let numero: Int
     let totale: Int
-    var genere = "Prospetto di dettaglio"
+    private var genere: String { contenuto.genere }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -184,7 +197,7 @@ struct PaginaCarta: View {
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .padding(.top, 2)
             HStack(spacing: 8) {
-                Text(verbatim: "CLIENTE").font(Tipo.Carta.voceEtichetta).tracking(0.6).foregroundColor(Colori.Carta.testoTenue)
+                Text(verbatim: contenuto.perCliente ? "PREPARATO PER" : "CLIENTE").font(Tipo.Carta.voceEtichetta).tracking(0.6).foregroundColor(Colori.Carta.testoTenue)
                 Text(verbatim: contenuto.cliente).font(Tipo.Carta.firma.weight(.bold)).foregroundColor(Colori.Carta.titolo)
                 Spacer()
                 if let c = contenuto.canale { EtichettaCanale(canale: c) }
@@ -295,6 +308,99 @@ struct BloccoCarta: View {
                 Rectangle().fill(Colori.Carta.filetto).frame(height: 0.6)
                 Text(verbatim: s).font(Tipo.Carta.nota).lineSpacing(1.5).foregroundColor(Colori.Carta.piede)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        case .capitolo(let numero, let titolo):
+            VStack(alignment: .leading, spacing: 6) {
+                Spacer(minLength: 0)
+                HStack(alignment: .firstTextBaseline, spacing: 9) {
+                    Text(verbatim: numero).font(Tipo.Carta.capitoloNumero).foregroundColor(Colori.Carta.numeroSezione)
+                    Text(verbatim: titolo).font(Tipo.Carta.capitolo).foregroundColor(Colori.Carta.titolo).lineLimit(1).minimumScaleFactor(0.7)
+                }
+                Rectangle().fill(Colori.Carta.filetto).frame(height: 1)
+            }
+        case .paragrafo(let s):
+            Text(verbatim: s).font(Tipo.Carta.paragrafo).lineSpacing(M.interlineaReport).foregroundColor(Colori.Carta.testo)
+                .fixedSize(horizontal: false, vertical: true)
+        case .cifre(let elenco):
+            HStack(spacing: 10) {
+                ForEach(Array(elenco.enumerated()), id: \.offset) { _, x in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(verbatim: x.etichetta.uppercased()).font(Tipo.Carta.cifraEtichetta).tracking(0.6)
+                            .foregroundColor(Colori.Carta.testoTenue).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(verbatim: x.valore).font(Tipo.Carta.cifraValore).foregroundColor(Colori.Carta.titolo)
+                            .lineLimit(1).minimumScaleFactor(0.55)
+                        Text(verbatim: x.nota).font(Tipo.Carta.cifraNota).foregroundColor(Colori.Carta.testoTenue)
+                            .lineLimit(2).minimumScaleFactor(0.85)
+                    }
+                    .padding(EdgeInsets(top: 11, leading: 10, bottom: 8, trailing: 10))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(Colori.Carta.riquadro)
+                    .overlay(Rectangle().fill(Colori.Carta.intestazione).frame(height: 2), alignment: .top)
+                    .overlay(Rectangle().strokeBorder(Colori.Carta.riquadroBordo, lineWidth: 0.6))
+                }
+            }
+        case .barre(let elenco):
+            VStack(spacing: 0) {
+                ForEach(Array(elenco.enumerated()), id: \.offset) { _, x in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(verbatim: x.etichetta).font(Tipo.Carta.barraEtichetta).foregroundColor(Colori.Carta.titolo).lineLimit(1)
+                            Spacer()
+                            Text(verbatim: x.valore).font(Tipo.Carta.barraValore).foregroundColor(Colori.Carta.testo).lineLimit(1)
+                        }
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Colori.Carta.barraFondo)
+                                .frame(width: M.larghezzaUtile, height: M.spessoreBarra)
+                            Capsule().fill(x.quota >= 1 ? Colori.Carta.barraRaggiunta : Colori.Carta.barraPiena)
+                                .frame(width: max(M.spessoreBarra, M.larghezzaUtile * CGFloat(min(max(x.quota, 0), 1))), height: M.spessoreBarra)
+                        }
+                        Text(verbatim: x.nota).font(Tipo.Carta.barraNota).foregroundColor(Colori.Carta.testoTenue).lineLimit(1)
+                    }
+                    .frame(height: M.barra, alignment: .top)
+                }
+            }
+        case .rischio(let sri):
+            HStack(alignment: .center, spacing: 5) {
+                ForEach(1...7, id: \.self) { i in
+                    Text(verbatim: "\(i)")
+                        .font(Tipo.Carta.rischio)
+                        .foregroundColor(i == sri ? .white : Colori.Carta.testoTenue)
+                        .frame(width: 38, height: 30)
+                        .background(RoundedRectangle(cornerRadius: M.raggio).fill(i == sri ? Colori.Carta.rischioAcceso : Colori.Carta.rischioSpento))
+                        .overlay(RoundedRectangle(cornerRadius: M.raggio).strokeBorder(Colori.Carta.riquadroBordo, lineWidth: i == sri ? 0 : 0.6))
+                }
+                Spacer(minLength: 10)
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(verbatim: "Classe \(sri) su 7").font(Tipo.Carta.rischio).foregroundColor(Colori.Carta.titolo)
+                    Text(verbatim: "1 rischio più basso · 7 rischio più alto").font(Tipo.Carta.barraNota).foregroundColor(Colori.Carta.testoTenue)
+                }
+            }
+            .frame(maxHeight: .infinity)
+        case .punti(let elenco):
+            VStack(alignment: .leading, spacing: M.spazioPunti) {
+                ForEach(Array(elenco.enumerated()), id: \.offset) { _, x in
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        Text(verbatim: "•").font(Tipo.Carta.punto).foregroundColor(Colori.Carta.punto)
+                            .frame(width: M.rientroPunto, alignment: .leading)
+                        Text(verbatim: x).font(Tipo.Carta.punto).lineSpacing(M.interlineaReport).foregroundColor(Colori.Carta.testo)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(width: M.larghezzaUtile - M.rientroPunto, alignment: .leading)
+                    }
+                    .frame(height: ImpaginatoreProspetto.altezzaPunto(x), alignment: .top)
+                }
+            }
+        case .firma(let nome, let canali):
+            VStack(spacing: 0) {
+                Rectangle().fill(Colori.Carta.filetto).frame(height: 1)
+                HStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(verbatim: "IL TUO CONSULENTE").font(Tipo.Carta.firmaRuolo).tracking(0.8).foregroundColor(Colori.Carta.testoTenue)
+                        Text(verbatim: nome).font(Tipo.Carta.firmaNome).foregroundColor(Colori.Carta.titolo)
+                    }
+                    Spacer()
+                    ForEach(canali, id: \.self) { EtichettaCanale(canale: $0) }
+                }
+                .frame(maxHeight: .infinity)
             }
         }
     }
@@ -483,14 +589,13 @@ struct GraficoCarta: View {
 /// Le pagine su un tavolo di lino chiaro, come la sala di lettura dei Documenti del template.
 struct TavoloCarta: View {
     let contenuto: ContenutoProspetto
-    var genere = "Prospetto di dettaglio"
     var scala: CGFloat = 1
 
     var body: some View {
         let pagine = ImpaginatoreProspetto.pagine(contenuto)
         VStack(spacing: 22) {
             ForEach(Array(pagine.enumerated()), id: \.offset) { i, p in
-                PaginaCarta(contenuto: contenuto, blocchi: p, numero: i + 1, totale: pagine.count, genere: genere)
+                PaginaCarta(contenuto: contenuto, blocchi: p, numero: i + 1, totale: pagine.count)
                     .scaleEffect(scala, anchor: .top)
                     .frame(width: M.pagina.width * scala, height: M.pagina.height * scala, alignment: .top)
                     .shadow(color: Colori.Carta.ombraFoglio, radius: 5, x: 0, y: 3)

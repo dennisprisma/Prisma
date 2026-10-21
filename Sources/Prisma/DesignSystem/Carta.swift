@@ -33,6 +33,13 @@ extension Colori {
         static let tavoloAlto = Color(hex: "#d8dcda")
         static let tavoloBasso = Color(hex: "#e7e6df")
         static let ombraFoglio = Color(hex: "#2634352e")
+        // Report per il cliente
+        static let barraFondo = Color(hex: "#ece8dc")
+        static let barraPiena = Color(hex: "#3d6b8f")
+        static let barraRaggiunta = Color(hex: "#5b8a3c")
+        static let rischioAcceso = Color(hex: "#395269")
+        static let rischioSpento = Color(hex: "#f1eee4")
+        static let punto = Color(hex: "#9f7645")
     }
 }
 
@@ -76,7 +83,24 @@ extension Tipo {
         static let assi = font(sans, 6.5)
         static let piede = font(sans, 6.5)
 
+        // Report per il cliente: caratteri più grandi, Georgia per il racconto
+        static let capitoloNumero = font(serif, 13)
+        static let capitolo = font(serif, 20)
+        static let paragrafo = font(serif, 11.5)
+        static let cifraEtichetta = font(sans, 7.5, grassetto: true)
+        static let cifraValore = font(serif, 21)
+        static let cifraNota = font(sans, 8)
+        static let barraEtichetta = font(sans, 10, grassetto: true)
+        static let barraValore = font(sans, 10)
+        static let barraNota = font(sans, 8)
+        static let punto = font(sans, 10.5)
+        static let rischio = font(serif, 14)
+        static let firmaNome = font(serif, 15)
+        static let firmaRuolo = font(sans, 8)
+
         // Gemelli per le misure
+        static let nsParagrafo = nsFont(serif, 11.5)
+        static let nsPunto = nsFont(sans, 10.5)
         static let nsVoceValore = nsFont(sans, 9)
         static let nsTesto = nsFont(sans, 9)
         static let nsNota = nsFont(sans, 7)
@@ -116,5 +140,16 @@ extension Misure {
         static let righeMinime = 3
         /// Scala dell'etichetta del canale dentro le tabelle.
         static let scalaEtichetta: CGFloat = 0.82
+
+        // Report per il cliente
+        static let capitolo: CGFloat = 52
+        static let cifre: CGFloat = 80
+        static let barra: CGFloat = 42
+        static let spessoreBarra: CGFloat = 9
+        static let rischio: CGFloat = 46
+        static let firma: CGFloat = 64
+        static let interlineaReport: CGFloat = 4
+        static let rientroPunto: CGFloat = 18
+        static let spazioPunti: CGFloat = 6
     }
 }
