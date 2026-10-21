@@ -71,7 +71,16 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .presentazioni: return "Una prospettiva condivisa"
         case .eve: return "Assistente personale"
         case .ricerca: return "Ritrova il filo"
-        case .impostazioni: return "Sentiti a casa"
+        case .impostazioni: return "Il tuo sistema"
+        }
+    }
+
+    /// Titolo dell'intestazione dentro la finestra.
+    var titoloIntestazione: String {
+        switch self {
+        case .clienti: return "Le tue relazioni."
+        case .impostazioni: return "Sentiti a casa."
+        default: return titolo
         }
     }
 

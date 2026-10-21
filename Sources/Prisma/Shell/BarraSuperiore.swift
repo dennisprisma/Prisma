@@ -4,6 +4,7 @@ import SwiftUI
 /// Barra superiore di Prisma OS (#os-topbar).
 struct BarraSuperiore: View {
     @EnvironmentObject var stato: StatoShell
+    @Environment(\.modoIstantanea) var modoIstantanea
 
     var body: some View {
         ZStack {
@@ -23,7 +24,7 @@ struct BarraSuperiore: View {
         .background(
             ZStack {
                 Gradienti.barra
-                AreaTrascinamento()
+                if !modoIstantanea { AreaTrascinamento() }
             }
         )
         .bordoBasso(Colori.Barra.bordo)

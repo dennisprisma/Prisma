@@ -335,4 +335,14 @@ enum Formati {
     static let meseBreve = formato("MMM")
     static let barraData = formato("EEE d MMM")
     static let ora = formato("HH:mm")
+    static let dataOra = formato("d MMM yyyy, HH:mm")
+    static let dataLunga = formato("EEEE d MMMM")
+    /// Per i nomi dei file (nessun carattere vietato dal Finder).
+    static let nomeFile = formato("yyyy-MM-dd HH.mm.ss")
+
+    static func dimensione(_ byte: Int64) -> String {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        return f.string(fromByteCount: byte)
+    }
 }

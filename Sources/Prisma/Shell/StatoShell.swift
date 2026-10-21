@@ -1,7 +1,8 @@
 import AppKit
+import Combine
 import SwiftUI
 
-/// Stato della finestra Prisma: finestre interne aperte, cliente attivo, avvisi.
+/// Stato della finestra Prisma: dati dell'archivio, finestre interne, backup, avvisi.
 final class StatoShell: ObservableObject {
     struct Finestra: Identifiable, Equatable {
         let app: AppPrisma
@@ -12,33 +13,58 @@ final class StatoShell: ObservableObject {
         var ridotta = false
     }
 
+    /// Dati dell'archivio locale: ogni modifica viene salvata da sola.
+    @Published var dati: DatiPrisma
+
     /// Finestre aperte; l'ultima è quella in primo piano.
     @Published private(set) var finestre: [Finestra] = []
-    @Published var clienteAttivoId: String
     @Published private(set) var avviso: String?
     @Published var schermoIntero = false
+    @Published var schedaImpostazioni: SchedaImpostazioni = .esperienza
 
-    @Published var clienti: [Cliente]
-    @Published var appuntamenti: [Appuntamento]
-    @Published var attivita: [Attivita]
-
-    /// Nome dell'utente mostrato nel saluto della scrivania.
-    let nomeUtente = "Dennis"
-    let inizialiUtente = "DV"
+    // Backup
+    @Published private(set) var elencoBackup: [VoceBackup] = []
+    @Published private(set) var backupInCorso = false
 
     /// Area disponibile per le finestre (sotto la barra, sopra il dock), aggiornata dalla vista.
     var area: CGRect = CGRect(x: 0, y: 0, width: 1200, height: 700)
 
-    private var lavoroAvviso: DispatchWorkItem?
+    /// false nelle istantanee: niente disco, niente animazioni.
+    let persistente: Bool
 
-    init() {
-        clienti = DatiDemo.clienti()
-        appuntamenti = DatiDemo.appuntamenti()
-        attivita = DatiDemo.attivita()
-        clienteAttivoId = "giulia"
+    private var lavoroAvviso: DispatchWorkItem?
+    private var abbonamenti = Set<AnyCancellable>()
+    private var timerBackup: Timer?
+    private var salvataggioSospeso = false
+
+    init(persistente: Bool = true) {
+        self.persistente = persistente
+        if persistente {
+            let caricati = Archivio.carica()
+            dati = caricati.dati
+            if let a = caricati.avviso {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
+            }
+            avviaSalvataggio()
+            avviaBackupAutomatico()
+            aggiornaElencoBackup()
+        } else {
+            dati = DatiPrisma.demo()
+        }
     }
 
     // MARK: - Lettura
+
+    var clienti: [Cliente] { dati.clienti }
+    var appuntamenti: [Appuntamento] { dati.appuntamenti }
+    var attivita: [Attivita] { dati.attivita }
+    var nomeUtente: String { dati.impostazioni.nomeUtente }
+    var inizialiUtente: String { dati.impostazioni.inizialiUtente }
+
+    var clienteAttivoId: String {
+        get { dati.clienteAttivoId }
+        set { dati.clienteAttivoId = newValue }
+    }
 
     var clienteAttivo: Cliente? { clienti.first { $0.id == clienteAttivoId } }
 
@@ -64,8 +90,12 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Finestre
 
+    private func anima(_ cambia: () -> Void) {
+        if persistente { withAnimation(Animazioni.apertura, cambia) } else { cambia() }
+    }
+
     func apri(_ app: AppPrisma) {
-        withAnimation(Animazioni.apertura) {
+        anima {
             if let i = finestre.firstIndex(where: { $0.app == app }) {
                 var f = finestre.remove(at: i)
                 f.ridotta = false
@@ -74,6 +104,7 @@ final class StatoShell: ObservableObject {
                 finestre.append(Finestra(app: app, cornice: corniceIniziale()))
             }
         }
+        if app == .impostazioni { aggiornaElencoBackup() }
     }
 
     func primoPiano(_ app: AppPrisma) {
@@ -83,21 +114,17 @@ final class StatoShell: ObservableObject {
     }
 
     func chiudi(_ app: AppPrisma) {
-        withAnimation(Animazioni.apertura) {
-            finestre.removeAll { $0.app == app }
-        }
+        anima { finestre.removeAll { $0.app == app } }
     }
 
     func riduci(_ app: AppPrisma) {
         guard let i = finestre.firstIndex(where: { $0.app == app }) else { return }
-        withAnimation(Animazioni.apertura) {
-            finestre[i].ridotta = true
-        }
+        anima { finestre[i].ridotta = true }
     }
 
     func alternaIngrandimento(_ app: AppPrisma) {
         guard let i = finestre.firstIndex(where: { $0.app == app }) else { return }
-        withAnimation(Animazioni.apertura) {
+        anima {
             finestre[i].ingrandita.toggle()
             if !finestre[i].ingrandita {
                 finestre[i].cornice = limita(finestre[i].cornice)
@@ -108,7 +135,7 @@ final class StatoShell: ObservableObject {
 
     /// Riduce tutte le finestre e mostra la scrivania.
     func mostraScrivania() {
-        withAnimation(Animazioni.apertura) {
+        anima {
             for i in finestre.indices { finestre[i].ridotta = true }
         }
     }
@@ -153,8 +180,154 @@ final class StatoShell: ObservableObject {
     // MARK: - Attività
 
     func alternaCompletata(_ id: String) {
-        guard let i = attivita.firstIndex(where: { $0.id == id }) else { return }
-        attivita[i].completata.toggle()
+        guard let i = dati.attivita.firstIndex(where: { $0.id == id }) else { return }
+        dati.attivita[i].completata.toggle()
+    }
+
+    // MARK: - Salvataggio
+
+    /// Salva l'archivio 0,8 s dopo l'ultima modifica e alla chiusura dell'app.
+    private func avviaSalvataggio() {
+        $dati
+            .dropFirst()
+            .removeDuplicates()
+            .debounce(for: .milliseconds(800), scheduler: DispatchQueue.main)
+            .sink { [weak self] d in
+                guard let self, !self.salvataggioSospeso else { return }
+                self.scrivi(d)
+            }
+            .store(in: &abbonamenti)
+        NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
+            .sink { [weak self] _ in self?.salvaOra() }
+            .store(in: &abbonamenti)
+    }
+
+    func salvaOra() {
+        guard persistente, !salvataggioSospeso else { return }
+        scrivi(dati)
+    }
+
+    private func scrivi(_ d: DatiPrisma) {
+        do {
+            try Archivio.salva(d)
+        } catch {
+            mostraAvviso("Salvataggio non riuscito: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Backup
+
+    var cartellaBackup: URL {
+        dati.impostazioni.backup.cartella.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? Archivio.cartellaBackupPredefinita
+    }
+
+    /// true se i backup stanno ancora sullo stesso Mac dell'archivio.
+    var cartellaBackupPredefinita: Bool { dati.impostazioni.backup.cartella == nil }
+
+    func scegliCartellaBackup(_ url: URL) {
+        dati.impostazioni.backup.cartella = url.path
+        aggiornaElencoBackup()
+    }
+
+    func aggiornaElencoBackup() {
+        guard persistente else { return }
+        let cartella = cartellaBackup
+        DispatchQueue.global(qos: .utility).async {
+            let elenco = GestoreBackup.elenca(cartella)
+            DispatchQueue.main.async { self.elencoBackup = elenco }
+        }
+    }
+
+    /// Crea un backup completo della cartella dell'archivio.
+    func creaBackup(automatico: Bool = false) {
+        guard persistente, !backupInCorso else { return }
+        salvaOra()
+        backupInCorso = true
+        let destinazione = cartellaBackup
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let url = try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione,
+                                                 nota: automatico ? "automatico" : nil)
+                DispatchQueue.main.async {
+                    self.backupInCorso = false
+                    self.dati.impostazioni.backup.ultimo = Date()
+                    self.aggiornaElencoBackup()
+                    self.mostraAvviso("Backup creato: \(url.lastPathComponent)")
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.backupInCorso = false
+                    self.mostraAvviso("Backup non riuscito: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Ripristina un backup. Prima salva una copia di sicurezza dello stato attuale.
+    func ripristina(_ zip: URL) {
+        guard persistente, !backupInCorso else { return }
+        salvaOra()
+        salvataggioSospeso = true
+        backupInCorso = true
+        let destinazione = cartellaBackup
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let estratto = try GestoreBackup.estrai(zip)
+                try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima del ripristino")
+                try GestoreBackup.sostituisci(cartellaDati: Archivio.cartella, con: estratto.cartella)
+                DispatchQueue.main.async {
+                    self.dati = estratto.dati
+                    self.salvataggioSospeso = false
+                    self.backupInCorso = false
+                    self.aggiornaElencoBackup()
+                    self.mostraAvviso("Ripristino completato. Lo stato precedente è salvato in un backup.")
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.salvataggioSospeso = false
+                    self.backupInCorso = false
+                    self.mostraAvviso("Ripristino non riuscito: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Torna ai 5 clienti di prova (con backup di sicurezza dello stato attuale).
+    func ripristinaDatiDiProva() {
+        guard persistente, !backupInCorso else { return }
+        salvaOra()
+        backupInCorso = true
+        let destinazione = cartellaBackup
+        DispatchQueue.global(qos: .userInitiated).async {
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dei dati di prova") }
+            DispatchQueue.main.async {
+                self.backupInCorso = false
+                switch esito {
+                case .success:
+                    var demo = DatiPrisma.demo()
+                    demo.impostazioni = self.dati.impostazioni
+                    self.dati = demo
+                    self.aggiornaElencoBackup()
+                    self.mostraAvviso("Dati di prova ripristinati. Lo stato precedente è salvato in un backup.")
+                case .failure(let e):
+                    self.mostraAvviso("Operazione annullata, backup non riuscito: \(e.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Backup automatico settimanale: controllo all'avvio e poi ogni ora.
+    private func avviaBackupAutomatico() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.controllaBackupAutomatico() }
+        timerBackup = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in
+            self?.controllaBackupAutomatico()
+        }
+    }
+
+    private func controllaBackupAutomatico() {
+        let b = dati.impostazioni.backup
+        guard b.automatico, let prossimo = b.prossimo, prossimo <= Date() else { return }
+        creaBackup(automatico: true)
     }
 
     // MARK: - Avvisi
@@ -172,4 +345,8 @@ final class StatoShell: ObservableObject {
     func alternaSchermoIntero() {
         (NSApp.keyWindow ?? NSApp.windows.first)?.toggleFullScreen(nil)
     }
+}
+
+enum SchedaImpostazioni: Hashable {
+    case esperienza, archivio, scorciatoie
 }

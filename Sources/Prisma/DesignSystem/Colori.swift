@@ -244,6 +244,40 @@ enum Colori {
         static let ombra = Color(r: 39, g: 65, b: 81, a: 0.08)
     }
 
+    /// App Impostazioni (gruppi iOS 5 su fondo a righe).
+    enum Impostazioni {
+        static let gruppoBordo = Color(hex: "#a5aebc")
+        static let gruppoRiflesso = Color(hex: "#f7faff")
+        static let rigaBordo = Color(hex: "#c5cbd3")
+        static let rigaTitolo = Color(hex: "#242a31")
+        static let rigaSottotitolo = Color(hex: "#7c8490")
+        static let rigaValore = Color(hex: "#4d6a92")
+        static let avvertenza = Color(hex: "#974f45")
+        static let nota = Color(hex: "#5f718b")
+        static let notaIncisione = Color(hex: "#edf3fc")
+        static let intestazioneGruppo = Color(hex: "#4c5c72")
+        static let schedeBordo = Color(hex: "#b6b6b6")
+        static let segmentoBordo = Color(hex: "#9a9a9a")
+        static let segmentoTesto = Color(hex: "#373737")
+        static let segmentoAttivoAlto = Color(hex: "#7b7b7b")
+        static let segmentoAttivoBasso = Color(hex: "#999")
+        static let segmentoAttivoBordo = Color(hex: "#6f6f6f")
+        static let segmentoAttivoIncisione = Color(hex: "#5b5b5b")
+        static let informazioniFilo = Color(hex: "#e9eff8")
+        static let informazioniTesto = Color(hex: "#657f92")
+        static let informazioniOcchiello = Color(hex: "#879da9")
+        static let informazioniTitolo = Color(hex: "#4c5c72")
+        static let numero = Color(hex: "#657f92")
+        static let numeroEtichetta = Color(hex: "#8a9eae")
+        static let interruttoreSpento = [Color(hex: "#aaa"), Color(hex: "#f7f7f7"), Color(hex: "#eee")]
+        static let interruttoreSpentoBordo = Color(hex: "#8a8a8a")
+        static let interruttoreAcceso = [Color(hex: "#0b58a8"), Color(hex: "#247bcf"), Color(hex: "#58a0e3"), Color(hex: "#7bb7ec")]
+        static let interruttoreAccesoBordo = Color(hex: "#366492")
+        static let interruttoreOmbra = Color(r: 0, g: 0, b: 0, a: 0.333)
+        static let interruttoreAccesoOmbra = Color(r: 11, g: 53, b: 107, a: 0.5)
+        static let interruttoreTestoSpento = Color(hex: "#6d6d6d")
+    }
+
     enum Agenda {
         /// Inchiostro della data sull'icona Agenda (agenda-dateInk).
         static let inchiostroAlto = Color(hex: "#151515")

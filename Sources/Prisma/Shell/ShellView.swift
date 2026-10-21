@@ -6,16 +6,22 @@ struct ShellView: View {
     static let spazioFinestre = "areaFinestre"
 
     @EnvironmentObject var stato: StatoShell
+    @Environment(\.modoIstantanea) var modoIstantanea
+
+    /// Area delle finestre interne: sotto la barra superiore, sopra il dock.
+    static func area(per dimensione: CGSize) -> CGRect {
+        CGRect(
+            x: Misure.Finestra.margineLato,
+            y: Misure.Barra.altezza + Misure.Finestra.margineAlto,
+            width: max(0, dimensione.width - 2 * Misure.Finestra.margineLato),
+            height: max(0, dimensione.height - Misure.Barra.altezza - Misure.Finestra.margineAlto
+                - Misure.Dock.riservato - Misure.Finestra.margineBasso)
+        )
+    }
 
     var body: some View {
         GeometryReader { geo in
-            let area = CGRect(
-                x: Misure.Finestra.margineLato,
-                y: Misure.Barra.altezza + Misure.Finestra.margineAlto,
-                width: max(0, geo.size.width - 2 * Misure.Finestra.margineLato),
-                height: max(0, geo.size.height - Misure.Barra.altezza - Misure.Finestra.margineAlto
-                    - Misure.Dock.riservato - Misure.Finestra.margineBasso)
-            )
+            let area = ShellView.area(per: geo.size)
             ZStack(alignment: .topLeading) {
                 Materiale.SfondoScrivania()
 
@@ -42,7 +48,9 @@ struct ShellView: View {
         }
         .frame(minWidth: 1100, minHeight: 720)
         .ignoresSafeArea()
-        .background(ConfiguraFinestra())
+        .background {
+            if !modoIstantanea { ConfiguraFinestra() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
             stato.schermoIntero = true
         }

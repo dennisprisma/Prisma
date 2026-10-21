@@ -7,11 +7,26 @@ struct ContenutoApp: View {
     var body: some View {
         VStack(spacing: 0) {
             IntestazioneApp(app: app)
-            AppSegnaposto(app: app)
-                .padding(.horizontal, Misure.IntestazioneApp.margineOrizzontale)
-                .padding(.vertical, Misure.IntestazioneApp.margineVerticale)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Colori.IntestazioneApp.corpo)
+            Group {
+                switch app {
+                case .impostazioni: AppImpostazioni()
+                default: AppSegnaposto(app: app)
+                }
+            }
+            .padding(.horizontal, Misure.IntestazioneApp.margineOrizzontale)
+            .padding(.vertical, Misure.IntestazioneApp.margineVerticale)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(sfondo)
+        }
+    }
+}
+
+extension ContenutoApp {
+    @ViewBuilder var sfondo: some View {
+        if app == .impostazioni {
+            FondoRighe()
+        } else {
+            Colori.IntestazioneApp.corpo
         }
     }
 }
@@ -22,7 +37,7 @@ struct IntestazioneApp: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Misure.IntestazioneApp.spazio) {
-            Text(app.titolo)
+            Text(app.titoloIntestazione)
                 .font(Tipo.appTitolo)
                 .foregroundColor(Colori.IntestazioneApp.titolo)
             Text(app.occhiello.uppercased())

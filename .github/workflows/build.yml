@@ -2,12 +2,14 @@ name: Build Prisma
 
 on:
   push:
-    branches: ['**']
+    branches: ['**', '!anteprime']
   pull_request:
   workflow_dispatch:
 
 jobs:
   build:
+    permissions:
+      contents: write
     # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
     runs-on: macos-15-intel
     steps:
@@ -85,6 +87,25 @@ jobs:
           fi
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
+
+      - name: Anteprime (istantanee delle schermate)
+        run: |
+          mkdir -p anteprime
+          "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime"
+          ls -la anteprime
+
+      - name: Pubblica le anteprime sul branch anteprime
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd anteprime
+          printf 'branch: %s\ncommit: %s\ndata: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" "$(date -u +%FT%TZ)" > INFO.txt
+          git init -q -b anteprime
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Anteprime di $GITHUB_SHA"
+          git push -fq "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" anteprime
 
       - name: Crea zip
         run: ditto -c -k --keepParent Prisma.app Prisma.zip

@@ -5,8 +5,12 @@ struct PrismaApp: App {
     @StateObject var stato = StatoShell()
 
     init() {
-        if CommandLine.arguments.contains("--verifica-risorse") {
+        let argomenti = CommandLine.arguments
+        if argomenti.contains("--verifica-risorse") {
             exit(Risorse.verifica())
+        }
+        if let i = argomenti.firstIndex(of: "--istantanee"), i + 1 < argomenti.count {
+            exit(Istantanee.genera(in: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true)))
         }
     }
 

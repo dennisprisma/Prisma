@@ -96,6 +96,20 @@ enum Misure {
         static let margine = EdgeInsets(top: 13, leading: 19, bottom: 13, trailing: 19)
     }
 
+    enum Impostazioni {
+        static let raggioGruppo: CGFloat = 10
+        static let margineRiga = EdgeInsets(top: 14, leading: 17, bottom: 14, trailing: 17)
+        static let altezzaRiga: CGFloat = 64
+        static let interruttore = CGSize(width: 58, height: 25)
+        static let raggioInterruttore: CGFloat = 5
+        static let schedeAltezza: CGFloat = 32
+        static let schedeMargine: CGFloat = 13
+        static let spazioGruppi: CGFloat = 18
+        static let informazioniLarghezza: CGFloat = 0.38
+        static let informazioniMargine: CGFloat = 20
+        static let iconaInformazioni: CGFloat = 61
+    }
+
     enum Pannello {
         static let raggio: CGFloat = 4
     }

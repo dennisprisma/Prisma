@@ -71,6 +71,20 @@ enum Tipo {
     static let etichettaCanale = contenuto(11, .bold)
     static let etichettaCanalePiccola = contenuto(9, .bold)
 
+    // Impostazioni
+    static let rigaTitolo = contenuto(13, .bold)
+    static let rigaSottotitolo = contenuto(10)
+    static let rigaValore = contenuto(11)
+    static let schedaApp = sistema(12)
+    static let interruttore = contenuto(11, .bold)
+    static let informazioniOcchiello = contenuto(8, .semibold)
+    static let informazioniTitolo = contenuto(24)
+    static let informazioniTesto = contenuto(11)
+    static let informazioniPiccolo = contenuto(9)
+    static let intestazioneGruppo = contenuto(10, .semibold)
+    static let numero = contenuto(26, .light)
+    static let numeroEtichetta = contenuto(10)
+
     // Avvisi
     static let avviso = sistema(10)
 

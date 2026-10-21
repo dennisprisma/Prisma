@@ -88,5 +88,12 @@ enum Gradienti {
         )
     }
 
+    static let interruttoreSpento = LinearGradient.verticale([
+        (Colori.Impostazioni.interruttoreSpento[0], 0), (Colori.Impostazioni.interruttoreSpento[1], 0.48),
+        (Colori.Impostazioni.interruttoreSpento[2], 1),
+    ])
+    static let interruttoreAcceso = LinearGradient.lucido(Colori.Impostazioni.interruttoreAcceso, salto: (0.49, 0.50))
+    static let segmentoImpostazioni = LinearGradient.verticale(Colori.Impostazioni.segmentoAttivoAlto, Colori.Impostazioni.segmentoAttivoBasso)
+
     static let agendaInchiostro = LinearGradient.verticale(Colori.Agenda.inchiostroAlto, Colori.Agenda.inchiostroBasso)
 }
