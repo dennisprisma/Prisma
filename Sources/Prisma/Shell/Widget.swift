@@ -117,7 +117,7 @@ struct WidgetCalendario: View {
 
     /// Due anelli metallici della spirale del calendario.
     private var anelli: some View {
-        HStack(spacing: 90) {
+        HStack(spacing: Misure.Widget.paginaCalendario - 62) {
             ForEach(0..<2, id: \.self) { _ in
                 Capsule()
                     .fill(Gradienti.anello)
