@@ -140,6 +140,8 @@ struct Posizione: Identifiable, Codable, Hashable {
     var garanzie = ""
     var note = ""
     var esito: EsitoProposta?
+    /// Scheda prodotto da cui nasce (dalla versione 9 dell'archivio).
+    var prodottoId: String?
     var creataIl = Date()
 
     /// Premi o versamenti dell'anno.

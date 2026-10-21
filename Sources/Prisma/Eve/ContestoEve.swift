@@ -80,6 +80,15 @@ enum ContestoEve {
         righe.append("- Investimenti: \(Formati.euro(a.investimenti.capitale)) per \(a.investimenti.anni) anni → netto \(Formati.euro(inv.esito.netto)), costi che tolgono \(Formati.euro(inv.impattoCosti)).")
         righe.append("- Risparmio: obiettivo \(Formati.euro(a.risparmio.obiettivo)) in \(a.risparmio.anni) anni, coperto al \(Int(ris.copertura.rounded()))%, versamento teorico \(ris.versamentoTeorico.map { Formati.euro($0) + "/mese" } ?? "n.d.").")
 
+        // Obiettivi (avanzamento calcolato dall'app)
+        if !f.obiettivi.isEmpty {
+            righe.append("OBIETTIVI:")
+            righe.append(contentsOf: f.obiettivi.prefix(4).map { o in
+                let a = AvanzamentoObiettivo(o, posizioni: f.posizioni)
+                return "- \(o.titolo): \(Formati.euro(o.importo)) entro \(Formati.meseAnno.string(from: o.scadenza)), raggiunto il \(Int((a.quota * 100).rounded()))%, versamento necessario \(a.versamentoNecessario.map { Formati.euro($0) + "/mese" } ?? "n.d."), priorità \(o.priorita.nome.lowercased())."
+            })
+        }
+
         // Ultimo incontro concluso
         if let u = f.incontri.filter({ $0.stato == .concluso }).max(by: { $0.data < $1.data }) {
             var r = "ULTIMO INCONTRO (\(Formati.dataEstesa.string(from: u.data))): \(u.titolo)."

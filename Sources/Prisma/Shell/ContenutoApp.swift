@@ -19,6 +19,8 @@ struct ContenutoApp: View {
                 case .analisi360: AppAnalisi360()
                 case .eve: AppEve()
                 case .incontri: AppIncontri()
+                case .prodotti: AppProdotti()
+                case .obiettivi: AppObiettivi()
                 default: AppSegnaposto(app: app)
                 }
             }

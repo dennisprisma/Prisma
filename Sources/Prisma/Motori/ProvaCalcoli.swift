@@ -151,6 +151,26 @@ enum ProvaCalcoli {
         let dalModello = EstrattoreIncontro.daRisposta("BISOGNO|pensione|alta|vuole smettere presto\nEVENTO|pensione|\(anno + 9)|\nVOCE|non valida\nBISOGNO|marte|alta|x")
         verifica("Risposta del modello: righe valide accettate, le altre scartate", Double(dalModello.count), 2)
 
+        // 15. Obiettivi: avanzamento con le posizioni collegate e versamento necessario
+        var o = Obiettivo(clienteId: "giulia", titolo: "Prova", area: .casa, importo: 30_000,
+                          scadenza: Calendar.current.date(byAdding: .month, value: 66, to: Date()) ?? Date())
+        o.accantonato = 6_000
+        o.rendimento = 0
+        let av = AvanzamentoObiettivo(o, posizioni: giulia)
+        verifica("Obiettivo: quota raggiunta", av.quota, 0.2, tolleranza: 0.000_1)
+        verifica("Obiettivo: versamento necessario a rendimento zero (6 anni)", av.versamentoNecessario ?? 0, 24_000 / 72, tolleranza: 0.01)
+        o.posizioniCollegate = ["pos-giulia-conto-corrente-e-conto-deposito"]
+        verifica("Obiettivo: le posizioni collegate contano come accantonato",
+                 AvanzamentoObiettivo(o, posizioni: giulia).accantonato, 6_000 + 24_000)
+
+        // 16. Scheda prodotto: la proposta eredita condizioni, canale e collegamento
+        if let pip = DatiDemo.prodotti().first(where: { $0.id == "prodotto-previdenza-pip" }) {
+            let proposta = pip.proposta(per: "andrea")
+            verifica("Proposta dalla scheda: costo annuo", proposta.costoAnnuo ?? 0, 1.4)
+            verifica("Proposta dalla scheda: canale Alleanza e stato proposta",
+                     proposta.canale == .alleanza && proposta.stato == .proposta && proposta.prodottoId == pip.id ? 1 : 0, 1)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
