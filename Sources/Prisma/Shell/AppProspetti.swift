@@ -50,22 +50,28 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetti · per te")
-        ForEach(TipoProspetto.allCases) { t in
+        ForEach(TipoProspetto.allCases.filter { !$0.perCliente }) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
+        if !scelta.tipo.perCliente { descrizione }
+        EtichettaRail(testo: "Report · per il cliente")
+        ForEach(TipoProspetto.allCases.filter(\.perCliente)) { t in
+            VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
+                .disabled(t == .reportProposta && proposte.isEmpty)
+        }
+        if scelta.tipo.perCliente { descrizione }
+        CollegatiRail(app: [.posizioni, .confronti, .documenti])
+    }
+
+    private var descrizione: some View {
         Text(scelta.tipo.descrizione)
             .font(Tipo.kpiNota)
             .foregroundColor(Colori.Analisi.kpiNota)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 3)
-        EtichettaRail(testo: "Report · per il cliente")
-        Text("Nella prossima fase: pochi dati essenziali, caratteri grandi, da consegnare al cliente.")
-            .font(Tipo.kpiNota)
-            .foregroundColor(Colori.Analisi.kpiNota)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 3)
-        CollegatiRail(app: [.posizioni, .confronti, .documenti])
     }
+
+    private var proposte: [Posizione] { posizioniOrdinate.filter { $0.stato == .proposta } }
 
     private func scegli(_ t: TipoProspetto) {
         archiviato = nil
@@ -77,6 +83,10 @@ struct AppProspetti: View {
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
         case .confronto:
             stato.prospetto = stato.confrontoPredefinito()
+        case .reportQuadro:
+            stato.prospetto = .reportQuadro
+        case .reportProposta:
+            if let p = proposte.first { stato.prospetto = .reportProposta(p.id) }
         }
     }
 
@@ -102,6 +112,8 @@ struct AppProspetti: View {
                     case .quadro: sceltaQuadro
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
+                    case .reportQuadro: sceltaReportQuadro
+                    case .reportProposta(let id): sceltaReportProposta(id)
                     }
                 }
             }
@@ -114,6 +126,8 @@ struct AppProspetti: View {
         case .quadro: return "CHE COSA CONTIENE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
+        case .reportQuadro: return "PER IL CLIENTE"
+        case .reportProposta: return "SCEGLI LA PROPOSTA"
         }
     }
 
@@ -136,6 +150,42 @@ struct AppProspetti: View {
                 .padding(.top, 6)
         }
         .padding(12)
+    }
+
+    private var sceltaReportQuadro: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ForEach(["Prima dei numeri, ci sei tu: le sue priorità", "Il punto da cui partiamo: patrimonio, risparmi, tutele",
+                     "Un nome ai suoi progetti: gli obiettivi con la barra di avanzamento", "Il prossimo incontro",
+                     "Il prossimo passo, insieme: attività e proposte aperte"], id: \.self) { voce in
+                HStack(alignment: .top, spacing: 7) {
+                    Text("•").foregroundColor(Colori.Analisi.navBasso)
+                    Text(voce).fixedSize(horizontal: false, vertical: true)
+                }
+                .font(Tipo.strumentoTesto)
+                .foregroundColor(Colori.Analisi.tabellaTesto)
+            }
+            Text("Niente tabelle fitte: poche cifre grandi e frasi semplici, da lasciare al cliente. Il dettaglio resta nei prospetti.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
+        }
+        .padding(12)
+    }
+
+    private func sceltaReportProposta(_ id: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(proposte) { p in
+                Button {
+                    archiviato = nil
+                    stato.prospetto = .reportProposta(p.id)
+                } label: { rigaPosizione(p, attiva: p.id == id) }
+                .buttonStyle(StileSemplice())
+            }
+            Text("Per il dettaglio di costi e anno per anno, usa il prospetto della stessa proposta.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(12)
+        }
     }
 
     private func sceltaPosizione(_ id: String) -> some View {
@@ -231,7 +281,7 @@ struct AppProspetti: View {
             Button("Stampa…") { if let d = pdf(c) { StampaCarta.stampa(d) } }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
             Button("Archivia nei Documenti") {
-                if let d = pdf(c) { archiviato = stato.archiviaProspetto(d, contenuto: c) }
+                if let d = pdf(c) { archiviato = stato.archiviaProspetto(d, contenuto: c, tipo: c.perCliente ? .report : .prospetto) }
             }
             .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
             Button("Salva PDF…") { if let d = pdf(c) { StampaCarta.salva(d, nome: StampaCarta.nomeFile(c)) } }

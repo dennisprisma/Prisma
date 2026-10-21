@@ -522,6 +522,10 @@ final class StatoShell: ObservableObject {
         switch prospetto {
         case .posizione(let id)? where posizioni.contains(where: { $0.id == id && $0.clienteId == clienteAttivoId }):
             return .posizione(id)
+        case .reportQuadro?:
+            return .reportQuadro
+        case .reportProposta(let id)? where posizioni.contains(where: { $0.id == id && $0.clienteId == clienteAttivoId }):
+            return .reportProposta(id)
         case .confronto(let a, let b)?:
             let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
             if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
