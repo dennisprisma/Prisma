@@ -158,6 +158,19 @@ enum Gradienti {
         .init(color: Colori.Agenda.dettaglioAlto, location: 0), .init(color: Colori.Agenda.dettaglioFondo, location: 0.05),
     ], startPoint: .leading, endPoint: .trailing)
 
+    // Eve
+    static let linoEve = LinearGradient.verticale(Colori.Eve.linoAlto, Colori.Eve.linoBasso)
+    static let testataEve = LinearGradient.verticale(Colori.Eve.testataAlto, Colori.Eve.testataBasso)
+    static let avvisoEve = LinearGradient.verticale(Colori.Eve.avvisoAlto, Colori.Eve.avvisoBasso)
+    static let conversazioneEve = LinearGradient.verticale(Colori.Eve.conversazioneAlto, Colori.Eve.conversazioneBasso)
+    static let barraEve = LinearGradient.verticale(Colori.Eve.barraAlto, Colori.Eve.barraBasso)
+    static let displayEve = LinearGradient.verticale(Colori.Eve.displayAlto, Colori.Eve.displayBasso)
+    static let nuvolaEve = LinearGradient.verticale(Colori.Eve.nuvolaEveAlto, Colori.Eve.nuvolaEveBasso)
+    static let nuvolaTua = LinearGradient.lucido(Colori.Eve.nuvolaTuoi, salto: (0.48, 0.49))
+    static let azioneEve = LinearGradient.verticale(Colori.Eve.azioneAlto, Colori.Eve.azioneBasso)
+    static let postit = LinearGradient.verticale(Colori.Eve.postitAlto, Colori.Eve.postitBasso)
+    static let quadroEve = LinearGradient.verticale(Colori.Eve.quadroAlto, Colori.Eve.quadroBasso)
+
     // Strumenti di analisi
     static let console = LinearGradient.verticale(Colori.Strumenti.consoleAlto, Colori.Strumenti.consoleBasso)
     static let lcd = LinearGradient.verticale(Colori.Strumenti.lcdAlto, Colori.Strumenti.lcdBasso)

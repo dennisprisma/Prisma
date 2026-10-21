@@ -101,6 +101,14 @@ enum Misure {
         static let modulo = CGSize(width: 620, height: 600)
     }
 
+    enum Eve {
+        static let giornata: CGFloat = 290
+        static let raggioNuvola: CGFloat = 10
+        static let larghezzaNuvola: CGFloat = 0.78
+        static let sfera: CGFloat = 38
+        static let display: CGFloat = 44
+    }
+
     enum Strumenti {
         static let console: CGFloat = 300
         static let lcd = CGSize(width: 124, height: 26)

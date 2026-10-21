@@ -17,6 +17,7 @@ struct ContenutoApp: View {
                 case .simulazioni: AppSimulazioni()
                 case .confronti: AppConfronti()
                 case .analisi360: AppAnalisi360()
+                case .eve: AppEve()
                 default: AppSegnaposto(app: app)
                 }
             }
@@ -34,6 +35,11 @@ extension ContenutoApp {
         case .impostazioni: FondoRighe()
         case .clienti: Colori.Rubrica.fondoApp
         case .agenda: Colori.Agenda.fondoApp
+        case .eve:
+            ZStack {
+                Gradienti.linoEve
+                Materiale.Trama(nome: "Lino_trama")
+            }
         case .attivita:
             ZStack {
                 Gradienti.linoAttivita

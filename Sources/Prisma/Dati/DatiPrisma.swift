@@ -11,6 +11,8 @@ struct DatiPrisma: Codable, Equatable {
     var simulazioni: [Simulazione] = []
     /// Analisi 360 salvate, per cliente (chi non ce l'ha la vede ricavata dalle posizioni).
     var analisi: [String: Analisi360] = [:]
+    /// Conversazioni con Eve, per cliente.
+    var conversazioni: [String: [MessaggioEve]] = [:]
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -18,7 +20,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 3: posizioni in essere e in proposta.
     /// 4: tipo, canale e posizione degli appuntamenti; note e appuntamento collegato delle attività.
     /// 5: scenari del simulatore e Analisi 360 dei clienti.
-    static let versioneAttuale = 5
+    /// 6: conversazioni e impostazioni di Eve.
+    static let versioneAttuale = 6
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:],
@@ -46,7 +49,7 @@ struct DatiPrisma: Codable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, clienteAttivoId, impostazioni
+        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, conversazioni, clienteAttivoId, impostazioni
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -59,6 +62,7 @@ struct DatiPrisma: Codable, Equatable {
         posizioni = try c.decodeIfPresent([Posizione].self, forKey: .posizioni) ?? []
         simulazioni = try c.decodeIfPresent([Simulazione].self, forKey: .simulazioni) ?? []
         analisi = try c.decodeIfPresent([String: Analisi360].self, forKey: .analisi) ?? [:]
+        conversazioni = (try? c.decodeIfPresent([String: [MessaggioEve]].self, forKey: .conversazioni)) ?? [:]
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -68,6 +72,44 @@ struct Impostazioni: Codable, Equatable {
     var nomeUtente = "Dennis"
     var inizialiUtente = "DV"
     var backup = ImpostazioniBackup()
+    /// Dalla versione 6 dell'archivio.
+    var eve = ImpostazioniEve()
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        nomeUtente = try c.decodeIfPresent(String.self, forKey: .nomeUtente) ?? "Dennis"
+        inizialiUtente = try c.decodeIfPresent(String.self, forKey: .inizialiUtente) ?? "DV"
+        backup = try c.decodeIfPresent(ImpostazioniBackup.self, forKey: .backup) ?? ImpostazioniBackup()
+        eve = (try? c.decodeIfPresent(ImpostazioniEve.self, forKey: .eve)) ?? ImpostazioniEve()
+    }
+}
+
+/// Impostazioni di Eve (comprese nel backup).
+struct ImpostazioniEve: Codable, Equatable {
+    enum Motore: String, Codable, CaseIterable, Identifiable {
+        /// Il modello Apple se disponibile, altrimenti la sintesi locale.
+        case automatico
+        case apple
+        case sintesi
+
+        var id: String { rawValue }
+
+        var nome: String {
+            switch self {
+            case .automatico: return "Automatico"
+            case .apple: return "Modello Apple"
+            case .sintesi: return "Sintesi dai dati"
+            }
+        }
+    }
+
+    var motore = Motore.automatico
+    /// Le conversazioni restano nel dossier del cliente (sul Mac, nel backup).
+    var conservaConversazioni = true
 }
 
 struct ImpostazioniBackup: Codable, Equatable {
