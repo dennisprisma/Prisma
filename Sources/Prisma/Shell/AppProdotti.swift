@@ -171,8 +171,11 @@ struct AppProdotti: View {
                                 Text("Rischio (SRI)").font(Tipo.campoEtichetta).foregroundColor(Colori.Analisi.kpiNota)
                                     .frame(width: 150, alignment: .leading)
                                 ScalaRischio(valore: p.sri)
+                                Spacer(minLength: 0)
                             }
                             .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .bordoBasso(Colori.Analisi.tabellaRiga)
                             RigaDato("Note", p.note)
                         }
                     }
