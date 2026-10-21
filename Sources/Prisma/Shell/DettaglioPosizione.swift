@@ -77,6 +77,9 @@ struct DettaglioPosizione: View {
                     .buttonStyle(StileBlu())
                     .help("La proposta è stata accettata: diventa una posizione in essere")
             }
+            Button("Prospetto") { stato.apriProspetto(.posizione(posizione.id)) }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .help("Il prospetto di dettaglio in PDF: contratto, costi, proiezione anno per anno, fonti")
             Button("Modifica", action: modifica)
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
         }

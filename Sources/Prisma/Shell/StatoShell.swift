@@ -87,6 +87,10 @@ final class StatoShell: ObservableObject {
     // Documenti
     @Published var documentoSelezionato: String?
     @Published var documentiInLettura: Set<String> = []
+
+    // Prospetti e report
+    /// Prospetto scelto (nil = quadro delle posizioni del cliente attivo).
+    @Published var prospetto: SceltaProspetto?
     private var testiDocumenti: [String: [String]] = [:]
 
     // Eve
@@ -509,6 +513,68 @@ final class StatoShell: ObservableObject {
         dati.documenti.removeAll { $0.id == id }
         testiDocumenti[id] = nil
         if documentoSelezionato == id { documentoSelezionato = nil }
+    }
+
+    // MARK: - Prospetti
+
+    /// Il prospetto da mostrare per il cliente attivo; una scelta di un altro cliente torna al quadro.
+    var sceltaProspetto: SceltaProspetto {
+        switch prospetto {
+        case .posizione(let id)? where posizioni.contains(where: { $0.id == id && $0.clienteId == clienteAttivoId }):
+            return .posizione(id)
+        case .confronto(let a, let b)?:
+            let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
+            if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
+            return .quadro
+        default:
+            return .quadro
+        }
+    }
+
+    func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
+        CompositoreProspetti.componi(scelta, dati: dati, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
+    }
+
+    /// Apre Prospetti e report su una scelta precisa (dal dettaglio di una posizione o da Confronti).
+    func apriProspetto(_ scelta: SceltaProspetto) {
+        prospetto = scelta
+        apri(.presentazioni)
+    }
+
+    /// Il confronto proposto di partenza: quello aperto in Confronti o la proposta contro la posizione in essere.
+    func confrontoPredefinito() -> SceltaProspetto? {
+        let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
+        let coppia = ElementoConfronto.coppia(voci, a: confrontoA, b: confrontoB, posizioni: posizioniCliente(clienteAttivoId))
+        guard let a = coppia.0, let b = coppia.1 else { return nil }
+        return .confronto(a.voce, b.voce)
+    }
+
+    /// Salva il PDF nella cartella Documenti del cliente: entra nei backup e si ritrova in Documenti.
+    @discardableResult
+    func archiviaProspetto(_ pdf: Data, contenuto: ContenutoProspetto, tipo: Documento.Tipo = .prospetto) -> String? {
+        let cliente = clienteAttivoId
+        var d = Documento(clienteId: cliente, titolo: "\(tipo.breve) · \(contenuto.titolo)", tipo: tipo)
+        d.importatoIl = Appuntamento.alMinuto(Date())
+        d.lettura = .letto
+        let pagine = StampaCarta.testo(pdf)
+        d.pagine = pagine.count
+        d.dimensione = Int64(pdf.count)
+        if persistente {
+            let cartella = Archivio.cartellaDocumenti.appendingPathComponent(cliente, isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
+                try pdf.write(to: cartella.appendingPathComponent("\(d.id).pdf"))
+                try? pagine.joined(separator: LetturaDocumenti.separatorePagine)
+                    .write(to: cartella.appendingPathComponent("\(d.id).txt"), atomically: true, encoding: .utf8)
+            } catch {
+                mostraAvviso("Non riesco a salvare il prospetto: \(error.localizedDescription)")
+                return nil
+            }
+            d.file = "\(cliente)/\(d.id).pdf"
+        }
+        testiDocumenti[d.id] = pagine
+        dati.documenti.append(d)
+        return d.id
     }
 
     /// Scheda prodotto con i soli dati confermati.

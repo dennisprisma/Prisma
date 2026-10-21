@@ -22,6 +22,7 @@ struct ContenutoApp: View {
                 case .prodotti: AppProdotti()
                 case .obiettivi: AppObiettivi()
                 case .documenti: AppDocumenti()
+                case .presentazioni: AppProspetti()
                 default: AppSegnaposto(app: app)
                 }
             }

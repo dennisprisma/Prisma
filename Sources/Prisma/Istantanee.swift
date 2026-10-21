@@ -102,6 +102,18 @@ enum Istantanee {
             s.obiettivoSelezionato = "obiettivo-giulia-casa"
             s.apri(.obiettivi)
         }),
+        ("27-prospetto-proposta", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.posizione("pos-giulia-piano-previdenziale-integrativo"))
+        }),
+        ("28-prospetto-quadro", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.quadro)
+        }),
+        ("29-prospetto-confronto", { s in
+            s.clienteAttivoId = "marco"
+            if let c = s.confrontoPredefinito() { s.apriProspetto(c) }
+        }),
         ("25-documenti-kid", { s in
             s.clienteAttivoId = "giulia"
             s.documentoSelezionato = "doc-giulia-kid"

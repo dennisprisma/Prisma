@@ -191,9 +191,11 @@ struct AppDocumenti: View {
                 if let url = stato.urlDocumento(d) {
                     Button("Apri") { NSWorkspace.shared.open(url) }
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    Button("Rileggi") { stato.leggiDocumento(d.id) }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                        .disabled(stato.documentiInLettura.contains(d.id))
+                    if !d.tipo.creatoDaPrisma {
+                        Button("Rileggi") { stato.leggiDocumento(d.id) }
+                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                            .disabled(stato.documentiInLettura.contains(d.id))
+                    }
                 }
             }
             .padding(EdgeInsets(top: 12, leading: 16, bottom: 10, trailing: 16))
@@ -226,6 +228,15 @@ struct AppDocumenti: View {
     // MARK: - Dati trovati
 
     @ViewBuilder private func dati(_ d: Documento) -> some View {
+        if d.tipo.creatoDaPrisma {
+            NotaMetodo(testo: "Impaginato da Prisma con i dati del dossier: è un documento da consultare, stampare o consegnare, non ci sono dati da estrarre. Con «Apri» lo vedi in Anteprima; il testo è nella scheda accanto.",
+                       titolo: d.tipo.nome)
+        } else {
+            datiEstratti(d)
+        }
+    }
+
+    @ViewBuilder private func datiEstratti(_ d: Documento) -> some View {
         if stato.documentiInLettura.contains(d.id) {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)

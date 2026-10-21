@@ -449,7 +449,7 @@ struct PanoramicaCliente: View {
                 collegamento(.attivita, "Azioni ancora aperte", conteggio: aperte.count)
                 collegamento(.documenti, "Il materiale del dossier")
                 collegamento(.note, "Appunti e idee")
-                collegamento(.presentazioni, "Il racconto del progetto")
+                collegamento(.presentazioni, "Prospetti in PDF")
                 collegamento(.eve, "Ragiona su questo cliente")
             }
         }
