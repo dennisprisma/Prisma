@@ -13,6 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Strumenti disponibili
+        run: |
+          xcode-select -p
+          swift --version
+          ls -d /Applications/Xcode*.app
+
       - name: Compila (Apple Silicon + Intel)
         run: swift build -c release --arch arm64 --arch x86_64
 
