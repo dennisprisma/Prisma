@@ -122,5 +122,21 @@ enum Gradienti {
     static let testaTabella = LinearGradient.verticale(Colori.Analisi.tabellaTestaAlto, Colori.Analisi.tabellaTestaBasso)
     static let barraStato = LinearGradient.verticale(Colori.Analisi.statoAlto, Colori.Analisi.statoBasso)
 
+    // Widget
+    static let paginaCalendario = LinearGradient.verticale(Colori.Widget.calendarioPagina, Colori.Widget.calendarioPaginaBasso)
+    static let anello = LinearGradient(colors: [Colori.Widget.anelloAlto, Colori.Widget.anelloBasso],
+                                       startPoint: .leading, endPoint: .trailing)
+    static let cartoncino = LinearGradient.verticale(Colori.Widget.cartoncino, Colori.Widget.cartoncinoBasso)
+    static let borsa = LinearGradient.verticale([
+        (Colori.Widget.borsaAlto, 0), (Colori.Widget.borsaMezzo, 0.45), (Colori.Widget.borsaBasso, 1),
+    ])
+    static let borsaRiflesso = LinearGradient(colors: [Colori.Widget.borsaRiflesso, .clear], startPoint: .top, endPoint: .center)
+    static let borsaVerde = LinearGradient.lucido(Colori.Widget.borsaVerde, salto: (0.49, 0.51))
+    static let foglietto = LinearGradient.verticale(Colori.Widget.foglietto, Colori.Widget.fogliettoBasso)
+    static let rilegatura = LinearGradient.verticale([
+        (Colori.Widget.rilegaturaAlto, 0), (Colori.Widget.rilegaturaMezzo, 0.6), (Colori.Widget.rilegaturaBasso, 1),
+    ])
+    static let onda = LinearGradient(colors: Colori.Widget.onda, startPoint: .top, endPoint: .bottom)
+
     static let agendaInchiostro = LinearGradient.verticale(Colori.Agenda.inchiostroAlto, Colori.Agenda.inchiostroBasso)
 }

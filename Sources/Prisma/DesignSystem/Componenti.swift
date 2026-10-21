@@ -340,6 +340,16 @@ enum Formati {
     static let giornoSettimana = formato("EEEE")
     static let dataEstesa = formato("d MMMM yyyy")
     static let dataBreve = formato("dd/MM/yyyy")
+    static let giornoBreve = formato("EEE d")
+
+    /// "oggi", "domani", "ieri" oppure "gio 23".
+    static func giornoRelativo(_ data: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(data) { return "oggi" }
+        if cal.isDateInTomorrow(data) { return "domani" }
+        if cal.isDateInYesterday(data) { return "ieri" }
+        return giornoBreve.string(from: data)
+    }
     /// Data proposta quando si indica una data di nascita (1 gennaio 1980).
     static let dataPredefinitaNascita = Calendar(identifier: .gregorian).date(from: DateComponents(year: 1980, month: 1, day: 1)) ?? Date()
     static let meseAnno = formato("MMMM yyyy")

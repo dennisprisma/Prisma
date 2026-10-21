@@ -296,21 +296,75 @@ enum Colori {
         static let pericolo = Color(hex: "#974f45")
     }
 
-    /// Widget della scrivania.
+    /// Widget della scrivania, nello stile dei widget della Dashboard di Mac OS X (2011).
     enum Widget {
         static let bordo = Color(hex: "#777")
         static let ombra = Color(hex: "#0004")
+        static let ombraVicina = Color(hex: "#0003")
+        static let ombraLontana = Color(hex: "#0005")
         static let carta = Color(hex: "#f6f4ef")
         static let cartaBianca = Color(hex: "#fffdf7")
-        /// Rosso del calendario iOS 5 (agenda-red dell'icona Agenda).
+        static let titolo = Color(hex: "#303030")
+        static let secondario = Color(hex: "#666")
+        static let numero = Color(hex: "#203f67")
+        // Calendario da scrivania
         static let calendario = [Color(hex: "#ff7767"), Color(hex: "#ef352d"), Color(hex: "#cc171d"), Color(hex: "#a50c12")]
         static let calendarioBordo = Color(hex: "#7c1317")
         static let calendarioLuce = Color(hex: "#ffb7a2")
         static let calendarioTesto = Color(hex: "#fffaf0")
         static let calendarioSecondario = Color(hex: "#ffd9cf")
-        static let titolo = Color(hex: "#303030")
-        static let secondario = Color(hex: "#666")
-        static let numero = Color(hex: "#203f67")
+        static let calendarioGiorno = Color(hex: "#a8342a")
+        static let calendarioPagina = Color(hex: "#fffefa")
+        static let calendarioPaginaBasso = Color(hex: "#f0eee8")
+        static let calendarioRighe = Color(hex: "#e8dfcf")
+        static let calendarioMargine = Color(hex: "#e7a59b")
+        static let calendarioOra = Color(hex: "#a8342a")
+        static let anelloAlto = Color(hex: "#f4f4f4")
+        static let anelloBasso = Color(hex: "#8d8d8d")
+        static let anelloBordo = Color(hex: "#5c5c5c")
+        // Cartella in pelle del cliente
+        static let cucitura = Color(hex: "#e9c89c")
+        static let cartoncino = Color(hex: "#f7f0e2")
+        static let cartoncinoBasso = Color(hex: "#ebe1cd")
+        static let cartoncinoBordo = Color(hex: "#9c7a52")
+        static let cartoncinoOmbra = Color(hex: "#3b230f66")
+        static let cartoncinoTesto = Color(hex: "#3c3226")
+        static let cartoncinoEtichetta = Color(hex: "#8a7557")
+        static let cartoncinoValore = Color(hex: "#5a3a1c")
+        // Portafoglio (pannello nero lucido come l'app Borsa)
+        static let borsaAlto = Color(hex: "#4b4b4f")
+        static let borsaMezzo = Color(hex: "#1f1f22")
+        static let borsaBasso = Color(hex: "#0e0e10")
+        static let borsaBordo = Color(hex: "#000")
+        static let borsaRiflesso = Color(r: 255, g: 255, b: 255, a: 0.16)
+        static let borsaTitolo = Color(hex: "#9a9aa2")
+        static let borsaTesto = Color(hex: "#f2f2f2")
+        static let borsaSecondario = Color(hex: "#a7a7ae")
+        static let borsaFilo = Color(r: 255, g: 255, b: 255, a: 0.1)
+        static let borsaVerde = [Color(hex: "#8fe07a"), Color(hex: "#4fae3a"), Color(hex: "#3a9a27"), Color(hex: "#58b544")]
+        static let borsaVerdeBordo = Color(hex: "#2a6e1d")
+        static let borsaAlleanza = Color(hex: "#6f9be0")
+        static let borsaIndipendente = Color(hex: "#d8bf94")
+        // Foglietto giallo delle scadenze
+        static let foglietto = Color(hex: "#fbefc0")
+        static let fogliettoBasso = Color(hex: "#f5e3a1")
+        static let fogliettoRighe = Color(r: 154, g: 171, b: 159, a: 0.4)
+        static let fogliettoMargine = Color(hex: "#e0a19a")
+        static let fogliettoTesto = Color(hex: "#3d3426")
+        static let fogliettoSecondario = Color(hex: "#7c6a48")
+        static let rilegaturaAlto = Color(hex: "#6e5944")
+        static let rilegaturaMezzo = Color(hex: "#5a4533")
+        static let rilegaturaBasso = Color(hex: "#4b3828")
+        static let rilegaturaLuce = Color(hex: "#927c61")
+        static let rilegaturaOmbra = Color(hex: "#392a1d")
+        // Promemoria a righe
+        static let promemoriaRighe = Color(hex: "#d9e2ec")
+        static let promemoriaTitolo = Color(hex: "#2c4a6e")
+        static let promemoriaCerchio = Color(hex: "#9fb1c4")
+        static let promemoriaSpunta = Color(hex: "#3a7fae")
+        // Eve
+        static let onda = [Color(hex: "#b9a6ff"), Color(hex: "#6f5bd6")]
+        static let eveAlone = Color(hex: "#8a73ff")
     }
 
     enum Lino {
