@@ -399,7 +399,7 @@ struct BloccoCarta: View {
                     }
                     Spacer(minLength: 12)
                     VStack(alignment: .trailing, spacing: 4) {
-                        ForEach(canali, id: \.self) { EtichettaCanale(canale: $0, compatta: canali.count > 1) }
+                        ForEach(canali, id: \.self) { EtichettaCanale(canale: $0) }
                     }
                 }
                 .frame(maxHeight: .infinity)
