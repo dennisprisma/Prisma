@@ -171,6 +171,39 @@ enum ProvaCalcoli {
                      proposta.canale == .alleanza && proposta.stato == .proposta && proposta.prodottoId == pip.id ? 1 : 0, 1)
         }
 
+        // 17. Lettura dei documenti: regole sul KID e sulla polizza di prova, con la pagina giusta
+        if let kid = DatiDemo.testoDocumento("doc-giulia-kid") {
+            let campi = EstrattoreDocumento.conRegole(kid)
+            func c(_ k: CampoDocumento) -> CampoEstratto? { campi.first { $0.chiave == k } }
+            verifica("KID: indicatore di rischio 3 su 7", Double(c(.sri)?.valore ?? "") ?? 0, 3)
+            verifica("KID: SRI trovato a pagina 2", Double(c(.sri)?.pagina ?? 0), 2)
+            verifica("KID: periodo di detenzione 15 anni", EstrattoreDocumento.numero(c(.periodoDetenzione)?.valore) ?? 0, 15)
+            verifica("KID: costi correnti 0,85%", EstrattoreDocumento.numero(c(.costoAnnuo)?.valore) ?? 0, 0.85, tolleranza: 0.000_1)
+            verifica("KID: incidenza annuale dei costi 0,95%", EstrattoreDocumento.numero(c(.incidenzaCosti)?.valore) ?? 0, 0.95, tolleranza: 0.000_1)
+            verifica("KID: rendimento scenario moderato 3,2%", EstrattoreDocumento.numero(c(.rendimentoModerato)?.valore) ?? 0, 3.2, tolleranza: 0.000_1)
+            verifica("KID: riconosciuto come KID", EstrattoreDocumento.tipoProbabile(kid) == .kid ? 1 : 0, 1)
+        } else {
+            verifica("KID di prova presente", 0, 1)
+        }
+        if let polizza = DatiDemo.testoDocumento("doc-marco-polizza") {
+            let campi = EstrattoreDocumento.conRegole(polizza)
+            func c(_ k: CampoDocumento) -> CampoEstratto? { campi.first { $0.chiave == k } }
+            verifica("Polizza: numero AL-2025-551203", c(.numeroContratto)?.valore == "AL-2025-551203" ? 1 : 0, 1)
+            verifica("Polizza: capitale assicurato", EstrattoreDocumento.numero(c(.capitaleAssicurato)?.valore) ?? 0, 150_000)
+            verifica("Polizza: premio annuo", EstrattoreDocumento.numero(c(.premio)?.valore) ?? 0, 380)
+            let giorni = EstrattoreDocumento.data(c(.decorrenza)?.valore).flatMap { d in
+                EstrattoreDocumento.data(c(.scadenza)?.valore).map { Calendar(identifier: .gregorian).dateComponents([.day], from: d, to: $0).day ?? 0 }
+            } ?? 0
+            verifica("Polizza: da decorrenza a scadenza un anno", Double(giorni), 365)
+        } else {
+            verifica("Polizza di prova presente", 0, 1)
+        }
+        verifica("Numeri all'italiana: 1.250,50", EstrattoreDocumento.numero("1.250,50 €") ?? 0, 1_250.5, tolleranza: 0.000_1)
+        let modello = EstrattoreDocumento.daRisposta("sri|9\ncostoAnnuo|1,10\ninventato|x\npremio|", pagina: 4)
+        verifica("Risposta del modello: tiene solo le righe valide", Double(modello.count), 1)
+        let uniti = EstrattoreDocumento.unisci([CampoEstratto(chiave: .costoAnnuo, valore: "0,90", pagina: 2)], modello)
+        verifica("Le regole hanno la precedenza sul modello", EstrattoreDocumento.numero(uniti.first?.valore) ?? 0, 0.9, tolleranza: 0.000_1)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

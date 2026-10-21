@@ -117,7 +117,8 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .analisi360, .prodotti, .confronti, .simulazioni, .obiettivi:
             return "Fa parte del modulo Posizioni, il cuore di Prisma, con il canale Alleanza / indipendente sempre in vista."
         case .eve: return "Eve arriva con il suo modulo: lettura dei documenti, estrazione dei dati e risposte in chat, tutto sul Mac."
-        case .note, .documenti, .presentazioni, .ricerca: return "Arriva nelle prossime fasi di sviluppo."
+        case .documenti: return "KID, polizze ed estratti conto letti sul Mac, con i dati da confermare."
+        case .note, .presentazioni, .ricerca: return "Arriva nelle prossime fasi di sviluppo."
         case .impostazioni: return "Profilo, backup manuale e settimanale, ripristino e impostazioni di Eve."
         }
     }

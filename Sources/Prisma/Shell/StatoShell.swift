@@ -84,6 +84,11 @@ final class StatoShell: ObservableObject {
     @Published var filtroAreaProdotti: AreaPosizione?
     @Published var obiettivoSelezionato: String?
 
+    // Documenti
+    @Published var documentoSelezionato: String?
+    @Published var documentiInLettura: Set<String> = []
+    private var testiDocumenti: [String: [String]] = [:]
+
     // Eve
     @Published var eveInCorso = false
     @Published var domandaEve = ""
@@ -275,6 +280,8 @@ final class StatoShell: ObservableObject {
         dati.conversazioni[id] = nil
         dati.incontri.removeAll { $0.clienteId == id }
         dati.obiettivi.removeAll { $0.clienteId == id }
+        for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
+        dati.documenti.removeAll { $0.clienteId == id }
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
@@ -355,6 +362,198 @@ final class StatoShell: ObservableObject {
             guard p.stato == .inEssere, let s = p.scadenza else { return false }
             return cal.isDate(s, inSameDayAs: giorno) && (filtroClienteAgenda == nil || p.clienteId == filtroClienteAgenda)
         }
+    }
+
+    // MARK: - Documenti
+
+    func documentiCliente(_ id: String) -> [Documento] {
+        dati.documenti.filter { $0.clienteId == id }.sorted { $0.importatoIl > $1.importatoIl }
+    }
+
+    func documento(_ id: String?) -> Documento? {
+        guard let id else { return nil }
+        return dati.documenti.first { $0.id == id }
+    }
+
+    func urlDocumento(_ d: Documento) -> URL? {
+        d.file.map { Archivio.cartellaDocumenti.appendingPathComponent($0) }
+    }
+
+    private func urlTesto(_ d: Documento) -> URL? {
+        urlDocumento(d).map { $0.deletingPathExtension().appendingPathExtension("txt") }
+    }
+
+    /// Testo del documento, pagina per pagina (dal file accanto al documento o dai dati di prova).
+    func testoDocumento(_ d: Documento) -> [String] {
+        if let t = testiDocumenti[d.id] { return t }
+        var pagine = DatiDemo.testoDocumento(d.id) ?? []
+        if pagine.isEmpty, let url = urlTesto(d), let t = try? String(contentsOf: url, encoding: .utf8) {
+            pagine = t.components(separatedBy: LetturaDocumenti.separatorePagine)
+        }
+        testiDocumenti[d.id] = pagine
+        return pagine
+    }
+
+    private func aggiornaDocumento(_ id: String, _ cambia: (inout Documento) -> Void) {
+        guard let i = dati.documenti.firstIndex(where: { $0.id == id }) else { return }
+        cambia(&dati.documenti[i])
+    }
+
+    /// Copia i file nella cartella Documenti del cliente e li legge.
+    func importaDocumenti(_ urls: [URL]) {
+        guard persistente else { return }
+        let fm = FileManager.default
+        let cliente = clienteAttivoId
+        let cartella = Archivio.cartellaDocumenti.appendingPathComponent(cliente, isDirectory: true)
+        try? fm.createDirectory(at: cartella, withIntermediateDirectories: true)
+        var ultimo: String?
+        for url in urls where LetturaDocumenti.estensioniAccettate.contains(url.pathExtension.lowercased()) {
+            var d = Documento(clienteId: cliente, titolo: url.deletingPathExtension().lastPathComponent, tipo: .altro)
+            d.importatoIl = Appuntamento.alMinuto(Date())
+            let nome = "\(d.id).\(url.pathExtension.lowercased())"
+            let destinazione = cartella.appendingPathComponent(nome)
+            do {
+                try fm.copyItem(at: url, to: destinazione)
+            } catch {
+                mostraAvviso("Non riesco a copiare \(url.lastPathComponent): \(error.localizedDescription)")
+                continue
+            }
+            d.file = "\(cliente)/\(nome)"
+            d.dimensione = (try? fm.attributesOfItem(atPath: destinazione.path)[.size] as? Int64) ?? 0
+            dati.documenti.append(d)
+            ultimo = d.id
+            leggiDocumento(d.id)
+        }
+        if let ultimo { documentoSelezionato = ultimo }
+    }
+
+    /// Legge il testo (PDFKit, poi Vision per le scansioni) e cerca i dati; il modello Apple completa.
+    func leggiDocumento(_ id: String) {
+        guard let d = documento(id), let url = urlDocumento(d), let testo = urlTesto(d) else { return }
+        documentiInLettura.insert(id)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let esito = LetturaDocumenti.leggi(url)
+            if let esito {
+                try? esito.pagine.joined(separator: LetturaDocumenti.separatorePagine).write(to: testo, atomically: true, encoding: .utf8)
+            }
+            DispatchQueue.main.async {
+                guard let esito else {
+                    self.aggiornaDocumento(id) { $0.lettura = .illeggibile }
+                    self.documentiInLettura.remove(id)
+                    self.mostraAvviso("Non riesco a leggere \(d.titolo)")
+                    return
+                }
+                self.testiDocumenti[id] = esito.pagine
+                let campi = EstrattoreDocumento.conRegole(esito.pagine)
+                self.aggiornaDocumento(id) { x in
+                    x.pagine = esito.pagine.count
+                    x.pagineOCR = esito.pagineOCR
+                    x.lettura = esito.pagine.joined().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .illeggibile : .letto
+                    if x.tipo == .altro { x.tipo = EstrattoreDocumento.tipoProbabile(esito.pagine) }
+                    x.campi = campi
+                }
+                self.completaConModello(id, pagine: esito.pagine, trovati: campi)
+            }
+        }
+    }
+
+    /// Il modello Apple legge le prime pagine e propone i campi che le regole non hanno trovato.
+    private func completaConModello(_ id: String, pagine: [String], trovati: [CampoEstratto]) {
+        guard dati.impostazioni.eve.motore != .sintesi, MotoriEve.motivoAppleNonDisponibile == nil,
+              trovati.count < CampoDocumento.allCases.count else {
+            documentiInLettura.remove(id)
+            return
+        }
+        Task { @MainActor in
+            var modello: [CampoEstratto] = []
+            for (n, pagina) in pagine.prefix(6).enumerated() where pagina.count > 80 {
+                if let r = try? await MotoriEve.generaConApple(istruzioni: EstrattoreDocumento.istruzioniModello,
+                                                               richiesta: "PAGINA \(n + 1)\n" + String(pagina.prefix(3_000))) {
+                    modello += EstrattoreDocumento.daRisposta(r, pagina: n + 1)
+                }
+            }
+            let uniti = EstrattoreDocumento.unisci(trovati, modello)
+            self.aggiornaDocumento(id) { $0.campi = uniti }
+            self.documentiInLettura.remove(id)
+        }
+    }
+
+    func confermaCampo(_ id: String, _ chiave: CampoDocumento, _ si: Bool) {
+        aggiornaDocumento(id) { d in
+            if let i = d.campi.firstIndex(where: { $0.chiave == chiave }) { d.campi[i].confermato = si }
+        }
+    }
+
+    func modificaCampo(_ id: String, _ chiave: CampoDocumento, valore: String) {
+        aggiornaDocumento(id) { d in
+            if let i = d.campi.firstIndex(where: { $0.chiave == chiave }) {
+                d.campi[i].valore = valore
+                d.campi[i].confermato = true
+            }
+        }
+    }
+
+    func rinominaDocumento(_ id: String, titolo: String, tipo: Documento.Tipo) {
+        aggiornaDocumento(id) { $0.titolo = titolo; $0.tipo = tipo }
+    }
+
+    private func rimuoviFile(_ d: Documento) {
+        guard persistente else { return }
+        if let u = urlDocumento(d) { try? FileManager.default.removeItem(at: u) }
+        if let t = urlTesto(d) { try? FileManager.default.removeItem(at: t) }
+    }
+
+    func eliminaDocumento(_ id: String) {
+        guard let d = documento(id) else { return }
+        rimuoviFile(d)
+        dati.documenti.removeAll { $0.id == id }
+        testiDocumenti[id] = nil
+        if documentoSelezionato == id { documentoSelezionato = nil }
+    }
+
+    /// Scheda prodotto con i soli dati confermati.
+    func creaProdotto(da id: String, canale: Canale, area: AreaPosizione) {
+        guard let d = documento(id) else { return }
+        var p = Prodotto(nome: d.confermato(.nomeProdotto) ?? d.titolo, canale: canale, area: area)
+        p.emittente = d.confermato(.emittente) ?? ""
+        p.tipologia = d.confermato(.tipologia) ?? ""
+        p.sri = d.confermato(.sri).flatMap { Int($0.prefix(1)) }
+        p.costoIngresso = EstrattoreDocumento.numero(d.confermato(.costoIngresso))
+        p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo)) ?? EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
+        p.rendimentoAtteso = EstrattoreDocumento.numero(d.confermato(.rendimentoModerato))
+        p.fonte = "\(d.titolo) (\(d.tipo.breve), importato il \(Formati.dataBreve.string(from: d.importatoIl)))"
+        p.verificatoIl = Calendar.current.startOfDay(for: Date())
+        if let anni = d.confermato(.periodoDetenzione) { p.note = "Periodo di detenzione raccomandato: \(anni) anni." }
+        salvaProdotto(p)
+        aggiornaDocumento(id) { $0.prodottoId = p.id }
+        mostraAvviso("Scheda prodotto creata: \(p.nome)")
+    }
+
+    /// Posizione in essere del cliente con i soli dati confermati.
+    func creaPosizione(da id: String, canale: Canale, area: AreaPosizione) {
+        guard let d = documento(id) else { return }
+        var p = Posizione(clienteId: d.clienteId, canale: canale, stato: .inEssere, area: area, nome: d.confermato(.nomeProdotto) ?? d.titolo)
+        p.emittente = d.confermato(.emittente) ?? (canale == .alleanza ? "Alleanza Assicurazioni" : "")
+        p.tipologia = d.confermato(.tipologia) ?? ""
+        p.numeroContratto = d.confermato(.numeroContratto) ?? ""
+        p.contraente = d.confermato(.contraente) ?? ""
+        p.assicurato = d.confermato(.assicurato) ?? ""
+        p.beneficiari = d.confermato(.beneficiari) ?? ""
+        p.decorrenza = EstrattoreDocumento.data(d.confermato(.decorrenza))
+        p.scadenza = EstrattoreDocumento.data(d.confermato(.scadenza))
+        if let premio = EstrattoreDocumento.numero(d.confermato(.premio)) {
+            p.premio = premio
+            p.frequenza = .annuale
+        }
+        p.capitaleAssicurato = EstrattoreDocumento.numero(d.confermato(.capitaleAssicurato))
+        p.controvalore = EstrattoreDocumento.numero(d.confermato(.controvalore))
+        p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo))
+        p.costoIngresso = EstrattoreDocumento.numero(d.confermato(.costoIngresso))
+        p.sri = d.confermato(.sri).flatMap { Int($0.prefix(1)) }
+        p.note = "Dati dal documento «\(d.titolo)», da completare."
+        salvaPosizione(p)
+        aggiornaDocumento(id) { $0.posizioneId = p.id }
+        apriPosizione(p)
     }
 
     // MARK: - Prodotti
