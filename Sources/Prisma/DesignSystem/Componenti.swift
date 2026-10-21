@@ -346,9 +346,14 @@ enum Formati {
     /// Per i nomi dei file (nessun carattere vietato dal Finder).
     static let nomeFile = formato("yyyy-MM-dd HH.mm.ss")
 
+    /// Per gli importi: separatori italiani (punto per le migliaia, virgola per i decimali), ma con il
+    /// punto anche sulle cifre a quattro (7.650 €). Le regole it_IT non lo mettono sotto i 10.000;
+    /// quelle tedesche sì, con gli stessi separatori e il simbolo dopo l'importo.
+    static let localeImporti = Locale(identifier: "de_DE")
+
     static let euroFormatter: NumberFormatter = {
         let f = NumberFormatter()
-        f.locale = italiano
+        f.locale = localeImporti
         f.numberStyle = .currency
         f.currencyCode = "EUR"
         f.maximumFractionDigits = 0
@@ -357,7 +362,7 @@ enum Formati {
 
     static let numeroFormatter: NumberFormatter = {
         let f = NumberFormatter()
-        f.locale = italiano
+        f.locale = localeImporti
         f.numberStyle = .decimal
         f.maximumFractionDigits = 2
         return f
@@ -370,7 +375,7 @@ enum Formati {
 
     static let euroDecimaliFormatter: NumberFormatter = {
         let f = NumberFormatter()
-        f.locale = italiano
+        f.locale = localeImporti
         f.numberStyle = .currency
         f.currencyCode = "EUR"
         f.minimumFractionDigits = 2

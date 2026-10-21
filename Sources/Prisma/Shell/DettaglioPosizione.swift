@@ -19,7 +19,9 @@ struct DettaglioPosizione: View {
                     intestazione
                     HStack(alignment: .top, spacing: 28) {
                         contratto.frame(maxWidth: .infinity, alignment: .leading)
-                        costiERischio.frame(width: 300, alignment: .leading)
+                        if posizione.area.proiettabile {
+                            costiERischio.frame(width: 320, alignment: .leading)
+                        }
                     }
                     if posizione.area.proiettabile {
                         proiezione
@@ -135,15 +137,15 @@ struct DettaglioPosizione: View {
         let p = posizione
         return PannelloAnalisi(titolo: "Costi, ipotesi e rischio") { EmptyView() } contenuto: {
             VStack(spacing: 0) {
-                RigaDato("Rendimento atteso", p.rendimentoAtteso.map { Formati.percentuale($0) + " annuo" } ?? "", larghezza: 130)
-                RigaDato("Costo d'ingresso", p.costoIngresso.map { Formati.percentuale($0) + " dei versamenti" } ?? "", larghezza: 130)
-                RigaDato("Costo annuo", p.costoAnnuo.map { Formati.percentuale($0) + " all'anno" } ?? "", larghezza: 130)
-                RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "", larghezza: 130)
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                RigaDato("Rendimento atteso", p.rendimentoAtteso.map { Formati.percentuale($0) + " annuo" } ?? "", larghezza: 118)
+                RigaDato("Costo d'ingresso", p.costoIngresso.map { Formati.percentuale($0) + " dei versamenti" } ?? "", larghezza: 118)
+                RigaDato("Costo annuo", p.costoAnnuo.map { Formati.percentuale($0) + " all'anno" } ?? "", larghezza: 118)
+                RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "", larghezza: 118)
+                HStack(alignment: .center, spacing: 12) {
                     Text("Rischio (SRI)")
                         .font(Tipo.campoEtichetta)
                         .foregroundColor(Colori.Analisi.kpiNota)
-                        .frame(width: 130, alignment: .leading)
+                        .frame(width: 118, alignment: .leading)
                     ScalaRischio(valore: p.sri)
                 }
                 .padding(.vertical, 8)
@@ -341,7 +343,7 @@ struct ScalaRischio: View {
                 Text("\(i)")
                     .font(Tipo.chip)
                     .foregroundColor(i == valore ? .white : Colori.Analisi.chipTesto)
-                    .frame(width: 20, height: 18)
+                    .frame(width: 19, height: 18)
                     .background(RoundedRectangle(cornerRadius: 2)
                         .fill(i == valore ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Colori.Analisi.chip)))
                     .overlay(RoundedRectangle(cornerRadius: 2)

@@ -297,10 +297,10 @@ struct TabellaPosizioni: View {
             riga(testa: true) {
                 cella("Posizione", larghezza: nil)
                 cella("Canale", larghezza: 130)
-                cella("Area", larghezza: 100)
+                cella("Area", larghezza: 116)
                 cella("Stato", larghezza: 130)
                 cella("Valore", larghezza: 110, destra: true)
-                cella("Premio annuo", larghezza: 110, destra: true)
+                cella("Premi / rate annui", larghezza: 120, destra: true)
                 cella("Scadenza", larghezza: 96, destra: true)
             }
             if posizioni.isEmpty {
@@ -328,19 +328,26 @@ struct TabellaPosizioni: View {
                         HStack(spacing: 6) {
                             RoundedRectangle(cornerRadius: 2).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
                             Text(p.area.nome).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
+                                .lineLimit(1)
+                                .fixedSize()
                         }
                         .padding(Misure.Analisi.cellaMargine)
-                        .frame(width: 100, alignment: .leading)
+                        .frame(width: 116, alignment: .leading)
                         PillolaStato(posizione: p)
                             .padding(Misure.Analisi.cellaMargine)
                             .frame(width: 130, alignment: .leading)
                         valore(p)
                             .padding(Misure.Analisi.cellaMargine)
                             .frame(width: 110, alignment: .trailing)
-                        Text(p.premioAnnuo > 0 ? Formati.euro(p.premioAnnuo) : "—")
-                            .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
-                            .padding(Misure.Analisi.cellaMargine)
-                            .frame(width: 110, alignment: .trailing)
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text(p.premioAnnuo > 0 ? Formati.euro(p.premioAnnuo) : "—")
+                                .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
+                            if p.area.passivo, p.premioAnnuo > 0 {
+                                Text("rate").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
+                            }
+                        }
+                        .padding(Misure.Analisi.cellaMargine)
+                        .frame(width: 120, alignment: .trailing)
                         Text(p.scadenza.map { Formati.dataBreve.string(from: $0) } ?? "—")
                             .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
                             .padding(Misure.Analisi.cellaMargine)
