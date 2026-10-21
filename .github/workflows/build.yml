@@ -85,6 +85,8 @@ jobs:
             # Controllo a runtime: l'app deve trovare le risorse dal .app
             "$APP/Contents/MacOS/Prisma" --verifica-risorse
           fi
+          # Prova reale di backup, rotazione e ripristino in cartelle temporanee
+          "$APP/Contents/MacOS/Prisma" --prova-backup
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 
