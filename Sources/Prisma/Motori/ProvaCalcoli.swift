@@ -142,6 +142,12 @@ enum ProvaCalcoli {
                  proposte.contains { if case .attivita = $0.tipo { return true } else { return false } } ? 1 : 0, 1)
         verifica("Appunti: i numeri come 300.000 non spezzano le frasi",
                  Double(EstrattoreIncontro.frasi("Una villetta da 300.000 €. Poi altro").count), 2)
+        let dalleRisposte = EstrattoreIncontro.conRegole("Comprare un trilocale in città nel \(anno + 3)",
+                                                          preoccupazioni: "Il mutuo, se succedesse qualcosa a uno dei due")
+        verifica("Risposte: trilocale riconosciuto come acquisto della casa",
+                 dalleRisposte.contains { $0.tipo == .evento(.acquistoCasa, anno + 3) } ? 1 : 0, 1)
+        verifica("Risposte: ciò che preoccupa vale importanza alta",
+                 dalleRisposte.contains { $0.tipo == .bisogno(.casa, .alta) } ? 1 : 0, 1)
         let dalModello = EstrattoreIncontro.daRisposta("BISOGNO|pensione|alta|vuole smettere presto\nEVENTO|pensione|\(anno + 9)|\nVOCE|non valida\nBISOGNO|marte|alta|x")
         verifica("Risposta del modello: righe valide accettate, le altre scartate", Double(dalModello.count), 2)
 

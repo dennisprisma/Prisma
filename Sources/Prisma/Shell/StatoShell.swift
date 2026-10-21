@@ -406,7 +406,8 @@ final class StatoShell: ObservableObject {
 
     /// Legge gli appunti: regole di Prisma subito, il modello Apple (se c'è) si aggiunge.
     func estraiProposte(_ i: Incontro) {
-        let regole = EstrattoreIncontro.conRegole(i.testoAscolto)
+        let altro = [i.progetti, i.esperienza, i.appunti, i.decisioni].filter { !$0.isEmpty }.joined(separator: "\n")
+        let regole = EstrattoreIncontro.conRegole(altro, preoccupazioni: i.preoccupazioni)
         proposteIncontro[i.id] = regole
         proposteScelte = Set(regole.map(\.id))
         guard persistente, dati.impostazioni.eve.motore != .sintesi, MotoriEve.motivoAppleNonDisponibile == nil, !i.vuoto else { return }

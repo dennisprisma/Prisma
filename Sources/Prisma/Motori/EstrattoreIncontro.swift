@@ -90,12 +90,24 @@ enum EstrattoreIncontro {
         return nil
     }
 
-    static func conRegole(_ testo: String, oggi: Date = Date()) -> [PropostaIncontro] {
+    static let verbiAcquisto = ["compr", "acquist", "prendere casa"]
+    static let paroleAbitazione = ["casa", "trilocale", "bilocale", "quadrilocale", "appartamento", "villetta", "villa", "attico", "immobile", "mansarda"]
+
+    /// - Parameter preoccupazioni: le risposte alla domanda "Cosa la preoccupa": contano sempre come importanza alta.
+    static func conRegole(_ testo: String, preoccupazioni: String = "", oggi: Date = Date()) -> [PropostaIncontro] {
         var proposte: [PropostaIncontro] = []
         var aree: [AreaBisogno: (Importanza, String)] = [:]
-        for frase in frasi(testo) {
+        let daPreoccupazioni = Set(frasi(preoccupazioni))
+        for frase in frasi(preoccupazioni) + frasi(testo) {
             let f = frase.lowercased()
-            let urgente = paroleUrgenza.contains { f.contains($0) }
+            let urgente = daPreoccupazioni.contains(frase) || paroleUrgenza.contains { f.contains($0) }
+            // Acquisto della casa: un verbo d'acquisto e una parola dell'abitare nella stessa frase
+            if verbiAcquisto.contains(where: { f.contains($0) }) && paroleAbitazione.contains(where: { f.contains($0) }) {
+                let a = anno(in: frase, oggi: oggi) ?? Calendar(identifier: .gregorian).component(.year, from: oggi) + 1
+                let p = PropostaIncontro(tipo: .evento(.acquistoCasa, a), fonte: frase)
+                if !proposte.contains(where: { $0.id == p.id }) { proposte.append(p) }
+                if (aree[.casa]?.0 ?? .nessuna) < .media { aree[.casa] = (.media, frase) }
+            }
             for (area, parole) in paroleArea where parole.contains(where: { f.contains($0) }) {
                 let importanza: Importanza = urgente ? .alta : .media
                 if let gia = aree[area], gia.0 >= importanza { continue }
