@@ -19,7 +19,8 @@ Tutto resta in locale sul Mac: niente server, niente cloud.
 - Lavora su un branch e apri una pull request; main deve restare sempre compilabile.
 - Nessuna dipendenza esterna senza chiedere prima.
 - Target minimo macOS 13. Il Mac dell'utente è un MacBook Pro M1 con 8 GB di RAM (macOS 27): codice leggero, attenzione alla memoria.
-- Non puoi avviare né vedere l'app: per il controllo visivo chiedi all'utente uno screenshot.
+- Non puoi avviare l'app, ma puoi vederne le schermate: a ogni push il workflow esegue `Prisma --istantanee` e pubblica le PNG sul branch `anteprime` (`git fetch origin anteprime`). Guardale prima di chiedere screenshot all'utente e aggiorna la pagina online delle anteprime (https://claude.ai/artifact/EauRU1ohEGjHj4zvTomDvb). Per ciò che le istantanee non mostrano (ombre, menu, interazioni) chiedi uno screenshot.
+- Backup e ripristino sono verificati nel workflow con `Prisma --prova-backup`: se tocchi l'archivio o i backup, mantieni la prova aggiornata.
 
 ## Grafica (priorità assoluta)
 - La grafica la decide l'utente. Le fonti ufficiali sono:

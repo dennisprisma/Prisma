@@ -12,3 +12,6 @@ L'artifact scaricabile si chiama **Prisma** e contiene `Prisma.zip` con dentro `
 - `Sources/Prisma/Risorse/` — risorse (icone convertite da `Design/Icone`)
 - `Design/template.html` — template grafico di riferimento
 - `Design/Icone/` — icone originali (SVG) e `AppIcon.png` per l'icona dell'app
+
+## Anteprime
+A ogni push il workflow disegna le schermate principali (`Prisma --istantanee <cartella>`) e le pubblica sul branch `anteprime`.
