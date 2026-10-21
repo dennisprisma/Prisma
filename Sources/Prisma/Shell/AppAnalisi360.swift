@@ -126,10 +126,19 @@ struct AppAnalisi360: View {
         let proposte = elenco.count - inEssere.count
         let canali = Set(inEssere.map(\.canale))
         let confermata = analisi.wrappedValue.confermate.contains(area)
+        let prioritarie = stato.cliente(cliente).map { c in
+            MotoreBisogni.priorita(stato.bisogniRilevati(c.id), profilo: c.bisogni).prefix(3).map(\.areaAnalisi)
+        } ?? []
         return Button { stato.areaAnalisi = area } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(area.numero).font(Tipo.schedaAreaNumero).foregroundColor(Colori.Strumenti.schedaNumero)
+                    if prioritarie.contains(area) {
+                        Text("★ PRIORITÀ DEL CLIENTE")
+                            .font(Tipo.chip)
+                            .foregroundColor(Colori.Bisogni.importanza(.alta))
+                            .help("Dalla ruota dei bisogni nella scheda del cliente")
+                    }
                     Spacer()
                     Text(confermata ? "Dati confermati" : "Ipotesi da verificare")
                         .font(Tipo.chip)

@@ -339,6 +339,22 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    // MARK: - Profilo dei bisogni
+
+    func bisogniRilevati(_ id: String) -> [BisognoRilevato] {
+        guard let c = cliente(id) else { return [] }
+        return MotoreBisogni.rileva(cliente: c, posizioni: posizioniCliente(id), analisi: analisi360(id))
+    }
+
+    /// Modifica il profilo dei bisogni del cliente e ne segna la data.
+    func aggiornaBisogni(_ id: String, _ cambia: (inout ProfiloBisogni) -> Void) {
+        guard let i = dati.clienti.firstIndex(where: { $0.id == id }) else { return }
+        var p = dati.clienti[i].bisogni
+        cambia(&p)
+        p.aggiornatoIl = Appuntamento.alMinuto(Date())
+        dati.clienti[i].bisogni = p
+    }
+
     // MARK: - Strumenti di analisi
 
     func simulazioniCliente(_ id: String) -> [Simulazione] {
@@ -730,11 +746,12 @@ enum SchedaImpostazioni: Hashable {
 }
 
 enum SchedaCliente: String, CaseIterable, Hashable {
-    case panoramica, anagrafica, famiglia, profilo, note
+    case panoramica, bisogni, anagrafica, famiglia, profilo, note
 
     var titolo: String {
         switch self {
         case .panoramica: return "Panoramica"
+        case .bisogni: return "Bisogni"
         case .anagrafica: return "Anagrafica"
         case .famiglia: return "Famiglia"
         case .profilo: return "Profilo"

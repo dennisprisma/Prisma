@@ -35,6 +35,24 @@ enum ContestoEve {
         if !c.canali.isEmpty { righe.append("Seguito sul canale: \(c.canali.map(\.nomeBreve).joined(separator: " e ")).") }
         if !c.nota.isEmpty { righe.append("Da ricordare: \(c.nota)") }
 
+        // Profilo dei bisogni (ruota calcolata dall'app)
+        let rilevati = MotoreBisogni.rileva(cliente: c, posizioni: f.posizioni, analisi: f.analisi, oggi: f.oggi)
+        let ruota = MotoreBisogni.ruota(rilevati, profilo: c.bisogni)
+        let priorita = MotoreBisogni.priorita(rilevati, profilo: c.bisogni)
+        if !priorita.isEmpty {
+            righe.append("BISOGNI IN ORDINE DI PRIORITÀ: " + priorita.prefix(4).map { a in
+                let o = c.bisogni.valutazione(a).orizzonte.map { ", \($0.nome.lowercased())" } ?? ""
+                return "\(a.nome.lowercased()) (\((ruota[a] ?? .nessuna).nome.lowercased())\(o))"
+            }.joined(separator: "; ") + ".")
+        }
+        if !c.bisogni.eventi.isEmpty {
+            righe.append("Eventi di vita: " + c.bisogni.eventi.sorted { $0.anno < $1.anno }.map { "\($0.tipo.nome.lowercased()) nel \($0.anno)\($0.nota.isEmpty ? "" : " (\($0.nota))")" }.joined(separator: "; ") + ".")
+        }
+        let confermati = MotoreBisogni.confermati(rilevati, profilo: c.bisogni)
+        if !confermati.isEmpty {
+            righe.append("Bisogni confermati con il cliente: " + confermati.map(\.titolo).joined(separator: "; ") + ".")
+        }
+
         // Quadro delle posizioni (calcolato dall'app)
         let r = RiepilogoPosizioni(f.posizioni)
         righe.append("QUADRO (calcolato da Prisma): patrimonio netto \(Formati.euro(r.patrimonioNetto)) (attività \(Formati.euro(r.attivita)), debiti \(Formati.euro(r.debiti))); premi e versamenti \(Formati.euro(r.premiAnnui)) all'anno; capitale assicurato \(Formati.euro(r.capitaleAssicurato)); quota Alleanza \(Int((r.quota(.alleanza) * 100).rounded()))%, indipendente \(Int((r.quota(.indipendente) * 100).rounded()))%.")

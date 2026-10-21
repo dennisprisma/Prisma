@@ -70,6 +70,13 @@ struct MotoreSintesi: MotoreEve {
         var parti = ["\(Formati.dataLunga.string(from: e.inizio).capitalized), ore \(Formati.ora.string(from: e.inizio)) · \(e.luogo.isEmpty ? "luogo da definire" : e.luogo) · \(e.durataMinuti) minuti · \(e.tipo.nome.lowercased())."]
         if !e.note.isEmpty { parti.append("Le tue note: \(e.note)") }
         var punti: [String] = []
+        let rilevati = MotoreBisogni.rileva(cliente: f.cliente, posizioni: f.posizioni, analisi: f.analisi, oggi: f.oggi)
+        let priorita = MotoreBisogni.priorita(rilevati, profilo: f.cliente.bisogni)
+        if !priorita.isEmpty {
+            punti.append("partire dalle sue priorità: \(priorita.prefix(3).map { $0.nome.lowercased() }.joined(separator: ", "))")
+        } else {
+            punti.append("costruire la ruota dei bisogni (scheda Bisogni del cliente): due tocchi per area")
+        }
         if let id = e.posizioneId, let p = f.posizioni.first(where: { $0.id == id }) {
             punti.append("si parla di \(p.nome) (\(p.canale.nomeBreve), \(p.stato == .proposta ? "proposta" : "in essere")): porta il KID o il set informativo")
         }

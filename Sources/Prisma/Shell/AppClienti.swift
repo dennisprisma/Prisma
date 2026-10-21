@@ -118,6 +118,7 @@ struct AppClienti: View {
                     Group {
                         switch stato.schedaCliente {
                         case .panoramica: PanoramicaCliente(cliente: c)
+                        case .bisogni: BisogniCliente(cliente: c)
                         case .anagrafica: anagrafica(c)
                         case .famiglia: famiglia(c)
                         case .profilo: profilo(c)

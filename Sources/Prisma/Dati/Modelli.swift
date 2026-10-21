@@ -50,6 +50,8 @@ struct Cliente: Identifiable, Codable, Hashable {
     var famiglia: [Familiare] = []
     var profilo = ProfiloInvestitore()
     var consensi = Consensi()
+    /// Profilo dei bisogni (dalla versione 7 dell'archivio).
+    var bisogni = ProfiloBisogni()
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -84,7 +86,7 @@ struct Cliente: Identifiable, Codable, Hashable {
 
     private enum CodingKeys: String, CodingKey {
         case id, nome, iniziali, tinta, tema, email, telefono, preferito, nota, creatoIl
-        case dataNascita, codiceFiscale, professione, statoCivile, indirizzo, canali, famiglia, profilo, consensi
+        case dataNascita, codiceFiscale, professione, statoCivile, indirizzo, canali, famiglia, profilo, consensi, bisogni
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -109,6 +111,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         famiglia = try c.decodeIfPresent([Familiare].self, forKey: .famiglia) ?? []
         profilo = try c.decodeIfPresent(ProfiloInvestitore.self, forKey: .profilo) ?? ProfiloInvestitore()
         consensi = try c.decodeIfPresent(Consensi.self, forKey: .consensi) ?? Consensi()
+        bisogni = (try? c.decodeIfPresent(ProfiloBisogni.self, forKey: .bisogni)) ?? ProfiloBisogni()
     }
 }
 

@@ -101,6 +101,13 @@ enum Misure {
         static let modulo = CGSize(width: 620, height: 600)
     }
 
+    enum Bisogni {
+        static let ruota: CGFloat = 200
+        static let foro: CGFloat = 0.38
+        static let raggioCarta: CGFloat = 4
+        static let icona: CGFloat = 26
+    }
+
     enum Eve {
         static let giornata: CGFloat = 290
         static let raggioNuvola: CGFloat = 10

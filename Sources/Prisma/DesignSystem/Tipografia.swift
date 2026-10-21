@@ -162,6 +162,15 @@ enum Tipo {
     static let attivitaSotto = contenuto(11)
     static let spunta = Font.custom("Arial", fixedSize: 12).weight(.bold)
 
+    // Profilo dei bisogni
+    static let bisognoTitolo = contenuto(13, .bold)
+    static let bisognoTesto = contenuto(12)
+    static let bisognoNota = contenuto(10)
+    static let bisognoArea = contenuto(10, .semibold)
+    static let ruotaCentro = contenuto(9, .semibold)
+    static let ruotaValore = contenuto(14, .bold)
+    static let prioritaNumero = serif(22)
+
     // Eve
     static let eveOcchiello = contenuto(9, .semibold)
     static let eveSaluto = contenuto(21, .bold)
