@@ -78,6 +78,12 @@ final class StatoShell: ObservableObject {
     @Published var proposteScelte: Set<String> = []
     @Published var estrazioneInCorso = false
 
+    // Prodotti e Obiettivi
+    @Published var prodottoSelezionato: String?
+    @Published var filtroCanaleProdotti: Canale?
+    @Published var filtroAreaProdotti: AreaPosizione?
+    @Published var obiettivoSelezionato: String?
+
     // Eve
     @Published var eveInCorso = false
     @Published var domandaEve = ""
@@ -268,6 +274,7 @@ final class StatoShell: ObservableObject {
         dati.analisi[id] = nil
         dati.conversazioni[id] = nil
         dati.incontri.removeAll { $0.clienteId == id }
+        dati.obiettivi.removeAll { $0.clienteId == id }
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
@@ -348,6 +355,87 @@ final class StatoShell: ObservableObject {
             guard p.stato == .inEssere, let s = p.scadenza else { return false }
             return cal.isDate(s, inSameDayAs: giorno) && (filtroClienteAgenda == nil || p.clienteId == filtroClienteAgenda)
         }
+    }
+
+    // MARK: - Prodotti
+
+    var prodotti: [Prodotto] { dati.prodotti.sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending } }
+
+    func prodotto(_ id: String?) -> Prodotto? {
+        guard let id else { return nil }
+        return dati.prodotti.first { $0.id == id }
+    }
+
+    func salvaProdotto(_ p: Prodotto) {
+        if let i = dati.prodotti.firstIndex(where: { $0.id == p.id }) { dati.prodotti[i] = p } else { dati.prodotti.append(p) }
+        prodottoSelezionato = p.id
+    }
+
+    func eliminaProdotto(_ id: String) {
+        dati.prodotti.removeAll { $0.id == id }
+        for i in dati.posizioni.indices where dati.posizioni[i].prodottoId == id { dati.posizioni[i].prodottoId = nil }
+        if prodottoSelezionato == id { prodottoSelezionato = nil }
+    }
+
+    /// Posizioni e proposte (di tutti i clienti) nate da una scheda.
+    func posizioniDelProdotto(_ id: String) -> [Posizione] {
+        dati.posizioni.filter { $0.prodottoId == id }
+    }
+
+    /// Crea una proposta per il cliente attivo con le condizioni della scheda e la apre in Posizioni.
+    func proponi(_ p: Prodotto) {
+        let proposta = p.proposta(per: clienteAttivoId)
+        salvaPosizione(proposta)
+        apriPosizione(proposta)
+        mostraAvviso("Proposta creata per \(clienteAttivo?.nome ?? "il cliente"): completa importi e durata")
+    }
+
+    func simula(_ p: Prodotto) {
+        var s = Simulazione(clienteId: clienteAttivoId, titolo: p.nome)
+        s.capitale = 10_000
+        s.versamentoMensile = 100
+        s.rendimento = p.rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito
+        s.costoIngresso = p.costoIngresso ?? 0
+        s.costoAnnuo = p.costoAnnuo ?? 0
+        s.aliquota = p.aliquotaFiscale ?? IpotesiCalcolo.aliquotaPredefinita
+        s.canale = p.canale
+        bozzaSimulazione = s
+        schedaSimulazioni = .simulatore
+        apri(.simulazioni)
+    }
+
+    // MARK: - Obiettivi
+
+    func obiettiviCliente(_ id: String) -> [Obiettivo] {
+        dati.obiettivi.filter { $0.clienteId == id }.sorted {
+            $0.priorita != $1.priorita ? $0.priorita > $1.priorita : $0.scadenza < $1.scadenza
+        }
+    }
+
+    func salvaObiettivo(_ o: Obiettivo) {
+        if let i = dati.obiettivi.firstIndex(where: { $0.id == o.id }) { dati.obiettivi[i] = o } else { dati.obiettivi.append(o) }
+        obiettivoSelezionato = o.id
+    }
+
+    func eliminaObiettivo(_ id: String) {
+        dati.obiettivi.removeAll { $0.id == id }
+        if obiettivoSelezionato == id { obiettivoSelezionato = nil }
+    }
+
+    /// Porta l'obiettivo nel simulatore: capitale già da parte e il versamento necessario.
+    func simula(_ o: Obiettivo) {
+        let a = AvanzamentoObiettivo(o, posizioni: posizioniCliente(o.clienteId))
+        var s = Simulazione(clienteId: o.clienteId, titolo: o.titolo)
+        s.capitale = a.accantonato
+        s.versamentoMensile = ((a.versamentoNecessario ?? 0) / 10).rounded(.up) * 10
+        s.anni = max(1, Int((Double(o.mesiMancanti) / 12).rounded(.up)))
+        s.rendimento = o.rendimento
+        s.aliquota = 0
+        s.inflazione = 0
+        clienteAttivoId = o.clienteId
+        bozzaSimulazione = s
+        schedaSimulazioni = .simulatore
+        apri(.simulazioni)
     }
 
     // MARK: - Incontri
@@ -592,7 +680,7 @@ final class StatoShell: ObservableObject {
         return FonteEve(oggi: Date(), nomeUtente: nomeUtente, cliente: c, posizioni: posizioniCliente(id),
                         appuntamenti: appuntamentiCliente(id), attivita: attivitaCliente(id),
                         analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id),
-                        incontri: incontriCliente(id))
+                        incontri: incontriCliente(id), obiettivi: obiettiviCliente(id))
     }
 
     /// Manda una domanda a Eve per il cliente attivo.

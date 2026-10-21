@@ -192,6 +192,85 @@ enum DatiDemo {
         return [concluso, oggi]
     }
 
+    /// Schede prodotto di prova (condizioni inventate: vanno sostituite con i KID ufficiali).
+    static func prodotti() -> [Prodotto] {
+        func p(_ id: String, _ nome: String, _ canale: Canale, _ area: AreaPosizione, _ configura: (inout Prodotto) -> Void) -> Prodotto {
+            var x = Prodotto(nome: nome, canale: canale, area: area)
+            x.id = id
+            x.verificatoIl = data(-40)
+            x.fonte = "Esempio didattico Prisma · sostituire con il KID ufficiale"
+            configura(&x)
+            return x
+        }
+        let alleanza = "Alleanza Assicurazioni"
+        return [
+            p("prodotto-risparmio-rivalutabile", "Piano di risparmio rivalutabile", .alleanza, .risparmio) {
+                $0.emittente = alleanza; $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"
+                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20; $0.sri = 2
+                $0.garanzie = "Capitale garantito a scadenza e in caso di decesso; consolidamento annuo dei rendimenti."
+                $0.liquidabilita = "Riscatto dopo il primo anno, con penali decrescenti fino al quinto."
+            },
+            p("prodotto-previdenza-pip", "Piano previdenziale integrativo", .alleanza, .previdenza) {
+                $0.emittente = alleanza; $0.tipologia = "Piano individuale pensionistico (PIP)"
+                $0.rendimentoAtteso = 3.5; $0.costoIngresso = 2; $0.costoAnnuo = 1.4; $0.aliquotaFiscale = 15; $0.sri = 3
+                $0.garanzie = "Gestione separata con garanzia di restituzione dei versamenti al pensionamento."
+                $0.liquidabilita = "Anticipazioni e riscatti nei casi previsti dalla normativa sulla previdenza complementare."
+            },
+            p("prodotto-multiramo", "Polizza multiramo", .alleanza, .investimento) {
+                $0.emittente = alleanza; $0.tipologia = "Polizza multiramo (Ramo I e Ramo III)"
+                $0.rendimentoAtteso = 4; $0.costoIngresso = 1; $0.costoAnnuo = 1.8; $0.aliquotaFiscale = 24; $0.sri = 3
+                $0.garanzie = "Solo la parte in gestione separata è garantita."
+                $0.liquidabilita = "Riscatto totale o parziale dopo un anno."
+                $0.verificatoIl = data(-420)
+            },
+            p("prodotto-tcm", "Temporanea caso morte", .alleanza, .protezione) {
+                $0.emittente = alleanza; $0.tipologia = "Temporanea caso morte a capitale costante"
+                $0.garanzie = "Capitale ai beneficiari in caso di decesso nel periodo di copertura."
+                $0.liquidabilita = "Nessun valore di riscatto."
+            },
+            p("prodotto-etf-globale", "ETF azionario globale", .indipendente, .investimento) {
+                $0.emittente = "Emittente ETF"; $0.tipologia = "ETF a replica fisica, piano di accumulo"
+                $0.rendimentoAtteso = 5; $0.costoAnnuo = 0.2; $0.aliquotaFiscale = 26; $0.sri = 4
+                $0.garanzie = "Nessuna garanzia di capitale."
+                $0.liquidabilita = "Liquidabile in borsa ogni giorno di mercato aperto."
+            },
+            p("prodotto-fondo-pensione", "Fondo pensione aperto", .indipendente, .previdenza) {
+                $0.emittente = "Gestore indipendente"; $0.tipologia = "Fondo pensione aperto, comparto bilanciato"
+                $0.rendimentoAtteso = 4; $0.costoAnnuo = 0.8; $0.aliquotaFiscale = 15; $0.sri = 3
+                $0.garanzie = "Comparto garantito disponibile a richiesta."
+                $0.liquidabilita = "Anticipazioni e riscatti nei casi previsti dalla normativa."
+            },
+            p("prodotto-obbligazionario", "Fondo obbligazionario euro", .indipendente, .investimento) {
+                $0.emittente = "SGR indipendente"; $0.tipologia = "Fondo comune obbligazionario"
+                $0.rendimentoAtteso = 3; $0.costoAnnuo = 1.1; $0.aliquotaFiscale = 20; $0.sri = 2
+                $0.liquidabilita = "Rimborso in pochi giorni lavorativi."
+            },
+        ]
+    }
+
+    /// Obiettivi di prova di Giulia e Marco.
+    static func obiettivi() -> [Obiettivo] {
+        var casa = Obiettivo(clienteId: "giulia", titolo: "Anticipo per la casa", area: .casa, importo: 60_000, scadenza: anni(3))
+        casa.id = "obiettivo-giulia-casa"
+        casa.priorita = .alta
+        casa.posizioniCollegate = ["pos-giulia-conto-corrente-e-conto-deposito"]
+        casa.rendimento = 2
+        casa.note = "Trilocale in città: anticipo del 20% più notaio e spese."
+        casa.creatoIl = data(-30)
+        var serenita = Obiettivo(clienteId: "giulia", titolo: "Un margine di serenità", area: .salute, importo: 12_000, scadenza: anni(1))
+        serenita.id = "obiettivo-giulia-riserva"
+        serenita.accantonato = 4_000
+        serenita.creatoIl = data(-30)
+        var studi = Obiettivo(clienteId: "marco", titolo: "Università di Anna", area: .famiglia, importo: 45_000, scadenza: anni(5))
+        studi.id = "obiettivo-marco-studi"
+        studi.priorita = .alta
+        studi.accantonato = 6_000
+        studi.rendimento = 2.5
+        studi.note = "Forse fuori sede: alloggio compreso."
+        studi.creatoIl = data(-25)
+        return [casa, serenita, studi]
+    }
+
     /// Scenari di prova nel simulatore.
     static func simulazioni() -> [Simulazione] {
         func s(_ id: String, _ cliente: String, _ titolo: String, _ configura: (inout Simulazione) -> Void) -> Simulazione {
@@ -274,6 +353,7 @@ enum DatiDemo {
                 $0.premio = 200; $0.frequenza = .mensile
                 $0.rendimentoAtteso = 3.5; $0.costoIngresso = 2; $0.costoAnnuo = 1.4; $0.aliquotaFiscale = 15
                 $0.esito = .presentata; $0.note = "Da rivedere dopo l'acquisto della casa."
+                $0.prodottoId = "prodotto-previdenza-pip"
             },
 
             // Marco Bianchi: solo Alleanza

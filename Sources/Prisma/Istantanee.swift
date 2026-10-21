@@ -93,6 +93,15 @@ enum Istantanee {
             s.schedaIncontro = .passi
             s.apri(.incontri)
         }),
+        ("23-prodotti", { s in
+            s.prodottoSelezionato = "prodotto-previdenza-pip"
+            s.apri(.prodotti)
+        }),
+        ("24-obiettivi", { s in
+            s.clienteAttivoId = "giulia"
+            s.obiettivoSelezionato = "obiettivo-giulia-casa"
+            s.apri(.obiettivi)
+        }),
         ("19-eve", { s in
             s.dati.impostazioni.eve.motore = .sintesi
             s.clienteAttivoId = "giulia"
