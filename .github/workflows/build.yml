@@ -15,11 +15,25 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Eve usa il modello Apple (FoundationModels), che si compila solo con l'SDK di macOS 26:
+      # si sceglie l'Xcode 26 più recente installato sul runner (il predefinito è il 16).
+      - name: Seleziona Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$XC" ]; then
+            echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+            echo "Uso $XC"
+          else
+            echo "Xcode 26 non trovato: Eve verrà compilata senza il modello Apple"
+          fi
+
       - name: Strumenti disponibili
         run: |
           xcode-select -p
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR"
           swift --version
-          ls -d /Applications/Xcode*.app
+          xcrun --show-sdk-version
 
       - name: Compila (Apple Silicon + Intel)
         run: swift build -c release --arch arm64 --arch x86_64
