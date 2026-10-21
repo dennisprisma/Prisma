@@ -637,6 +637,39 @@ enum Colori {
         static let vuotoTesto = Color(hex: "#9c907e")
     }
 
+    /// Profilo dei bisogni (scheda del cliente).
+    enum Bisogni {
+        static func area(_ a: AreaBisogno) -> Color {
+            switch a {
+            case .casa: return Color(hex: "#94b4a1")
+            case .famiglia: return Color(hex: "#6e9f9b")
+            case .lavoro: return Color(hex: "#8fa7bf")
+            case .pensione: return Color(hex: "#c5ab7e")
+            case .salute: return Color(hex: "#b07a6e")
+            case .patrimonio: return Color(hex: "#6386a5")
+            }
+        }
+        static func importanza(_ i: Importanza) -> Color {
+            switch i {
+            case .nessuna: return Color(hex: "#a9a49a")
+            case .bassa: return Color(hex: "#7f9a76")
+            case .media: return Color(hex: "#c08a3e")
+            case .alta: return Color(hex: "#b5523f")
+            }
+        }
+        static let ruotaFondo = Color(hex: "#ebe6da")
+        static let ruotaBordo = Color(hex: "#c9bfa9")
+        static let cartaFondo = Color(hex: "#fffdf6")
+        static let cartaBordo = Color(hex: "#cfc5b0")
+        static let cartaOmbra = Color(r: 89, g: 73, b: 46, a: 0.15)
+        static let confermato = Color(hex: "#5f7f4f")
+        static let confermatoFondo = Color(hex: "#eef3e6")
+        static let scartato = Color(hex: "#a39d92")
+        static let chipFondo = Color(hex: "#f4efe3")
+        static let chipBordo = Color(hex: "#c8bea8")
+        static let chipTesto = Color(hex: "#6b5d45")
+    }
+
     /// App Eve (.os-app-eve, passata "2011": lino grafite, conversazione azzurrina, nuvolette lucide).
     enum Eve {
         static let linoAlto = Color(hex: "#5c5e60")

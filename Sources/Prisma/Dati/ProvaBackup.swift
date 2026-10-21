@@ -24,7 +24,7 @@ enum ProvaBackup {
                 MessaggioEve(autore: .eve, testo: "Il quadro…", titolo: "Il quadro", motore: "Sintesi dai dati"),
             ]
             originale.impostazioni.eve.motore = .sintesi
-            guard !originale.simulazioni.isEmpty else {
+            guard !originale.simulazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
             }
@@ -72,6 +72,7 @@ enum ProvaBackup {
                   letto.appuntamenti.first?.tipo == .altro, letto.appuntamenti.first?.canale == nil,
                   letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil,
                   letto.simulazioni.isEmpty, letto.analisi.isEmpty, letto.conversazioni.isEmpty,
+                  letto.clienti.first?.bisogni == ProfiloBisogni(),
                   letto.impostazioni.eve == ImpostazioniEve() else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1

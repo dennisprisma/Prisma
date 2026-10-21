@@ -70,6 +70,11 @@ enum Istantanee {
             s.apri(.confronti)
         }),
         ("17-analisi360", { $0.apri(.analisi360) }),
+        ("20-clienti-bisogni", { s in
+            s.clienteAttivoId = "marco"
+            s.schedaCliente = .bisogni
+            s.apri(.clienti)
+        }),
         ("19-eve", { s in
             s.dati.impostazioni.eve.motore = .sintesi
             s.clienteAttivoId = "giulia"

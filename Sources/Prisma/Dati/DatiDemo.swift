@@ -37,6 +37,7 @@ enum DatiDemo {
         func nascita(_ anno: Int, _ mese: Int, _ giorno: Int) -> Date? {
             Calendar(identifier: .gregorian).date(from: DateComponents(year: anno, month: mese, day: giorno))
         }
+        let anno = Calendar(identifier: .gregorian).component(.year, from: Date())
         for i in elenco.indices {
             var c = elenco[i]
             c.consensi = Consensi(privacy: true, dataPrivacy: c.creatoIl, marketing: false)
@@ -54,6 +55,12 @@ enum DatiDemo {
                 c.profilo.orizzonteAnni = 10
                 c.profilo.esperienza = .base
                 c.profilo.obiettivi = "Anticipo per la nuova casa entro il 2029 e un margine di serenità."
+                c.bisogni.imposta(ValutazioneBisogno(area: .casa, importanza: .alta, orizzonte: .presto))
+                c.bisogni.imposta(ValutazioneBisogno(area: .pensione, importanza: .media, orizzonte: .lungo))
+                c.bisogni.imposta(ValutazioneBisogno(area: .salute, importanza: .bassa, orizzonte: .medio))
+                c.bisogni.eventi = [EventoVita(id: "evento-giulia-casa", tipo: .acquistoCasa, anno: anno + 3,
+                                               nota: "Trilocale in città, anticipo del 20%")]
+                c.bisogni.aggiornatoIl = c.creatoIl
             case "marco":
                 c.dataNascita = nascita(1978, 11, 5)
                 c.professione = "Ingegnere"
@@ -70,6 +77,12 @@ enum DatiDemo {
                 c.profilo.orizzonteAnni = 15
                 c.profilo.esperienza = .media
                 c.profilo.obiettivi = "Il percorso di studi di Anna e la protezione della famiglia."
+                c.bisogni.imposta(ValutazioneBisogno(area: .famiglia, importanza: .alta, orizzonte: .presto))
+                c.bisogni.imposta(ValutazioneBisogno(area: .pensione, importanza: .media, orizzonte: .lungo))
+                c.bisogni.imposta(ValutazioneBisogno(area: .patrimonio, importanza: .media, orizzonte: .medio))
+                c.bisogni.eventi = [EventoVita(id: "evento-marco-studi", tipo: .studiFigli, anno: anno + 5,
+                                               nota: "Università di Anna, forse fuori sede")]
+                c.bisogni.aggiornatoIl = c.creatoIl
             case "laura":
                 c.dataNascita = nascita(1985, 6, 30)
                 c.professione = "Consulente di comunicazione (libera professionista)"

@@ -21,7 +21,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 4: tipo, canale e posizione degli appuntamenti; note e appuntamento collegato delle attività.
     /// 5: scenari del simulatore e Analisi 360 dei clienti.
     /// 6: conversazioni e impostazioni di Eve.
-    static let versioneAttuale = 6
+    /// 7: profilo dei bisogni dei clienti (mappa, eventi di vita, bisogni rilevati confermati).
+    static let versioneAttuale = 7
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:],

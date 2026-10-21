@@ -109,6 +109,23 @@ enum ProvaCalcoli {
         verifica("Analisi di Giulia: capitale degli investimenti", a12.investimenti.capitale, 36_400 + 21_000)
         verifica("Analisi di Giulia: debiti", a12.protezione.debiti, 95_000)
 
+        // 13. Profilo dei bisogni: rilevazione dai dati e ruota
+        let clienti = DatiDemo.clienti()
+        if let cg = clienti.first(where: { $0.id == "giulia" }), let cm = clienti.first(where: { $0.id == "marco" }) {
+            let marco = DatiDemo.posizioni().filter { $0.clienteId == "marco" }
+            let rg = MotoreBisogni.rileva(cliente: cg, posizioni: giulia, analisi: Analisi360(cliente: cg, posizioni: giulia))
+            let rm = MotoreBisogni.rileva(cliente: cm, posizioni: marco, analisi: Analisi360(cliente: cm, posizioni: marco))
+            verifica("Giulia: rilevata la previdenza da avviare", rg.contains { $0.id == "previdenza-assente" } ? 1 : 0, 1)
+            verifica("Giulia: rilevato l'acquisto della casa (evento di vita)", rg.contains { $0.area == .casa && $0.importanza == .alta } ? 1 : 0, 1)
+            verifica("Marco: rilevata la protezione della famiglia", rm.contains { $0.id == "protezione-famiglia" } ? 1 : 0, 1)
+            let ruota = MotoreBisogni.ruota(rg, profilo: cg.bisogni)
+            verifica("Giulia: casa al massimo nella ruota", Double(ruota[.casa]?.rawValue ?? 0), 3)
+            var scartato = cg.bisogni
+            scartato.esiti["previdenza-assente"] = false
+            scartato.imposta(ValutazioneBisogno(area: .pensione, importanza: .nessuna))
+            verifica("Bisogno scartato: la pensione esce dalla ruota", Double(MotoreBisogni.ruota(rg, profilo: scartato)[.pensione]?.rawValue ?? 9), 0)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
