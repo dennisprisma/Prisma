@@ -77,8 +77,8 @@ jobs:
             # Su macOS il bundle SwiftPM ha la struttura Contents/Resources
             RIS="$BUNDLE/Contents/Resources/Risorse"
             [ -d "$RIS" ] || { echo "Struttura inattesa del bundle:"; find "$BUNDLE" | head -40; exit 1; }
-            for f in Sources/Prisma/Risorse/Icone/*.png; do
-              test -f "$RIS/Icone/$(basename "$f")" || { echo "Manca $f nel .app"; exit 1; }
+            ( cd Sources/Prisma/Risorse && find . -type f ! -name '.*' ) | while read -r f; do
+              test -f "$RIS/$f" || { echo "Manca Risorse/$f nel .app"; exit 1; }
             done
             # Controllo a runtime: l'app deve trovare le risorse dal .app
             "$APP/Contents/MacOS/Prisma" --verifica-risorse

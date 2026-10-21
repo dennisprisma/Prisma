@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct PrismaApp: App {
+    @StateObject var stato = StatoShell()
+
     init() {
         if CommandLine.arguments.contains("--verifica-risorse") {
             exit(Risorse.verifica())
@@ -9,9 +11,27 @@ struct PrismaApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        Window("Prisma", id: "prisma") {
+            ShellView()
+                .environmentObject(stato)
         }
-        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1440, height: 900)
+        .commands {
+            CommandMenu("Vai") {
+                Button("Scrivania") { stato.mostraScrivania() }
+                    .keyboardShortcut("0", modifiers: .option)
+                Divider()
+                ForEach(Array(AppPrisma.allCases.prefix(9).enumerated()), id: \.element) { indice, app in
+                    Button(app.titolo) { stato.apri(app) }
+                        .keyboardShortcut(KeyEquivalent(Character("\(indice + 1)")), modifiers: .option)
+                }
+                Divider()
+                ForEach(Array(AppPrisma.allCases.dropFirst(9))) { app in
+                    Button(app.titolo) { stato.apri(app) }
+                }
+            }
+            CommandGroup(replacing: .newItem) {}
+        }
     }
 }
