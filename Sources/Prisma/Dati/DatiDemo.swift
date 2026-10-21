@@ -192,6 +192,78 @@ enum DatiDemo {
         return [concluso, oggi]
     }
 
+    /// Documenti di prova: un KID e una polizza con testo inventato (nessun file sul disco).
+    static func documenti() -> [Documento] {
+        var kid = Documento(clienteId: "giulia", titolo: "KID · Fondo pensione aperto Orizzonte", tipo: .kid)
+        kid.id = "doc-giulia-kid"
+        kid.pagine = testoDocumento("doc-giulia-kid")?.count ?? 0
+        kid.dimensione = 184_320
+        kid.importatoIl = data(-2, 16, 40)
+        kid.lettura = .letto
+        kid.campi = EstrattoreDocumento.conRegole(testoDocumento("doc-giulia-kid") ?? [])
+        var polizza = Documento(clienteId: "marco", titolo: "Polizza Infortuni famiglia", tipo: .polizza)
+        polizza.id = "doc-marco-polizza"
+        polizza.pagine = testoDocumento("doc-marco-polizza")?.count ?? 0
+        polizza.dimensione = 402_115
+        polizza.importatoIl = data(-12, 11, 5)
+        polizza.lettura = .letto
+        polizza.pagineOCR = 1
+        polizza.campi = EstrattoreDocumento.conRegole(testoDocumento("doc-marco-polizza") ?? []).map { c in
+            var x = c
+            x.confermato = true
+            return x
+        }
+        polizza.posizioneId = "pos-marco-infortuni-famiglia"
+        return [kid, polizza]
+    }
+
+    /// Testo dei documenti di prova, pagina per pagina.
+    static func testoDocumento(_ id: String) -> [String]? {
+        switch id {
+        case "doc-giulia-kid":
+            return [
+                """
+                Documento contenente le informazioni chiave
+                Scopo: il presente documento contiene informazioni chiave relative a questo prodotto d'investimento.
+                Prodotto: Fondo pensione aperto Orizzonte, comparto Bilanciato
+                Ideatore del PRIIP: Orizzonte SGR S.p.A.
+                Tipo: Fondo pensione aperto a contribuzione definita
+                Cos'è questo prodotto? Il comparto investe in obbligazioni e azioni dei mercati internazionali.
+                """,
+                """
+                Quali sono i rischi e qual è il potenziale rendimento?
+                Abbiamo classificato questo prodotto nella classe di rischio 3 su 7, che corrisponde alla classe di rischio media-bassa.
+                Periodo di detenzione raccomandato: 15 anni
+                Scenari di performance
+                Scenario moderato  Possibile rimborso al netto dei costi 13.450 €  Rendimento medio per ciascun anno 3,2%
+                """,
+                """
+                Quali sono i costi?
+                Costi di ingresso: non applichiamo costi di ingresso, 0,00%
+                Costi di uscita: 0,00%
+                Commissioni di gestione e altri costi amministrativi o di esercizio: 0,85% del valore dell'investimento all'anno
+                Incidenza annuale dei costi: 0,95% ogni anno
+                """,
+            ]
+        case "doc-marco-polizza":
+            return [
+                """
+                ALLEANZA ASSICURAZIONI S.p.A.
+                Polizza n. AL-2025-551203  Infortuni famiglia
+                Contraente: Marco Bianchi
+                Assicurato: Marco Bianchi e nucleo familiare
+                Beneficiari: gli assicurati o i loro eredi legittimi
+                Decorrenza: 01/12/2025
+                Scadenza: 01/12/2026
+                Capitale assicurato: 150.000,00
+                Premio annuo: 380,00
+                """,
+            ]
+        default:
+            return nil
+        }
+    }
+
     /// Schede prodotto di prova (condizioni inventate: vanno sostituite con i KID ufficiali).
     static func prodotti() -> [Prodotto] {
         func p(_ id: String, _ nome: String, _ canale: Canale, _ area: AreaPosizione, _ configura: (inout Prodotto) -> Void) -> Prodotto {

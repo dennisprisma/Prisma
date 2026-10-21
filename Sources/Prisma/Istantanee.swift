@@ -102,6 +102,16 @@ enum Istantanee {
             s.obiettivoSelezionato = "obiettivo-giulia-casa"
             s.apri(.obiettivi)
         }),
+        ("25-documenti-kid", { s in
+            s.clienteAttivoId = "giulia"
+            s.documentoSelezionato = "doc-giulia-kid"
+            s.apri(.documenti)
+        }),
+        ("26-documenti-polizza", { s in
+            s.clienteAttivoId = "marco"
+            s.documentoSelezionato = "doc-marco-polizza"
+            s.apri(.documenti)
+        }),
         ("19-eve", { s in
             s.dati.impostazioni.eve.motore = .sintesi
             s.clienteAttivoId = "giulia"
