@@ -5,7 +5,7 @@ import Foundation
 /// pagina per blocco), così l'archivio JSON resta leggero.
 struct Documento: Identifiable, Codable, Hashable {
     enum Tipo: String, Codable, CaseIterable, Identifiable {
-        case kid, polizza, estrattoConto, proposta, altro
+        case kid, polizza, estrattoConto, proposta, prospetto, report, altro
 
         var id: String { rawValue }
 
@@ -15,9 +15,14 @@ struct Documento: Identifiable, Codable, Hashable {
             case .polizza: return "Polizza o contratto"
             case .estrattoConto: return "Estratto conto"
             case .proposta: return "Proposta"
+            case .prospetto: return "Prospetto di Prisma"
+            case .report: return "Report per il cliente"
             case .altro: return "Altro"
             }
         }
+
+        /// Prospetti e report li scrive Prisma: non c'è niente da estrarre.
+        var creatoDaPrisma: Bool { self == .prospetto || self == .report }
 
         var breve: String {
             switch self {
@@ -25,6 +30,8 @@ struct Documento: Identifiable, Codable, Hashable {
             case .polizza: return "Polizza"
             case .estrattoConto: return "Estratto"
             case .proposta: return "Proposta"
+            case .prospetto: return "Prospetto"
+            case .report: return "Report"
             case .altro: return "Altro"
             }
         }

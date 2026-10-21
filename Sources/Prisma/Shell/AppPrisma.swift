@@ -25,7 +25,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .attivita: return "Attività"
         case .note: return "Note"
         case .documenti: return "Documenti"
-        case .presentazioni: return "Presentazioni"
+        case .presentazioni: return "Prospetti e report"
         case .eve: return "Eve"
         case .ricerca: return "Ricerca"
         case .impostazioni: return "Impostazioni"
@@ -46,7 +46,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .attivita: return "Un passo alla volta"
         case .note: return "Le parole da ricordare"
         case .documenti: return "Tutto al proprio posto"
-        case .presentazioni: return "Una prospettiva condivisa"
+        case .presentazioni: return "Il dettaglio per te, l'essenziale per il cliente"
         case .eve: return "Un filo tra le tue app"
         case .ricerca: return "Ritrova ciò che conta"
         case .impostazioni: return "Il tuo modo di lavorare"
@@ -118,7 +118,8 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
             return "Fa parte del modulo Posizioni, il cuore di Prisma, con il canale Alleanza / indipendente sempre in vista."
         case .eve: return "Eve arriva con il suo modulo: lettura dei documenti, estrazione dei dati e risposte in chat, tutto sul Mac."
         case .documenti: return "KID, polizze ed estratti conto letti sul Mac, con i dati da confermare."
-        case .note, .presentazioni, .ricerca: return "Arriva nelle prossime fasi di sviluppo."
+        case .presentazioni: return "Prospetti dettagliati per il consulente e report essenziali per il cliente, in PDF."
+        case .note, .ricerca: return "Arriva nelle prossime fasi di sviluppo."
         case .impostazioni: return "Profilo, backup manuale e settimanale, ripristino e impostazioni di Eve."
         }
     }

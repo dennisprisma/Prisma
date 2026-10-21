@@ -9,6 +9,42 @@ struct ElementoConfronto: Identifiable {
     let parametri: ParametriProiezione
 
     var id: VoceConfronto { voce }
+
+    /// Le voci confrontabili di un cliente: posizioni proiettabili (prima quelle in essere) e scenari salvati.
+    static func elenco(_ dati: DatiPrisma, cliente: String) -> [ElementoConfronto] {
+        let orizzonte = dati.clienti.first { $0.id == cliente }?.profilo.orizzonteAnni
+        let posizioni = dati.posizioni
+            .filter { $0.clienteId == cliente && $0.area.proiettabile && $0.stato != .chiusa }
+            .sorted { ($0.stato == .inEssere ? 0 : 1, $0.nome) < ($1.stato == .inEssere ? 0 : 1, $1.nome) }
+            .map { p in
+                ElementoConfronto(voce: .posizione(p.id), titolo: p.nome,
+                                  sottotitolo: "\(p.stato == .proposta ? "Proposta" : "In essere") · \(p.area.nome)",
+                                  canale: p.canale, parametri: ParametriProiezione(posizione: p, orizzonteCliente: orizzonte))
+            }
+        let scenari = dati.simulazioni.filter { $0.clienteId == cliente }.sorted { $0.creataIl > $1.creataIl }.map { s in
+            ElementoConfronto(voce: .simulazione(s.id), titolo: s.titolo, sottotitolo: "Scenario del simulatore",
+                              canale: s.canale, parametri: s.parametri)
+        }
+        return posizioni + scenari
+    }
+
+    /// Le due voci da mettere a fronte: quelle scelte o, se nessuna, una proposta contro la posizione in essere più vicina.
+    static func coppia(_ tutte: [ElementoConfronto], a sceltaA: VoceConfronto?, b sceltaB: VoceConfronto?,
+                       posizioni: [Posizione]) -> (ElementoConfronto?, ElementoConfronto?) {
+        func trova(_ v: VoceConfronto?) -> ElementoConfronto? { v.flatMap { x in tutte.first { $0.voce == x } } }
+        var a = trova(sceltaA)
+        var b = trova(sceltaB)
+        if a == nil && b == nil {
+            if let proposta = posizioni.first(where: { $0.stato == .proposta && $0.area.proiettabile }) {
+                let inEssere = posizioni.filter { $0.stato == .inEssere && $0.area.proiettabile }
+                a = trova((inEssere.first { $0.area == proposta.area } ?? inEssere.first).map { .posizione($0.id) })
+                b = trova(.posizione(proposta.id))
+            }
+            if a == nil { a = tutte.first }
+            if b == nil { b = tutte.first { $0.voce != a?.voce } }
+        }
+        return (a, b)
+    }
 }
 
 /// App Confronti (.os-app-comparisons): due voci del dossier fianco a fianco, per esempio
@@ -19,40 +55,11 @@ struct AppConfronti: View {
     private var cliente: String { stato.clienteAttivoId }
 
     /// Tutte le voci confrontabili del cliente.
-    private var voci: [ElementoConfronto] {
-        let orizzonte = stato.cliente(cliente)?.profilo.orizzonteAnni
-        let posizioni = stato.posizioniCliente(cliente)
-            .filter { $0.area.proiettabile && $0.stato != .chiusa }
-            .sorted { ($0.stato == .inEssere ? 0 : 1, $0.nome) < ($1.stato == .inEssere ? 0 : 1, $1.nome) }
-            .map { p in
-                ElementoConfronto(voce: .posizione(p.id), titolo: p.nome,
-                                  sottotitolo: "\(p.stato == .proposta ? "Proposta" : "In essere") · \(p.area.nome)",
-                                  canale: p.canale, parametri: ParametriProiezione(posizione: p, orizzonteCliente: orizzonte))
-            }
-        let scenari = stato.simulazioniCliente(cliente).map { s in
-            ElementoConfronto(voce: .simulazione(s.id), titolo: s.titolo, sottotitolo: "Scenario del simulatore",
-                              canale: s.canale, parametri: s.parametri)
-        }
-        return posizioni + scenari
-    }
+    private var voci: [ElementoConfronto] { ElementoConfronto.elenco(stato.dati, cliente: cliente) }
 
     /// Le due voci scelte, con una scelta predefinita sensata: una proposta contro la posizione in essere più vicina.
     private var coppia: (ElementoConfronto?, ElementoConfronto?) {
-        let tutte = voci
-        func trova(_ v: VoceConfronto?) -> ElementoConfronto? { v.flatMap { x in tutte.first { $0.voce == x } } }
-        var a = trova(stato.confrontoA)
-        var b = trova(stato.confrontoB)
-        if a == nil && b == nil {
-            let proposta = stato.posizioniCliente(cliente).first { $0.stato == .proposta && $0.area.proiettabile }
-            if let proposta {
-                let inEssere = stato.posizioniCliente(cliente).filter { $0.stato == .inEssere && $0.area.proiettabile }
-                a = trova((inEssere.first { $0.area == proposta.area } ?? inEssere.first).map { .posizione($0.id) })
-                b = trova(.posizione(proposta.id))
-            }
-            if a == nil { a = tutte.first }
-            if b == nil { b = tutte.first { $0.voce != a?.voce } }
-        }
-        return (a, b)
+        ElementoConfronto.coppia(voci, a: stato.confrontoA, b: stato.confrontoB, posizioni: stato.posizioniCliente(cliente))
     }
 
     var body: some View {
@@ -96,6 +103,16 @@ struct AppConfronti: View {
         VoceNavigazione(titolo: "⇄ Inverti A e B", attiva: false) {
             stato.confrontoA = b?.voce
             stato.confrontoB = a?.voce
+        }
+        if let a, let b {
+            EtichettaRail(testo: "Prospetto")
+            Button("Prospetto in PDF") { stato.apriProspetto(.confronto(a.voce, b.voce)) }
+                .buttonStyle(StileBlu())
+            Text("Ipotesi, esiti e differenze anno per anno, impaginati su carta.")
+                .font(Tipo.kpiNota)
+                .foregroundColor(Colori.Analisi.kpiNota)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 3)
         }
         CollegatiRail(app: [.posizioni, .simulazioni, .analisi360])
     }

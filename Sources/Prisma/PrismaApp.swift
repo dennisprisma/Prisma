@@ -18,6 +18,10 @@ struct PrismaApp: App {
         if argomenti.contains("--prova-eve") {
             exit(ProvaEve.esegui())
         }
+        if let i = argomenti.firstIndex(of: "--prova-prospetti") {
+            let cartella = i + 1 < argomenti.count && !argomenti[i + 1].hasPrefix("--") ? URL(fileURLWithPath: argomenti[i + 1], isDirectory: true) : nil
+            exit(ProvaProspetti.esegui(cartella: cartella))
+        }
         if let i = argomenti.firstIndex(of: "--istantanee"), i + 1 < argomenti.count {
             let metodo = argomenti.firstIndex(of: "--metodo").flatMap { $0 + 1 < argomenti.count ? argomenti[$0 + 1] : nil } ?? "finestra"
             exit(Istantanee.genera(in: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true), metodo: metodo))
