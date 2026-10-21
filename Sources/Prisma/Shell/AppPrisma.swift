@@ -37,7 +37,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .clienti: return "Le persone, prima di tutto"
         case .analisi360: return "Previdenza, protezione, investimenti, risparmio"
         case .incontri: return "Dall'ascolto ai prossimi passi"
-        case .posizioni: return "In essere e in proposta, canale per canale"
+        case .posizioni: return "In essere e in proposta"
         case .obiettivi: return "Un nome al futuro"
         case .confronti: return "Le ipotesi una accanto all'altra"
         case .prodotti: return "Condizioni, costi e fonti"
