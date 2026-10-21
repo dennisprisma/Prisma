@@ -124,7 +124,7 @@ struct AppAttivita: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 12)
     }
 
     private func numero(_ n: Int, _ etichetta: String) -> some View {

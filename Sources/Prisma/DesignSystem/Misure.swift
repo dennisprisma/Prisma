@@ -87,7 +87,7 @@ enum Misure {
         static let cuoioRaggio: CGFloat = 4
         static let cucitura: CGFloat = 7
         static let targhetta: CGFloat = 50
-        static let anello = CGSize(width: 9, height: 22)
+        static let anello = CGSize(width: 10, height: 26)
         static let anelli = 4
         static let rientroAnelli: CGFloat = 0.12
         static let rigatura: CGFloat = 49
