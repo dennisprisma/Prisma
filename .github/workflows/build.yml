@@ -1,35 +1,86 @@
-name: Build Mac App
+name: Build Prisma
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
+    # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Compila (Apple Silicon + Intel)
         run: swift build -c release --arch arm64 --arch x86_64
 
-      - name: Crea MiaApp.app
+      - name: Genera AppIcon.icns
         run: |
-          BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/MiaApp"
-          APP=MiaApp.app
+          if [ -f Design/Icone/AppIcon.png ]; then
+            ICONSET=AppIcon.iconset
+            mkdir -p "$ICONSET"
+            for s in 16 32 128 256 512; do
+              sips -z $s $s Design/Icone/AppIcon.png --out "$ICONSET/icon_${s}x${s}.png" > /dev/null
+              d=$((s * 2))
+              sips -z $d $d Design/Icone/AppIcon.png --out "$ICONSET/icon_${s}x${s}@2x.png" > /dev/null
+            done
+            iconutil -c icns "$ICONSET" -o AppIcon.icns
+            ls -la AppIcon.icns
+          else
+            echo "Design/Icone/AppIcon.png assente: nessuna icona"
+          fi
+
+      - name: Crea Prisma.app
+        run: |
+          BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+          APP=Prisma.app
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp "$BIN" "$APP/Contents/MacOS/MiaApp"
+          cp "$BIN_DIR/Prisma" "$APP/Contents/MacOS/Prisma"
           cp Info.plist "$APP/Contents/Info.plist"
           if [ -f AppIcon.icns ]; then
             cp AppIcon.icns "$APP/Contents/Resources/"
             /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
           fi
+          # Bundle delle risorse SwiftPM: va in Contents/Resources (non nella
+          # radice del .app, che romperebbe la firma).
+          for b in "$BIN_DIR"/*.bundle; do
+            [ -e "$b" ] || continue
+            echo "Copio $(basename "$b")"
+            ditto "$b" "$APP/Contents/Resources/$(basename "$b")"
+          done
           codesign --force --deep --sign - "$APP"
-          ditto -c -k --keepParent "$APP" MiaApp.zip
 
-      - uses: actions/upload-artifact@v4
+      - name: Verifica Prisma.app
+        run: |
+          APP=Prisma.app
+          set -e
+          test -x "$APP/Contents/MacOS/Prisma"
+          lipo -info "$APP/Contents/MacOS/Prisma" | tee /dev/stderr | grep -q arm64
+          lipo -info "$APP/Contents/MacOS/Prisma" | grep -q x86_64
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")" = Prisma
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = local.prisma
+          if [ -f Design/Icone/AppIcon.png ]; then
+            test -f "$APP/Contents/Resources/AppIcon.icns"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$APP/Contents/Info.plist")" = AppIcon
+          fi
+          if [ -d Sources/Prisma/Risorse ]; then
+            test -d "$APP/Contents/Resources/Prisma_Prisma.bundle"
+            for f in Sources/Prisma/Risorse/Icone/*.png; do
+              test -f "$APP/Contents/Resources/Prisma_Prisma.bundle/Risorse/Icone/$(basename "$f")" || { echo "Manca $f nel .app"; exit 1; }
+            done
+            # Controllo a runtime: l'app deve trovare le risorse dal .app
+            "$APP/Contents/MacOS/Prisma" --verifica-risorse
+          fi
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "Prisma.app verificata"
+
+      - name: Crea zip
+        run: ditto -c -k --keepParent Prisma.app Prisma.zip
+
+      - uses: actions/upload-artifact@v6
         with:
-          name: MiaApp
-          path: MiaApp.zip
+          name: Prisma
+          path: Prisma.zip
           retention-days: 7

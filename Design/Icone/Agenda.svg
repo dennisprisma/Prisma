@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" fill="none" role="img" aria-label="Agenda"><title>Agenda</title><defs><linearGradient id="agenda-__base" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#ac1418"/><stop offset="1" stop-color="#c9c5bb"/></linearGradient><linearGradient id="agenda-__rim" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.92"/><stop offset="0.4" stop-color="#fff" stop-opacity="0.12"/><stop offset="0.75" stop-color="#000" stop-opacity="0.05"/><stop offset="1" stop-color="#000" stop-opacity="0.6"/></linearGradient><linearGradient id="agenda-__glass" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.1"/><stop offset="0.82" stop-color="#fff" stop-opacity="0.015"/><stop offset="1" stop-color="#fff" stop-opacity="0.027000000000000003"/></linearGradient><radialGradient id="agenda-__shade" cx="45%" cy="30%" r="75%"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.16"/></radialGradient><clipPath id="agenda-__clip"><rect x="8" y="6" width="240" height="240" rx="43"/></clipPath><linearGradient id="agenda-red" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#ff7767"/><stop offset="0.17" stop-color="#ef352d"/><stop offset="0.68" stop-color="#cc171d"/><stop offset="1" stop-color="#a50c12"/></linearGradient><linearGradient id="agenda-face" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#fffefa"/><stop offset="1" stop-color="#f0eee8"/></linearGradient><linearGradient id="agenda-pageEdge" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#c2bdb5"/><stop offset="0.5" stop-color="#fffdfa"/><stop offset="1" stop-color="#aaa59d"/></linearGradient><linearGradient id="agenda-dateInk" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#151515"/><stop offset="1" stop-color="#252321"/></linearGradient><filter id="agenda-dateShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="0.9" stdDeviation="0.25" flood-color="#000" flood-opacity="0.2"/></filter><filter id="agenda-calendarShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="4" stdDeviation="2" flood-color="#000" flood-opacity="0.35"/></filter></defs>
+ <rect x="8" y="11" width="240" height="240" rx="44" fill="#000" opacity=".08"/><rect x="8" y="9" width="240" height="240" rx="43" fill="#000" opacity=".15"/>
+ <g clip-path="url(#agenda-__clip)"><rect x="8" y="6" width="240" height="240" rx="43" fill="url(#agenda-__base)"/>
+  <path d="M12 62H244V221Q244 243 220 243H36Q12 243 12 221Z" fill="url(#agenda-pageEdge)"/>
+  <path d="M16 227H240 M19 232H237 M23 237H233" stroke="#8b8985" stroke-opacity=".5"/>
+  <path d="M8 59H248V217Q248 238 222 238H34Q8 238 8 217Z" fill="url(#agenda-face)"/>
+  <path d="M9 75H247" stroke="#7c1517" stroke-opacity=".22" stroke-width="6"/>
+  <path d="M8 49Q8 6 51 6H205Q248 6 248 49V76H8Z" fill="url(#agenda-red)"/>
+  <path d="M12 73H244" stroke="#7c1317" stroke-width="1.5"/>
+  <path d="M13 76H243" stroke="#f9b0a3" stroke-opacity=".65"/>
+  <path d="M47 13H208" stroke="#ffb7a2" stroke-opacity=".6" stroke-width="1.5"/>
+  <g fill="none" stroke="#97151a" stroke-width="3.7" stroke-linecap="square" transform="translate(0 1.2)">
+    <path d="M104 28C98 28 96 33 96 40C96 47 98 52 104 52C110 52 112 47 112 40C112 33 110 28 104 28Z M119 29H136 M127.5 29V51 M143 29H160 M151.5 29V51"/>
+  </g>
+  <g fill="none" stroke="#fffaf0" stroke-width="3.2" stroke-linecap="square">
+    <path d="M104 28C98 28 96 33 96 40C96 47 98 52 104 52C110 52 112 47 112 40C112 33 110 28 104 28Z M119 29H136 M127.5 29V51 M143 29H160 M151.5 29V51"/>
+  </g>
+  <g fill="url(#agenda-dateInk)" filter="url(#agenda-dateShadow)">
+    <path d="M86 99H101V215H79V125L58 137V116Z"/>
+    <path fill-rule="evenodd" d="M158 97C130 97 115 114 115 137C115 160 128 176 151 176C162 176 170 172 176 164C175 188 168 200 155 200C145 200 138 194 137 185H117C119 206 132 218 155 218C185 218 199 195 199 155C199 114 187 97 158 97ZM157 115C170 115 177 123 177 137C177 151 169 159 157 159C145 159 138 151 138 137C138 123 145 115 157 115Z"/>
+  </g>
+  
+ <rect x="8" y="6" width="240" height="240" rx="43" fill="url(#agenda-__shade)"/>
+ <path d="M8 49Q8 6 51 6H205Q248 6 248 49V101Q128 143 8 101Z" fill="url(#agenda-__glass)"/>
+ </g>
+ <rect x="9.5" y="7.5" width="237" height="237" rx="42" fill="none" stroke="url(#agenda-__rim)" stroke-width="2"/>
+ <rect x="8" y="6" width="240" height="240" rx="43" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="1.2"/></svg>

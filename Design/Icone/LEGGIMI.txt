@@ -1,0 +1,50 @@
+PRISMA OS — ICONE RIDISEGNATE
+
+Collezione originale ispirata allo stile skeuomorfico di iOS 5 e OS X Lion.
+Ogni icona è stata ridisegnata con oggetti, materiali, volumi e riflessi dedicati.
+
+CONTENUTO
+- 17 SVG individuali: 16 applicazioni e Prisma / Scrivania.
+- Tutte_le_icone_SVG.txt: sorgente completo di tutte le icone, da caricare a Claude.
+- Anteprima_icone.png: tavola di confronto.
+
+SPECIFICHE
+Dimensioni predefinite: 512 × 512 px. ViewBox: 0 0 256 256.
+Ridimensionabili mantenendo il rapporto 1:1.
+Sfondi esterni trasparenti; ombra, angoli arrotondati e riflessi già inclusi.
+Tutto è vettoriale: tracciati, gradienti e filtri SVG. Nessuna immagine raster
+incorporata, risorsa esterna, libreria, script o dipendenza da font.
+Gli ID sono prefissati per icona per evitare collisioni tra icone diverse.
+
+ISTRUZIONI PER CLAUDE
+Carica Tutte_le_icone_SVG.txt insieme al file Prisma_OS.html e chiedi:
+
+«Sostituisci le icone di Prisma OS con questi SVG completi. Mantieni la
+struttura, le 16 app, i testi italiani, i dati demo, tutti i data-action,
+i collegamenti e il salvataggio locale. Conserva il file HTML autonomo e
+lo sfondo attuale. Usa gli SVG inline, senza risorse esterne. Rispetta il
+viewBox quadrato e lascia visibile l'intera ombra; non aggiungere cornici,
+riflessi, sfondi o ombre che duplicano quelli già disegnati negli SVG.
+Per istanze inline ripetute della stessa icona (es. dock e scrivania),
+rendi univoci gli ID di ogni istanza e i relativi riferimenti url(#...).»
+
+MAPPATURA
+Clienti: Clienti.svg → clients
+Analisi: Analisi.svg → analysis
+Analisi 360: Analisi_360.svg → planning
+Obiettivi: Obiettivi.svg → goals
+Simulazioni: Simulazioni.svg → simulations
+Agenda: Agenda.svg → agenda
+Attività: Attivita.svg → tasks
+Note: Note.svg → notes
+Documenti: Documenti.svg → documents
+Presentazioni: Presentazioni.svg → presentation (ID app: presentations)
+Incontri: Incontri.svg → meetings
+Prodotti: Prodotti.svg → products
+Confronti: Confronti.svg → comparisons
+Eve: Eve.svg → eve
+Ricerca: Ricerca.svg → search
+Impostazioni: Impostazioni.svg → settings
+Prisma: Prisma.svg → home
+
+Verificati: XML, ID, riferimenti interni e rendering a 512, 64 e 32 px.

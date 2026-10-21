@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>MiaApp</string>
+    <string>Prisma</string>
     <key>CFBundleDisplayName</key>
-    <string>MiaApp</string>
+    <string>Prisma</string>
     <key>CFBundleExecutable</key>
-    <string>MiaApp</string>
+    <string>Prisma</string>
     <key>CFBundleIdentifier</key>
-    <string>local.miaapp</string>
+    <string>local.prisma</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
