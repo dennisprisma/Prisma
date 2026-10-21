@@ -1,35 +1,128 @@
-name: Build Mac App
+name: Build Prisma
 
 on:
   push:
-    branches: [main]
+    branches: ['**', '!anteprime']
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
+    permissions:
+      contents: write
+    # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Strumenti disponibili
+        run: |
+          xcode-select -p
+          swift --version
+          ls -d /Applications/Xcode*.app
 
       - name: Compila (Apple Silicon + Intel)
         run: swift build -c release --arch arm64 --arch x86_64
 
-      - name: Crea MiaApp.app
+      - name: Genera AppIcon.icns
         run: |
-          BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/MiaApp"
-          APP=MiaApp.app
+          if [ -f Design/Icone/AppIcon.png ]; then
+            ICONSET=AppIcon.iconset
+            mkdir -p "$ICONSET"
+            for s in 16 32 128 256 512; do
+              sips -z $s $s Design/Icone/AppIcon.png --out "$ICONSET/icon_${s}x${s}.png" > /dev/null
+              d=$((s * 2))
+              sips -z $d $d Design/Icone/AppIcon.png --out "$ICONSET/icon_${s}x${s}@2x.png" > /dev/null
+            done
+            iconutil -c icns "$ICONSET" -o AppIcon.icns
+            ls -la AppIcon.icns
+          else
+            echo "Design/Icone/AppIcon.png assente: nessuna icona"
+          fi
+
+      - name: Crea Prisma.app
+        run: |
+          BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+          APP=Prisma.app
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp "$BIN" "$APP/Contents/MacOS/MiaApp"
+          cp "$BIN_DIR/Prisma" "$APP/Contents/MacOS/Prisma"
           cp Info.plist "$APP/Contents/Info.plist"
           if [ -f AppIcon.icns ]; then
             cp AppIcon.icns "$APP/Contents/Resources/"
             /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
           fi
+          # Bundle delle risorse SwiftPM: va in Contents/Resources (non nella
+          # radice del .app, che romperebbe la firma).
+          for b in "$BIN_DIR"/*.bundle; do
+            [ -e "$b" ] || continue
+            echo "Copio $(basename "$b")"
+            ditto "$b" "$APP/Contents/Resources/$(basename "$b")"
+          done
           codesign --force --deep --sign - "$APP"
-          ditto -c -k --keepParent "$APP" MiaApp.zip
 
-      - uses: actions/upload-artifact@v4
+      - name: Verifica Prisma.app
+        run: |
+          APP=Prisma.app
+          set -e
+          test -x "$APP/Contents/MacOS/Prisma"
+          lipo -info "$APP/Contents/MacOS/Prisma" | tee /dev/stderr | grep -q arm64
+          lipo -info "$APP/Contents/MacOS/Prisma" | grep -q x86_64
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")" = Prisma
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = local.prisma
+          if [ -f Design/Icone/AppIcon.png ]; then
+            test -f "$APP/Contents/Resources/AppIcon.icns"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$APP/Contents/Info.plist")" = AppIcon
+          fi
+          if [ -d Sources/Prisma/Risorse ]; then
+            BUNDLE="$APP/Contents/Resources/Prisma_Prisma.bundle"
+            test -d "$BUNDLE"
+            # Su macOS il bundle SwiftPM ha la struttura Contents/Resources
+            RIS="$BUNDLE/Contents/Resources/Risorse"
+            [ -d "$RIS" ] || { echo "Struttura inattesa del bundle:"; find "$BUNDLE" | head -40; exit 1; }
+            ( cd Sources/Prisma/Risorse && find . -type f ! -name '.*' ) | while read -r f; do
+              test -f "$RIS/$f" || { echo "Manca Risorse/$f nel .app"; exit 1; }
+            done
+            # Controllo a runtime: l'app deve trovare le risorse dal .app
+            "$APP/Contents/MacOS/Prisma" --verifica-risorse
+          fi
+          # Prova reale di backup, rotazione e ripristino in cartelle temporanee
+          "$APP/Contents/MacOS/Prisma" --prova-backup
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "Prisma.app verificata"
+
+      # Facoltative: se nessun metodo di disegno funziona sul runner, la build resta verde.
+      - name: Anteprime (istantanee delle schermate)
+        id: anteprime
+        run: |
+          for metodo in finestra livello renderer; do
+            rm -rf anteprime && mkdir anteprime
+            if "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime" --metodo "$metodo"; then
+              echo "Anteprime create con il metodo $metodo"
+              echo "ok=1" >> "$GITHUB_OUTPUT"
+              ls -la anteprime
+              break
+            fi
+            echo "Metodo $metodo non riuscito"
+          done
+
+      - name: Pubblica le anteprime sul branch anteprime
+        if: github.event_name == 'push' && steps.anteprime.outputs.ok == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd anteprime
+          printf 'branch: %s\ncommit: %s\ndata: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" "$(date -u +%FT%TZ)" > INFO.txt
+          git init -q -b anteprime
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Anteprime di $GITHUB_SHA"
+          git push -fq "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" anteprime
+
+      - name: Crea zip
+        run: ditto -c -k --keepParent Prisma.app Prisma.zip
+
+      - uses: actions/upload-artifact@v6
         with:
-          name: MiaApp
-          path: MiaApp.zip
+          name: Prisma
+          path: Prisma.zip
           retention-days: 7

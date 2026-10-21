@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" fill="none" role="img" aria-label="Confronti"><title>Confronti</title><defs><linearGradient id="comparisons-__base" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#684b6c"/><stop offset="1" stop-color="#25172e"/></linearGradient><linearGradient id="comparisons-__rim" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.92"/><stop offset="0.4" stop-color="#fff" stop-opacity="0.12"/><stop offset="0.75" stop-color="#000" stop-opacity="0.05"/><stop offset="1" stop-color="#000" stop-opacity="0.6"/></linearGradient><linearGradient id="comparisons-__glass" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.13"/><stop offset="0.82" stop-color="#fff" stop-opacity="0.015"/><stop offset="1" stop-color="#fff" stop-opacity="0.035100000000000006"/></linearGradient><radialGradient id="comparisons-__shade" cx="45%" cy="30%" r="75%"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.16"/></radialGradient><clipPath id="comparisons-__clip"><rect x="8" y="6" width="240" height="240" rx="43"/></clipPath><radialGradient id="comparisons-purple" cx="35%" cy="15%" r="90%"><stop offset="0" stop-color="#80658a"/><stop offset="0.5" stop-color="#4b3154"/><stop offset="1" stop-color="#21142a"/></radialGradient><filter id="comparisons-velvet" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".62" numOctaves="3" seed="10" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.1"/></feComponentTransfer><feBlend in="SourceGraphic" mode="soft-light"/></filter><linearGradient id="comparisons-gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0" stop-color="#fff5c7"/><stop offset="0.25" stop-color="#e4ca80"/><stop offset="0.5" stop-color="#a27b31"/><stop offset="0.75" stop-color="#f5df9b"/><stop offset="1" stop-color="#846022"/></linearGradient><linearGradient id="comparisons-goldHorizontal" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0" stop-color="#75501e"/><stop offset="0.25" stop-color="#e5c67a"/><stop offset="0.5" stop-color="#fff3bf"/><stop offset="0.75" stop-color="#b58b3e"/><stop offset="1" stop-color="#6d4818"/></linearGradient><linearGradient id="comparisons-goldVertical" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff5d0"/><stop offset="0.25" stop-color="#dbb760"/><stop offset="0.5" stop-color="#a17c35"/><stop offset="0.75" stop-color="#e2c276"/><stop offset="1" stop-color="#866021"/></linearGradient><linearGradient id="comparisons-bowl" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff3c5"/><stop offset="0.25" stop-color="#dfbd69"/><stop offset="0.5" stop-color="#a2772e"/><stop offset="0.75" stop-color="#e6c574"/><stop offset="1" stop-color="#6b4718"/></linearGradient><linearGradient id="comparisons-bowlInside" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#66441c"/><stop offset="0.5" stop-color="#b38b43"/><stop offset="1" stop-color="#e9d192"/></linearGradient><filter id="comparisons-scaleShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="4" stdDeviation="2.7" flood-color="#000" flood-opacity="0.64"/></filter><filter id="comparisons-chainShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="1.2" stdDeviation="0.8" flood-color="#000" flood-opacity="0.6"/></filter><filter id="comparisons-floorShadow" x="-50%" y="-300%" width="200%" height="700%"><feGaussianBlur stdDeviation="4"/></filter></defs>
+ <rect x="8" y="11" width="240" height="240" rx="44" fill="#000" opacity=".08"/><rect x="8" y="9" width="240" height="240" rx="43" fill="#000" opacity=".15"/>
+ <g clip-path="url(#comparisons-__clip)"><rect x="8" y="6" width="240" height="240" rx="43" fill="url(#comparisons-__base)"/><rect x="8" y="6" width="240" height="240" rx="43" fill="url(#comparisons-purple)" filter="url(#comparisons-velvet)"/>
+ <ellipse cx="130" cy="219" rx="68" ry="8" fill="#07000c" opacity=".55" filter="url(#comparisons-floorShadow)"/>
+ <g filter="url(#comparisons-scaleShadow)">
+ <path d="M77 209Q80 203 92 202H164Q176 203 179 209L183 216Q128 225 73 216Z" fill="url(#comparisons-goldVertical)" stroke="#74501d" stroke-width=".8"/>
+ <ellipse cx="128" cy="209" rx="51" ry="10" fill="url(#comparisons-gold)" stroke="#edd292" stroke-width=".65"/>
+ <ellipse cx="128" cy="208" rx="42" ry="6" fill="url(#comparisons-bowlInside)"/>
+ <path d="M101 204Q110 195 115 190H141Q146 196 155 204Q128 213 101 204Z" fill="url(#comparisons-goldVertical)" stroke="#886225" stroke-width=".8"/>
+ <ellipse cx="128" cy="190" rx="14" ry="4.6" fill="url(#comparisons-gold)"/>
+ <path d="M118 83H138L136 183Q142 187 140 191Q128 197 116 191Q114 187 120 183Z" fill="url(#comparisons-goldHorizontal)" stroke="#725121" stroke-width=".75"/>
+ <path d="M123 91L124 180" stroke="#fff6cc" stroke-width="1.2" opacity=".75"/>
+ <path d="M132 91L131 180" stroke="#6e4c1d" stroke-width="1.1" opacity=".5"/>
+ <path d="M115 84Q112 79 119 76H137Q144 79 141 84Q128 90 115 84Z" fill="url(#comparisons-goldVertical)" stroke="#70501f" stroke-width=".6"/>
+ <path d="M48 78Q74 80 102 68Q116 61 128 62Q140 61 154 68Q181 80 208 78L208 87Q181 90 153 78Q140 72 128 73Q116 72 103 78Q74 91 48 87Z" fill="url(#comparisons-goldVertical)" stroke="#69501f" stroke-width=".9"/>
+ <path d="M50 79Q76 81 103 69Q116 63 128 64Q140 63 153 69Q182 81 206 79" stroke="#fff1c4" stroke-width="1.4"/>
+ <path d="M52 84Q77 85 105 74Q128 65 151 74Q181 85 204 84" stroke="#8e6828" stroke-width=".7"/>
+ <circle cx="128" cy="66" r="11" fill="url(#comparisons-gold)" stroke="#755225" stroke-width=".8"/>
+ <circle cx="128" cy="66" r="5.4" fill="url(#comparisons-goldHorizontal)" stroke="#fff0af" stroke-width=".8"/>
+ <path d="M128 57V40" stroke="#422a12" stroke-width="5.6"/>
+ <path d="M128 57V39" stroke="url(#comparisons-goldHorizontal)" stroke-width="4.5"/>
+ <circle cx="128" cy="36" r="5.5" fill="url(#comparisons-gold)" stroke="#795523" stroke-width=".6"/>
+ <g stroke="url(#comparisons-gold)" stroke-width="1.8" filter="url(#comparisons-chainShadow)">
+ <path d="M64 86L30 151M64 86L98 151M64 86V153M192 86L158 151M192 86L226 151M192 86V153"/>
+ </g>
+ <g stroke="#fff2ba" stroke-width=".45" opacity=".85"><path d="M63 87L29 151M63 87L97 151M191 87L157 151M191 87L225 151"/></g>
+ <ellipse cx="64" cy="84" rx="4" ry="5" fill="url(#comparisons-gold)" stroke="#70511e" stroke-width=".7"/>
+ <ellipse cx="192" cy="84" rx="4" ry="5" fill="url(#comparisons-gold)" stroke="#70511e" stroke-width=".7"/>
+ <path d="M28 151Q64 140 100 151Q94 176 64 180Q34 176 28 151Z" fill="url(#comparisons-bowl)" stroke="#6d4c1e" stroke-width=".8"/>
+ <ellipse cx="64" cy="151" rx="36" ry="7.5" fill="url(#comparisons-bowlInside)" stroke="#f8df9f" stroke-width="1.4"/>
+ <path d="M33 156Q64 167 95 156" stroke="#fff1c1" stroke-opacity=".72" stroke-width="1.1"/>
+ <path d="M40 164Q64 176 88 164" stroke="#916c28" stroke-opacity=".6" stroke-width=".75"/>
+ <path d="M156 151Q192 140 228 151Q222 176 192 180Q162 176 156 151Z" fill="url(#comparisons-bowl)" stroke="#6d4c1e" stroke-width=".8"/>
+ <ellipse cx="192" cy="151" rx="36" ry="7.5" fill="url(#comparisons-bowlInside)" stroke="#f8df9f" stroke-width="1.4"/>
+ <path d="M161 156Q192 167 223 156" stroke="#fff1c1" stroke-opacity=".72" stroke-width="1.1"/>
+ <path d="M168 164Q192 176 216 164" stroke="#916c28" stroke-opacity=".6" stroke-width=".75"/>
+ </g>
+ <rect x="8" y="6" width="240" height="240" rx="43" fill="url(#comparisons-__shade)"/>
+ <path d="M8 49Q8 6 51 6H205Q248 6 248 49V101Q128 143 8 101Z" fill="url(#comparisons-__glass)"/>
+ </g>
+ <rect x="9.5" y="7.5" width="237" height="237" rx="42" fill="none" stroke="url(#comparisons-__rim)" stroke-width="2"/>
+ <rect x="8" y="6" width="240" height="240" rx="43" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="1.2"/></svg>

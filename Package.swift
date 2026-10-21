@@ -2,14 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "MiaApp",
+    name: "Prisma",
     platforms: [
         .macOS(.v13)
     ],
     targets: [
         .executableTarget(
-            name: "MiaApp",
-            path: "Sources/MiaApp"
+            name: "Prisma",
+            path: "Sources/Prisma",
+            resources: [
+                // Icone dell'interfaccia convertite da Design/Icone (PNG 512 px)
+                .copy("Risorse")
+            ]
         )
     ]
 )
