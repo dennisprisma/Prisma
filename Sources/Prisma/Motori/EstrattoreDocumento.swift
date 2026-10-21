@@ -62,7 +62,9 @@ enum EstrattoreDocumento {
     }
 
     private static func pulisci(_ s: String, campo: CampoDocumento) -> String {
-        var v = s.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ".,;:")))
+        let testuale = [.nomeProdotto, .emittente, .tipologia, .contraente, .assicurato, .beneficiari].contains(campo)
+        // Nei nomi il punto finale fa parte del testo ("S.p.A.")
+        var v = s.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: testuale ? ",;:" : ".,;:")))
         if campo == .nomeProdotto || campo == .emittente || campo == .contraente || campo == .assicurato {
             // Si ferma prima di eventuali altre etichette sulla stessa riga
             for separatore in ["  ", " - ", " – ", "Sito", "www", "Per ulteriori", "ISIN"] {
