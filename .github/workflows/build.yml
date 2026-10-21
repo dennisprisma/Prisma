@@ -66,9 +66,13 @@ jobs:
             test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$APP/Contents/Info.plist")" = AppIcon
           fi
           if [ -d Sources/Prisma/Risorse ]; then
-            test -d "$APP/Contents/Resources/Prisma_Prisma.bundle"
+            BUNDLE="$APP/Contents/Resources/Prisma_Prisma.bundle"
+            test -d "$BUNDLE"
+            # Su macOS il bundle SwiftPM ha la struttura Contents/Resources
+            RIS="$BUNDLE/Contents/Resources/Risorse"
+            [ -d "$RIS" ] || { echo "Struttura inattesa del bundle:"; find "$BUNDLE" | head -40; exit 1; }
             for f in Sources/Prisma/Risorse/Icone/*.png; do
-              test -f "$APP/Contents/Resources/Prisma_Prisma.bundle/Risorse/Icone/$(basename "$f")" || { echo "Manca $f nel .app"; exit 1; }
+              test -f "$RIS/Icone/$(basename "$f")" || { echo "Manca $f nel .app"; exit 1; }
             done
             # Controllo a runtime: l'app deve trovare le risorse dal .app
             "$APP/Contents/MacOS/Prisma" --verifica-risorse
