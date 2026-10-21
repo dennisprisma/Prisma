@@ -64,6 +64,14 @@ struct DettaglioPosizione: View {
             }
             .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 10)))
             Spacer()
+            if posizione.area.proiettabile {
+                Button("Simula") { stato.simula(posizione) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .help("Porta le ipotesi di questa posizione nel simulatore")
+                Button("Confronta") { stato.confronta(posizione) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .help(posizione.stato == .proposta ? "Confronta la proposta con la posizione in essere" : "Confronta con una proposta o un'altra posizione")
+            }
             if posizione.stato == .proposta {
                 Button("Segna come in essere") { stato.attivaProposta(posizione.id) }
                     .buttonStyle(StileBlu())

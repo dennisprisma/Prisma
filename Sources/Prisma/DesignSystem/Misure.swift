@@ -101,6 +101,17 @@ enum Misure {
         static let modulo = CGSize(width: 620, height: 600)
     }
 
+    enum Strumenti {
+        static let console: CGFloat = 300
+        static let lcd = CGSize(width: 124, height: 26)
+        static let ipotesi: CGFloat = 300
+        static let campo: CGFloat = 96
+        static let rigaCarta: CGFloat = 25
+        static let schedaArea: CGFloat = 150
+        static let colonnaConfronto: CGFloat = 150
+        static let raggio: CGFloat = 3
+    }
+
     enum Attivita {
         static let margine: CGFloat = 14
         static let margineRiga: CGFloat = 43

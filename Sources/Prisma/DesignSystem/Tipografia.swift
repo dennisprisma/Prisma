@@ -162,6 +162,29 @@ enum Tipo {
     static let attivitaSotto = contenuto(11)
     static let spunta = Font.custom("Arial", fixedSize: 12).weight(.bold)
 
+    // Strumenti di analisi
+    static let consoleTitolo = contenuto(12, .semibold)
+    static let consoleEtichetta = contenuto(12)
+    static let lcd = Font.custom("Courier New", fixedSize: 15).weight(.bold)
+    static let lcdUnita = contenuto(10, .semibold)
+    static let risultatoOcchiello = contenuto(10, .semibold)
+    static let risultatoGrande = contenuto(34, .light)
+    static let risultatoNota = contenuto(12)
+    static let risultatoDettaglio = contenuto(15, .medium)
+    static let strumentoOcchiello = contenuto(10)
+    static let strumentoTitolo = contenuto(22)
+    static let strumentoTesto = contenuto(13)
+    static let schedaAreaNumero = contenuto(11)
+    static let schedaAreaTitolo = contenuto(18, .semibold)
+    static let schedaAreaValore = contenuto(25)
+    static let schedaAreaNota = contenuto(12)
+    static let schedaRisultati = contenuto(12)
+    static let ipotesiTitolo = contenuto(12, .semibold)
+    static let ipotesiCampo = contenuto(13)
+    static let ipotesiNota = contenuto(11)
+    static let metodo = contenuto(12)
+    static let verdetto = contenuto(14)
+
     // Dock
     static let dockSuggerimento = sistema(11, .bold)
 

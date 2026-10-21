@@ -7,6 +7,14 @@ enum VistaAgenda: Hashable { case settimana, mese }
 
 enum FiltroAttivita: Hashable { case aperte, completate, tutte }
 
+enum SchedaSimulazioni: Hashable { case simulatore, scenari }
+
+/// Ciò che si può mettere a confronto: una posizione (in essere o proposta) o uno scenario salvato.
+enum VoceConfronto: Hashable {
+    case posizione(String)
+    case simulazione(String)
+}
+
 final class StatoShell: ObservableObject {
     struct Finestra: Identifiable, Equatable {
         let app: AppPrisma
@@ -46,6 +54,19 @@ final class StatoShell: ObservableObject {
     @Published var filtroPrioritaAttivita: Attivita.Priorita?
     /// Il pulsante dell'intestazione di Attività chiede di aprire il modulo.
     @Published var richiestaNuovaAttivita = false
+
+    // Strumenti di analisi (stato delle viste, non salvato)
+    /// Area aperta in Analisi 360 (nil = panoramica).
+    @Published var areaAnalisi: AreaAnalisi?
+    /// Ipotesi sul tavolo del simulatore.
+    @Published var bozzaSimulazione: Simulazione?
+    @Published var schedaSimulazioni: SchedaSimulazioni = .simulatore
+    /// Scenari scelti per il confronto nella scheda Scenari.
+    @Published var scenariConfrontati: Set<String> = []
+    @Published var confrontoA: VoceConfronto?
+    @Published var confrontoB: VoceConfronto?
+    /// Orizzonte comune del confronto (nil = ognuno il suo).
+    @Published var orizzonteConfronto: Int?
 
     // Backup
     @Published private(set) var elencoBackup: [VoceBackup] = []
@@ -227,6 +248,8 @@ final class StatoShell: ObservableObject {
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
         dati.posizioni.removeAll { $0.clienteId == id }
+        dati.simulazioni.removeAll { $0.clienteId == id }
+        dati.analisi[id] = nil
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
@@ -307,6 +330,65 @@ final class StatoShell: ObservableObject {
             guard p.stato == .inEssere, let s = p.scadenza else { return false }
             return cal.isDate(s, inSameDayAs: giorno) && (filtroClienteAgenda == nil || p.clienteId == filtroClienteAgenda)
         }
+    }
+
+    // MARK: - Strumenti di analisi
+
+    func simulazioniCliente(_ id: String) -> [Simulazione] {
+        dati.simulazioni.filter { $0.clienteId == id }.sorted { $0.creataIl > $1.creataIl }
+    }
+
+    func salvaSimulazione(_ s: Simulazione) {
+        if let i = dati.simulazioni.firstIndex(where: { $0.id == s.id }) {
+            dati.simulazioni[i] = s
+        } else {
+            dati.simulazioni.append(s)
+        }
+    }
+
+    func eliminaSimulazione(_ id: String) {
+        dati.simulazioni.removeAll { $0.id == id }
+        scenariConfrontati.remove(id)
+        if confrontoA == .simulazione(id) { confrontoA = nil }
+        if confrontoB == .simulazione(id) { confrontoB = nil }
+    }
+
+    /// Apre il simulatore con le ipotesi di una posizione.
+    func simula(_ p: Posizione) {
+        clienteAttivoId = p.clienteId
+        bozzaSimulazione = Simulazione(posizione: p, orizzonteCliente: cliente(p.clienteId)?.profilo.orizzonteAnni)
+        schedaSimulazioni = .simulatore
+        apri(.simulazioni)
+    }
+
+    /// Apre Confronti con una posizione da una parte; dall'altra la proposta (o la posizione) più vicina.
+    func confronta(_ p: Posizione) {
+        clienteAttivoId = p.clienteId
+        let altre = posizioniCliente(p.clienteId).filter { $0.id != p.id && $0.area.proiettabile && $0.stato != .chiusa }
+        let opposte = altre.filter { $0.stato != p.stato }
+        let altra = opposte.first { $0.area == p.area } ?? altre.first { $0.area == p.area } ?? opposte.first ?? altre.first
+        confrontoA = .posizione(p.id)
+        confrontoB = altra.map { .posizione($0.id) }
+        orizzonteConfronto = nil
+        apri(.confronti)
+    }
+
+    /// Analisi 360 del cliente: quella salvata o, se manca, una prima stesura dalle posizioni.
+    func analisi360(_ id: String) -> Analisi360 {
+        dati.analisi[id] ?? Analisi360(cliente: cliente(id), posizioni: posizioniCliente(id))
+    }
+
+    func analisiSalvata(_ id: String) -> Bool { dati.analisi[id] != nil }
+
+    func salvaAnalisi(_ id: String, _ a: Analisi360) {
+        var x = a
+        x.aggiornataIl = Appuntamento.alMinuto(Date())
+        dati.analisi[id] = x
+    }
+
+    /// Riparte dai dati delle posizioni (l'analisi salvata viene tolta).
+    func ricalcolaAnalisi(_ id: String) {
+        dati.analisi[id] = nil
     }
 
     // MARK: - Agenda

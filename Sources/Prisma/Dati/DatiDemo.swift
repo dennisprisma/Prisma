@@ -160,6 +160,31 @@ enum DatiDemo {
         ]
     }
 
+    /// Scenari di prova nel simulatore.
+    static func simulazioni() -> [Simulazione] {
+        func s(_ id: String, _ cliente: String, _ titolo: String, _ configura: (inout Simulazione) -> Void) -> Simulazione {
+            var x = Simulazione(clienteId: cliente, titolo: titolo)
+            x.id = id
+            x.creataIl = data(-10)
+            configura(&x)
+            return x
+        }
+        return [
+            s("sim-giulia-casa", "giulia", "Anticipo casa in 5 anni") {
+                $0.capitale = 15_000; $0.versamentoMensile = 400; $0.anni = 5; $0.rendimento = 2.5; $0.costoAnnuo = 0.8
+                $0.canale = .indipendente
+            },
+            s("sim-giulia-prudente", "giulia", "Accumulo prudente 10 anni") {
+                $0.capitale = 10_000; $0.versamentoMensile = 200; $0.anni = 10; $0.rendimento = 2; $0.costoAnnuo = 1.2
+                $0.costoIngresso = 2; $0.aliquota = 12.5; $0.canale = .alleanza
+            },
+            s("sim-giulia-dinamico", "giulia", "Accumulo dinamico 10 anni") {
+                $0.capitale = 10_000; $0.versamentoMensile = 200; $0.anni = 10; $0.rendimento = 5; $0.costoAnnuo = 0.3
+                $0.canale = .indipendente
+            },
+        ]
+    }
+
     /// Posizioni di prova (prodotti e importi inventati), in essere e in proposta, sui due canali.
     static func posizioni() -> [Posizione] {
         func p(_ cliente: String, _ canale: Canale, _ stato: StatoPosizione, _ area: AreaPosizione, _ nome: String,

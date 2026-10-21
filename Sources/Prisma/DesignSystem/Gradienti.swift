@@ -158,6 +158,17 @@ enum Gradienti {
         .init(color: Colori.Agenda.dettaglioAlto, location: 0), .init(color: Colori.Agenda.dettaglioFondo, location: 0.05),
     ], startPoint: .leading, endPoint: .trailing)
 
+    // Strumenti di analisi
+    static let console = LinearGradient.verticale(Colori.Strumenti.consoleAlto, Colori.Strumenti.consoleBasso)
+    static let lcd = LinearGradient.verticale(Colori.Strumenti.lcdAlto, Colori.Strumenti.lcdBasso)
+    static let schedaArea = LinearGradient(stops: [
+        .init(color: Colori.Strumenti.schedaBordoLato, location: 0), .init(color: Colori.Strumenti.schedaFondo, location: 0.02),
+        .init(color: Colori.Strumenti.schedaFondo, location: 0.98), .init(color: Colori.Strumenti.schedaBordoLato, location: 1),
+    ], startPoint: .leading, endPoint: .trailing)
+    static let testaIpotesi = LinearGradient.verticale(Colori.Strumenti.ipotesiTestaAlto, Colori.Strumenti.ipotesiTestaBasso)
+    static let schedeRisultati = LinearGradient.verticale(Colori.Strumenti.schedeAlto, Colori.Strumenti.schedeBasso)
+    static let schedaRisultatiAttiva = LinearGradient.verticale(Colori.Strumenti.schedaAttivaAlto, Colori.Strumenti.schedaAttivaBasso)
+
     // Attività
     static let linoAttivita = LinearGradient.verticale(Colori.Attivita.linoAlto, Colori.Attivita.linoBasso)
     static let testataAttivita = LinearGradient.verticale(Colori.Attivita.testataAlto, Colori.Attivita.testataBasso)
