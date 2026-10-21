@@ -68,6 +68,12 @@ final class StatoShell: ObservableObject {
     /// Orizzonte comune del confronto (nil = ognuno il suo).
     @Published var orizzonteConfronto: Int?
 
+    // Eve
+    @Published var eveInCorso = false
+    @Published var domandaEve = ""
+    /// Conversazioni non conservate nell'archivio (se l'utente lo sceglie nelle impostazioni).
+    @Published var conversazioniTemporanee: [String: [MessaggioEve]] = [:]
+
     // Backup
     @Published private(set) var elencoBackup: [VoceBackup] = []
     @Published private(set) var backupInCorso = false
@@ -250,6 +256,7 @@ final class StatoShell: ObservableObject {
         dati.posizioni.removeAll { $0.clienteId == id }
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
+        dati.conversazioni[id] = nil
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
@@ -389,6 +396,89 @@ final class StatoShell: ObservableObject {
     /// Riparte dai dati delle posizioni (l'analisi salvata viene tolta).
     func ricalcolaAnalisi(_ id: String) {
         dati.analisi[id] = nil
+    }
+
+    // MARK: - Eve
+
+    /// Messaggi conservati per cliente.
+    static let massimoMessaggi = 60
+
+    var motoreEve: MotoreEve { MotoriEve.scelto(dati.impostazioni.eve.motore) }
+
+    func conversazione(_ id: String) -> [MessaggioEve] {
+        dati.impostazioni.eve.conservaConversazioni ? (dati.conversazioni[id] ?? []) : (conversazioniTemporanee[id] ?? [])
+    }
+
+    private func aggiungiMessaggio(_ m: MessaggioEve, cliente id: String) {
+        var elenco = conversazione(id)
+        elenco.append(m)
+        elenco = Array(elenco.suffix(Self.massimoMessaggi))
+        if dati.impostazioni.eve.conservaConversazioni {
+            dati.conversazioni[id] = elenco
+        } else {
+            conversazioniTemporanee[id] = elenco
+        }
+    }
+
+    func nuovaConversazione() {
+        dati.conversazioni[clienteAttivoId] = nil
+        conversazioniTemporanee[clienteAttivoId] = nil
+    }
+
+    /// Ciò che Eve sa del cliente: dati del dossier e risultati dei motori di Prisma.
+    func fonteEve(_ id: String) -> FonteEve? {
+        guard let c = cliente(id) else { return nil }
+        return FonteEve(oggi: Date(), nomeUtente: nomeUtente, cliente: c, posizioni: posizioniCliente(id),
+                        appuntamenti: appuntamentiCliente(id), attivita: attivitaCliente(id),
+                        analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id))
+    }
+
+    /// Manda una domanda a Eve per il cliente attivo.
+    func chiediEve(_ domanda: String, spunto: SpuntoEve? = nil) {
+        let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
+        let id = clienteAttivoId
+        guard !testo.isEmpty, !eveInCorso, let fonte = fonteEve(id) else { return }
+        let storia = conversazione(id)
+        aggiungiMessaggio(MessaggioEve(autore: .utente, testo: testo), cliente: id)
+        domandaEve = ""
+        let richiesta = RichiestaEve(domanda: testo, spunto: spunto ?? SpuntoEve.da(testo), fonte: fonte, storia: storia)
+        let motore = motoreEve
+        if let sintesi = motore as? MotoreSintesi {
+            let r = sintesi.componi(richiesta)
+            aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome), cliente: id)
+            return
+        }
+        eveInCorso = true
+        Task { @MainActor in
+            do {
+                let r = try await motore.rispondi(richiesta)
+                self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome), cliente: id)
+            } catch {
+                // Se il modello non risponde, per gli spunti c'è comunque la sintesi dai dati.
+                let riserva = richiesta.spunto != nil ? "\n\nIntanto, dai dati del dossier:\n\n" + MotoriEve.sintesi.componi(richiesta).testo : ""
+                self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: error.localizedDescription + riserva,
+                                                    titolo: "Eve non ha potuto rispondere", motore: MotoriEve.sintesi.nome), cliente: id)
+            }
+            self.eveInCorso = false
+        }
+    }
+
+    /// Trasforma una risposta di Eve in un'attività per il cliente.
+    func attivitaDaEve(_ m: MessaggioEve) {
+        var t = Attivita.nuova(clienteId: clienteAttivoId,
+                               scadenza: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date())
+        t.titolo = m.titolo ?? String(m.testo.prefix(80))
+        t.note = m.testo
+        dati.attivita.append(t)
+        mostraAvviso("Attività aggiunta: \(t.titolo)")
+    }
+
+    /// Aggiunge una risposta di Eve alla nota del cliente.
+    func notaDaEve(_ m: MessaggioEve) {
+        guard let i = dati.clienti.firstIndex(where: { $0.id == clienteAttivoId }) else { return }
+        let aggiunta = (m.titolo.map { $0 + "\n" } ?? "") + m.testo
+        dati.clienti[i].nota = dati.clienti[i].nota.isEmpty ? aggiunta : dati.clienti[i].nota + "\n\n" + aggiunta
+        mostraAvviso("Aggiunto alla nota di \(dati.clienti[i].nome)")
     }
 
     // MARK: - Agenda

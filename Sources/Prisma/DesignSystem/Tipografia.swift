@@ -162,6 +162,27 @@ enum Tipo {
     static let attivitaSotto = contenuto(11)
     static let spunta = Font.custom("Arial", fixedSize: 12).weight(.bold)
 
+    // Eve
+    static let eveOcchiello = contenuto(9, .semibold)
+    static let eveSaluto = contenuto(21, .bold)
+    static let eveSottotitolo = contenuto(12)
+    static let eveAvviso = contenuto(11, .semibold)
+    static let eveAvvisoNota = contenuto(11)
+    static let eveIntestazione = contenuto(12, .semibold)
+    static let eveDisplay = contenuto(9, .bold)
+    static let eveAutore = contenuto(10, .semibold)
+    static let eveTitoloRisposta = contenuto(14, .bold)
+    static let eveMessaggio = contenuto(13)
+    static let eveAzione = contenuto(11)
+    static let eveSpunto = contenuto(11)
+    static let eveCampo = contenuto(13)
+    static let eveBenvenuto = serif(22)
+    static let eveGiornataData = contenuto(15, .bold)
+    static let eveTappa = contenuto(12, .semibold)
+    static let eveTappaNota = contenuto(10)
+    static let evePostit = Font.custom("Noteworthy-Light", fixedSize: 14)
+    static let eveQuadroNumero = contenuto(20, .light)
+
     // Strumenti di analisi
     static let consoleTitolo = contenuto(12, .semibold)
     static let consoleEtichetta = contenuto(12)

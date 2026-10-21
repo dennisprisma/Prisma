@@ -18,6 +18,12 @@ enum ProvaBackup {
             analisi.confermate = [.protezione]
             analisi.aggiornataIl = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
             originale.analisi[originale.clienti.first?.id ?? ""] = analisi
+            // E una conversazione con Eve, con le sue impostazioni
+            originale.conversazioni[originale.clienti.first?.id ?? ""] = [
+                MessaggioEve(autore: .utente, testo: "Fammi un riepilogo del cliente"),
+                MessaggioEve(autore: .eve, testo: "Il quadro…", titolo: "Il quadro", motore: "Sintesi dai dati"),
+            ]
+            originale.impostazioni.eve.motore = .sintesi
             guard !originale.simulazioni.isEmpty else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
@@ -65,7 +71,8 @@ enum ProvaBackup {
             guard letto.clienti.first?.famiglia.isEmpty == true, letto.clienti.first?.canali.isEmpty == true,
                   letto.appuntamenti.first?.tipo == .altro, letto.appuntamenti.first?.canale == nil,
                   letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil,
-                  letto.simulazioni.isEmpty, letto.analisi.isEmpty else {
+                  letto.simulazioni.isEmpty, letto.analisi.isEmpty, letto.conversazioni.isEmpty,
+                  letto.impostazioni.eve == ImpostazioniEve() else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }

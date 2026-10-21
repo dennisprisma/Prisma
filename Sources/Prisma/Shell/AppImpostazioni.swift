@@ -59,6 +59,37 @@ struct AppImpostazioni: View {
     // MARK: Esperienza
 
     private var esperienza: some View {
+        VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
+            gruppoProfilo
+            gruppoEve
+        }
+    }
+
+    private var gruppoEve: some View {
+        let motivo = MotoriEve.motivoAppleNonDisponibile
+        return GruppoImpostazioni(titolo: "Eve") {
+            RigaImpostazione(titolo: "Chi risponde", sottotitolo: "Il modello Apple lavora sul Mac; la sintesi compone le risposte dai dati del dossier") {
+                Picker("", selection: $stato.dati.impostazioni.eve.motore) {
+                    ForEach(ImpostazioniEve.Motore.allCases) { m in Text(m.nome).tag(m) }
+                }
+                .labelsHidden()
+                .frame(width: 170)
+            }
+            RigaImpostazione(titolo: "Modello Apple", sottotitolo: motivo ?? "Pronto: Apple Intelligence è attiva su questo Mac",
+                             avvertenza: motivo == nil ? nil : "Senza il modello Apple, Eve risponde agli spunti con la sintesi dai dati") {
+                Text(motivo == nil ? "Disponibile" : "Non disponibile")
+                    .font(Tipo.rigaValore)
+                    .foregroundColor(Colori.Impostazioni.rigaTitolo)
+            }
+            RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier del cliente, sul Mac e nei backup", ultima: true) {
+                Toggle("", isOn: $stato.dati.impostazioni.eve.conservaConversazioni)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
+        }
+    }
+
+    private var gruppoProfilo: some View {
         GruppoImpostazioni {
             RigaImpostazione(titolo: "Il tuo nome", sottotitolo: "Come ti accoglie la scrivania") {
                 ValoreRiga(testo: stato.nomeUtente) { modificaNome = true }
