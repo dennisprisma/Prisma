@@ -96,7 +96,7 @@ struct WidgetCalendario: View {
                 .background(Gradienti.calendario)
                 .luceInterna(Colori.Widget.calendarioLuce)
                 .bordoBasso(Colori.Widget.calendarioBordo)
-                .overlay(alignment: .top) { anelli }
+                .overlay(alignment: .top) { anelli.offset(y: 9) }
             Spacer(minLength: 4)
             Text(Formati.giornoSettimana.string(from: oggi).capitalized)
                 .font(Tipo.calendarioGiornoSettimana)
@@ -126,7 +126,8 @@ struct WidgetCalendario: View {
                     .ombraCSS(Color.black.opacity(0.35), y: 1, sfocatura: 2)
             }
         }
-        .offset(y: -8)
+        .offset(y: -5)
+        .padding(.top, 0)
     }
 
     private var incontri: some View {
@@ -244,6 +245,11 @@ struct WidgetCliente: View {
                     dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
                     dato("Prossimo incontro", prossimo.map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—")
                     dato("Da fare", "\(aperte) attività")
+                }
+                HStack(alignment: .top, spacing: 0) {
+                    dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
+                    dato("Premi annui", Formati.euro(r.premiAnnui))
+                    dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
                 }
                 if r.attivita > 0 {
                     VStack(alignment: .leading, spacing: 5) {
