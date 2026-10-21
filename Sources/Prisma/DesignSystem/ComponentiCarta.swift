@@ -305,7 +305,12 @@ struct BloccoCarta: View {
                 .foregroundColor(Colori.Carta.testoTenue).lineLimit(1)
                 .frame(height: M.voceEtichetta, alignment: .leading)
             if let canale = c.canale {
-                EtichettaCanale(canale: canale, compatta: true)
+                HStack(spacing: 6) {
+                    EtichettaCanale(canale: canale, compatta: true)
+                    if c.valore != canale.nome {
+                        Text(verbatim: c.valore).font(Tipo.Carta.voceValore).foregroundColor(Colori.Carta.testo).lineLimit(1)
+                    }
+                }
             } else {
                 Text(verbatim: c.valore).font(Tipo.Carta.voceValore).lineSpacing(M.interlinea).foregroundColor(Colori.Carta.testo)
                     .fixedSize(horizontal: false, vertical: true)
@@ -336,6 +341,7 @@ struct TabellaCarta: View {
                         .padding(.horizontal, 4)
                 }
             }
+            .padding(.bottom, 4)
             .frame(height: M.testaTabella, alignment: .bottom)
             .overlay(Rectangle().fill(Colori.Carta.filettoForte).frame(height: 1), alignment: .bottom)
             ForEach(Array(tabella.righe.enumerated()), id: \.offset) { r, riga in
@@ -450,7 +456,12 @@ struct GraficoCarta: View {
                     }
                 }
                 HStack(spacing: 5) {
-                    Rectangle().stroke(Colori.Carta.versato, style: StrokeStyle(lineWidth: 1, dash: [3, 2])).frame(width: 14, height: 0.5)
+                    Path { p in
+                        p.move(to: CGPoint(x: 0, y: 1))
+                        p.addLine(to: CGPoint(x: 14, y: 1))
+                    }
+                    .stroke(Colori.Carta.versato, style: StrokeStyle(lineWidth: 1.2, dash: [3, 2]))
+                    .frame(width: 14, height: 2)
                     Text(verbatim: "Versato").font(Tipo.Carta.assi).foregroundColor(Colori.Carta.testo)
                 }
                 Spacer(minLength: 0)

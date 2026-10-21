@@ -60,7 +60,7 @@ enum CompositoreProspetti {
                       ColonnaProspetto(titolo: "Premi annui", destra: true), ColonnaProspetto(titolo: "Proposte aperte", peso: 0.9, destra: true)],
             righe: Canale.allCases.map { canale -> [CellaProspetto] in
                 let del = attive.filter { $0.canale == canale }
-                return [.c(canale), .t("\(del.count)"), .t(euro(r.perCanale[canale] ?? 0)), .t(percentuale(r.quota(canale) * 100)),
+                return [.c(canale), .t("\(del.count)"), .t(euro(r.perCanale[canale] ?? 0)), .t(quota(r.quota(canale))),
                         .t(euro(del.reduce(0) { $0 + $1.premioAnnuo })),
                         .t("\(proposte.filter { $0.canale == canale && $0.esito != .accettata && $0.esito != .rifiutata }.count)")]
             },
@@ -78,8 +78,10 @@ enum CompositoreProspetti {
                 let del = inEssere.filter { $0.area == a }
                 let valore = r.perArea[a] ?? 0
                 let somma: (Canale) -> Double = { c in del.filter { $0.canale == c }.reduce(0) { $0 + $1.valore } }
-                return [a.passivo ? .t("\(a.nome) (da sottrarre)") : .t(a.nome), .t("\(del.count)"), .t(euro(valore)),
-                        a.passivo || r.attivita <= 0 ? .n("—") : .t(percentuale(valore / r.attivita * 100)),
+                let senzaValore = a == .protezione && valore == 0
+                return [a.passivo ? .t("\(a.nome) (da sottrarre)") : .t(a.nome), .t("\(del.count)"),
+                        senzaValore ? .n("capitali a parte") : .t(euro(valore)),
+                        a.passivo || r.attivita <= 0 || senzaValore ? .n("—") : .t(quota(valore / r.attivita)),
                         .t(euro(somma(.alleanza))), .t(euro(somma(.indipendente)))]
             }
         )))
@@ -95,8 +97,9 @@ enum CompositoreProspetti {
                           ColonnaProspetto(titolo: "Premi annui", peso: 1, destra: true), ColonnaProspetto(titolo: "Costo annuo", peso: 0.85, destra: true),
                           ColonnaProspetto(titolo: "SRI", peso: 0.45, destra: true), ColonnaProspetto(titolo: "Scadenza", peso: 0.95, destra: true)],
                 righe: inEssere.map { p -> [CellaProspetto] in
-                    [.f(p.nome), .c(p.canale), .t(p.area.nome), .t(euro(p.valore)),
-                     p.premioAnnuo > 0 ? .t(euro(p.premioAnnuo)) : .n("—"),
+                    [.f(p.nome), .c(p.canale), .t(p.area.nome),
+                     p.area == .protezione && p.valore == 0 ? .n("—") : .t(euro(p.valore)),
+                     p.premioAnnuo <= 0 ? .n("—") : p.area.passivo ? .n("rata \(euro(p.premioAnnuo))") : .t(euro(p.premioAnnuo)),
                      p.costoAnnuo.map { CellaProspetto.t(percentuale($0)) } ?? .n("—"),
                      p.sri.map { CellaProspetto.t("\($0)/7") } ?? .n("—"),
                      p.scadenza.map { CellaProspetto.t(Formati.dataBreve.string(from: $0)) } ?? .n("—")]
@@ -165,7 +168,7 @@ enum CompositoreProspetti {
                 righe: obiettivi.map { o -> [CellaProspetto] in
                     let av = AvanzamentoObiettivo(o, posizioni: dati.posizioni)
                     return [.f(o.titolo), .t(euro(o.importo)), .t(Formati.dataBreve.string(from: o.scadenza)), .t(euro(av.accantonato)),
-                            .t(percentuale((av.quota * 100).rounded())),
+                            .t(quota(av.quota)),
                             av.mancante <= 0 ? .t("raggiunto") : av.versamentoNecessario.map { CellaProspetto.t(euro($0)) } ?? .n("scaduto")]
                 }
             )))
@@ -249,7 +252,7 @@ enum CompositoreProspetti {
         if p.versamentoIniziale > 0 { aggiungi(p.stato == .inEssere ? "Versamento iniziale" : "Versamento iniziale proposto", euro(p.versamentoIniziale)) }
         if p.premio > 0 { aggiungi("Premio o versamento", "\(euro(p.premio)) · \(p.frequenza.nome.lowercased())") }
         aggiungi("Totale versato", p.totaleVersato.map(euro))
-        if p.stato == .inEssere, let v = p.controvalore {
+        if p.stato == .inEssere, let v = p.controvalore, !(p.area == .protezione && v == 0) {
             aggiungi(p.area == .debiti ? "Debito residuo" : "Controvalore", euro(v) + (p.dataValore.map { " al \(Formati.dataBreve.string(from: $0))" } ?? ""))
         }
         aggiungi("Capitale assicurato", p.capitaleAssicurato.map(euro))
@@ -409,7 +412,7 @@ enum CompositoreProspetti {
             IndicatoreProspetto(etichetta: "A · netto atteso", valore: euro(ea.netto), nota: "in \(pa.anni) anni"),
             IndicatoreProspetto(etichetta: "B · netto atteso", valore: euro(eb.netto), nota: "in \(pb.anni) anni"),
             IndicatoreProspetto(etichetta: "Differenza B − A", valore: segno(eb.netto - ea.netto), nota: pa.anni == pb.anni ? "stesso orizzonte" : "orizzonti diversi"),
-            IndicatoreProspetto(etichetta: "Costi A · B", valore: "\(Formati.euroBreve(ea.costi)) · \(Formati.euroBreve(eb.costi))", nota: "nel periodo"),
+            IndicatoreProspetto(etichetta: "Costi A · B", valore: "\(euro(ea.costi)) · \(euro(eb.costi))", nota: "nel periodo"),
         ]))
         if pa.anni != pb.anni {
             bl.append(.avviso("Le due voci hanno orizzonti diversi (\(pa.anni) e \(pb.anni) anni): per un confronto equo scegli l'orizzonte comune in Confronti."))
@@ -496,7 +499,7 @@ enum CompositoreProspetti {
         let canali = [a.canale, b.canale].compactMap { $0 }
         return ContenutoProspetto(occhiello: "Prospetto di dettaglio · confronto",
                                   titolo: "\(a.titolo) e \(b.titolo)",
-                                  sottotitolo: "\(a.sottotitolo) · \(b.sottotitolo)",
+                                  sottotitolo: "A: \(a.sottotitolo)   —   B: \(b.sottotitolo)",
                                   cliente: dati.clienti.first { $0.id == cliente }?.nome ?? "",
                                   canale: canali.first, canaleSecondo: canali.count == 2 && canali[0] != canali[1] ? canali[1] : nil,
                                   blocchi: bl)
@@ -543,6 +546,8 @@ enum CompositoreProspetti {
     private static func percentuale(_ v: Double) -> String { Formati.percentuale(v) }
     private static func numero(_ v: Double) -> String { Formati.numeroFormatter.string(from: NSNumber(value: v)) ?? "\(v)" }
     private static func percentualeOpzionale(_ v: Double?) -> CellaProspetto { v.map { CellaProspetto.t(percentuale($0)) } ?? .n("non indicato") }
+    /// Quota 0–1 come percentuale con al più un decimale ("13,2%").
+    private static func quota(_ q: Double) -> String { percentuale((q * 1000).rounded() / 10) }
     private static func segno(_ v: Double) -> String { (v > 0.5 ? "+" : "") + euro(v) }
 }
 
