@@ -1,8 +1,12 @@
 import Foundation
 
-/// Le 16 app di Prisma, nell'ordine del dock del template.
+/// Le 16 app di Prisma, nell'ordine del dock.
+///
+/// Il fulcro di Prisma è e resta Posizioni: l'analisi delle posizioni dei clienti
+/// (in essere e in proposta) e delle possibilità di investimento, risparmio,
+/// previdenza e assicurazione. Per questo viene subito dopo Clienti.
 enum AppPrisma: String, CaseIterable, Identifiable, Codable {
-    case clienti, analisi360, incontri, analisi, obiettivi, confronti, prodotti, simulazioni
+    case clienti, posizioni, analisi360, incontri, obiettivi, confronti, prodotti, simulazioni
     case agenda, attivita, note, documenti, presentazioni, eve, ricerca, impostazioni
 
     var id: String { rawValue }
@@ -12,7 +16,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .clienti: return "Clienti"
         case .analisi360: return "Analisi 360"
         case .incontri: return "Incontri"
-        case .analisi: return "Analisi"
+        case .posizioni: return "Posizioni"
         case .obiettivi: return "Obiettivi"
         case .confronti: return "Confronti"
         case .prodotti: return "Prodotti"
@@ -33,7 +37,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .clienti: return "Le persone, prima di tutto"
         case .analisi360: return "Previdenza, protezione, investimenti, risparmio"
         case .incontri: return "Dall'ascolto ai prossimi passi"
-        case .analisi: return "Il quadro, senza perdere i dettagli"
+        case .posizioni: return "In essere e in proposta, canale per canale"
         case .obiettivi: return "Un nome al futuro"
         case .confronti: return "Le ipotesi una accanto all'altra"
         case .prodotti: return "Condizioni, costi e fonti"
@@ -55,7 +59,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .clienti: return "Rubrica Prisma"
         case .analisi360: return "Il centro della consulenza"
         case .incontri: return "Il tempo della relazione"
-        case .analisi: return "Dossier patrimoniale"
+        case .posizioni: return "Il cuore della consulenza"
         case .obiettivi: return "Il quaderno dei progetti"
         case .confronti: return "Ipotesi trasparenti"
         case .prodotti: return "Schede e fonti verificabili"
@@ -77,7 +81,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .clienti: return "Clienti"
         case .analisi360: return "Analisi_360"
         case .incontri: return "Incontri"
-        case .analisi: return "Analisi"
+        case .posizioni: return "Analisi"
         case .obiettivi: return "Obiettivi"
         case .confronti: return "Confronti"
         case .prodotti: return "Prodotti"
@@ -98,7 +102,9 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .clienti: return "La rubrica e il dossier dei clienti arrivano con il modulo Clienti."
         case .agenda, .attivita, .incontri: return "Arriva con il modulo Agenda: appuntamenti, attività, incontri e scadenze."
-        case .analisi, .analisi360, .prodotti, .confronti, .simulazioni, .obiettivi:
+        case .posizioni:
+            return "Il cuore di Prisma: le posizioni dei clienti, in essere e in proposta, con il canale Alleanza / indipendente sempre in vista."
+        case .analisi360, .prodotti, .confronti, .simulazioni, .obiettivi:
             return "Fa parte del modulo Posizioni, il cuore di Prisma, con il canale Alleanza / indipendente sempre in vista."
         case .eve: return "Eve arriva con il suo modulo: lettura dei documenti, estrazione dei dati e risposte in chat, tutto sul Mac."
         case .note, .documenti, .presentazioni, .ricerca: return "Arriva nelle prossime fasi di sviluppo."

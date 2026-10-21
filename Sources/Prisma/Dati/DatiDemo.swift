@@ -2,8 +2,8 @@ import Foundation
 
 /// I 5 clienti di prova del template, con appuntamenti e attività.
 ///
-/// Nel template le date partono da lunedì 19 ottobre 2026: qui sono
-/// spostate sulla settimana corrente, così la scrivania resta sempre attuale.
+/// Nel template le date partono da lunedì 19 ottobre 2026: qui partono
+/// da oggi, così la scrivania mostra sempre i prossimi incontri.
 enum DatiDemo {
     static func clienti() -> [Cliente] {
         [
@@ -61,14 +61,11 @@ enum DatiDemo {
         ]
     }
 
-    /// Lunedì della settimana corrente + `giorni`, all'ora indicata.
+    /// Oggi + `giorni`, all'ora indicata.
     private static func data(_ giorni: Int, _ ora: Int = 9, _ minuti: Int = 0) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.locale = Locale(identifier: "it_IT")
-        cal.firstWeekday = 2
-        let oggi = Date()
-        let lunedi = cal.dateInterval(of: .weekOfYear, for: oggi)?.start ?? cal.startOfDay(for: oggi)
-        let giorno = cal.date(byAdding: .day, value: giorni, to: lunedi) ?? lunedi
+        let cal = Calendar(identifier: .gregorian)
+        let oggi = cal.startOfDay(for: Date())
+        let giorno = cal.date(byAdding: .day, value: giorni, to: oggi) ?? oggi
         return cal.date(bySettingHour: ora, minute: minuti, second: 0, of: giorno) ?? giorno
     }
 }

@@ -45,7 +45,7 @@ struct AppSegnaposto: View {
     let app: AppPrisma
 
     private var mostraCanali: Bool {
-        [.analisi, .analisi360, .prodotti, .confronti, .simulazioni, .obiettivi].contains(app)
+        [.posizioni, .analisi360, .prodotti, .confronti, .simulazioni, .obiettivi].contains(app)
     }
 
     var body: some View {

@@ -9,6 +9,8 @@ Moduli:
 - Eve: assistente AI che legge documenti, prospetti e dati, li capisce e fornisce spiegazioni, dati, report e risposte in chat
 Tutto resta in locale sul Mac: niente server, niente cloud.
 
+**Principio permanente:** Prisma è e resterà sempre prima di tutto un'app di **analisi**: analisi delle posizioni dei clienti (in essere e in proposta) e delle possibilità di investimento, risparmio, previdenza e assicurazione. L'intelligenza artificiale (Eve) e ogni altra funzione sono al servizio di questa analisi, mai il contrario. Nell'interfaccia il fulcro è l'app **Posizioni** (ex "Analisi" del template), subito dopo Clienti nel dock e sulla scrivania.
+
 ## Regole di sviluppo (vincolanti)
 - Niente Xcode, niente .xcodeproj, niente asset catalog compilati con Xcode. Il progetto è solo Swift Package Manager (Package.swift).
 - Non proporre mai di installare Xcode o i Command Line Tools sul Mac dell'utente.
