@@ -339,11 +339,59 @@ enum Formati {
     static let dataLunga = formato("EEEE d MMMM")
     static let giornoSettimana = formato("EEEE")
     static let dataEstesa = formato("d MMMM yyyy")
+    static let dataBreve = formato("dd/MM/yyyy")
     /// Data proposta quando si indica una data di nascita (1 gennaio 1980).
     static let dataPredefinitaNascita = Calendar(identifier: .gregorian).date(from: DateComponents(year: 1980, month: 1, day: 1)) ?? Date()
     static let meseAnno = formato("MMMM yyyy")
     /// Per i nomi dei file (nessun carattere vietato dal Finder).
     static let nomeFile = formato("yyyy-MM-dd HH.mm.ss")
+
+    static let euroFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = italiano
+        f.numberStyle = .currency
+        f.currencyCode = "EUR"
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    static let numeroFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = italiano
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
+    /// "12.345 €"
+    static func euro(_ valore: Double) -> String {
+        euroFormatter.string(from: NSNumber(value: valore.rounded())) ?? "\(Int(valore)) €"
+    }
+
+    static let euroDecimaliFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = italiano
+        f.numberStyle = .currency
+        f.currencyCode = "EUR"
+        f.minimumFractionDigits = 2
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
+    /// "1,47 €"
+    static func euroDecimali(_ valore: Double) -> String {
+        euroDecimaliFormatter.string(from: NSNumber(value: valore)) ?? euro(valore)
+    }
+
+    /// "12,3k €" per gli assi dei grafici.
+    static func euroBreve(_ valore: Double) -> String {
+        abs(valore) >= 1000 ? "\(numeroFormatter.string(from: NSNumber(value: (valore / 1000).rounded())) ?? "")k €" : euro(valore)
+    }
+
+    /// "2,5%"
+    static func percentuale(_ valore: Double) -> String {
+        "\(numeroFormatter.string(from: NSNumber(value: valore)) ?? "\(valore)")%"
+    }
 
     static func dimensione(_ byte: Int64) -> String {
         let f = ByteCountFormatter()

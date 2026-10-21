@@ -141,6 +141,179 @@ enum DatiDemo {
         ]
     }
 
+    /// Posizioni di prova (prodotti e importi inventati), in essere e in proposta, sui due canali.
+    static func posizioni() -> [Posizione] {
+        func p(_ cliente: String, _ canale: Canale, _ stato: StatoPosizione, _ area: AreaPosizione, _ nome: String,
+               _ configura: (inout Posizione) -> Void) -> Posizione {
+            var x = Posizione(clienteId: cliente, canale: canale, stato: stato, area: area, nome: nome)
+            x.id = "pos-\(cliente)-\(nome.lowercased().replacingOccurrences(of: " ", with: "-"))"
+            x.dataValore = data(-5)
+            // Date a secondi interi: l'archivio JSON non conserva le frazioni di secondo
+            x.creataIl = data(-20)
+            configura(&x)
+            return x
+        }
+        let alleanza = "Alleanza Assicurazioni"
+        return [
+            // Giulia Rossi: entrambi i canali
+            p("giulia", .alleanza, .inEssere, .risparmio, "Piano di risparmio rivalutabile") {
+                $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
+                $0.numeroContratto = "AL-2022-104851"; $0.contraente = "Giulia Rossi"; $0.assicurato = "Giulia Rossi"
+                $0.beneficiari = "Eredi legittimi"; $0.decorrenza = anni(-4); $0.scadenza = anni(11)
+                $0.premio = 150; $0.frequenza = .mensile; $0.totaleVersato = 7_200; $0.controvalore = 7_650
+                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20
+                $0.garanzie = "Capitale garantito a scadenza e in caso di decesso; consolidamento annuo dei rendimenti."
+            },
+            p("giulia", .alleanza, .inEssere, .protezione, "Temporanea caso morte") {
+                $0.tipologia = "Temporanea caso morte a capitale costante"; $0.emittente = alleanza
+                $0.numeroContratto = "AL-2023-220417"; $0.contraente = "Giulia Rossi"; $0.assicurato = "Giulia Rossi"
+                $0.beneficiari = "Luca Ferri"; $0.decorrenza = anni(-2); $0.scadenza = anni(20)
+                $0.premio = 22; $0.frequenza = .mensile; $0.capitaleAssicurato = 150_000; $0.rischio = .vita
+                $0.controvalore = 0
+            },
+            p("giulia", .indipendente, .inEssere, .investimento, "ETF azionario globale") {
+                $0.tipologia = "ETF con piano di accumulo"; $0.emittente = "Banca online"
+                $0.decorrenza = anni(-3); $0.versamentoIniziale = 20_000; $0.premio = 300; $0.frequenza = .mensile
+                $0.totaleVersato = 30_800; $0.controvalore = 36_400
+                $0.rendimentoAtteso = 5; $0.costoAnnuo = 0.2; $0.aliquotaFiscale = 26; $0.sri = 4
+            },
+            p("giulia", .indipendente, .inEssere, .investimento, "Fondo obbligazionario euro") {
+                $0.tipologia = "Fondo comune obbligazionario"; $0.emittente = "SGR indipendente"
+                $0.decorrenza = anni(-2); $0.versamentoIniziale = 20_000; $0.totaleVersato = 20_000; $0.controvalore = 21_000
+                $0.rendimentoAtteso = 3; $0.costoAnnuo = 1.1; $0.aliquotaFiscale = 20; $0.sri = 2
+            },
+            p("giulia", .indipendente, .inEssere, .liquidita, "Conto corrente e conto deposito") {
+                $0.emittente = "Banca"; $0.controvalore = 24_000
+            },
+            p("giulia", .indipendente, .inEssere, .immobili, "Casa di abitazione") {
+                $0.controvalore = 210_000
+            },
+            p("giulia", .indipendente, .inEssere, .debiti, "Mutuo casa") {
+                $0.tipologia = "Mutuo a tasso fisso"; $0.emittente = "Banca"; $0.decorrenza = anni(-7); $0.scadenza = anni(18)
+                $0.premio = 610; $0.frequenza = .mensile; $0.controvalore = 95_000
+            },
+            p("giulia", .alleanza, .proposta, .previdenza, "Piano previdenziale integrativo") {
+                $0.tipologia = "Piano individuale pensionistico (PIP)"; $0.emittente = alleanza
+                $0.contraente = "Giulia Rossi"; $0.assicurato = "Giulia Rossi"; $0.scadenza = anni(30)
+                $0.premio = 200; $0.frequenza = .mensile
+                $0.rendimentoAtteso = 3.5; $0.costoIngresso = 2; $0.costoAnnuo = 1.4; $0.aliquotaFiscale = 15
+                $0.esito = .presentata; $0.note = "Da rivedere dopo l'acquisto della casa."
+            },
+
+            // Marco Bianchi: solo Alleanza
+            p("marco", .alleanza, .inEssere, .risparmio, "Polizza rivalutabile a premio unico") {
+                $0.tipologia = "Polizza rivalutabile a premio unico (Ramo I)"; $0.emittente = alleanza
+                $0.numeroContratto = "AL-2020-055120"; $0.contraente = "Marco Bianchi"; $0.assicurato = "Marco Bianchi"
+                $0.decorrenza = anni(-6); $0.scadenza = anni(6); $0.versamentoIniziale = 50_000
+                $0.totaleVersato = 50_000; $0.controvalore = 54_300
+                $0.rendimentoAtteso = 2.8; $0.costoAnnuo = 1.3; $0.aliquotaFiscale = 20
+            },
+            p("marco", .alleanza, .inEssere, .investimento, "Polizza multiramo") {
+                $0.tipologia = "Polizza multiramo (Ramo I e Ramo III)"; $0.emittente = alleanza
+                $0.numeroContratto = "AL-2021-118842"; $0.decorrenza = anni(-5); $0.versamentoIniziale = 60_000
+                $0.totaleVersato = 60_000; $0.controvalore = 62_000
+                $0.rendimentoAtteso = 4; $0.costoAnnuo = 1.8; $0.aliquotaFiscale = 24; $0.sri = 3
+            },
+            p("marco", .alleanza, .inEssere, .protezione, "Temporanea caso morte") {
+                $0.tipologia = "Temporanea caso morte a capitale costante"; $0.emittente = alleanza
+                $0.beneficiari = "Elena Bianchi"; $0.decorrenza = anni(-3); $0.scadenza = anni(15)
+                $0.premio = 45; $0.frequenza = .mensile; $0.capitaleAssicurato = 300_000; $0.rischio = .vita; $0.controvalore = 0
+            },
+            p("marco", .alleanza, .inEssere, .protezione, "Infortuni famiglia") {
+                $0.tipologia = "Polizza infortuni del nucleo"; $0.emittente = alleanza
+                $0.decorrenza = anni(-1); $0.scadenza = data(45); $0.premio = 380; $0.frequenza = .annuale
+                $0.capitaleAssicurato = 200_000; $0.rischio = .infortuni; $0.controvalore = 0
+                $0.note = "Rinnovo annuale: verificare le somme assicurate."
+            },
+            p("marco", .alleanza, .inEssere, .previdenza, "Piano individuale pensionistico") {
+                $0.tipologia = "Piano individuale pensionistico (PIP)"; $0.emittente = alleanza
+                $0.decorrenza = anni(-10); $0.scadenza = anni(20); $0.premio = 250; $0.frequenza = .mensile
+                $0.totaleVersato = 30_000; $0.controvalore = 38_000
+                $0.rendimentoAtteso = 3.2; $0.costoAnnuo = 1.5; $0.aliquotaFiscale = 15
+            },
+            p("marco", .alleanza, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 35_000 },
+            p("marco", .alleanza, .inEssere, .immobili, "Casa di abitazione") { $0.controvalore = 280_000 },
+            p("marco", .alleanza, .inEssere, .debiti, "Mutuo casa") {
+                $0.tipologia = "Mutuo a tasso variabile"; $0.scadenza = anni(16); $0.premio = 890; $0.frequenza = .mensile
+                $0.controvalore = 130_000
+            },
+            p("marco", .alleanza, .proposta, .risparmio, "Piano per gli studi di Anna") {
+                $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
+                $0.contraente = "Marco Bianchi"; $0.assicurato = "Anna Bianchi"; $0.scadenza = anni(6)
+                $0.premio = 200; $0.frequenza = .mensile
+                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20
+                $0.esito = .bozza
+            },
+
+            // Laura Moretti: indipendente
+            p("laura", .indipendente, .inEssere, .previdenza, "Fondo pensione aperto") {
+                $0.tipologia = "Fondo pensione aperto, comparto bilanciato"; $0.emittente = "Gestore indipendente"
+                $0.decorrenza = anni(-4); $0.scadenza = anni(26); $0.premio = 150; $0.frequenza = .mensile
+                $0.totaleVersato = 14_400; $0.controvalore = 18_000
+                $0.rendimentoAtteso = 4; $0.costoAnnuo = 0.8; $0.aliquotaFiscale = 15
+            },
+            p("laura", .indipendente, .inEssere, .investimento, "ETF azionario globale") {
+                $0.tipologia = "ETF"; $0.emittente = "Banca online"; $0.decorrenza = anni(-3)
+                $0.versamentoIniziale = 22_000; $0.totaleVersato = 22_000; $0.controvalore = 27_000
+                $0.rendimentoAtteso = 5; $0.costoAnnuo = 0.2; $0.aliquotaFiscale = 26; $0.sri = 4
+            },
+            p("laura", .indipendente, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 19_000 },
+            p("laura", .indipendente, .inEssere, .debiti, "Prestito personale") {
+                $0.scadenza = anni(2); $0.premio = 260; $0.frequenza = .mensile; $0.controvalore = 6_000
+            },
+            p("laura", .indipendente, .proposta, .protezione, "Infortuni e invalidità professionale") {
+                $0.tipologia = "Polizza infortuni e invalidità permanente"; $0.emittente = "Compagnia (mercato)"
+                $0.premio = 420; $0.frequenza = .annuale; $0.capitaleAssicurato = 150_000; $0.rischio = .invalidita
+                $0.controvalore = 0; $0.esito = .bozza
+            },
+
+            // Andrea Conti: primo incontro, Alleanza
+            p("andrea", .alleanza, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 12_000 },
+            p("andrea", .alleanza, .proposta, .risparmio, "Piano di risparmio rivalutabile") {
+                $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
+                $0.scadenza = anni(15); $0.premio = 100; $0.frequenza = .mensile
+                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20
+                $0.esito = .bozza
+            },
+            p("andrea", .alleanza, .proposta, .protezione, "Temporanea caso morte") {
+                $0.tipologia = "Temporanea caso morte a capitale costante"; $0.emittente = alleanza
+                $0.scadenza = anni(25); $0.premio = 12; $0.frequenza = .mensile; $0.capitaleAssicurato = 100_000
+                $0.rischio = .vita; $0.controvalore = 0; $0.esito = .bozza
+            },
+
+            // Sofia Romano: entrambi i canali
+            p("sofia", .alleanza, .inEssere, .risparmio, "Polizza rivalutabile") {
+                $0.tipologia = "Polizza rivalutabile a premio unico (Ramo I)"; $0.emittente = alleanza
+                $0.numeroContratto = "AL-2016-009311"; $0.decorrenza = anni(-10); $0.scadenza = data(70)
+                $0.versamentoIniziale = 35_000; $0.totaleVersato = 35_000; $0.controvalore = 41_000
+                $0.rendimentoAtteso = 2.5; $0.costoAnnuo = 1.3; $0.aliquotaFiscale = 20
+                $0.note = "In scadenza: valutare il reinvestimento."
+            },
+            p("sofia", .alleanza, .inEssere, .protezione, "Non autosufficienza") {
+                $0.tipologia = "Polizza LTC a vita intera"; $0.emittente = alleanza; $0.decorrenza = anni(-5)
+                $0.premio = 600; $0.frequenza = .annuale; $0.capitaleAssicurato = 30_000; $0.rischio = .ltc; $0.controvalore = 0
+            },
+            p("sofia", .indipendente, .inEssere, .investimento, "Portafoglio di fondi") {
+                $0.tipologia = "Fondi comuni bilanciati"; $0.emittente = "SGR indipendenti"; $0.decorrenza = anni(-6)
+                $0.versamentoIniziale = 28_000; $0.totaleVersato = 28_000; $0.controvalore = 32_000
+                $0.rendimentoAtteso = 3.5; $0.costoAnnuo = 1.4; $0.aliquotaFiscale = 26; $0.sri = 3
+            },
+            p("sofia", .indipendente, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 27_000 },
+            p("sofia", .indipendente, .inEssere, .immobili, "Casa di abitazione") { $0.controvalore = 180_000 },
+            p("sofia", .indipendente, .inEssere, .debiti, "Mutuo") { $0.scadenza = anni(8); $0.premio = 480; $0.frequenza = .mensile; $0.controvalore = 40_000 },
+            p("sofia", .indipendente, .proposta, .investimento, "Obbligazionario a scadenza 2030") {
+                $0.tipologia = "Fondo obbligazionario a scadenza"; $0.emittente = "SGR indipendente"
+                $0.scadenza = anni(4); $0.versamentoIniziale = 40_000
+                $0.rendimentoAtteso = 3.2; $0.costoAnnuo = 0.6; $0.aliquotaFiscale = 20; $0.sri = 2
+                $0.esito = .presentata; $0.note = "Ipotesi di reinvestimento della polizza in scadenza."
+            },
+        ]
+    }
+
+    private static func anni(_ n: Int) -> Date {
+        Calendar(identifier: .gregorian).date(byAdding: .year, value: n, to: data(0)) ?? Date()
+    }
+
     /// Oggi + `giorni`, all'ora indicata.
     private static func data(_ giorni: Int, _ ora: Int = 9, _ minuti: Int = 0) -> Date {
         let cal = Calendar(identifier: .gregorian)

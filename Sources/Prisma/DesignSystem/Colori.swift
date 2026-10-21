@@ -110,6 +110,96 @@ enum Colori {
         static let eveTesto = Color(hex: "#c0c1ce")
     }
 
+    /// App di analisi (Posizioni): elenco laterale blu di Lion, pannello bianco, KPI, tabelle (.fx-*).
+    enum Analisi {
+        static let railAlto = Color(hex: "#e5ebf3")
+        static let railBasso = Color(hex: "#d6dde7")
+        static let railTesto = Color(hex: "#303b4a")
+        static let railFilo = Color(hex: "#b8c2cf")
+        static let railRiflesso = Color(hex: "#f5f8fc")
+        static let railEtichetta = Color(hex: "#69788b")
+        static let segBordo = Color(hex: "#8f9ba9")
+        static let segTesto = Color(hex: "#384554")
+        static let segAttivoAlto = Color(hex: "#8896a8")
+        static let segAttivoBasso = Color(hex: "#687b92")
+        static let segAttivoIncisione = Color(hex: "#4a5b6f")
+        static let segAttivoOmbra = Color(r: 38, g: 55, b: 77, a: 0.333)
+        static let navAlto = Color(hex: "#7da9dc")
+        static let navBasso = Color(hex: "#4279bd")
+        static let navBordoAlto = Color(hex: "#5d8dbd")
+        static let navBordoBasso = Color(hex: "#34699f")
+        static let navLuce = Color(hex: "#a7c8eb")
+        static let navIncisione = Color(hex: "#2f5a8e")
+        static let navTesto = Color(hex: "#303d4e")
+        static let navIncisioneSpento = Color(hex: "#f6f8fb")
+        static let navConteggio = Color(hex: "#c3ccd8")
+        static let navConteggioTesto = Color(hex: "#55657a")
+        static let principale = Color.white
+        static let testo = Color(hex: "#30343a")
+        static let kpiAlto = Color(hex: "#f8fafc")
+        static let kpiBasso = Color(hex: "#e8edf3")
+        static let kpiBordo = Color(hex: "#b5bec9")
+        static let kpiTitolo = Color(hex: "#617186")
+        static let kpiValore = Color(hex: "#203f67")
+        static let kpiNota = Color(hex: "#6a7686")
+        static let chip = Color(hex: "#edf1f6")
+        static let chipBordo = Color(hex: "#b9c3ce")
+        static let chipTesto = Color(hex: "#5d6a7d")
+        static let pannelloTitolo = Color(hex: "#3a434e")
+        static let pannelloNota = Color(hex: "#6a7686")
+        static let tabellaTestaAlto = Color(hex: "#fafafa")
+        static let tabellaTestaBasso = Color(hex: "#e1e4e8")
+        static let tabellaTestaBordo = Color(hex: "#aeb4bc")
+        static let tabellaTesta = Color(hex: "#404951")
+        static let tabellaRiga = Color(hex: "#e0e5eb")
+        static let tabellaAlternata = Color(hex: "#edf3fa")
+        static let tabellaSelezione = Color(hex: "#d4e3f5")
+        static let tabellaTesto = Color(hex: "#404c59")
+        static let tabellaBordo = Color(hex: "#b5becd")
+        // Stati
+        static let okFondo = Color(hex: "#eaf0e5")
+        static let okBordo = Color(hex: "#bac8af")
+        static let okTesto = Color(hex: "#567047")
+        static let attenzioneFondo = Color(hex: "#f5edd9")
+        static let attenzioneBordo = Color(hex: "#d3c294")
+        static let attenzioneTesto = Color(hex: "#8a712e")
+        static let erroreFondo = Color(hex: "#f4e4e1")
+        static let erroreBordo = Color(hex: "#d5b4ae")
+        static let erroreTesto = Color(hex: "#974f45")
+        static let neutroFondo = Color(hex: "#e2ebef")
+        static let neutroBordo = Color(hex: "#c9d7de")
+        static let neutroTesto = Color(hex: "#6e899c")
+        // Grafici
+        static let linea = Color(hex: "#2f6eb0")
+        static let lineaTratteggiata = Color(hex: "#a5b3bd")
+        static let barre = Color(hex: "#9cb6cc")
+        static let griglia = Color(hex: "#d5dde2")
+        static let assi = Color(hex: "#7f909b")
+        static let tracciaAnello = Color(hex: "#e5e4df")
+        static let prudente = Color(hex: "#c5ab7e")
+        static let favorevole = Color(hex: "#6e9f9b")
+        static let canaleAlleanza = Color(hex: "#587cad")
+        static let canaleIndipendente = Color(hex: "#bba282")
+        // Barra di stato in basso
+        static let statoAlto = Color(hex: "#f2f2f2")
+        static let statoBasso = Color(hex: "#dcdcdc")
+        static let statoBordo = Color(hex: "#a7a7a7")
+        static let statoLuce = Color(hex: "#5fbf4a")
+
+        /// Colore di ogni area (le prime quattro dal template, le altre nella stessa gamma).
+        static func area(_ a: AreaPosizione) -> Color {
+            switch a {
+            case .investimento: return Color(hex: "#6386a5")
+            case .risparmio: return Color(hex: "#94b4a1")
+            case .previdenza: return Color(hex: "#c5ab7e")
+            case .protezione: return Color(hex: "#6e9f9b")
+            case .liquidita: return Color(hex: "#8fa7bf")
+            case .immobili: return Color(hex: "#a99382")
+            case .debiti: return Color(hex: "#b07a6e")
+            }
+        }
+    }
+
     /// Moduli e finestre di dialogo (.os-dialog).
     enum Modulo {
         static let titoloAlto = Color(hex: "#e9e9e9")
