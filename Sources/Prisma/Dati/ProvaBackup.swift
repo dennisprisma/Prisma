@@ -44,6 +44,33 @@ enum ProvaBackup {
                 return 1
             }
 
+            // Le copie automatiche hanno la loro rotazione: non le consumano i backup fatti a mano
+            for _ in 0..<3 { try GestoreBackup.crea(sorgente: dati, destinazione: backup, nota: GestoreBackup.notaAutomatico) }
+            let conAutomatici = GestoreBackup.elenca(backup)
+            guard conAutomatici.filter(GestoreBackup.automatico).count == 3, conAutomatici.count == GestoreBackup.massimo + 3 else {
+                print("ERRORE: rotazione separata dei backup automatici (\(conAutomatici.count) copie)")
+                return 1
+            }
+            // Una cartella scelta dall'utente che non c'è (disco scollegato) non si ricrea sul Mac
+            let scollegata = radice.appendingPathComponent("DiscoEsterno/Backup", isDirectory: true)
+            do {
+                try GestoreBackup.crea(sorgente: dati, destinazione: scollegata, creaCartella: false)
+                print("ERRORE: backup creato in una cartella che non esisteva")
+                return 1
+            } catch ErroreBackup.cartellaNonRaggiungibile {
+                guard !fm.fileExists(atPath: scollegata.path) else {
+                    print("ERRORE: la cartella scollegata è stata ricreata")
+                    return 1
+                }
+            }
+            // Un numero non finito non blocca il salvataggio
+            var conNaN = originale
+            if !conNaN.posizioni.isEmpty { conNaN.posizioni[0].costoAnnuo = .nan }
+            guard (try? Archivio.decodifica(Archivio.codificatore.encode(conNaN))) != nil else {
+                print("ERRORE: un numero non finito blocca il salvataggio")
+                return 1
+            }
+
             // Ripristino: i dati e i documenti tornano identici
             let estratto = try GestoreBackup.estrai(elenco[0].url)
             guard estratto.dati == originale else {
@@ -80,6 +107,30 @@ enum ProvaBackup {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }
+
+            // Un ripristino interrotto (Mac spento tra i due spostamenti) si recupera all'avvio
+            let interrotto = radice.appendingPathComponent("Interrotto/Prisma", isDirectory: true)
+            let (_, precedente) = GestoreBackup.cartelleRipristino(interrotto)
+            try fm.createDirectory(at: precedente, withIntermediateDirectories: true)
+            try Archivio.codificatore.encode(originale).write(to: precedente.appendingPathComponent("archivio.json"))
+            guard GestoreBackup.recuperaRipristino(interrotto),
+                  fm.fileExists(atPath: interrotto.appendingPathComponent("archivio.json").path),
+                  !fm.fileExists(atPath: precedente.path) else {
+                print("ERRORE: ripristino interrotto non recuperato")
+                return 1
+            }
+            // Un backup di una versione più recente non si ripristina
+            let recente = radice.appendingPathComponent("Recente/Prisma", isDirectory: true)
+            try fm.createDirectory(at: recente, withIntermediateDirectories: true)
+            var datiRecenti = originale
+            datiRecenti.versione = DatiPrisma.versioneAttuale + 1
+            try Archivio.codificatore.encode(datiRecenti).write(to: recente.appendingPathComponent("archivio.json"))
+            let zipRecente = try GestoreBackup.crea(sorgente: recente, destinazione: radice.appendingPathComponent("BackupRecenti"))
+            do {
+                _ = try GestoreBackup.estrai(zipRecente)
+                print("ERRORE: ripristinato un backup di una versione più recente")
+                return 1
+            } catch ErroreBackup.versionePiuRecente {}
 
             // Un archivio di una versione più recente si apre in sola lettura (salvarlo perderebbe dati)
             var futuro = originale

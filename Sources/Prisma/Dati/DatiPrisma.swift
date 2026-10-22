@@ -154,6 +154,16 @@ struct ImpostazioniBackup: Codable, Equatable {
     var cartella: String?
     var automatico = true
     var ultimo: Date?
+    /// L'ultimo tentativo e l'errore dell'ultimo backup non riuscito (disco scollegato, cartella piena…).
+    var ultimoTentativo: Date?
+    var ultimoErrore: String?
+
+    /// true se l'ultimo backup riuscito ha più di 8 giorni (o non c'è): va segnalato.
+    var inRitardo: Bool {
+        guard automatico else { return false }
+        guard let ultimo else { return ultimoTentativo != nil }
+        return Date().timeIntervalSince(ultimo) > 8 * 24 * 60 * 60
+    }
 
     static let intervalloAutomatico: TimeInterval = 7 * 24 * 60 * 60
 

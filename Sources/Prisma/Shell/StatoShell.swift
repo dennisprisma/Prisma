@@ -119,6 +119,8 @@ final class StatoShell: ObservableObject {
     private var salvataggioSospeso = false
     /// Archivio di una versione più recente di Prisma: niente salvataggi né backup automatici.
     private(set) var solaLettura = false
+    /// Archivio di una versione più recente: neanche il ripristino di un backup è sicuro.
+    private(set) var ripristinoBloccato = false
 
     init(persistente: Bool = true) {
         self.persistente = persistente
@@ -127,6 +129,8 @@ final class StatoShell: ObservableObject {
             dati = caricati.dati
             salvataggioSospeso = caricati.solaLettura
             solaLettura = caricati.solaLettura
+            ripristinoBloccato = caricati.bloccaRipristino
+            copieNonLeggibili = Archivio.copieNonLeggibili.count
             if let a = caricati.avviso {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
             }
@@ -452,10 +456,15 @@ final class StatoShell: ObservableObject {
         documentiInLettura.insert(id)
         DispatchQueue.global(qos: .userInitiated).async {
             let esito = LetturaDocumenti.leggi(url)
-            if let esito {
-                try? esito.pagine.joined(separator: LetturaDocumenti.separatorePagine).write(to: testo, atomically: true, encoding: .utf8)
-            }
             DispatchQueue.main.async {
+                // Il documento può essere stato eliminato durante la lettura: niente testo orfano
+                guard self.documento(id) != nil else {
+                    self.documentiInLettura.remove(id)
+                    return
+                }
+                if let esito {
+                    try? esito.pagine.joined(separator: LetturaDocumenti.separatorePagine).write(to: testo, atomically: true, encoding: .utf8)
+                }
                 guard let esito else {
                     self.aggiornaDocumento(id) { $0.lettura = .illeggibile }
                     self.documentiInLettura.remove(id)
@@ -520,6 +529,22 @@ final class StatoShell: ObservableObject {
         guard persistente else { return }
         if let u = urlDocumento(d) { try? FileManager.default.removeItem(at: u) }
         if let t = urlTesto(d) { try? FileManager.default.removeItem(at: t) }
+    }
+
+    /// Elimina dalla cartella Documenti i file che nessun documento dell'archivio usa più.
+    func pulisciDocumentiOrfani() {
+        guard persistente else { return }
+        let fm = FileManager.default
+        let radice = Archivio.cartellaDocumenti.standardizedFileURL
+        var usati = Set<String>()
+        for d in dati.documenti {
+            if let u = urlDocumento(d) { usati.insert(u.resolvingSymlinksInPath().path) }
+            if let t = urlTesto(d) { usati.insert(t.resolvingSymlinksInPath().path) }
+        }
+        guard let elenco = fm.enumerator(at: radice, includingPropertiesForKeys: [.isRegularFileKey]) else { return }
+        for case let u as URL in elenco where (try? u.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+            if !usati.contains(u.resolvingSymlinksInPath().path) { try? fm.removeItem(at: u) }
+        }
     }
 
     func eliminaDocumento(_ id: String) {
@@ -1485,6 +1510,13 @@ final class StatoShell: ObservableObject {
     var cartellaBackupPredefinita: Bool { dati.impostazioni.backup.cartella == nil }
 
     func scegliCartellaBackup(_ url: URL) {
+        // Dentro la cartella dell'archivio ogni backup conterrebbe i precedenti e il ripristino li cancellerebbe
+        let archivio = Archivio.cartella.standardizedFileURL.path
+        let scelta = url.standardizedFileURL.path
+        guard scelta != archivio, !scelta.hasPrefix(archivio + "/") else {
+            mostraAvviso("Scegli una cartella fuori dalla cartella di Prisma, meglio su iCloud Drive o su un disco esterno.")
+            return
+        }
         dati.impostazioni.backup.cartella = url.path
         aggiornaElencoBackup()
     }
@@ -1504,19 +1536,23 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let creaCartella = cartellaBackupPredefinita
+        dati.impostazioni.backup.ultimoTentativo = Date()
         DispatchQueue.global(qos: .utility).async {
             do {
                 let url = try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione,
-                                                 nota: automatico ? "automatico" : nil)
+                                                 nota: automatico ? GestoreBackup.notaAutomatico : nil, creaCartella: creaCartella)
                 DispatchQueue.main.async {
                     self.backupInCorso = false
                     self.dati.impostazioni.backup.ultimo = Date()
+                    self.dati.impostazioni.backup.ultimoErrore = nil
                     self.aggiornaElencoBackup()
                     self.mostraAvviso("Backup creato: \(url.lastPathComponent)")
                 }
             } catch {
                 DispatchQueue.main.async {
                     self.backupInCorso = false
+                    self.dati.impostazioni.backup.ultimoErrore = error.localizedDescription
                     self.mostraAvviso("Backup non riuscito: \(error.localizedDescription)")
                 }
             }
@@ -1526,31 +1562,62 @@ final class StatoShell: ObservableObject {
     /// Ripristina un backup. Prima salva una copia di sicurezza dello stato attuale.
     func ripristina(_ zip: URL) {
         guard persistente, !backupInCorso else { return }
-        guard !solaLettura else { mostraAvviso("Archivio in sola lettura: apri l'ultima versione di Prisma per ripristinare."); return }
+        guard !ripristinoBloccato else { mostraAvviso("Archivio in sola lettura: apri l'ultima versione di Prisma per ripristinare."); return }
         salvaOra()
         salvataggioSospeso = true
         backupInCorso = true
         let destinazione = cartellaBackup
+        let creaCartella = cartellaBackupPredefinita
+        // Le impostazioni di backup e il nome restano quelli di oggi, non quelli del backup
+        let backupDiOggi = dati.impostazioni.backup
+        let nome = (dati.impostazioni.nomeUtente, dati.impostazioni.inizialiUtente)
         DispatchQueue.global(qos: .userInitiated).async {
+            var estratta: URL?
             do {
                 let estratto = try GestoreBackup.estrai(zip)
-                try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima del ripristino")
+                estratta = estratto.cartella
+                try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima del ripristino",
+                                       creaCartella: creaCartella, proteggi: zip)
                 try GestoreBackup.sostituisci(cartellaDati: Archivio.cartella, con: estratto.cartella)
+                Archivio.segnaCopieGestite()
                 DispatchQueue.main.async {
-                    self.dati = estratto.dati
+                    self.aggiornaCopieNonLeggibili()
+                    var d = estratto.dati
+                    d.impostazioni.backup = backupDiOggi
+                    d.impostazioni.nomeUtente = nome.0
+                    d.impostazioni.inizialiUtente = nome.1
+                    self.dati = d
+                    self.solaLettura = false
                     self.salvataggioSospeso = false
+                    self.salvaOra()
                     self.backupInCorso = false
                     self.aggiornaElencoBackup()
                     self.mostraAvviso("Ripristino completato. Lo stato precedente è salvato in un backup.")
                 }
             } catch {
+                if let estratta { GestoreBackup.pulisciEstrazione(estratta) }
                 DispatchQueue.main.async {
-                    self.salvataggioSospeso = false
+                    self.salvataggioSospeso = self.solaLettura
                     self.backupInCorso = false
                     self.mostraAvviso("Ripristino non riuscito: \(error.localizedDescription)")
                 }
             }
         }
+    }
+
+    /// Copie di archivi non leggibili da sistemare (i backup automatici sono fermi).
+    @Published private(set) var copieNonLeggibili = 0
+
+    /// Il consulente ha controllato: i dati di oggi vanno bene, i backup automatici ripartono.
+    func riprendiBackupAutomatici() {
+        Archivio.segnaCopieGestite()
+        aggiornaCopieNonLeggibili()
+        controllaBackupAutomatico()
+    }
+
+    func aggiornaCopieNonLeggibili() {
+        guard persistente else { return }
+        copieNonLeggibili = Archivio.copieNonLeggibili.count
     }
 
     /// Gli identificativi dei clienti di prova.
@@ -1564,8 +1631,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima di togliere i dati di prova") }
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima di togliere i dati di prova",
+                                                        creaCartella: creaCartella) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
                 switch esito {
@@ -1597,8 +1666,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dei dati di prova") }
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dei dati di prova",
+                                                        creaCartella: creaCartella) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
                 switch esito {
@@ -1606,6 +1677,8 @@ final class StatoShell: ObservableObject {
                     var demo = DatiPrisma.demo()
                     demo.impostazioni = self.dati.impostazioni
                     self.dati = demo
+                    // I file dei clienti veri restano nel backup appena fatto, non nell'archivio
+                    self.pulisciDocumentiOrfani()
                     self.aggiornaElencoBackup()
                     self.mostraAvviso("Dati di prova ripristinati. Lo stato precedente è salvato in un backup.")
                 case .failure(let e):
@@ -1625,7 +1698,8 @@ final class StatoShell: ObservableObject {
 
     private func controllaBackupAutomatico() {
         let b = dati.impostazioni.backup
-        guard b.automatico, let prossimo = b.prossimo, prossimo <= Date() else { return }
+        // Con un archivio non leggibile da sistemare i backup automatici non sostituiscono quelli buoni
+        guard b.automatico, !solaLettura, Archivio.copieNonLeggibili.isEmpty, let prossimo = b.prossimo, prossimo <= Date() else { return }
         creaBackup(automatico: true)
     }
 

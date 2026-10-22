@@ -162,11 +162,12 @@ enum EstrattoreDocumento {
         // "1200.50" o "1.20" (punto decimale, senza virgola): non sono migliaia
         let compatto = s.replacingOccurrences(of: "€", with: "").replacingOccurrences(of: "%", with: "").replacingOccurrences(of: " ", with: "")
         if !compatto.contains(","), let r = compatto.range(of: #"^-?\d+\.\d{1,2}$"#, options: .regularExpression), r == compatto.startIndex..<compatto.endIndex {
-            return Double(compatto)
+            return Double(compatto).flatMap { $0.isFinite ? $0 : nil }
         }
         let pulito = s.replacingOccurrences(of: "€", with: "").replacingOccurrences(of: "%", with: "")
             .replacingOccurrences(of: " ", with: "").replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
-        return Double(pulito)
+        // "nan", "inf", "1e999" non sono cifre di un documento
+        return Double(pulito).flatMap { $0.isFinite ? $0 : nil }
     }
 
     static func data(_ s: String?) -> Date? {

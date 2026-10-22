@@ -131,7 +131,7 @@ struct AppImpostazioni: View {
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                         .disabled(stato.backupInCorso)
                 }
-                RigaImpostazione(titolo: "Backup automatico settimanale", sottotitolo: testoAutomatico) {
+                RigaImpostazione(titolo: "Backup automatico settimanale", sottotitolo: testoAutomatico, avvertenza: avvertenzaBackup) {
                     Toggle("", isOn: $stato.dati.impostazioni.backup.automatico)
                         .toggleStyle(StileInterruttore())
                         .labelsHidden()
@@ -179,6 +179,18 @@ struct AppImpostazioni: View {
             }
             .padding(.horizontal, 4)
 
+            if stato.copieNonLeggibili > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("All'avvio l'archivio non era leggibile: la copia è nella cartella di Prisma e i backup automatici sono fermi, per non sostituire i backup buoni. Ripristina un backup qui sotto oppure, se i dati di oggi vanno bene, riprendi i backup.")
+                        .font(Tipo.informazioniTesto)
+                        .foregroundColor(Colori.Analisi.erroreTesto)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Riprendi i backup automatici") { stato.riprendiBackupAutomatici() }
+                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                }
+                .padding(.horizontal, 4)
+            }
+
             if stato.solaLettura {
                 Text("Archivio in sola lettura: è stato salvato da una versione più recente di Prisma. Le modifiche non vengono salvate: apri l'ultima versione dell'app.")
                     .font(Tipo.informazioniTesto)
@@ -199,6 +211,17 @@ struct AppImpostazioni: View {
                 }
             }
         }
+    }
+
+    /// Backup non riusciti o fermi da più di 8 giorni: resta scritto finché il problema c'è.
+    private var avvertenzaBackup: String? {
+        let b = stato.dati.impostazioni.backup
+        if let e = b.ultimoErrore {
+            let quando = b.ultimoTentativo.map { " (\(Formati.dataOra.string(from: $0)))" } ?? ""
+            return "Ultimo backup non riuscito\(quando): \(e)"
+        }
+        if b.inRitardo { return "Nessun backup riuscito negli ultimi 8 giorni: crea un backup a mano." }
+        return nil
     }
 
     private var testoAutomatico: String {
