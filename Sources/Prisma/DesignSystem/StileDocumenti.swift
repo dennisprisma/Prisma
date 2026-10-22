@@ -19,6 +19,7 @@ struct PaletteDocumento {
     var copertinaEtichetta: Color
     var copertinaTesto: Color
     var cucitura: Color
+    var ombraCartellino: Color
     // Testo
     var titolo: Color
     var testo: Color
@@ -82,7 +83,7 @@ extension Colori {
         static let moderna = PaletteDocumento(
             foglio: .white, foglioFine: .white,
             copertina: Color(hex: "#1b2a41"), copertinaRiquadro: Color(hex: "#2d3c55"),
-            copertinaEtichetta: Color(hex: "#8fa1bd"), copertinaTesto: Color(hex: "#e9eef5"), cucitura: .clear,
+            copertinaEtichetta: Color(hex: "#8fa1bd"), copertinaTesto: Color(hex: "#e9eef5"), cucitura: .clear, ombraCartellino: Color(hex: "#00000033"),
             titolo: Color(hex: "#1d2737"), testo: Color(hex: "#2b3342"), tenue: Color(hex: "#5f6b7a"),
             occhiello: Color(hex: "#5f6b7a"), marchio: Color(hex: "#1d2737"),
             riquadro: Color(hex: "#f2f4f7"), riquadroBordo: .clear, riquadroLuce: .clear,
@@ -104,7 +105,7 @@ extension Colori {
         static let prisma = PaletteDocumento(
             foglio: Color(hex: "#fffef8"), foglioFine: Color(hex: "#f1eee4"),
             copertina: Color(hex: "#7c4d2b"), copertinaRiquadro: Color(hex: "#fbf6ea"),
-            copertinaEtichetta: Color(hex: "#8a6a48"), copertinaTesto: Color(hex: "#f6e6cc"), cucitura: Color(hex: "#e9c79a"),
+            copertinaEtichetta: Color(hex: "#8a6a48"), copertinaTesto: Color(hex: "#f6e6cc"), cucitura: Color(hex: "#e9c79a"), ombraCartellino: Color(hex: "#00000073"),
             titolo: Color(hex: "#253f4b"), testo: Color(hex: "#4f605d"), tenue: Color(hex: "#748a8a"),
             occhiello: Color(hex: "#7e9996"), marchio: Color(hex: "#3d626a"),
             riquadro: Color(hex: "#fbf9f1"), riquadroBordo: Color(hex: "#d8d6ca"), riquadroLuce: .white,
