@@ -460,15 +460,15 @@ enum ProvaCalcoli {
             fondo.tipologia = "Fondo comune"; fondo.controvalore = 120_000; fondo.totaleVersato = 100_000
             fondo.rendimentoAtteso = 3; fondo.conBollo = false
             let ef = MotoreProiezione.calcola(ParametriProiezione(posizione: fondo, orizzonteCliente: 10))
-            let lordo = 120_000 * pow(1.03, 10)
+            let lordo: Double = 120_000 * Foundation.pow(1.03, 10.0)
             verifica("Proiezione: il guadagno già maturato si tassa (versato 100.000)", ef.netto, lordo - (lordo - 100_000) * 0.26, tolleranza: 0.05)
             verifica("Proiezione: versato storico", ef.versato, 100_000)
             // Deposito: interessi tassati al 26% man mano
             var conto = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .liquidita, nome: "Conto deposito")
             conto.controvalore = 20_000; conto.rendimentoAtteso = 3
             let ed = MotoreProiezione.calcola(ParametriProiezione(posizione: conto, orizzonteCliente: 5))
-            let mese = pow(1.03, 1.0 / 12) - 1
-            verifica("Proiezione: deposito con interessi tassati all'accredito", ed.netto, 20_000 * pow(1 + mese * 0.74, 60), tolleranza: 0.05)
+            let mese: Double = Foundation.pow(1.03, 1.0 / 12) - 1
+            verifica("Proiezione: deposito con interessi tassati all'accredito", ed.netto, 20_000 * Foundation.pow(1 + mese * 0.74, 60.0), tolleranza: 0.05)
             // Obiettivo a 13 mesi: 13 versamenti, non 24
             let tredici = MotoreProiezione.calcola(ParametriProiezione(capitaleIniziale: 0, versamento: 500, frequenza: .mensile, anni: 2,
                                                                      rendimento: 0, aliquotaFiscale: 0, inflazione: 0).perMesi(13))
