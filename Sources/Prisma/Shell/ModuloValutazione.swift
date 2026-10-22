@@ -119,7 +119,7 @@ struct ModuloValutazione: View {
                     .textFieldStyle(.roundedBorder).lineLimit(2...3)
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: 4).fill(Colori.Documento.scenarioFondo(t)))
+            .background(RoundedRectangle(cornerRadius: 4).fill(Colori.Documento.prisma.scenarioFondo(t)))
         }
     }
 }
