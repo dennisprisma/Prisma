@@ -40,6 +40,9 @@ Eve non calcola da sola: chiede all'app. Esempi:
 - leggere scadenze e appuntamenti
 - lanciare un calcolo dei motori di Prisma (proiezioni, gap previdenziale, gap di protezione, confronti) e commentarne il risultato
 
+## Eve e i documenti di analisi
+Gli spunti di Eve (check-up, resoconto, pensione, protezione, liquidità, obiettivi, restare o cambiare) usano gli stessi motori dei prospetti e dei report (`Sources/Prisma/Eve/AnalisiEve.swift`): le cifre in chat e sui documenti coincidono. Da Prospetti e report il pulsante «Chiedi a Eve» apre la spiegazione del documento aperto. Con il modello Apple le cifre arrivano come bozza (spunti) o come calcoli pertinenti (domande libere riconosciute dalle parole chiave); senza modello risponde la sintesi dai dati.
+
 ## Contenuto della cartella
 - `Istruzioni/` — istruzioni di sistema e prompt per ogni compito (chat, estrazione, commento ai report).
 - `Schemi/` — schemi dei dati da estrarre (es. polizza, KID, estratto conto, proposta).

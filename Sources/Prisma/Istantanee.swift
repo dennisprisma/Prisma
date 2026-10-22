@@ -194,6 +194,18 @@ enum Istantanee {
             s.chiediEve(SpuntoEve.incontro.domanda, spunto: .incontro)
             s.apri(.eve)
         }),
+        ("46-eve-pensione", { s in
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.clienteAttivoId = "marco"
+            s.prospetto = .previdenza(report: false)
+            s.chiediEveDelDocumento(.previdenza(report: false))
+        }),
+        ("47-eve-checkup", { s in
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.clienteAttivoId = "giulia"
+            s.chiediEve(SpuntoEve.checkUp.domanda, spunto: .checkUp)
+            s.apri(.eve)
+        }),
         ("18-analisi360-protezione", { s in
             s.clienteAttivoId = "marco"
             s.areaAnalisi = .protezione

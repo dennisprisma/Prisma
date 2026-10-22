@@ -289,7 +289,7 @@ struct AppEve: View {
                 .font(Tipo.eveBenvenuto)
                 .foregroundColor(Colori.Strumenti.titolo)
                 .multilineTextAlignment(.center)
-            Text("Posso riassumere il percorso di \(cliente?.nome ?? "un cliente"), preparare un incontro o raccogliere i prossimi passi. Leggo il dossier e i calcoli di Prisma: i dati restano sul Mac.")
+            Text("Posso riassumere il percorso di \(cliente?.nome ?? "un cliente"), fare il check-up, spiegare pensione, protezione, liquidità e obiettivi, preparare un incontro. Leggo il dossier e gli stessi calcoli dei prospetti: i dati restano sul Mac.")
                 .font(Tipo.eveMessaggio)
                 .foregroundColor(Colori.Eve.nuvolaEveTesto)
                 .multilineTextAlignment(.center)
