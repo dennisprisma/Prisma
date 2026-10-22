@@ -69,12 +69,16 @@ enum MotoreObiettivo {
         var note: [String] = []
         let collegate = posizioni.filter { o.posizioniCollegate.contains($0.id) && $0.stato == .inEssere }
 
-        func contributo(_ p: Posizione, scarto: Double, anniProiezione: Int) -> ContributoObiettivo {
+        func contributo(_ p: Posizione, scarto: Double, mesiProiezione: Int) -> ContributoObiettivo {
             let rendimento = (p.rendimentoAtteso ?? o.rendimento) + scarto
-            let costo = (p.costoComplessivo ?? 0) + (p.soggettaBollo && p.regime != .deposito ? RegoleFiscali.bollo : 0)
-            let par = ParametriProiezione(capitaleIniziale: p.valore, versamento: p.premio, frequenza: p.frequenza, anni: anniProiezione,
+            let costo = (p.costoComplessivo ?? 0) + (p.regime != .deposito ? RegoleFiscali.bollo * p.quotaBollo : 0)
+            var par = ParametriProiezione(capitaleIniziale: p.valore, versamento: p.premio, frequenza: p.frequenza, anni: 1,
                                           rendimento: rendimento, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: costo,
-                                          aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: false)
+                                          aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: false).perMesi(mesiProiezione)
+            par.capitaleGarantito = p.gestioneSeparata
+            // Fondi pensione: imposta del 20% sui rendimenti dentro il fondo, come nel piano previdenziale
+            if p.regime == .previdenza { par.tassazioneAnnua = RegoleFiscali.previdenzaRendimenti }
+            let anniProiezione = mesiProiezione / 12
             let e = MotoreProiezione.calcola(par)
             // Imposta sul guadagno alla scadenza, secondo il regime (i conti sono già netti)
             let base = (p.totaleVersato ?? p.versamentoIniziale) + (e.versato - p.valore)
@@ -93,13 +97,14 @@ enum MotoreObiettivo {
             o.accantonato * pow(1 + (o.rendimento + scarto) / 100, anniProiezione)
         }
 
-        /// Ciò che c'è, portato a una certa durata.
-        func proiezione(anniProiezione: Int, scarto: Double) -> Double {
-            collegate.reduce(0) { $0 + contributo($1, scarto: scarto, anniProiezione: anniProiezione).nettoScadenza }
-                + accantonato(Double(anniProiezione), scarto: scarto)
+        /// Ciò che c'è, portato a una certa durata in mesi.
+        func proiezione(mesiProiezione: Int, scarto: Double) -> Double {
+            collegate.reduce(0) { $0 + contributo($1, scarto: scarto, mesiProiezione: mesiProiezione).nettoScadenza }
+                + accantonato(Double(mesiProiezione) / 12, scarto: scarto)
         }
 
-        let contributi = collegate.map { contributo($0, scarto: 0, anniProiezione: anniInteri) }
+        // Durata esatta in mesi: 13 mesi sono 13 versamenti, non 24
+        let contributi = collegate.map { contributo($0, scarto: 0, mesiProiezione: mesi) }
         let accantonatoScadenza = accantonato(anni, scarto: 0)
         let proiezioneOggi = contributi.reduce(0) { $0 + $1.nettoScadenza } + accantonatoScadenza
         let mancante = max(0, importoScadenza - proiezioneOggi)
@@ -109,7 +114,7 @@ enum MotoreObiettivo {
         var versamento: Double?
         if mancante > 0.5 && mesi > 0 {
             let par = ParametriProiezione(capitaleIniziale: 0, versamento: 0, frequenza: .mensile, anni: anniInteri,
-                                          rendimento: o.rendimento, aliquotaFiscale: aliquota, inflazione: 0)
+                                          rendimento: o.rendimento, aliquotaFiscale: aliquota, inflazione: 0).perMesi(mesi)
             versamento = MotoreAnalisi.versamentoNecessario(par, obiettivo: mancante)
         }
         // Strada 2: un versamento unico oggi (bisezione)
@@ -117,7 +122,7 @@ enum MotoreObiettivo {
         if mancante > 0.5 {
             func netto(_ c: Double) -> Double {
                 MotoreProiezione.calcola(ParametriProiezione(capitaleIniziale: c, versamento: 0, frequenza: .unica, anni: anniInteri,
-                                                             rendimento: o.rendimento, aliquotaFiscale: aliquota, inflazione: 0)).netto
+                                                             rendimento: o.rendimento, aliquotaFiscale: aliquota, inflazione: 0).perMesi(mesi)).netto
             }
             var basso = 0.0, alto = mancante * 2
             for _ in 0..<60 {
@@ -130,8 +135,7 @@ enum MotoreObiettivo {
         var rinvio: Int?
         if mancante > 0.5 {
             for extra in 1...30 {
-                let durata = anniInteri + extra
-                if proiezione(anniProiezione: durata, scarto: 0) >= o.importo * pow(1 + inflazione / 100, anni + Double(extra)) {
+                if proiezione(mesiProiezione: mesi + extra * 12, scarto: 0) >= o.importo * pow(1 + inflazione / 100, anni + Double(extra)) {
                     rinvio = extra
                     break
                 }
@@ -158,14 +162,14 @@ enum MotoreObiettivo {
         let ampiezza = IpotesiCalcolo.ampiezzaScenari
         let scenari = [("Prudente", -ampiezza), ("Atteso", 0.0), ("Favorevole", ampiezza)].map { voce -> (nome: String, scarto: Double, proiezione: Double) in
             let (nome, scarto) = voce
-            return (nome, scarto, scarto == 0 ? proiezioneOggi : proiezione(anniProiezione: anniInteri, scarto: scarto))
+            return (nome, scarto, scarto == 0 ? proiezioneOggi : proiezione(mesiProiezione: mesi, scarto: scarto))
         }
 
         // Anno per anno, valori lordi (prima delle imposte finali)
         let suggerito = versamento ?? 0
         var attuale: [Double] = [], conVersamento: [Double] = [], obiettivo: [Double] = []
         let extra = MotoreProiezione.calcola(ParametriProiezione(capitaleIniziale: 0, versamento: suggerito, frequenza: .mensile, anni: anniInteri,
-                                                                 rendimento: o.rendimento, aliquotaFiscale: 0, inflazione: 0)).punti
+                                                                 rendimento: o.rendimento, aliquotaFiscale: 0, inflazione: 0).perMesi(mesi)).punti
         for y in 0...anniInteri {
             let v = contributi.reduce(0) { $0 + $1.punti[min(y, $1.punti.count - 1)].valore } + accantonato(Double(y), scarto: 0)
             attuale.append(v)

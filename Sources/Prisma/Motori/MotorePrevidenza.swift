@@ -54,10 +54,13 @@ struct EsitoPianoPrevidenziale {
     var contributiProposte: Double { proposte.reduce(0) { $0 + $1.versamentoAnnuo } }
     var deducibiliOggi: Double { min(RegoleFiscali.limiteDeducibilita, contributiInEssere) }
     var deducibiliConProposte: Double { min(RegoleFiscali.limiteDeducibilita, contributiInEssere + contributiProposte) }
-    var risparmioOggi: Double { deducibiliOggi * (aliquotaMarginale ?? 0) / 100 }
-    var risparmioConProposte: Double { deducibiliConProposte * (aliquotaMarginale ?? 0) / 100 }
+    var risparmioOggi: Double { reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: deducibiliOggi) } ?? 0 }
+    var risparmioConProposte: Double { reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: deducibiliConProposte) } ?? 0 }
     var spazioResiduo: Double { max(0, RegoleFiscali.limiteDeducibilita - contributiInEssere - contributiProposte) }
-    var risparmioPossibile: Double { spazioResiduo * (aliquotaMarginale ?? 0) / 100 }
+    /// IRPEF in più risparmiata usando tutto lo spazio che resta.
+    var risparmioPossibile: Double {
+        reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: RegoleFiscali.limiteDeducibilita) } .map { $0 - risparmioConProposte } ?? 0
+    }
     /// Quanto costa davvero versare: contributi meno il risparmio d'imposta, al mese.
     var costoNettoMensile: Double { (contributiInEssere + contributiProposte - risparmioConProposte) / 12 }
 
@@ -91,12 +94,12 @@ enum MotorePrevidenza {
 
         func piano(_ p: Posizione, scarto: Double) -> PianoPrevidenza {
             let lordo = (p.rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito) + scarto
-            // I rendimenti si tassano ogni anno dentro il fondo
-            let netto = lordo > 0 ? lordo * (1 - RegoleFiscali.previdenzaRendimenti / 100) : lordo
+            // I rendimenti si tassano ogni anno dentro il fondo, sul risultato al netto dei costi
+            let netto = RegoleFiscali.rendimentoNettoPrevidenza(lordo: lordo, costo: p.costoComplessivo ?? 0)
             let inEssere = p.stato == .inEssere
             let capitale = inEssere ? p.valore : p.versamentoIniziale
             let par = ParametriProiezione(capitaleIniziale: capitale, versamento: p.premio, frequenza: p.frequenza, anni: anni,
-                                          rendimento: netto, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: p.costoComplessivo ?? 0,
+                                          rendimento: netto, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: 0,
                                           aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: !inEssere)
             let e = MotoreProiezione.calcola(par)
             let gia = inEssere ? MotoreFiscale.anniPartecipazione(p, data: data) : anniGia

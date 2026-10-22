@@ -39,7 +39,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 13: trattenuto sul rendimento e dati fiscali delle posizioni (regime, titoli di Stato, bollo, previdenza).
     /// 14: reddito lordo annuo nel profilo del cliente (previdenza e deducibilità).
     /// 15: commenti del consulente nei report (scritti con Eve).
-    static let versioneAttuale = 15
+    /// 16: quota in gestione separata delle polizze multiramo; impostazioni di backup con l'ultimo errore.
+    static let versioneAttuale = 16
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
