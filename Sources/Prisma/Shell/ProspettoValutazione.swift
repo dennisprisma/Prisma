@@ -399,21 +399,30 @@ private struct PaginaBasi: View {
                 (Text(verbatim: "Fonti. ").bold() + Text(verbatim: t.c.fonti))
                     .font(T.pTabellaNota).foregroundColor(C.tenue).lineSpacing(1.2).fixedSize(horizontal: false, vertical: true)
             }
-            HStack(alignment: .bottom, spacing: 12) {
-                Text(verbatim: "Per presa visione").font(T.pTabellaNota).foregroundColor(C.tenue)
-                linea("Cliente")
-                linea("Consulente")
+            HStack(alignment: .bottom, spacing: 0) {
+                etichettaFirma("Per presa visione", 92)
+                etichettaFirma("Cliente", 40)
+                lineaFirma
+                Spacer(minLength: 0)
+                etichettaFirma("Consulente", 56)
+                lineaFirma
             }
-            .frame(width: larghezza, alignment: .leading)
-            .padding(.top, 10)
+            .frame(width: larghezza)
+            .padding(.top, 14)
         }
     }
 
-    private func linea(_ etichetta: String) -> some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            Text(verbatim: etichetta).font(T.pTabellaNota).foregroundColor(C.tenue)
-            Rectangle().fill(C.tenue).frame(width: (larghezza - 110) / 2 - 50, height: 0.7)
+    private func etichettaFirma(_ testo: String, _ larghezza: CGFloat) -> some View {
+        Text(verbatim: testo).font(T.pTabellaNota).foregroundColor(C.tenue).lineLimit(1).fixedSize()
+            .frame(width: larghezza, alignment: .leading)
+    }
+
+    private var lineaFirma: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            Rectangle().fill(C.tenue).frame(height: 0.8)
         }
+        .frame(width: 145, height: 14)
     }
 
     private func storicoFondo(_ f: ComponenteContratto) -> some View {
