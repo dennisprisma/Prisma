@@ -12,16 +12,19 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
     /// Motore che ha prodotto la risposta ("Modello Apple", "Sintesi dai dati").
     var motore: String?
     var data = Date()
+    /// Le azioni proposte da Eve (spunto «Cosa proporre al cliente?»), con quello che ne è stato fatto.
+    var proposte: [PropostaEve]?
 
-    init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil) {
+    init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil, proposte: [PropostaEve]? = nil) {
         self.autore = autore
         self.testo = testo
         self.titolo = titolo
         self.motore = motore
+        self.proposte = proposte
         data = Appuntamento.alMinuto(Date())
     }
 
-    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data }
+    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -31,13 +34,33 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
         titolo = try c.decodeIfPresent(String.self, forKey: .titolo)
         motore = try c.decodeIfPresent(String.self, forKey: .motore)
         data = try c.decodeIfPresent(Date.self, forKey: .data) ?? Date()
+        proposte = try? c.decodeIfPresent([PropostaEve].self, forKey: .proposte)
     }
+}
+
+/// Un'azione che Eve propone per il cliente, ricavata dai motori di analisi: diventa un'attività
+/// o una bozza di proposta in Posizioni, sempre da completare e confermare dal consulente.
+struct PropostaEve: Codable, Equatable, Identifiable {
+    /// Chiave stabile ("protezione-vita", "obiettivo-<id>"…).
+    var id: String
+    var titolo: String
+    /// Il perché, con le cifre dei motori.
+    var perche: String
+    /// Area della posizione da proporre (nil se è solo un'attività).
+    var area: AreaPosizione?
+    var rischio: RischioCoperto?
+    var capitale: Double?
+    var versamentoMensile: Double?
+    var importo: Double?
+    /// Cosa ne ha fatto il consulente.
+    var attivitaId: String?
+    var posizioneId: String?
 }
 
 /// Gli spunti pronti sotto la conversazione. Quelli di analisi leggono gli stessi motori dei
 /// prospetti e dei report: i numeri di Eve e quelli dei documenti coincidono.
 enum SpuntoEve: String, CaseIterable, Identifiable {
-    case riepilogo, checkUp, incontro, prossimiPassi, resoconto, pensione, protezione, liquidita, obiettivi, cambiare, documenti, scadenze
+    case riepilogo, checkUp, proposte, incontro, prossimiPassi, resoconto, pensione, protezione, liquidita, obiettivi, cambiare, documenti, scadenze
 
     var id: String { rawValue }
 
@@ -45,6 +68,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         switch self {
         case .riepilogo: return "Fammi un riepilogo del cliente"
         case .checkUp: return "Fai il check-up del cliente"
+        case .proposte: return "Cosa proporre al cliente?"
         case .incontro: return "Prepara il prossimo incontro"
         case .prossimiPassi: return "Elenca i prossimi passi"
         case .resoconto: return "Come stanno andando le posizioni?"
@@ -62,6 +86,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         switch self {
         case .riepilogo: return "≡"
         case .checkUp: return "●"
+        case .proposte: return "✚"
         case .incontro: return "◷"
         case .prossimiPassi: return "✓"
         case .resoconto: return "↗"
@@ -86,6 +111,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
     static func argomento(_ testo: String) -> SpuntoEve? {
         let t = testo.lowercased()
         let parole: [(SpuntoEve, [String])] = [
+            (.proposte, ["proporre", "proposte da fare", "cosa gli propongo", "cosa le propongo", "opportunità"]),
             (.pensione, ["pension", "previdenz", "anticipazion", "tfr", "deducib"]),
             (.cambiare, ["cambiare", "sostitu", "restare", "switch", "conviene"]),
             (.documenti, ["documento", "documenti", "kid", "estratto conto", "set informativo"]),
@@ -153,6 +179,7 @@ struct RichiestaEve {
 struct RispostaEve {
     var titolo: String?
     let testo: String
+    var proposte: [PropostaEve]? = nil
 }
 
 enum DisponibilitaEve: Equatable {

@@ -1262,14 +1262,16 @@ final class StatoShell: ObservableObject {
         let motore = motoreEve
         if let sintesi = motore as? MotoreSintesi {
             let r = sintesi.componi(richiesta)
-            aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome), cliente: id)
+            aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome, proposte: r.proposte), cliente: id)
             return
         }
+        // Le azioni proposte restano quelle calcolate da Prisma, anche quando il testo lo scrive il modello
+        let proposte = richiesta.spunto == .proposte ? MotoriEve.sintesi.componi(richiesta).proposte : nil
         eveInCorso = true
         Task { @MainActor in
             do {
                 let r = try await motore.rispondi(richiesta)
-                self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome), cliente: id)
+                self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome, proposte: proposte), cliente: id)
             } catch {
                 // Se il modello non risponde, per gli spunti c'è comunque la sintesi dai dati.
                 let riserva = richiesta.spunto != nil ? "\n\nIntanto, dai dati del dossier:\n\n" + MotoriEve.sintesi.componi(richiesta).testo : ""
@@ -1277,6 +1279,61 @@ final class StatoShell: ObservableObject {
                                                     titolo: "Eve non ha potuto rispondere", motore: MotoriEve.sintesi.nome), cliente: id)
             }
             self.eveInCorso = false
+        }
+    }
+
+    // MARK: - Proposte di Eve
+
+    /// Un'azione proposta da Eve diventa un'attività del cliente (entro una settimana).
+    func attivitaDaProposta(_ p: PropostaEve, messaggio: String) {
+        var t = Attivita.nuova(clienteId: clienteAttivoId,
+                               scadenza: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date())
+        t.titolo = p.titolo
+        t.note = "Proposta da Eve: \(p.perche)"
+        dati.attivita.append(t)
+        aggiornaProposta(p.id, messaggio: messaggio) { $0.attivitaId = t.id }
+        mostraAvviso("Attività aggiunta: \(t.titolo)")
+    }
+
+    /// Un'azione proposta da Eve diventa una bozza di proposta in Posizioni, da completare.
+    func posizioneDaProposta(_ p: PropostaEve, messaggio: String) {
+        if let id = p.posizioneId, let esistente = posizioni.first(where: { $0.id == id }) {
+            apriPosizione(esistente)
+            return
+        }
+        guard let area = p.area else { return }
+        let canali = cliente(clienteAttivoId)?.canali ?? []
+        let canale = canali.contains(.alleanza) || canali.isEmpty ? Canale.alleanza : canali[0]
+        var nuova = Posizione(clienteId: clienteAttivoId, canale: canale, stato: .proposta, area: area, nome: p.titolo)
+        nuova.esito = .bozza
+        nuova.rischio = p.rischio
+        nuova.capitaleAssicurato = p.capitale
+        if let v = p.versamentoMensile {
+            nuova.premio = v
+            nuova.frequenza = .mensile
+        }
+        if let i = p.importo, p.versamentoMensile == nil { nuova.versamentoIniziale = i }
+        nuova.note = "Preparata con Eve: \(p.perche) Scegli prodotto e canale e completa i dati."
+        salvaPosizione(nuova)
+        aggiornaProposta(p.id, messaggio: messaggio) { $0.posizioneId = nuova.id }
+        apriPosizione(nuova)
+    }
+
+    private func aggiornaProposta(_ id: String, messaggio: String, _ modifica: (inout PropostaEve) -> Void) {
+        let cliente = clienteAttivoId
+        func aggiorna(_ elenco: inout [MessaggioEve]) {
+            guard let m = elenco.firstIndex(where: { $0.id == messaggio }),
+                  let i = elenco[m].proposte?.firstIndex(where: { $0.id == id }) else { return }
+            modifica(&elenco[m].proposte![i])
+        }
+        if dati.impostazioni.eve.conservaConversazioni {
+            var elenco = dati.conversazioni[cliente] ?? []
+            aggiorna(&elenco)
+            dati.conversazioni[cliente] = elenco
+        } else {
+            var elenco = conversazioniTemporanee[cliente] ?? []
+            aggiorna(&elenco)
+            conversazioniTemporanee[cliente] = elenco
         }
     }
 

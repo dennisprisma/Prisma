@@ -46,6 +46,9 @@ Gli spunti di Eve (check-up, resoconto, pensione, protezione, liquidità, obiett
 ## Eve e i documenti del cliente
 Da Documenti, «Chiedi a Eve» spiega un KID, una polizza o un estratto conto (`Sources/Prisma/Eve/DocumentiEve.swift`): i dati trovati con la pagina, il rischio e il periodo raccomandato letti con il profilo del cliente, i costi, cosa non torna con la posizione collegata, i dati ancora da confermare e quelli da verificare nelle condizioni. Lo spunto «Cosa dicono i documenti?» riassume tutti i documenti del cliente. Con il modello Apple la spiegazione diventa discorsiva, sulle stesse cifre.
 
+## Le proposte di Eve
+Lo spunto «Cosa proporre al cliente?» (`Sources/Prisma/Eve/ProposteEve.swift`) ricava dalle analisi le azioni da fare, in ordine di urgenza: copertura caso morte, tutela per invalidità, riserva di emergenza, piano previdenziale (con il risparmio IRPEF), piani di accumulo per gli obiettivi, capitale da far lavorare, capitali in scadenza. Salta ciò che ha già una proposta aperta. Ogni azione diventa, con un tocco, un'attività o una bozza di proposta in Posizioni con area e cifre: prodotto e canale li sceglie il consulente.
+
 ## Contenuto della cartella
 - `Istruzioni/` — istruzioni di sistema e prompt per ogni compito (chat, estrazione, commento ai report).
 - `Schemi/` — schemi dei dati da estrarre (es. polizza, KID, estratto conto, proposta).

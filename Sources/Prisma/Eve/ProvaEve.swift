@@ -147,6 +147,38 @@ enum ProvaEve {
         }
         controlla(SpuntoEve.argomento("Cosa c'è scritto nel KID?") == .documenti, "Argomento: domanda su un KID → documenti")
 
+        // Le proposte di Eve: dalle analisi alle attività e alle bozze di proposta
+        stato.dati.impostazioni.eve.motore = .sintesi
+        stato.clienteAttivoId = "giulia"
+        if let f = stato.fonteEve("giulia") {
+            let elenco = MotoreSintesi.calcolaProposte(f)
+            let prot = MotoreProtezioneFamiglia.calcola(f.posizioni, cliente: f.cliente, analisi: f.analisi.protezione, data: f.oggi)
+            controlla(prot.divarioConProposte < 1_000 || elenco.contains { $0.id == "protezione-vita" },
+                      "Proposte di Giulia: la copertura caso morte (divario \(CifreDoc.euro(prot.divarioConProposte)))")
+            let aperta = f.posizioni.contains { $0.stato == .proposta && $0.area == .previdenza && $0.esito != .rifiutata && $0.esito != .accettata }
+            controlla(!aperta || !elenco.contains { $0.id == "previdenza" }, "Proposte di Giulia: niente doppione della previdenza già in proposta")
+            controlla(elenco.count <= MotoreSintesi.massimoProposte && elenco.allSatisfy { !$0.perche.isEmpty }, "Proposte di Giulia: al massimo \(MotoreSintesi.massimoProposte), ognuna con il perché")
+            stato.chiediEve(SpuntoEve.proposte.domanda, spunto: .proposte)
+            if let m = stato.conversazione("giulia").last, let p = m.proposte?.first(where: { $0.area != nil }) {
+                let attivita = stato.dati.attivita.count
+                stato.attivitaDaProposta(p, messaggio: m.id)
+                controlla(stato.dati.attivita.count == attivita + 1 && stato.conversazione("giulia").last?.proposte?.first { $0.id == p.id }?.attivitaId != nil,
+                          "Proposta «\(p.titolo)» → attività, segnata nel messaggio")
+                let posizioni = stato.posizioni.count
+                stato.posizioneDaProposta(p, messaggio: m.id)
+                stato.posizioneDaProposta(stato.conversazione("giulia").last?.proposte?.first { $0.id == p.id } ?? p, messaggio: m.id)
+                let nuova = stato.posizioni.last
+                controlla(stato.posizioni.count == posizioni + 1 && nuova?.stato == .proposta && nuova?.esito == .bozza && nuova?.area == p.area
+                          && nuova?.capitaleAssicurato == p.capitale,
+                          "Proposta «\(p.titolo)» → una sola bozza in Posizioni, con area e cifre")
+                if let fd = stato.fonteEve("giulia") {
+                    controlla(!MotoreSintesi.calcolaProposte(fd).contains { $0.id == p.id }, "Dopo la bozza, Eve non ripropone «\(p.titolo)»")
+                }
+            } else {
+                controlla(false, "Il messaggio delle proposte di Giulia ha le azioni")
+            }
+        }
+
         // La chat in modalità sintesi aggiunge domanda e risposta
         stato.dati.impostazioni.eve.motore = .sintesi
         stato.clienteAttivoId = "marco"
