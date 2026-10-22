@@ -146,6 +146,19 @@ enum ProvaEve {
             controlla(false, "Marco ha una polizza di prova")
         }
         controlla(SpuntoEve.argomento("Cosa c'è scritto nel KID?") == .documenti, "Argomento: domanda su un KID → documenti")
+        // Parole che contengono una chiave ma parlano d'altro
+        for (domanda, atteso) in [("Qual è il patrimonio netto?", SpuntoEve.riepilogo), ("Ci sono passività?", nil), ("Il conto è in sospensione?", nil),
+                                  ("Controlla le impostazioni", nil), ("Cosa gli propongo?", .proposte)] as [(String, SpuntoEve?)] {
+            controlla(SpuntoEve.argomento(domanda) == atteso, "Argomento di «\(domanda)» → \(atteso?.rawValue ?? "nessuno")")
+        }
+        controlla(CommentoEve.numeriConservati(bozza: "Mancano € 50.000 e il −4,5%.", testo: "Mancano 50.000 euro e il -4,5%."), "Commento: «50.000 euro» è la stessa cifra di «€ 50.000»")
+        controlla(!CommentoEve.numeriConservati(bozza: "Rende il −4,5%.", testo: "Rende il 4,5%."), "Commento: il segno cambiato viene scartato")
+        controlla(!CommentoEve.numeriConservati(bozza: "Mancano € 55.000.", testo: "Mancano circa 60 mila euro."), "Commento: le cifre in parole vengono scartate")
+        // Le proposte restano anche per le domande scritte a mano
+        if let f = stato.fonteEve("giulia") {
+            let r = MotoriEve.sintesi.componi(RichiestaEve(domanda: "cosa gli propongo?", spunto: nil, fonte: f, storia: []))
+            controlla(r.proposte?.isEmpty == false, "Domanda scritta a mano sulle proposte: le azioni ci sono")
+        }
 
         // Le proposte di Eve: dalle analisi alle attività e alle bozze di proposta
         stato.dati.impostazioni.eve.motore = .sintesi

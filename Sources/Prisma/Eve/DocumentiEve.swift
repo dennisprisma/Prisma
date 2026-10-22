@@ -75,7 +75,7 @@ extension MotoreSintesi {
             var dati: [String] = []
             if let c = d.campo(.sri) { dati.append("rischio \(c.valore) su 7") }
             if let c = d.campo(.periodoDetenzione) { dati.append("\(c.valore) anni consigliati") }
-            if let c = d.campo(.incidenzaCosti) ?? d.campo(.costoAnnuo) { dati.append("costi \(c.valore)% l'anno") }
+            if let c = d.campo(.costoAnnuo) ?? d.campo(.incidenzaCosti) { dati.append("costi \(c.valore)% l'anno") }
             if let c = d.campo(.capitaleAssicurato) { dati.append("capitale \(cifra(c))") }
             if let c = d.campo(.scadenza) { dati.append("scadenza \(c.valore)") }
             if let c = d.campo(.controvalore) { dati.append("controvalore \(cifra(c))") }
@@ -160,7 +160,7 @@ extension MotoreSintesi {
         if let x = numero(.controvalore), abs(x.0 - p.valore) > 1 {
             diff.append("controvalore \(CifreDoc.euroCentesimi(x.0)) \(pagina(x.1)), \(nomePos) vale \(CifreDoc.euroCentesimi(p.valore)): aggiorna il valore")
         }
-        if let x = numero(.incidenzaCosti) ?? numero(.costoAnnuo), let k = p.costoAnnuo, abs(x.0 - k) > 0.05 {
+        if let x = numero(.costoAnnuo) ?? numero(.incidenzaCosti), let k = p.costoAnnuo, abs(x.0 - k) > 0.05 {
             diff.append("costi annui \(CifreDoc.condizione(x.0)) \(pagina(x.1)), \(nomePos) indica \(CifreDoc.condizione(k))")
         }
         if let c = d.campo(.scadenza), let s = EstrattoreDocumento.data(c.valore), let ps = p.scadenza,

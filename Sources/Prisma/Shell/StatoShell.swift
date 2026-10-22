@@ -286,6 +286,7 @@ final class StatoShell: ObservableObject {
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
         dati.conversazioni[id] = nil
+        dati.commenti.removeAll { $0.clienteId == id }
         dati.incontri.removeAll { $0.clienteId == id }
         dati.obiettivi.removeAll { $0.clienteId == id }
         dati.valutazioni.removeAll { $0.clienteId == id }
@@ -341,6 +342,8 @@ final class StatoShell: ObservableObject {
 
     func eliminaPosizione(_ id: String) {
         dati.posizioni.removeAll { $0.id == id }
+        // I commenti dei confronti che la usavano
+        dati.commenti.removeAll { $0.id.hasPrefix("sostituzione·") && $0.id.components(separatedBy: "·").contains(id) }
     }
 
     /// Una proposta accettata diventa una posizione in essere.
@@ -862,6 +865,7 @@ final class StatoShell: ObservableObject {
 
     func eliminaObiettivo(_ id: String) {
         dati.obiettivi.removeAll { $0.id == id }
+        dati.commenti.removeAll { $0.id == "obiettivo·\(id)" }
         if obiettivoSelezionato == id { obiettivoSelezionato = nil }
     }
 
@@ -1276,7 +1280,7 @@ final class StatoShell: ObservableObject {
                 // Se il modello non risponde, per gli spunti c'è comunque la sintesi dai dati.
                 let riserva = richiesta.spunto != nil ? "\n\nIntanto, dai dati del dossier:\n\n" + MotoriEve.sintesi.componi(richiesta).testo : ""
                 self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: error.localizedDescription + riserva,
-                                                    titolo: "Eve non ha potuto rispondere", motore: MotoriEve.sintesi.nome), cliente: id)
+                                                    titolo: "Eve non ha potuto rispondere", motore: MotoriEve.sintesi.nome, proposte: proposte), cliente: id)
             }
             self.eveInCorso = false
         }

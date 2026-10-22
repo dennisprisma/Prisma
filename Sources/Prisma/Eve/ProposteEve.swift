@@ -50,7 +50,7 @@ extension MotoreSintesi {
         if mancaRiserva >= 500, !giaProposta(.liquidita) {
             let mensile = arrotonda(mancaRiserva / 12, a: 10)
             elenco.append(PropostaEve(id: "liquidita-riserva", titolo: "Costruire la riserva di emergenza",
-                                      perche: "servono \(CifreDoc.euro(liq.riservaNecessaria)) (\(liq.mesiRiserva) mesi di spese), oggi ce ne sono \(CifreDoc.euro(liq.totale)): circa \(CifreDoc.euro(mensile)) al mese per un anno.",
+                                      perche: "servono \(CifreDoc.euro(liq.riservaNecessaria)) (\(liq.mesiRiserva) mesi di spese), tra conti e capitali in arrivo nei prossimi \(IpotesiLiquidita.finestraMesi) mesi ce ne sono \(CifreDoc.euro(liq.totale)): circa \(CifreDoc.euro(mensile)) al mese per un anno.",
                                       area: .liquidita, versamentoMensile: mensile, importo: mancaRiserva))
         }
         // 4. La pensione
@@ -78,7 +78,7 @@ extension MotoreSintesi {
         if liq.eccedenza >= 5_000, !giaProposta(.investimento) {
             let importo = arrotonda(liq.eccedenza, a: 1_000)
             elenco.append(PropostaEve(id: "liquidita-destinare", titolo: "Far lavorare \(CifreDoc.euro(importo)) oltre la riserva",
-                                      perche: "fermi sul conto, in \(IpotesiLiquidita.anniConfronto) anni perderebbero \(CifreDoc.euro(liq.perditaFermo)) di potere d'acquisto.",
+                                      perche: "fermi sul conto, in \(IpotesiLiquidita.anniConfronto) anni perderebbero circa \(CifreDoc.euro(liq.totale > 0 ? liq.perditaFermo * importo / liq.totale : 0)) di potere d'acquisto.",
                                       area: .investimento, importo: importo))
         }
         // 7. I capitali in scadenza

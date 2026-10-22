@@ -509,7 +509,7 @@ struct AppProspetti: View {
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Colonna.collegamento)
             }
-            if let scelta = stato.prospetto, scelta.spuntoEve != nil {
+            if scelta.spuntoEve != nil {
                 Button("✦ Chiedi a Eve") { stato.chiediEveDelDocumento(scelta) }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                     .disabled(stato.eveInCorso)
@@ -564,6 +564,7 @@ private struct PannelloCommento: View {
     let scelta: SceltaProspetto
     @State private var testo = ""
     @State private var caricato = false
+    @State private var confermaRiscrivi = false
 
     static func nota(_ c: CommentoReport) -> String {
         let data = "salvato il \(Formati.dataEstesa.string(from: c.aggiornatoIl))"
@@ -586,19 +587,33 @@ private struct PannelloCommento: View {
                     .frame(height: 210)
                     .background(RoundedRectangle(cornerRadius: Misure.Strumenti.raggio).fill(Colori.Strumenti.carta))
                     .overlay(RoundedRectangle(cornerRadius: Misure.Strumenti.raggio).strokeBorder(Colori.Strumenti.schedaBordo, lineWidth: 1))
-                if let s = salvato {
-                    Text(PannelloCommento.nota(s)).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    // Mentre Eve scrive non si modifica: il suo testo sostituirebbe quello digitato
+                    .disabled(stato.eveInCorso)
+                HStack {
+                    if let s = salvato {
+                        Text(PannelloCommento.nota(s)).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    }
+                    Spacer()
+                    Text("\(testo.count) / \(CommentoEve.limite)")
+                        .font(Tipo.kpiNota)
+                        .foregroundColor(testo.count > CommentoEve.limite ? Colori.Analisi.erroreTesto : Colori.Analisi.kpiNota)
+                }
+                if testo.count > CommentoEve.limite {
+                    Text("Il testo è troppo lungo per la pagina: accorcialo per salvarlo.")
+                        .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.erroreTesto)
                 }
             }
             HStack(spacing: 6) {
                 Button(stato.eveInCorso ? "Eve scrive…" : (salvato == nil ? "✦ Scrivi con Eve" : "✦ Riscrivi")) {
-                    stato.scriviCommentoConEve(scelta)
+                    // Il commento salvato o le modifiche in corso non si perdono senza chiedere
+                    if salvato != nil || !testo.isEmpty { confermaRiscrivi = true } else { stato.scriviCommentoConEve(scelta) }
                 }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 9, bottom: 4, trailing: 9)))
                 .disabled(stato.eveInCorso)
                 if !testo.isEmpty && testo != salvato?.testo {
                     Button("Salva") { stato.salvaCommento(scelta, testo: testo, bozzaDi: salvato?.bozzaDi) }
                         .buttonStyle(StileBlu())
+                        .disabled(testo.count > CommentoEve.limite)
                 }
                 if salvato != nil {
                     Button("Togli") { stato.salvaCommento(scelta, testo: ""); testo = "" }
@@ -609,6 +624,12 @@ private struct PannelloCommento: View {
             }
         }
         .padding(12)
+        .confirmationDialog("Eve riscrive il commento", isPresented: $confermaRiscrivi) {
+            Button("Riscrivi con Eve", role: .destructive) { stato.scriviCommentoConEve(scelta) }
+            Button("Annulla", role: .cancel) {}
+        } message: {
+            Text("Il testo attuale del commento viene sostituito dalla nuova stesura di Eve.")
+        }
         .onAppear { if !caricato { testo = salvato?.testo ?? ""; caricato = true } }
         .onChange(of: salvato?.aggiornatoIl) { _ in testo = stato.commento(scelta)?.testo ?? "" }
         .onChange(of: salvato?.testo) { nuovo in testo = nuovo ?? "" }

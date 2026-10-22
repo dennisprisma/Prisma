@@ -198,6 +198,94 @@ enum ProvaCalcoli {
         } else {
             verifica("Polizza di prova presente", 0, 1)
         }
+
+        // 17b. Lettura dei documenti: le varianti dei documenti reali (testi inventati, con le formule
+        // standard del KID PRIIPs dal 2023, di polizze e di estratti conto)
+        do {
+            let kid = [
+                """
+                Documento contenente le informazioni chiave
+                Nome del prodotto: Esempio Multiramo Futuro – Classe B
+                Nome dell'ideatore del PRIIP: Esempio Vita S.p.A. – Gruppo Esempio
+                Tipo: Contratto di assicurazione sulla vita multiramo
+                """,
+                """
+                Indicatore di rischio
+                Abbiamo classificato questo prodotto al livello 4 su 7, che corrisponde alla classe di rischio media.
+                Periodo di detenzione raccomandato:
+                8 anni
+                Scenario moderato   Possibile rimborso al netto dei costi   9.870 EUR   12.410 EUR
+                Rendimento medio per ciascun anno   -1,3%   2,7%
+                """,
+                """
+                Andamento dei costi nel tempo
+                Costi totali   410 EUR   1.540 EUR
+                Incidenza annuale dei costi (*)   4,1%   1,9% ogni anno
+                (*) Dimostra come i costi riducono il rendimento ogni anno: se si esce al termine del periodo il rendimento è del 4,6% prima dei costi.
+                Composizione dei costi
+                Costi di ingresso   2,5% dell'importo pagato al momento della sottoscrizione
+                Costi di uscita   Non addebitiamo una commissione di uscita per questo prodotto
+                Commissioni di gestione e altri costi amministrativi o di esercizio   1,60% del valore dell'investimento all'anno
+                """,
+            ]
+            let campi = EstrattoreDocumento.conRegole(kid)
+            func c(_ k: CampoDocumento) -> CampoEstratto? { campi.first { $0.chiave == k } }
+            verifica("KID 2023: nome del prodotto", c(.nomeProdotto)?.valore == "Esempio Multiramo Futuro" ? 1 : 0, 1)
+            verifica("KID 2023: ideatore", c(.emittente)?.valore == "Esempio Vita S.p.A." ? 1 : 0, 1)
+            verifica("KID 2023: rischio «al livello 4 su 7»", Double(c(.sri)?.valore ?? "") ?? 0, 4)
+            verifica("KID 2023: periodo raccomandato sulla riga sotto", EstrattoreDocumento.numero(c(.periodoDetenzione)?.valore) ?? 0, 8)
+            verifica("KID 2023: scenario moderato, colonna del periodo raccomandato", EstrattoreDocumento.numero(c(.rendimentoModerato)?.valore) ?? 0, 2.7, tolleranza: 0.000_1)
+            verifica("KID 2023: incidenza dei costi, colonna del periodo raccomandato", EstrattoreDocumento.numero(c(.incidenzaCosti)?.valore) ?? 0, 1.9, tolleranza: 0.000_1)
+            verifica("KID 2023: costi di ingresso", EstrattoreDocumento.numero(c(.costoIngresso)?.valore) ?? 0, 2.5, tolleranza: 0.000_1)
+            verifica("KID 2023: «non addebitiamo» costi di uscita = 0", c(.costoUscita)?.valore == "0" ? 1 : 0, 1)
+            verifica("KID 2023: costi correnti", EstrattoreDocumento.numero(c(.costoAnnuo)?.valore) ?? 0, 1.6, tolleranza: 0.000_1)
+            verifica("KID 2023: dati alla pagina giusta", Double(c(.incidenzaCosti)?.pagina ?? 0) * 10 + Double(c(.sri)?.pagina ?? 0), 32)
+
+            let polizza = ["""
+                Numero di polizza: 0045/778812
+                Contraente: Paola Esempio
+                Assicurato: Paola Esempio
+                Beneficiari caso morte: gli eredi testamentari o, in mancanza, legittimi
+                Data di decorrenza ore 24 del 15 marzo 2024
+                Data di scadenza: 15/03/2034
+                Capitale assicurato caso morte: € 120.000,00
+                Premio annuo lordo: € 456,30
+                """]
+            let cp = EstrattoreDocumento.conRegole(polizza)
+            func p(_ k: CampoDocumento) -> CampoEstratto? { cp.first { $0.chiave == k } }
+            verifica("Polizza: «Numero di polizza»", p(.numeroContratto)?.valore == "0045/778812" ? 1 : 0, 1)
+            verifica("Polizza: beneficiari caso morte", p(.beneficiari)?.valore.hasPrefix("gli eredi") == true ? 1 : 0, 1)
+            let decorrenza = EstrattoreDocumento.data(p(.decorrenza)?.valore)
+            verifica("Polizza: decorrenza scritta in lettere", decorrenza.map { Double(Calendar(identifier: .gregorian).component(.month, from: $0)) } ?? 0, 3)
+            verifica("Polizza: capitale «caso morte» con il simbolo €", EstrattoreDocumento.numero(p(.capitaleAssicurato)?.valore) ?? 0, 120_000)
+            verifica("Polizza: «premio annuo lordo»", EstrattoreDocumento.numero(p(.premio)?.valore) ?? 0, 456.3, tolleranza: 0.001)
+
+            let estratto = ["""
+                Estratto conto al 30/09/2026
+                Controvalore complessivo al 30/09/2026: € 25.430,12
+                """]
+            let ce = EstrattoreDocumento.conRegole(estratto)
+            verifica("Estratto conto: controvalore dopo la data", EstrattoreDocumento.numero(ce.first { $0.chiave == .controvalore }?.valore) ?? 0, 25_430.12, tolleranza: 0.001)
+            verifica("Estratto conto: riconosciuto", EstrattoreDocumento.tipoProbabile(estratto) == .estrattoConto ? 1 : 0, 1)
+            // Percentuali e anni non sono importi
+            let trappole = ["""
+                Valore di riscatto pari al 95% del capitale investito
+                Capitale caso morte: 101% del capitale versato
+                Somma assicurata rivalutata del 2,5% ogni anno
+                Scenario moderato  Rendimento medio per ciascun anno  −3,2%
+                Costi correnti 1.20% all'anno
+                """]
+            let ct = EstrattoreDocumento.conRegole(trappole)
+            func t(_ k: CampoDocumento) -> CampoEstratto? { ct.first { $0.chiave == k } }
+            verifica("Trappole: «95% del capitale» non è un controvalore", t(.controvalore) == nil ? 1 : 0, 1)
+            verifica("Trappole: «101% del capitale» né «2,5%» sono un capitale assicurato", t(.capitaleAssicurato) == nil ? 1 : 0, 1)
+            verifica("Trappole: «−3,2%» resta negativo", EstrattoreDocumento.numero(t(.rendimentoModerato)?.valore) ?? 0, -3.2, tolleranza: 0.000_1)
+            verifica("Trappole: «1.20%» con il punto decimale", EstrattoreDocumento.numero(t(.costoAnnuo)?.valore) ?? 0, 1.2, tolleranza: 0.000_1)
+            verifica("Numeri dal modello: «1200.50»", EstrattoreDocumento.numero("1200.50") ?? 0, 1200.5, tolleranza: 0.001)
+            let dalModello = EstrattoreDocumento.daRisposta("sri|3/7\nperiodoDetenzione|5 anni\ncostoAnnuo|1,20%", pagina: 1)
+            verifica("Valori del modello normalizzati («3/7», «5 anni», «1,20%»)",
+                     dalModello.map(\.valore) == ["3", "5", "1,20"] ? 1 : 0, 1)
+        }
         verifica("Numeri all'italiana: 1.250,50", EstrattoreDocumento.numero("1.250,50 €") ?? 0, 1_250.5, tolleranza: 0.000_1)
         let modello = EstrattoreDocumento.daRisposta("sri|9\ncostoAnnuo|1,10\ninventato|x\npremio|", pagina: 4)
         verifica("Risposta del modello: tiene solo le righe valide", Double(modello.count), 1)

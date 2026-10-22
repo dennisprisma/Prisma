@@ -109,23 +109,30 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
     /// L'argomento di una domanda libera, dalle parole chiave (per la sintesi dai dati, che non capisce
     /// le frasi): "quanto paga di tasse se riscatta il fondo pensione?" → pensione.
     static func argomento(_ testo: String) -> SpuntoEve? {
-        let t = testo.lowercased()
+        // Ogni chiave è l'inizio di una parola ("pension" sì in «pensione», no in «sospensione»);
+        // con \b in fondo vale solo la parola intera («passi» sì, «passività» no).
         let parole: [(SpuntoEve, [String])] = [
-            (.proposte, ["proporre", "proposte da fare", "cosa gli propongo", "cosa le propongo", "opportunità"]),
-            (.pensione, ["pension", "previdenz", "anticipazion", "tfr", "deducib"]),
-            (.cambiare, ["cambiare", "sostitu", "restare", "switch", "conviene"]),
-            (.documenti, ["documento", "documenti", "kid", "estratto conto", "set informativo"]),
-            (.liquidita, ["liquidità", "liquidita", "conto corrente", "in scadenza", "salvadana"]),
+            (.riepilogo, [#"patrimonio netto\b"#]),
+            (.proposte, [#"proporre\b"#, "proposte da fare", "cosa gli propongo", "cosa le propongo", "opportunità"]),
+            (.pensione, ["pension", "previdenz", "anticipazion", #"tfr\b"#, "deducib"]),
+            (.cambiare, [#"cambiare\b"#, "sostitu", #"restare\b"#, #"switch\b"#, "conviene"]),
+            (.documenti, [#"document[oi]\b"#, #"kid\b"#, "estratto conto", "set informativo"]),
+            (.liquidita, ["liquidit", "conto corrente", "in scadenza", "salvadana"]),
             (.obiettivi, ["obiettiv", "traguard"]),
-            (.protezione, ["protezion", "copertur", "tcm", "caso morte", "invalidità"]),
-            (.resoconto, ["rendiment", "andament", "guadagn", "tasse", "impost", "costi", "netto", "resoconto"]),
+            (.protezione, ["protezion", "copertur", #"tcm\b"#, "caso morte", "invalidit"]),
+            (.resoconto, ["rendiment", "andament", "guadagn", #"tasse\b"#, #"impost[ae]\b"#, #"costi\b"#, #"netto\b"#, "resoconto"]),
             (.checkUp, ["check", "semaforo"]),
-            (.scadenze, ["scadenz", "scade"]),
-            (.incontro, ["incontro", "appuntamento"]),
-            (.prossimiPassi, ["passi", "cosa fare", "da fare"]),
-            (.riepilogo, ["riepilogo", "quadro", "situazione", "patrimonio"])
+            (.scadenze, ["scadenz", #"scad[eo]\b"#]),
+            (.incontro, [#"incontr[oi]\b"#, "appuntament"]),
+            (.prossimiPassi, [#"passi\b"#, "cosa fare", "da fare"]),
+            (.riepilogo, ["riepilog", "quadro", "situazione", "patrimonio"])
         ]
-        return parole.first { $0.1.contains { t.contains($0) } }?.0
+        let r = NSRange(testo.startIndex..., in: testo)
+        return parole.first { voce in
+            voce.1.contains { chiave in
+                (try? NSRegularExpression(pattern: #"\b"# + chiave, options: [.caseInsensitive]))?.firstMatch(in: testo, range: r) != nil
+            }
+        }?.0
     }
 }
 
