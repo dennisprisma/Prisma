@@ -80,7 +80,7 @@ enum ProvaProspetti {
                 }
             case .confronto:
                 verifica("\(nome): differenza B − A presente", testo.contains("B − A"))
-            case .valutazione, .resoconto:
+            case .valutazione, .resoconto, .sostituzione:
                 break
             }
         }
