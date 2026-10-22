@@ -121,7 +121,7 @@ enum CompositoreProspetti {
                     [.t("Costo d'ingresso"), percentualeOpzionale(p.costoIngresso), .n(p.stato == .inEssere ? "versamenti futuri" : "capitale iniziale e versamenti"),
                      .t(euro(costoIngressoNelPeriodo(par)))],
                     [.t(p.trattenuto == nil ? "Costo annuo di gestione" : "Costo annuo e trattenuto sul rendimento"),
-                     p.trattenuto.map { .t((p.costoAnnuo.map { percentuale($0) + " + " } ?? "") + percentuale($0)) } ?? percentualeOpzionale(p.costoAnnuo),
+                     condizioneCostoAnnuo(p),
                      .n("capitale investito, ogni anno, pro quota mensile"),
                      .t(euro(max(0, atteso.costi - costoIngressoNelPeriodo(par))))],
                     [.t("Imposta sulle plusvalenze"), .t(percentuale(par.aliquotaFiscale)), .n("guadagno a fine periodo"), .t(euro(atteso.imposte))],
@@ -382,6 +382,13 @@ enum CompositoreProspetti {
         if p.anniAllaScadenza != nil { return "fino alla scadenza" }
         if orizzonteCliente != nil { return "orizzonte del cliente" }
         return "ipotesi predefinita"
+    }
+
+    /// "1,5%", oppure "1,5% + 1,3%" con il trattenuto sul rendimento.
+    private static func condizioneCostoAnnuo(_ p: Posizione) -> CellaProspetto {
+        guard let trattenuto = p.trattenuto else { return percentualeOpzionale(p.costoAnnuo) }
+        let gestione = p.costoAnnuo.map { percentuale($0) + " + " } ?? ""
+        return .t(gestione + percentuale(trattenuto))
     }
 
     static func ipotesiMancanti(_ p: Posizione, orizzonteCliente: Int?) -> [String] {
