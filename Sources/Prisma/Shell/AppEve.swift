@@ -257,7 +257,9 @@ struct AppEve: View {
                     if messaggi.isEmpty { benvenuto }
                     ForEach(messaggi) { m in
                         NuvolaEve(messaggio: m, nomeUtente: stato.nomeUtente,
-                                  creaAttivita: { stato.attivitaDaEve(m) }, aggiungiNota: { stato.notaDaEve(m) })
+                                  creaAttivita: { stato.attivitaDaEve(m) }, aggiungiNota: { stato.notaDaEve(m) },
+                                  attivitaProposta: { stato.attivitaDaProposta($0, messaggio: m.id) },
+                                  posizioneProposta: { stato.posizioneDaProposta($0, messaggio: m.id) })
                             .id(m.id)
                     }
                     if stato.eveInCorso {
@@ -361,6 +363,8 @@ struct NuvolaEve: View {
     let nomeUtente: String
     let creaAttivita: () -> Void
     let aggiungiNota: () -> Void
+    var attivitaProposta: (PropostaEve) -> Void = { _ in }
+    var posizioneProposta: (PropostaEve) -> Void = { _ in }
 
     var body: some View {
         let mio = messaggio.autore == .utente
@@ -379,6 +383,28 @@ struct NuvolaEve: View {
                     .foregroundColor(mio ? Colori.Eve.nuvolaTuaTesto : Colori.Eve.nuvolaEveTesto)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
+                if let proposte = messaggio.proposte, !proposte.isEmpty, !mio {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(proposte.enumerated()), id: \.element.id) { i, p in
+                            HStack(spacing: 6) {
+                                Text("\(i + 1). \(p.titolo)")
+                                    .font(Tipo.eveAzione)
+                                    .foregroundColor(Colori.Strumenti.titolo)
+                                    .lineLimit(1)
+                                Spacer(minLength: 8)
+                                if p.attivitaId != nil {
+                                    Text("✓ in Attività").font(Tipo.eveAzione).foregroundColor(Colori.Eve.autore)
+                                } else {
+                                    azione("✓ Attività") { attivitaProposta(p) }
+                                }
+                                if p.area != nil {
+                                    azione(p.posizioneId == nil ? "＋ Prepara la proposta" : "Apri la proposta ↗") { posizioneProposta(p) }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
                 if !mio {
                     HStack(spacing: 6) {
                         azione("✓ Crea attività", creaAttivita)

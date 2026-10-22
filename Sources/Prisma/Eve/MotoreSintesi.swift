@@ -22,6 +22,7 @@ struct MotoreSintesi: MotoreEve {
         case .protezione: return protezioneFamiglia(f)
         case .scadenze: return scadenze(f)
         case .checkUp: return checkUp(f)
+        case .proposte: return proposte(f)
         case .resoconto: return resoconto(f)
         case .pensione: return pensione(f)
         case .liquidita: return liquidita(f)
