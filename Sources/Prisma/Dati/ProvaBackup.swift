@@ -81,6 +81,30 @@ enum ProvaBackup {
                 return 1
             }
 
+            // Un archivio di una versione più recente si apre in sola lettura (salvarlo perderebbe dati)
+            var futuro = originale
+            futuro.versione = DatiPrisma.versioneAttuale + 1
+            let rilettoFuturo = try Archivio.decodifica(Archivio.codificatore.encode(futuro))
+            guard Archivio.diVersionePiuRecente(rilettoFuturo), !Archivio.diVersionePiuRecente(originale) else {
+                print("ERRORE: archivio di una versione più recente non riconosciuto")
+                return 1
+            }
+
+            // Togliere i clienti di prova lascia i clienti veri con i loro dati
+            let stato = StatoShell(persistente: false)
+            var vero = Cliente.nuovo(tinta: .blu)
+            vero.nome = "Cliente Vero"
+            stato.dati.clienti.append(vero)
+            stato.dati.posizioni.append(Posizione(clienteId: vero.id, canale: .indipendente, stato: .inEssere, area: .liquidita, nome: "Conto"))
+            stato.salvaCommento(.checkUp(report: true), testo: "Gentile Giulia, prova.")
+            stato.rimuoviDatiDiProva()
+            guard stato.dati.clienti.map(\.id) == [vero.id], stato.dati.posizioni.allSatisfy({ $0.clienteId == vero.id }), stato.dati.posizioni.count == 1,
+                  stato.dati.commenti.isEmpty, stato.dati.conversazioni.isEmpty, stato.dati.documenti.isEmpty, stato.dati.obiettivi.isEmpty,
+                  stato.dati.prodotti.isEmpty, stato.dati.clienteAttivoId == vero.id, !stato.haDatiDiProva else {
+                print("ERRORE: togliendo i clienti di prova sono rimasti dati di prova o è sparito il cliente vero")
+                return 1
+            }
+
             // Un file che non è un backup di Prisma viene rifiutato
             let estraneo = radice.appendingPathComponent("estraneo.zip")
             try Data("non sono uno zip".utf8).write(to: estraneo)

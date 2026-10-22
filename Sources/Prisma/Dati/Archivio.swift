@@ -45,27 +45,42 @@ enum Archivio {
         try decodificatore.decode(DatiPrisma.self, from: data)
     }
 
+    /// Copia dell'archivio fatta a ogni avvio: si torna all'inizio della giornata di lavoro.
+    static var copiaAvvio: URL { cartella.appendingPathComponent("archivio-all-avvio.json") }
+
     /// Carica l'archivio. Al primo avvio crea l'archivio con i dati di prova.
     /// Se il file non è leggibile ne conserva una copia e riparte dai dati di prova.
-    static func carica() -> (dati: DatiPrisma, avviso: String?) {
+    /// Se l'ha scritto una versione più recente di Prisma lo apre in sola lettura: salvarlo con
+    /// questa versione cancellerebbe i dati che non conosce.
+    static func carica() -> (dati: DatiPrisma, avviso: String?, solaLettura: Bool) {
         try? preparaCartelle()
         let fm = FileManager.default
         guard fm.fileExists(atPath: file.path) else {
             let d = DatiPrisma.demo()
             try? salva(d)
-            return (d, nil)
+            return (d, nil, false)
         }
         do {
-            var dati = try decodifica(Data(contentsOf: file))
+            let grezzo = try Data(contentsOf: file)
+            var dati = try decodifica(grezzo)
+            if diVersionePiuRecente(dati) {
+                return (dati, "Questo archivio è stato salvato da una versione più recente di Prisma: lo apro in sola lettura e non salvo nulla, per non perdere dati. Apri l'ultima versione di Prisma.", true)
+            }
+            try? grezzo.write(to: copiaAvvio, options: .atomic)
             dati.versione = DatiPrisma.versioneAttuale
-            return (dati, nil)
+            return (dati, nil, false)
         } catch {
             let copia = cartella.appendingPathComponent("archivio-non-leggibile \(Formati.nomeFile.string(from: Date())).json")
             try? fm.moveItem(at: file, to: copia)
             let d = DatiPrisma.demo()
             try? salva(d)
-            return (d, "L'archivio non era leggibile: ne ho conservato una copia e caricato i dati di prova.")
+            return (d, "L'archivio non era leggibile: ne ho conservato una copia nella cartella di Prisma e caricato i dati di prova. Puoi ripristinare un backup da Impostazioni.", false)
         }
+    }
+
+    /// true se l'archivio l'ha scritto una versione di Prisma più recente di questa.
+    static func diVersionePiuRecente(_ dati: DatiPrisma) -> Bool {
+        dati.versione > DatiPrisma.versioneAttuale
     }
 
     static func salva(_ dati: DatiPrisma) throws {
