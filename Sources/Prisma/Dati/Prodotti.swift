@@ -21,6 +21,8 @@ struct Prodotto: Identifiable, Codable, Hashable {
     var fonte = ""
     var verificatoIl: Date?
     var note = ""
+    /// Condizioni dettagliate del contratto (parti, penali, bollo, KID), per le valutazioni di riscatto.
+    var condizioni: CondizioniContratto?
 
     init(nome: String, canale: Canale, area: AreaPosizione) {
         self.nome = nome
@@ -63,7 +65,7 @@ struct Prodotto: Identifiable, Codable, Hashable {
 
     private enum CodingKeys: String, CodingKey {
         case id, nome, canale, area, emittente, tipologia, rendimentoAtteso, costoIngresso, costoAnnuo, aliquotaFiscale, sri
-        case garanzie, liquidabilita, fonte, verificatoIl, note
+        case garanzie, liquidabilita, fonte, verificatoIl, note, condizioni
     }
 
     init(from decoder: Decoder) throws {
@@ -84,6 +86,7 @@ struct Prodotto: Identifiable, Codable, Hashable {
         fonte = try c.decodeIfPresent(String.self, forKey: .fonte) ?? ""
         verificatoIl = try c.decodeIfPresent(Date.self, forKey: .verificatoIl)
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+        condizioni = try? c.decodeIfPresent(CondizioniContratto.self, forKey: .condizioni)
     }
 }
 

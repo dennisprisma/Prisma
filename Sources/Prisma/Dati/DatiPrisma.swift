@@ -16,6 +16,8 @@ struct DatiPrisma: Codable, Equatable {
     var prodotti: [Prodotto] = []
     var obiettivi: [Obiettivo] = []
     var documenti: [Documento] = []
+    /// Valutazioni d'investimento (prospetto e report di riscatto).
+    var valutazioni: [ValutazioneInvestimento] = []
     /// Conversazioni con Eve, per cliente.
     var conversazioni: [String: [MessaggioEve]] = [:]
     var clienteAttivoId: String
@@ -30,16 +32,18 @@ struct DatiPrisma: Codable, Equatable {
     /// 8: incontri (preparazione, ascolto, appunti, decisioni, prossimi passi).
     /// 9: schede prodotto e obiettivi dei clienti.
     /// 10: documenti dei clienti con i dati estratti.
-    static let versioneAttuale = 10
+    /// 11: condizioni dei contratti nelle schede prodotto e valutazioni d'investimento.
+    static let versioneAttuale = 11
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
          prodotti: [Prodotto] = [], obiettivi: [Obiettivo] = [], documenti: [Documento] = [],
-         clienteAttivoId: String, impostazioni: Impostazioni) {
+         valutazioni: [ValutazioneInvestimento] = [], clienteAttivoId: String, impostazioni: Impostazioni) {
         self.incontri = incontri
         self.prodotti = prodotti
         self.obiettivi = obiettivi
         self.documenti = documenti
+        self.valutazioni = valutazioni
         self.simulazioni = simulazioni
         self.analisi = analisi
         self.clienti = clienti
@@ -58,16 +62,17 @@ struct DatiPrisma: Codable, Equatable {
             posizioni: DatiDemo.posizioni(),
             simulazioni: DatiDemo.simulazioni(),
             incontri: DatiDemo.incontri(),
-            prodotti: DatiDemo.prodotti(),
+            prodotti: DatiDemo.prodotti() + [DatiDemo.orizzonteValore()],
             obiettivi: DatiDemo.obiettivi(),
             documenti: DatiDemo.documenti(),
+            valutazioni: DatiDemo.valutazioni(),
             clienteAttivoId: "giulia",
             impostazioni: Impostazioni()
         )
     }
 
     private enum CodingKeys: String, CodingKey {
-        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, conversazioni, clienteAttivoId, impostazioni
+        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, clienteAttivoId, impostazioni
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -84,6 +89,7 @@ struct DatiPrisma: Codable, Equatable {
         prodotti = (try? c.decodeIfPresent([Prodotto].self, forKey: .prodotti)) ?? []
         obiettivi = (try? c.decodeIfPresent([Obiettivo].self, forKey: .obiettivi)) ?? []
         documenti = (try? c.decodeIfPresent([Documento].self, forKey: .documenti)) ?? []
+        valutazioni = (try? c.decodeIfPresent([ValutazioneInvestimento].self, forKey: .valutazioni)) ?? []
         conversazioni = (try? c.decodeIfPresent([String: [MessaggioEve]].self, forKey: .conversazioni)) ?? [:]
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()

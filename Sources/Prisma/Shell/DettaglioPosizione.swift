@@ -77,10 +77,10 @@ struct DettaglioPosizione: View {
                     .buttonStyle(StileBlu())
                     .help("La proposta è stata accettata: diventa una posizione in essere")
             }
-            if posizione.stato == .proposta {
-                Button("Report") { stato.apriProspetto(.reportProposta(posizione.id)) }
+            if posizione.stato == .proposta, stato.prodotto(posizione.prodottoId)?.condizioni != nil {
+                Button("Valutazione") { stato.valutaPosizione(posizione) }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .help("La proposta spiegata al cliente, in parole semplici")
+                    .help("Prospetto e report di riscatto: incassi netti anno per anno in tre scenari")
             }
             Button("Prospetto") { stato.apriProspetto(.posizione(posizione.id)) }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))

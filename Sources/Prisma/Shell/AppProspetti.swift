@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// App Prospetti e report (nello spazio Presentazioni del dock).
-/// Prospetti: per il consulente, verticali e dettagliati, un tema alla volta (il quadro delle
-/// posizioni, una posizione o una proposta, un confronto), da mostrare poi al cliente.
-/// Report: per il cliente, essenziali e leggibili (fase successiva).
+/// - Valutazione di un investimento: prospetto A4 verticale per il consulente e report A4 orizzontale
+///   da lasciare al cliente, sul modello dei documenti di Denis.
+/// - Prospetti di dettaglio: il quadro delle posizioni, una posizione o una proposta, un confronto.
 /// Le pagine a schermo sono le stesse del PDF.
 struct AppProspetti: View {
     @EnvironmentObject var stato: StatoShell
@@ -12,14 +12,14 @@ struct AppProspetti: View {
 
     private var cliente: String { stato.clienteAttivoId }
     private var scelta: SceltaProspetto { stato.sceltaProspetto }
-    private var contenuto: ContenutoProspetto? { stato.contenutoProspetto(scelta) }
 
     var body: some View {
-        let c = contenuto
-        let pagine = c.map { ImpaginatoreProspetto.pagine($0).count } ?? 0
+        let documento = stato.documentoProspetto(scelta)
+        let pagine = documento?.pagine.count ?? 0
+        let formato = documento.map { $0.formato.width > $0.formato.height ? "A4 orizzontale" : "A4 verticale" } ?? ""
         return CorniceStrumento(
-            notaStato: "Impaginati sul Mac · A4 verticale · stessi calcoli di Posizioni e Confronti · il PDF resta dove lo salvi",
-            notaDestra: pagine == 0 ? "" : "\(pagine) \(pagine == 1 ? "pagina" : "pagine")"
+            notaStato: "Impaginati sul Mac · stessi calcoli dell'app · il PDF resta dove lo salvi",
+            notaDestra: pagine == 0 ? "" : "\(formato) · \(pagine) \(pagine == 1 ? "pagina" : "pagine")"
         ) {
             rail
         } contenuto: {
@@ -28,54 +28,60 @@ struct AppProspetti: View {
                     .frame(width: Misure.Strumenti.ipotesi)
                     .bordoDestro(Colori.Strumenti.ipotesiBordo)
                 VStack(spacing: 0) {
-                    if let c {
-                        barra(c)
-                        ScrollView {
-                            TavoloCarta(contenuto: c)
+                    if let documento {
+                        barra(documento)
+                        GeometryReader { geo in
+                            ScrollView {
+                                TavoloDocumento(documento: documento,
+                                                scala: min(1, (geo.size.width - 40) / documento.formato.width))
+                            }
                         }
                         .background(LinearGradient(colors: [Colori.Carta.tavoloAlto, Colori.Carta.tavoloBasso], startPoint: .top, endPoint: .bottom))
                     } else {
-                        Text("Non c'è ancora niente da impaginare per questo cliente.")
-                            .font(Tipo.strumentoTesto).foregroundColor(Colori.Analisi.kpiNota)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        vuoto
                     }
                 }
             }
         }
         .onChange(of: stato.clienteAttivoId) { _ in archiviato = nil }
+        .sheet(item: $stato.valutazioneInModifica) { v in
+            ModuloValutazione(bozza: v, nuova: stato.valutazione(v.id) == nil)
+                .environmentObject(stato)
+        }
+    }
+
+    private var vuoto: some View {
+        VStack(spacing: 10) {
+            Text(scelta.tipo == .valutazione ? "Nessuna valutazione per questo cliente" : "Non c'è ancora niente da impaginare per questo cliente.")
+                .font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
+            if scelta.tipo == .valutazione { pulsanteNuova }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Elenco laterale
 
     @ViewBuilder private var rail: some View {
         DossierRail()
-        EtichettaRail(testo: "Prospetti · per te")
-        ForEach(TipoProspetto.allCases.filter { !$0.perCliente }) { t in
+        EtichettaRail(testo: "Prospetto e report")
+        VoceNavigazione(titolo: TipoProspetto.valutazione.nome, attiva: scelta.tipo == .valutazione) { scegli(.valutazione) }
+        EtichettaRail(testo: "Prospetti di dettaglio")
+        ForEach(TipoProspetto.allCases.filter { $0 != .valutazione }) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
-        if !scelta.tipo.perCliente { descrizione }
-        EtichettaRail(testo: "Report · per il cliente")
-        ForEach(TipoProspetto.allCases.filter(\.perCliente)) { t in
-            VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
-                .disabled(t == .reportProposta && proposte.isEmpty)
-        }
-        if scelta.tipo.perCliente { descrizione }
-        CollegatiRail(app: [.posizioni, .confronti, .documenti])
-    }
-
-    private var descrizione: some View {
         Text(scelta.tipo.descrizione)
             .font(Tipo.kpiNota)
             .foregroundColor(Colori.Analisi.kpiNota)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 3)
+        CollegatiRail(app: [.posizioni, .prodotti, .documenti])
     }
-
-    private var proposte: [Posizione] { posizioniOrdinate.filter { $0.stato == .proposta } }
 
     private func scegli(_ t: TipoProspetto) {
         archiviato = nil
         switch t {
+        case .valutazione:
+            stato.prospetto = stato.valutazioniCliente(cliente).first.map { .valutazione($0.id, report: false) } ?? .valutazione("", report: false)
         case .quadro:
             stato.prospetto = .quadro
         case .posizione:
@@ -83,10 +89,6 @@ struct AppProspetti: View {
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
         case .confronto:
             stato.prospetto = stato.confrontoPredefinito()
-        case .reportQuadro:
-            stato.prospetto = .reportQuadro
-        case .reportProposta:
-            if let p = proposte.first { stato.prospetto = .reportProposta(p.id) }
         }
     }
 
@@ -112,8 +114,7 @@ struct AppProspetti: View {
                     case .quadro: sceltaQuadro
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
-                    case .reportQuadro: sceltaReportQuadro
-                    case .reportProposta(let id): sceltaReportProposta(id)
+                    case .valutazione(let id, let report): sceltaValutazione(id, report: report)
                     }
                 }
             }
@@ -126,8 +127,7 @@ struct AppProspetti: View {
         case .quadro: return "CHE COSA CONTIENE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
-        case .reportQuadro: return "PER IL CLIENTE"
-        case .reportProposta: return "SCEGLI LA PROPOSTA"
+        case .valutazione: return "VALUTAZIONI DEL CLIENTE"
         }
     }
 
@@ -152,40 +152,61 @@ struct AppProspetti: View {
         .padding(12)
     }
 
-    private var sceltaReportQuadro: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            ForEach(["Prima dei numeri, ci sei tu: le sue priorità", "Il punto da cui partiamo: patrimonio, risparmi, tutele",
-                     "Un nome ai suoi progetti: gli obiettivi con la barra di avanzamento", "Il prossimo incontro",
-                     "Il prossimo passo, insieme: attività e proposte aperte"], id: \.self) { voce in
-                HStack(alignment: .top, spacing: 7) {
-                    Text("•").foregroundColor(Colori.Analisi.navBasso)
-                    Text(voce).fixedSize(horizontal: false, vertical: true)
-                }
-                .font(Tipo.strumentoTesto)
-                .foregroundColor(Colori.Analisi.tabellaTesto)
-            }
-            Text("Niente tabelle fitte: poche cifre grandi e frasi semplici, da lasciare al cliente. Il dettaglio resta nei prospetti.")
-                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
-        }
-        .padding(12)
-    }
-
-    private func sceltaReportProposta(_ id: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(proposte) { p in
+    private func sceltaValutazione(_ id: String, report: Bool) -> some View {
+        let elenco = stato.valutazioniCliente(cliente)
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(elenco) { v in
                 Button {
                     archiviato = nil
-                    stato.prospetto = .reportProposta(p.id)
-                } label: { rigaPosizione(p, attiva: p.id == id) }
+                    stato.prospetto = .valutazione(v.id, report: report)
+                } label: { rigaValutazione(v, attiva: v.id == id) }
                 .buttonStyle(StileSemplice())
             }
-            Text("Per il dettaglio di costi e anno per anno, usa il prospetto della stessa proposta.")
-                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(12)
+            VStack(alignment: .leading, spacing: 10) {
+                if elenco.contains(where: { $0.id == id }) {
+                    SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                                    selezione: Binding(get: { report }, set: { stato.prospetto = .valutazione(id, report: $0); archiviato = nil }))
+                    Text(report ? "Report per il cliente: A4 orizzontale, una pagina per messaggio, da lasciare al cliente."
+                                : "Prospetto per te: A4 verticale, quattro pagine con ogni cifra, da mostrare al cliente.")
+                        .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Button("Modifica ipotesi e testi…") { stato.valutazioneInModifica = stato.valutazione(id) }
+                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    }
+                }
+                pulsanteNuova
+                if stato.prodottiValutabili.isEmpty {
+                    Text("Serve una scheda prodotto con le condizioni del contratto (parti, penali, costi, KID).")
+                        .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(12)
         }
+    }
+
+    private var pulsanteNuova: some View {
+        Button("＋ Nuova valutazione") { stato.valutazioneInModifica = stato.nuovaValutazione() }
+            .buttonStyle(StileBlu())
+            .disabled(stato.prodottiValutabili.isEmpty)
+    }
+
+    private func rigaValutazione(_ v: ValutazioneInvestimento, attiva: Bool) -> some View {
+        let p = stato.prodotto(v.prodottoId)
+        return HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(p?.nome ?? "Prodotto non trovato").font(Tipo.tabellaCellaForte)
+                    .foregroundColor(attiva ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                Text("\(Formati.euro(v.premio)) · \(v.intestatari) · \(Formati.dataBreve.string(from: v.data))")
+                    .font(Tipo.chip).foregroundColor(attiva ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota).lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            if let p { EtichettaCanale(canale: p.canale, compatta: true) }
+        }
+        .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(attiva ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
+        .bordoBasso(Colori.Strumenti.ipotesiRiga)
+        .contentShape(Rectangle())
     }
 
     private func sceltaPosizione(_ id: String) -> some View {
@@ -262,11 +283,11 @@ struct AppProspetti: View {
 
     // MARK: - Barra delle azioni
 
-    private func barra(_ c: ContenutoProspetto) -> some View {
+    private func barra(_ d: DocumentoStampabile) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(c.titolo).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.kpiValore).lineLimit(1)
-                Text(c.occhiello).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                Text(d.titolo).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.kpiValore).lineLimit(1)
+                Text("\(d.genere) · \(d.cliente)").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
             }
             Spacer()
             if let id = archiviato {
@@ -278,13 +299,13 @@ struct AppProspetti: View {
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Colonna.collegamento)
             }
-            Button("Stampa…") { if let d = pdf(c) { StampaCarta.stampa(d) } }
+            Button("Stampa…") { if let dati = pdf(d) { StampaCarta.stampa(dati, formato: d.formato) } }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
             Button("Archivia nei Documenti") {
-                if let d = pdf(c) { archiviato = stato.archiviaProspetto(d, contenuto: c, tipo: c.perCliente ? .report : .prospetto) }
+                if let dati = pdf(d) { archiviato = stato.archiviaProspetto(dati, documento: d) }
             }
             .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-            Button("Salva PDF…") { if let d = pdf(c) { StampaCarta.salva(d, nome: StampaCarta.nomeFile(c)) } }
+            Button("Salva PDF…") { if let dati = pdf(d) { StampaCarta.salva(dati, nome: StampaCarta.nomeFile(d)) } }
                 .buttonStyle(StileBlu())
         }
         .padding(EdgeInsets(top: 9, leading: 14, bottom: 9, trailing: 14))
@@ -292,10 +313,30 @@ struct AppProspetti: View {
         .bordoBasso(Colori.Analisi.kpiBordo)
     }
 
-    private func pdf(_ c: ContenutoProspetto) -> Data? {
+    private func pdf(_ d: DocumentoStampabile) -> Data? {
         guard !modoIstantanea else { return nil }
-        let d = StampaCarta.pdf(c)
-        if d == nil { stato.mostraAvviso("Non sono riuscito a creare il PDF.") }
-        return d
+        let dati = StampaCarta.pdf(d)
+        if dati == nil { stato.mostraAvviso("Non sono riuscito a creare il PDF.") }
+        return dati
+    }
+}
+
+/// Le pagine di un documento su un tavolo di lino chiaro, come la sala di lettura dei Documenti del template.
+private struct TavoloDocumento: View {
+    let documento: DocumentoStampabile
+    let scala: CGFloat
+
+    var body: some View {
+        VStack(spacing: 22) {
+            ForEach(Array(documento.pagine.enumerated()), id: \.offset) { _, pagina in
+                pagina
+                    .frame(width: documento.formato.width, height: documento.formato.height)
+                    .scaleEffect(scala, anchor: .top)
+                    .frame(width: documento.formato.width * scala, height: documento.formato.height * scala, alignment: .top)
+                    .shadow(color: Colori.Carta.ombraFoglio, radius: 5, x: 0, y: 3)
+            }
+        }
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity)
     }
 }

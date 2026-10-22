@@ -204,6 +204,41 @@ enum ProvaCalcoli {
         let uniti = EstrattoreDocumento.unisci([CampoEstratto(chiave: .costoAnnuo, valore: "0,90", pagina: 2)], modello)
         verifica("Le regole hanno la precedenza sul modello", EstrattoreDocumento.numero(uniti.first?.valore) ?? 0, 0.9, tolleranza: 0.000_1)
 
+        // 18. Valutazione di riscatto: le cifre del prospetto illustrativo di Denis (Orizzonte Valore, € 50.000, 30/70)
+        if let v = DatiDemo.valutazioni().first, let c = DatiDemo.orizzonteValore().condizioni {
+            let e = MotoreValutazione.calcola(v, condizioni: c)
+            verifica("Valutazione: costo d'ingresso con il massimo di € 200", e.ingresso, 200)
+            verifica("Valutazione: capitale nel Fondo Interno", e.partiIniziali["fi-allocazione-dinamica"] ?? 0, 34_860)
+            let attesi: [(TipoScenario, Int, Double)] = [
+                (.favorevole, 2, 52_227), (.intermedio, 2, 50_178), (.sfavorevole, 2, 47_168),
+                (.favorevole, 3, 56_852), (.intermedio, 3, 52_317), (.sfavorevole, 3, 46_794),
+                (.intermedio, 4, 54_804), (.intermedio, 5, 57_228),
+                (.favorevole, 6, 74_684), (.intermedio, 6, 59_330), (.sfavorevole, 6, 45_554),
+            ]
+            for (t, anno, netto) in attesi {
+                verifica("Valutazione: \(t.nome.lowercased()), riscatto all'inizio del \(anno)° anno",
+                         e.scenario(t)?.riscatto(anno: anno)?.netto ?? 0, netto, tolleranza: 1.5)
+            }
+            if let i = e.scenario(.intermedio), let r2 = i.riscatto(anno: 2), let r3 = i.riscatto(anno: 3), let r6 = i.riscatto(anno: 6) {
+                verifica("Valutazione: valore del contratto al 13° mese", r2.valore, 52_161, tolleranza: 1)
+                verifica("Valutazione: penale del 3,5% al 13° mese", r2.penale, 1_826, tolleranza: 1)
+                verifica("Valutazione: imposta sostitutiva al 13° mese", r2.imposta, 83, tolleranza: 1)
+                verifica("Valutazione: bollo maturato al 25° mese", r3.bollo, 152, tolleranza: 1)
+                verifica("Valutazione: rendimento lordo medio al 13° mese (come il KID)", r2.rendimentoLordo, 0.67)
+                verifica("Valutazione: rendimento lordo medio al 61° mese", r6.rendimentoLordo, 4.73)
+                verifica("Valutazione: rendimento netto medio al 61° mese", r6.rendimentoMedio, 3.48)
+                verifica("Valutazione: costi del 1° anno", i.costi[0].totale, 1_434, tolleranza: 1.5)
+                verifica("Valutazione: costi del 5° anno", i.costi[4].totale, 1_521, tolleranza: 1.5)
+                verifica("Valutazione: incidenza dei costi nel 1° anno", i.costi[0].incidenza, 2.81)
+                let cascata = MotoreValutazione.cascata(e, i)
+                verifica("Valutazione: rendimento dei mercati nel 1° anno", cascata.first { $0.genere == .piu }?.importo ?? 0, 3_521, tolleranza: 1.5)
+                verifica("Valutazione: la cascata arriva al netto", cascata.last?.importo ?? 0, r2.netto, tolleranza: 0.01)
+            }
+            verifica("Valutazione: aliquota media delle parti", MotoreValutazione.aliquotaMedia(c), 24.77)
+        } else {
+            verifica("Valutazione di prova presente", 0, 1)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
