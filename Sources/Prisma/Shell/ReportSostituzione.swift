@@ -222,7 +222,7 @@ private struct SlideScenari: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             TestaReport(occhiello: "Se i mercati vanno diversamente", titolo: t.tenuta,
-                        sottotitolo: "Stessi \(t.periodo), con rendimenti di \(CifreDoc.condizione(IpotesiCalcolo.ampiezzaScenari)) punti più bassi o più alti per entrambe le strade.")
+                        sottotitolo: "Stessi \(t.periodo), con rendimenti di \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenari)) ?? "2") punti più bassi o più alti per entrambe le strade.")
             HStack(alignment: .top, spacing: 12) {
                 ForEach(t.e.scenari) { s in scheda(s) }
             }

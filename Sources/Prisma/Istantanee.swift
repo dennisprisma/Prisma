@@ -146,6 +146,14 @@ enum Istantanee {
             s.clienteAttivoId = "giulia"
             s.apriProspetto(.previdenza(report: true))
         }),
+        ("38-protezione-prospetto", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.protezione(report: false))
+        }),
+        ("39-protezione-report", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.protezione(report: true))
+        }),
         ("25-documenti-kid", { s in
             s.clienteAttivoId = "giulia"
             s.documentoSelezionato = "doc-giulia-kid"

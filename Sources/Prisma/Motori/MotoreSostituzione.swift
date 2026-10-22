@@ -192,7 +192,7 @@ enum MotoreSostituzione {
         if b.rendimentoAtteso == nil || a.rendimentoAtteso == nil {
             note.append("Dove manca il rendimento atteso si usa il \(CifreDoc.condizione(IpotesiCalcolo.rendimentoPredefinito)) annuo.")
         }
-        note.append("Rendimenti ipotetici, non garantiti: scenari prudente e favorevole con \(CifreDoc.condizione(ampiezza)) punti in meno e in più per entrambe le strade.")
+        note.append("Rendimenti ipotetici, non garantiti: scenari prudente e favorevole con \(Formati.numeroFormatter.string(from: NSNumber(value: ampiezza)) ?? "2") punti in meno e in più per entrambe le strade.")
 
         return EsitoSostituzione(
             resto: LatoSostituzione(posizione: a, prodotto: prodottoA, rendimento: r.rendimento, costoIngresso: a.costoIngresso ?? 0,

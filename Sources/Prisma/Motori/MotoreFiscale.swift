@@ -33,6 +33,13 @@ enum RegoleFiscali {
     /// Scaglioni IRPEF: (fino a, aliquota). L'ultimo vale oltre.
     static let scaglioniIrpef: [(Double, Double)] = [(28_000, 23), (50_000, 35), (.infinity, 43)]
 
+    /// Detrazione IRPEF dei premi assicurativi (art. 15 TUIR).
+    static let detrazionePremi = 19.0
+    /// Premi caso morte, invalidità permanente oltre il 5% e infortuni: limite annuo detraibile.
+    static let limitePremiVita = 530.0
+    /// Premi per la non autosufficienza (LTC): limite annuo detraibile, comprensivo dei precedenti.
+    static let limitePremiLTC = 1_291.14
+
     /// Aliquota IRPEF marginale di un reddito complessivo lordo annuo.
     static func aliquotaMarginale(reddito: Double) -> Double {
         scaglioniIrpef.first { reddito <= $0.0 }?.1 ?? 43

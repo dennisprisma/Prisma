@@ -67,7 +67,7 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetto e report")
-        ForEach([TipoProspetto.valutazione, .resoconto, .sostituzione, .previdenza]) { t in
+        ForEach([TipoProspetto.valutazione, .resoconto, .sostituzione, .previdenza, .protezione]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
@@ -93,6 +93,8 @@ struct AppProspetti: View {
             stato.prospetto = .sostituzione("", "", report: false)
         case .previdenza:
             stato.prospetto = .previdenza(report: false)
+        case .protezione:
+            stato.prospetto = .protezione(report: false)
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -123,6 +125,7 @@ struct AppProspetti: View {
                     case .resoconto(let report): sceltaResoconto(report: report)
                     case .sostituzione(let a, let b, let report): sceltaSostituzione(a, b, report: report)
                     case .previdenza(let report): sceltaPrevidenza(report: report)
+                    case .protezione(let report): sceltaProtezione(report: report)
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -138,6 +141,7 @@ struct AppProspetti: View {
         case .resoconto: return "RESOCONTO DEL CLIENTE"
         case .sostituzione: return "LE DUE STRADE"
         case .previdenza: return "PREVIDENZA DEL CLIENTE"
+        case .protezione: return "PROTEZIONE DELLA FAMIGLIA"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
@@ -173,6 +177,36 @@ struct AppProspetti: View {
             Text("Tutte le cifre vengono dalle Posizioni del cliente: aggiornale lì e il resoconto si ricompone. Ogni volta che cambi un controvalore, il valore precedente resta nello storico.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private func sceltaProtezione(report: Bool) -> some View {
+        let voci = report
+            ? ["Copertina in cuoio: famiglia, fabbisogno, tutele", "La tua famiglia e ciò che le serve", "Se ti succedesse qualcosa",
+               "Se non potessi lavorare", "La mappa delle tutele", "Quanto costa proteggersi, in sintesi"]
+            : ["Famiglia, fabbisogno caso morte e divario", "Invalidità, malattia e riserva", "Mappa dei rischi coperti e scoperti",
+               "Coperture per canale, costo per 1.000 €", "Scadenze da verificare", "Premi, detrazione del 19%, metodo e firme"]
+        return VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .protezione(report: $0); archiviato = nil }))
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(voci, id: \.self) { voce in
+                    HStack(alignment: .top, spacing: 7) {
+                        Text("•").foregroundColor(Colori.Analisi.navBasso)
+                        Text(voce).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(Tipo.strumentoTesto)
+                    .foregroundColor(Colori.Analisi.tabellaTesto)
+                }
+            }
+            Text("Fabbisogno, anni di sostegno, entrate sostitutive e riserva vengono dall'Analisi 360 (area Protezione); la famiglia dal dossier del cliente; le coperture dalle Posizioni.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Button("Apri l'Analisi 360") {
+                stato.areaAnalisi = .protezione
+                stato.apri(.analisi360)
+            }
+            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
         }
         .padding(12)
     }

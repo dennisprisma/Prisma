@@ -540,6 +540,8 @@ final class StatoShell: ObservableObject {
             return .resoconto(report: report)
         case .previdenza(let report)?:
             return .previdenza(report: report)
+        case .protezione(let report)?:
+            return .protezione(report: report)
         case .sostituzione(let a, let b, let report)?:
             let mie = posizioniCliente(clienteAttivoId)
             if a != b, mie.contains(where: { $0.id == a }), mie.contains(where: { $0.id == b }) { return .sostituzione(a, b, report: report) }
@@ -562,6 +564,9 @@ final class StatoShell: ObservableObject {
         if case .sostituzione(let a, let b, let report) = scelta {
             return testiSostituzione(a, b).map { DocumentoStampabile($0, report: report) }
         }
+        if case .protezione(let report) = scelta {
+            return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report)
+        }
         if case .previdenza(let report) = scelta {
             return DocumentoStampabile(testiPrevidenza(clienteAttivoId), report: report)
         }
@@ -569,6 +574,13 @@ final class StatoShell: ObservableObject {
             return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
         }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
+    }
+
+    /// I testi e i numeri della protezione della famiglia di un cliente (ipotesi dall'Analisi 360).
+    func testiProtezione(_ id: String) -> TestiProtezione {
+        let intestatario = self.cliente(id)
+        let e = MotoreProtezioneFamiglia.calcola(posizioniCliente(id), cliente: intestatario, analisi: analisi360(id).protezione)
+        return TestiProtezione(e, cliente: intestatario)
     }
 
     /// I testi e i numeri del piano previdenziale di un cliente (ipotesi dall'Analisi 360).

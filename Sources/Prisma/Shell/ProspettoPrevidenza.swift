@@ -196,7 +196,7 @@ private struct PaginaProiezionePrevidenza: View {
                 .frame(height: 170)
                 .background(C.riquadro.opacity(0.5))
             SezioneProspetto(titolo: "Se i rendimenti vanno diversamente",
-                             testo: Text(verbatim: "Rendita mensile complessiva, con le proposte, con \(CifreDoc.condizione(IpotesiCalcolo.ampiezzaScenari)) punti di rendimento lordo in meno o in più."))
+                             testo: Text(verbatim: "Rendita mensile complessiva, con le proposte, con \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenari)) ?? "2") punti di rendimento lordo in meno o in più."))
             TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Scenario", peso: 1.4, destra: false), ColonnaDoc(titolo: "Rendita al mese"),
                                                        ColonnaDoc(titolo: "Divario che resta"), ColonnaDoc(titolo: "Copertura del divario")],
                        righe: e.scenari.map { s in

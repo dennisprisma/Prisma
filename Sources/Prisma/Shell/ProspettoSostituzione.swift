@@ -139,11 +139,8 @@ private struct PaginaDueStrade: View {
     private func scheda(_ l: LatoSostituzione, titolo: String) -> some View {
         let p = l.posizione
         return VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                OcchielloDoc(testo: titolo, font: T.pOcchiello)
-                Spacer()
-                EtichettaCanale(canale: p.canale)
-            }
+            OcchielloDoc(testo: titolo, font: T.pOcchiello)
+            EtichettaCanale(canale: p.canale)
             Text(verbatim: p.nome).font(T.pSottosezione).foregroundColor(C.titolo).lineLimit(1)
             Text(verbatim: [p.tipologia, p.emittente].filter { !$0.isEmpty }.joined(separator: " · ")).font(T.pTabellaNota).foregroundColor(C.tenue).lineLimit(1)
             VStack(alignment: .leading, spacing: 2) {
@@ -187,7 +184,7 @@ private struct PaginaAnni: View {
                 ColonnaDoc(titolo: "Differenza", sottotitolo: "netti", peso: 1.1),
             ], righe: righeAnni, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 18, margine: 4)
             SezioneProspetto(titolo: "Se i mercati vanno diversamente",
-                             testo: Text(verbatim: "Netto dopo \(t.periodo) con \(CifreDoc.condizione(IpotesiCalcolo.ampiezzaScenari)) punti di rendimento in meno o in più per entrambe le strade. \(t.tenuta)"))
+                             testo: Text(verbatim: "Netto dopo \(t.periodo) con \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenari)) ?? "2") punti di rendimento in meno o in più per entrambe le strade. \(t.tenuta)"))
             TabellaDoc(larghezza: larghezza, colonne: [
                 ColonnaDoc(titolo: "Scenario", peso: 1.2, destra: false), ColonnaDoc(titolo: "Rendimenti", sottotitolo: "\(t.nomeResto.lowercased()) · \(t.nomeCambio.lowercased())", peso: 1.6),
                 ColonnaDoc(titolo: t.nomeResto, sottotitolo: "netto"), ColonnaDoc(titolo: t.nomeCambio, sottotitolo: "netto"),

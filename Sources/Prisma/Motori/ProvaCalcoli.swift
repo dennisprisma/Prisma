@@ -398,6 +398,24 @@ enum ProvaCalcoli {
         verifica("Previdenza: deducibile fino al limite (7.200 € versati)", ded.deducibiliOggi, 5_164.57)
         verifica("Previdenza: risparmio IRPEF al 35%", ded.risparmioOggi, 5_164.57 * 0.35, tolleranza: 0.01)
 
+        // 23. Protezione della famiglia: fabbisogno, divario, detrazione dei premi (conti a mano)
+        var ip = IpotesiProtezione()
+        ip.fabbisognoMensile = 2_000; ip.anniSostegno = 10; ip.debiti = 100_000; ip.speseImmediate = 10_000; ip.capitaleDisponibile = 20_000
+        ip.entrateSostitutive = 800; ip.mesiRiserva = 12; ip.riserva = 6_000
+        var tcm = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "TCM")
+        tcm.rischio = .vita; tcm.capitaleAssicurato = 200_000; tcm.premio = 50; tcm.frequenza = .mensile
+        var ltc = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "LTC")
+        ltc.rischio = .ltc; ltc.capitaleAssicurato = 30_000; ltc.premio = 900; ltc.frequenza = .annuale
+        let pf = MotoreProtezioneFamiglia.calcola([tcm, ltc], cliente: nil, analisi: ip)
+        // 100.000 + 10.000 + 2.000 × 12 × 10 − 20.000 = 330.000
+        verifica("Protezione: fabbisogno caso morte", pf.fabbisogno, 330_000)
+        verifica("Protezione: divario con 200.000 € assicurati", pf.divario, 130_000)
+        verifica("Protezione: anni di sostegno coperti oggi", pf.anniCoperti, (200_000 + 20_000 - 100_000 - 10_000) / 24_000.0)
+        verifica("Protezione: riserva da costruire", pf.riservaMancante, 1_200 * 12 - 6_000)
+        // Premi 600 (vita) + 900 (LTC): vita fino a 530, totale fino a 1.291,14
+        verifica("Protezione: premi detraibili nei limiti", pf.detraibili, 1_291.14)
+        verifica("Protezione: detrazione del 19%", pf.detrazione, 1_291.14 * 0.19, tolleranza: 0.001)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
