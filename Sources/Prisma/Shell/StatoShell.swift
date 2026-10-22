@@ -544,6 +544,8 @@ final class StatoShell: ObservableObject {
             return .protezione(report: report)
         case .liquidita(let report)?:
             return .liquidita(report: report)
+        case .checkUp(let report)?:
+            return .checkUp(report: report)
         case .obiettivo(let id, let report)?:
             let elenco = obiettiviCliente(clienteAttivoId)
             return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
@@ -572,6 +574,9 @@ final class StatoShell: ObservableObject {
         if case .obiettivo(let id, let report) = scelta {
             return testiObiettivo(id).map { DocumentoStampabile($0, report: report) }
         }
+        if case .checkUp(let report) = scelta {
+            return DocumentoStampabile(testiCheckUp(clienteAttivoId), report: report)
+        }
         if case .liquidita(let report) = scelta {
             return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report)
         }
@@ -585,6 +590,11 @@ final class StatoShell: ObservableObject {
             return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
         }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
+    }
+
+    /// I testi e i numeri del check-up del primo incontro di un cliente.
+    func testiCheckUp(_ id: String) -> TestiCheckUp {
+        TestiCheckUp(MotoreCheckUp.calcola(cliente: self.cliente(id), posizioni: posizioniCliente(id), analisi: analisi360(id), obiettivi: obiettiviCliente(id)))
     }
 
     /// I testi e i numeri del capitale in scadenza e della liquidità di un cliente.

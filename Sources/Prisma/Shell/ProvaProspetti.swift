@@ -80,7 +80,7 @@ enum ProvaProspetti {
                 }
             case .confronto:
                 verifica("\(nome): differenza B − A presente", testo.contains("B − A"))
-            case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita:
+            case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp:
                 break
             }
         }
@@ -140,6 +140,31 @@ enum ProvaProspetti {
                     let mancanti = t.e.voci.filter { !testo.contains(spazi($0.posizione.nome)) }.map(\.posizione.nome)
                     verifica("\(nome): tutte le posizioni in essere", mancanti.isEmpty, mancanti.joined(separator: ", "))
                 }
+                if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
+            }
+        }
+
+        // Check-up del primo incontro: prospetto e report per ogni cliente
+        for cliente in dati.clienti {
+            let mie = dati.posizioni.filter { $0.clienteId == cliente.id }
+            let analisi = Analisi360(cliente: cliente, posizioni: mie)
+            let e = MotoreCheckUp.calcola(cliente: cliente, posizioni: mie, analisi: analisi, obiettivi: dati.obiettivi.filter { $0.clienteId == cliente.id })
+            verifica("checkup-\(cliente.id): sette indicatori", e.indicatori.count == 7)
+            let t = TestiCheckUp(e)
+            for report in [false, true] {
+                let d = DocumentoStampabile(t, report: report)
+                let nome = "checkup-\(cliente.id)-\(report ? "report" : "prospetto")"
+                guard let pdf = StampaCarta.pdf(d), let documento = PDFDocument(data: pdf) else {
+                    verifica("\(nome): PDF creato", false)
+                    continue
+                }
+                verifica("\(nome): PDF di \(d.pagine.count) pagine", documento.pageCount == d.pagine.count && d.pagine.count >= (report ? 6 : 2),
+                         "\(documento.pageCount) pagine, \(pdf.count / 1024) KB")
+                let orizzontale = (documento.page(at: 0)?.bounds(for: .mediaBox).width ?? 0) > (documento.page(at: 0)?.bounds(for: .mediaBox).height ?? 0)
+                verifica("\(nome): \(report ? "A4 orizzontale" : "A4 verticale")", orizzontale == report)
+                let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
+                verifica("\(nome): patrimonio netto \(CifreDoc.euro(e.riepilogo.patrimonioNetto)) nel PDF", testo.contains(spazi(CifreDoc.euro(e.riepilogo.patrimonioNetto))))
+                verifica("\(nome): cliente e consulente", testo.contains(cliente.nome) && testo.contains(TestiValutazione.consulente))
                 if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
             }
         }

@@ -449,6 +449,21 @@ enum ProvaCalcoli {
             verifica("Posizioni di Sofia per la liquidità presenti", 0, 1)
         }
 
+        // 26. Check-up: semafori di Andrea (primo incontro, solo liquidità)
+        let clientiDemo = DatiDemo.clienti()
+        if let andrea = clientiDemo.first(where: { $0.id == "andrea" }) {
+            let sue = demo.filter { $0.clienteId == "andrea" }
+            var an = Analisi360(cliente: andrea, posizioni: sue)
+            an.protezione.fabbisognoMensile = 2_000
+            an.protezione.mesiRiserva = 6
+            let ck = MotoreCheckUp.calcola(cliente: andrea, posizioni: sue, analisi: an, obiettivi: [])
+            let riserva = ck.indicatori.first { $0.id == "riserva" }
+            // 12.000 € di liquidità = 6 mesi da 2.000 €: riserva piena
+            verifica("Check-up: riserva piena con 6 mesi su 6", riserva?.semaforo == .verde ? 1 : 0, 1)
+            verifica("Check-up: obiettivi da definire (grigio)", ck.indicatori.first { $0.id == "obiettivi" }?.semaforo == .grigio ? 1 : 0, 1)
+            verifica("Check-up: sette indicatori", Double(ck.indicatori.count), 7)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

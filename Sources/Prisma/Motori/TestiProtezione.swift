@@ -66,7 +66,7 @@ struct TestiProtezione {
     var sintesi: [(String, String)] {
         var punti: [(String, String)] = []
         punti.append(("Caso morte", e.divario < 1 ? "Le coperture di oggi bastano al fabbisogno stimato." : "Mancano \(CifreDoc.euro(e.divario)); con le proposte \(CifreDoc.euro(e.divarioConProposte))."))
-        punti.append(("Invalidità e malattia", e.ammanco < 1 ? "Le entrate sostitutive coprono il fabbisogno." : "Mancherebbero \(CifreDoc.euro(e.ammanco)) al mese; riserva da costruire \(CifreDoc.euro(e.riservaMancante))."))
+        punti.append(("Invalidità e malattia", fraseInvalidita))
         if !e.scoperti.isEmpty {
             punti.append(("Da valutare", e.scoperti.map { $0.rischio.nome.lowercased() }.joined(separator: ", ") + "."))
         }
@@ -74,6 +74,13 @@ struct TestiProtezione {
             punti.append(("Il costo", "\(CifreDoc.euro(e.premiAnnui)) l'anno oggi" + (e.premiProposte > 0.5 ? ", \(CifreDoc.euro(e.premiAnnui + e.premiProposte)) con le proposte" : "") + "; detrazione IRPEF di circa \(CifreDoc.euro(e.detrazioneConProposte))."))
         }
         return punti
+    }
+
+    private var fraseInvalidita: String {
+        if e.ammanco < 1 { return "Le entrate sostitutive coprono il fabbisogno." }
+        let riserva = e.riservaMancante < 1 ? "la riserva disponibile copre \(e.ipotesi.mesiRiserva) mesi."
+                                            : "riserva da costruire \(CifreDoc.euro(e.riservaMancante))."
+        return "Mancherebbero \(CifreDoc.euro(e.ammanco)) al mese; " + riserva
     }
 
     var prossimiPassi: [String] {

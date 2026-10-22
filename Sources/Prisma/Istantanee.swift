@@ -170,6 +170,14 @@ enum Istantanee {
             s.clienteAttivoId = "sofia"
             s.apriProspetto(.liquidita(report: true))
         }),
+        ("44-checkup-prospetto", { s in
+            s.clienteAttivoId = "andrea"
+            s.apriProspetto(.checkUp(report: false))
+        }),
+        ("45-checkup-report", { s in
+            s.clienteAttivoId = "andrea"
+            s.apriProspetto(.checkUp(report: true))
+        }),
         ("25-documenti-kid", { s in
             s.clienteAttivoId = "giulia"
             s.documentoSelezionato = "doc-giulia-kid"
