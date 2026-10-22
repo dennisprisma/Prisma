@@ -19,6 +19,11 @@ enum ProspettoResoconto {
             pagine.append(AnyView(PaginaSeguito(t: t, voci: Array(resto.prefix(26)))))
             resto = Array(resto.dropFirst(26))
         }
+        if !finanziarie.isEmpty { pagine.append(AnyView(PaginaFisco(t: t))) }
+        let previdenze = t.e.previdenze
+        for inizio in stride(from: 0, to: previdenze.count, by: 2) {
+            pagine.append(AnyView(PaginaPrevidenza(voci: Array(previdenze[inizio..<min(inizio + 2, previdenze.count)]))))
+        }
         pagine += [AnyView(PaginaTutele(t: t)), AnyView(PaginaStorico(t: t))]
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiResoconto.avvertenza, numero: i + 1, totale: pagine.count) { p })
@@ -159,7 +164,7 @@ private struct PaginaQuadro: View {
                 CifraProspetto("Debiti residui", CifreDoc.euro(e.riepilogo.debiti), e.rateAnnue > 0 ? "rate \(CifreDoc.euro(e.rateAnnue / 12))/mese" : "—")
             }
             SezioneProspetto(titolo: "Le posizioni finanziarie, una per una",
-                             testo: Text(verbatim: "Versato, valore e risultato già al netto dei costi del prodotto, prima delle imposte sul guadagno. Rendimento medio annuo e ultimi 12 mesi tengono conto delle date dei versamenti (metodo nell'ultima pagina)."))
+                             testo: Text(verbatim: "Versato, valore e risultato già al netto dei costi del prodotto, prima delle imposte sul guadagno. Rendimento medio annuo e ultimi 12 mesi tengono conto delle date dei versamenti (metodo nell'ultima pagina). Imposte e netto incassabile nella pagina seguente."))
             if voci.isEmpty {
                 Text(verbatim: "Nessuna posizione di investimento, risparmio o previdenza in essere.").font(T.pCorpo).foregroundColor(C.tenue)
             } else {
@@ -424,5 +429,170 @@ private struct PaginaStorico: View {
                        righe: righe, fontTesta: T.pTabellaTesta, altezzaTesta: 12, margine: 3)
         }
         .frame(width: w, alignment: .topLeading)
+    }
+}
+
+// MARK: - Fiscalità e netto incassabile
+
+private struct PaginaFisco: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiResoconto
+
+    private var e: EsitoResoconto { t.e }
+
+    var body: some View {
+        let conCosti = e.voci.filter { $0.fisco.costoTotale > 0 }
+        return VStack(alignment: .leading, spacing: 10) {
+            SezioneProspetto(titolo: "Se si chiudesse tutto oggi: imposte e netto incassabile",
+                             testo: Text(verbatim: "Per ogni posizione finanziaria: penale di riscatto (se il prodotto ha le condizioni del contratto), bollo maturato, imposta sul guadagno con l'aliquota del suo regime e importo netto. Cifre al centesimo; per la previdenza la prestazione al pensionamento (le altre cause sono nella pagina seguente)."))
+            HStack(spacing: 6) {
+                CifraProspetto("Valore oggi", CifreDoc.euro(e.valoreFinanziario), "posizioni finanziarie")
+                CifraProspetto("Penali e bollo", e.penaliFinanziarie > 0.005 ? CifreDoc.togli(e.penaliFinanziarie) : "—", "maturati al riscatto")
+                CifraProspetto("Imposte stimate", e.imposteFinanziarie > 0.005 ? CifreDoc.togli(e.imposteFinanziarie) : "—", "sul guadagno",
+                               colore: C.negativo)
+                CifraProspetto("Netto incassabile", CifreDoc.euro(e.nettoFinanziario), "\(CifreDoc.euroSegno(e.nettoFinanziario - e.versato)) sul versato",
+                               colore: C.positivo)
+                CifraProspetto("Rendimento netto", e.rendimentoNettoAnnuo.map { CifreDoc.variazione($0) } ?? "—", "annuo, dopo le imposte")
+            }
+            TabellaCanali(colonne: [
+                ColonnaDoc(titolo: "Posizione", sottotitolo: "regime fiscale", peso: 2.3, destra: false),
+                ColonnaDoc(titolo: "Valore", sottotitolo: "versato", peso: 1.15),
+                ColonnaDoc(titolo: "Penale e bollo", sottotitolo: "al riscatto", peso: 1),
+                ColonnaDoc(titolo: "Imponibile", sottotitolo: "guadagno tassato", peso: 1.1),
+                ColonnaDoc(titolo: "Aliquota", sottotitolo: "effettiva", peso: 0.75),
+                ColonnaDoc(titolo: "Imposta", peso: 1),
+                ColonnaDoc(titolo: "Netto oggi", sottotitolo: "rend. netto annuo", peso: 1.25),
+            ], gruppi: Canale.allCases.compactMap { c in
+                let mie = e.finanziarie.filter { $0.posizione.canale == c }
+                guard !mie.isEmpty else { return nil }
+                var righe = mie.map { v -> RigaDoc in
+                    let f = v.fisco
+                    let trattenute = f.penale + f.bolloMaturato
+                    var netto = CellaDoc(CifreDoc.euroCentesimi(f.netto), sotto: v.rendimentoNettoAnnuo.map { "\(CifreDoc.variazione($0)) l'anno" } ?? "",
+                                         font: T.pTabellaForte)
+                    netto.coloreSotto = C.tenue
+                    return RigaDoc(celle: [
+                        CellaDoc(v.posizione.nome, sotto: f.regime.nome + (f.regime == .previdenza ? " · pensionamento" : ""), font: T.pTabellaForte),
+                        CellaDoc(CifreDoc.euroCentesimi(f.valore), sotto: "versato \(CifreDoc.euro(f.versato))", font: T.pTabella),
+                        CellaDoc(trattenute > 0.005 ? CifreDoc.togli(trattenute) : "—", font: T.pTabella),
+                        CellaDoc(CifreDoc.euroCentesimi(f.imponibile), font: T.pTabella),
+                        CellaDoc(f.imposta > 0.005 || f.regime == .previdenza ? CifreDoc.percento(f.aliquota, decimali: 2) : "—", font: T.pTabella),
+                        CellaDoc(f.imposta > 0.005 ? "\(CifreDoc.meno) " + CifreDoc.euroCentesimi(f.imposta) : "—", colore: f.imposta > 0.005 ? C.negativo : nil, font: T.pTabella),
+                        netto,
+                    ], altezza: 22)
+                }
+                if mie.count > 1 {
+                    let netto = mie.reduce(0) { $0 + $1.fisco.netto }, imposta = mie.reduce(0) { $0 + $1.fisco.imposta }
+                    righe.append(RigaDoc(celle: [CellaDoc("Totale \(c.nomeBreve.lowercased())", font: T.pTabellaForte),
+                                                 CellaDoc(CifreDoc.euroCentesimi(mie.reduce(0) { $0 + $1.fisco.valore }), font: T.pTabellaForte),
+                                                 CellaDoc(""), CellaDoc(""), CellaDoc(""),
+                                                 CellaDoc(imposta > 0.005 ? "\(CifreDoc.meno) " + CifreDoc.euroCentesimi(imposta) : "—", font: T.pTabellaForte),
+                                                 CellaDoc(CifreDoc.euroCentesimi(netto), font: T.pTabellaForte)],
+                                         altezza: 15, sfondo: C.riquadro, filetto: C.filettoForte, spessore: 0.8))
+                }
+                return GruppoCanale(canale: c, righe: righe, nota: TestiResoconto.posizioni(mie.count))
+            })
+            if !conCosti.isEmpty {
+                SezioneProspetto(titolo: "I costi di un anno, voce per voce",
+                                 testo: Text(verbatim: "Gestione (costo annuo del prodotto), trattenuto sul rendimento della gestione separata e imposta di bollo, sul valore di oggi. Sono già compresi nel valore: non si pagano a parte, tranne il bollo di fondi e conti."))
+                TabellaDoc(larghezza: larghezza, colonne: [
+                    ColonnaDoc(titolo: "Posizione", peso: 2.6, destra: false), ColonnaDoc(titolo: "Canale", peso: 0.9, destra: false),
+                    ColonnaDoc(titolo: "Gestione", sottotitolo: "costo annuo"), ColonnaDoc(titolo: "Trattenuto", sottotitolo: "sul rendimento"),
+                    ColonnaDoc(titolo: "Bollo", sottotitolo: "0,20% o fisso"), ColonnaDoc(titolo: "Totale", sottotitolo: "in un anno"),
+                ], righe: conCosti.map { v in
+                    let f = v.fisco, p = v.posizione
+                    func cella(_ x: Double, _ sotto: String) -> CellaDoc { CellaDoc(x > 0.005 ? CifreDoc.euroCentesimi(x) : "—", sotto: x > 0.005 ? sotto : "", font: T.pTabella) }
+                    return RigaDoc(celle: [CellaDoc(p.nome, font: T.pTabellaForte),
+                                           CellaDoc(p.canale.nomeBreve, colore: C.canale(p.canale), font: T.pTabellaForte),
+                                           cella(f.costoGestione, p.costoAnnuo.map { CifreDoc.condizione($0) } ?? ""),
+                                           cella(f.costoTrattenuto, p.trattenuto.map { "\(CifreDoc.condizione($0)) punti" } ?? ""),
+                                           cella(f.costoBollo, ""),
+                                           CellaDoc(CifreDoc.euroCentesimi(f.costoTotale), font: T.pTabellaForte)], altezza: 20)
+                } + [RigaDoc(celle: [CellaDoc("Totale", font: T.pTabellaForte), CellaDoc(""),
+                                     CellaDoc(CifreDoc.euroCentesimi(e.costoGestione), font: T.pTabellaForte),
+                                     CellaDoc(CifreDoc.euroCentesimi(e.costoTrattenuto), font: T.pTabellaForte),
+                                     CellaDoc(CifreDoc.euroCentesimi(e.costoBollo), font: T.pTabellaForte),
+                                     CellaDoc(CifreDoc.euroCentesimi(e.costoAnnuo), font: T.pTabellaForte)],
+                             altezza: 15, sfondo: C.riquadro, filetto: C.filettoForte, spessore: 0.8)],
+                           fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 12, margine: 4)
+            }
+            let note = e.finanziarie.flatMap { v in v.fisco.note.map { "\(v.posizione.nome): \($0)" } }
+            if !note.isEmpty {
+                SezioneProspetto(titolo: "Come sono calcolate le imposte")
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(note.prefix(12).enumerated()), id: \.offset) { _, n in
+                        Text(verbatim: "• " + n).font(T.pTabellaNota).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Previdenza: quanto si incassa per ogni causa
+
+private struct PaginaPrevidenza: View {
+    @Environment(\.paletteDocumento) private var C
+    let voci: [VoceResoconto]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SezioneProspetto(titolo: "Previdenza complementare: quanto si incassa e con quale aliquota",
+                             testo: Text(verbatim: "I rendimenti sono già tassati ogni anno dentro il fondo (20%, 12,5% sui titoli di Stato): alla richiesta si tassano solo i contributi dedotti. Pensionamento, riscatti per invalidità, inoccupazione oltre 48 mesi o decesso e anticipazioni per spese sanitarie: 15% fino al 15° anno di partecipazione, poi 0,30 punti in meno ogni anno fino al 9% dal 35° anno. Anticipazioni per la prima casa o per ulteriori esigenze e riscatti per altre cause: 23%."))
+            ForEach(voci) { v in scheda(v) }
+        }
+    }
+
+    private func scheda(_ v: VoceResoconto) -> some View {
+        let f = v.fisco, p = v.posizione
+        let inizio = p.primaAdesione ?? p.decorrenza
+        let anni = f.anniPartecipazione ?? 0
+        let righe = f.uscite.map { u -> RigaDoc in
+            let quando = u.causa.anniRichiesti.flatMap { n in inizio.flatMap { Calendar.current.date(byAdding: .year, value: n, to: $0) } }
+            var causa = CellaDoc(u.causa.nome, sotto: u.causa.requisito, font: T.pTabellaForte)
+            causa.coloreSotto = C.tenue
+            if !u.possibile {
+                return RigaDoc(celle: [causa, CellaDoc("non ancora: dal \(TestiResoconto.quando(quando))", colore: C.tenue, font: T.pTabella)], altezza: 21)
+            }
+            return RigaDoc(celle: [causa,
+                                   CellaDoc(CifreDoc.euroCentesimi(u.importo), sotto: u.causa.quotaMassima < 1 ? "fino al \(Int(u.causa.quotaMassima * 100))%" : "intera posizione", font: T.pTabella),
+                                   CellaDoc(CifreDoc.euroCentesimi(u.imponibile), font: T.pTabella),
+                                   CellaDoc(CifreDoc.percento(u.aliquota, decimali: 2), font: T.pTabellaForte),
+                                   CellaDoc("\(CifreDoc.meno) " + CifreDoc.euroCentesimi(u.imposta), colore: C.negativo, font: T.pTabella),
+                                   CellaDoc(CifreDoc.euroCentesimi(u.netto), font: T.pTabellaForte)], altezza: 21)
+        }
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .center, spacing: 8) {
+                EtichettaCanale(canale: p.canale)
+                Text(verbatim: p.nome).font(T.pSottosezione).foregroundColor(C.titolo)
+                Spacer()
+                Text(verbatim: "\(anni) \(anni == 1 ? "anno" : "anni") di partecipazione" + (inizio.map { " (dal \(CifreDoc.dataBreve($0)))" } ?? ""))
+                    .font(T.pTabellaNota).foregroundColor(C.tenue)
+            }
+            Text(verbatim: "Valore \(CifreDoc.euroCentesimi(f.valore)) · versato \(CifreDoc.euro(f.versato))"
+                 + " · non dedotti \(CifreDoc.euro(p.contributiNonDedotti ?? 0)) · parte tassabile \(CifreDoc.percento(f.valore > 0 ? (f.uscite.first?.imponibile ?? 0) / f.valore * 100 : 0)) del valore")
+                .font(T.pTabellaNota).foregroundColor(C.tenue)
+            TabellaDoc(larghezza: larghezza, colonne: [
+                ColonnaDoc(titolo: "Causa della richiesta", sottotitolo: "requisito", peso: 2.9, destra: false),
+                ColonnaDoc(titolo: "Disponibile", sottotitolo: "importo lordo", peso: 1.15),
+                ColonnaDoc(titolo: "Imponibile", sottotitolo: "contributi dedotti", peso: 1.1),
+                ColonnaDoc(titolo: "Aliquota", sottotitolo: "oggi", peso: 0.75),
+                ColonnaDoc(titolo: "Imposta", peso: 1),
+                ColonnaDoc(titolo: "Netto", peso: 1.1),
+            ], righe: righe, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 12, margine: 4)
+            Text(verbatim: gradini(f, anni: anni)).font(T.pTabellaNota).foregroundColor(C.testo).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// "Aliquota agevolata oggi 15,00%; dal 12/03/2027 (16 anni compiuti) 14,70%; … ; dal … (35 anni compiuti) 9,00%."
+    private func gradini(_ f: EsitoFiscale, anni: Int) -> String {
+        var s = "Aliquota agevolata oggi \(CifreDoc.percento(RegoleFiscali.aliquotaPrevidenza(anni: anni), decimali: 2))"
+        guard !f.gradini.isEmpty else { return s + ": è già la minima." }
+        let mostrati = f.gradini.count > 6 ? Array(f.gradini.prefix(5)) + [f.gradini[f.gradini.count - 1]] : f.gradini
+        for (i, g) in mostrati.enumerated() {
+            if f.gradini.count > 6 && i == 5 { s += "; …" }
+            s += "; dal \(CifreDoc.dataBreve(g.dal)) (\(g.anni) anni compiuti) \(CifreDoc.percento(g.aliquota, decimali: 2))"
+        }
+        return s + "."
     }
 }

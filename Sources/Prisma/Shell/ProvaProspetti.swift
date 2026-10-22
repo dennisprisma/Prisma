@@ -112,7 +112,7 @@ enum ProvaProspetti {
 
         // Resoconto delle posizioni in essere: prospetto e report per ogni cliente con posizioni in essere
         for cliente in dati.clienti where dati.posizioni.contains(where: { $0.clienteId == cliente.id && $0.stato == .inEssere }) {
-            let t = TestiResoconto(dati.posizioni.filter { $0.clienteId == cliente.id }, cliente: cliente)
+            let t = TestiResoconto(dati.posizioni.filter { $0.clienteId == cliente.id }, cliente: cliente, prodotti: dati.prodotti)
             for report in [false, true] {
                 let d = DocumentoStampabile(t, report: report)
                 let nome = "resoconto-\(cliente.id)-\(report ? "report" : "prospetto")"

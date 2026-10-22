@@ -36,7 +36,8 @@ struct ParametriProiezione: Equatable {
         rendimento = p.rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito
         // Il costo d'ingresso si applica solo ai versamenti futuri di una posizione in essere.
         costoIngresso = p.costoIngresso ?? 0
-        costoAnnuo = p.costoAnnuo ?? 0
+        // Il trattenuto sul rendimento pesa come un costo annuo
+        costoAnnuo = (p.costoAnnuo ?? 0) + (p.trattenuto ?? 0)
         aliquotaFiscale = p.aliquotaFiscale ?? IpotesiCalcolo.aliquotaPredefinita
         ingressoSulCapitale = p.stato != .inEssere
     }
