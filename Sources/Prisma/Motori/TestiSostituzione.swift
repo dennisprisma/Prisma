@@ -66,9 +66,14 @@ struct TestiSostituzione {
         let vince = e.scenari.filter { ($0.differenza > 0) == convieneCambiare }.count
         switch vince {
         case 3: return "La conclusione regge in tutti e tre gli scenari di mercato."
-        case 2: return "La conclusione regge in due scenari su tre: in quello \(e.scenari.first { ($0.differenza > 0) != convieneCambiare }?.nome.lowercased() ?? "") cambia."
+        case 2: return "La conclusione regge in due scenari su tre: in quello \(scenarioContrario) cambia."
         default: return "La conclusione dipende dai mercati: vale solo nello scenario atteso."
         }
+    }
+
+    /// Il nome dello scenario in cui vince l'altra strada.
+    private var scenarioContrario: String {
+        e.scenari.first(where: { ($0.differenza > 0) != convieneCambiare })?.nome.lowercased() ?? ""
     }
 
     // MARK: - Cosa si perde e cosa si guadagna

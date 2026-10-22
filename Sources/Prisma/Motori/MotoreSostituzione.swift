@@ -228,7 +228,7 @@ enum MotoreSostituzione {
             return inEssere.count > 1 ? (inEssere[0].id, inEssere[1].id) : nil
         }
         let inScadenza = inEssere.filter { $0.scadeEntro(365) }.sorted { ($0.scadenza ?? .distantFuture) < ($1.scadenza ?? .distantFuture) }
-        let attuale = inScadenza.first ?? inEssere.first { $0.area == proposta.area } ?? inEssere.first
+        let attuale = inScadenza.first ?? inEssere.first(where: { $0.area == proposta.area }) ?? inEssere.first
         return attuale.map { ($0.id, proposta.id) } ?? (proposte.count > 1 ? (proposte[0].id, proposte[1].id) : nil)
     }
 }
