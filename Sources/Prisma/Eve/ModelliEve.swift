@@ -34,28 +34,41 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
     }
 }
 
-/// Gli spunti pronti sotto la conversazione.
+/// Gli spunti pronti sotto la conversazione. Quelli di analisi leggono gli stessi motori dei
+/// prospetti e dei report: i numeri di Eve e quelli dei documenti coincidono.
 enum SpuntoEve: String, CaseIterable, Identifiable {
-    case incontro, riepilogo, prossimiPassi, protezione, scadenze
+    case riepilogo, checkUp, incontro, prossimiPassi, resoconto, pensione, protezione, liquidita, obiettivi, cambiare, scadenze
 
     var id: String { rawValue }
 
     var domanda: String {
         switch self {
-        case .incontro: return "Prepara il prossimo incontro"
         case .riepilogo: return "Fammi un riepilogo del cliente"
+        case .checkUp: return "Fai il check-up del cliente"
+        case .incontro: return "Prepara il prossimo incontro"
         case .prossimiPassi: return "Elenca i prossimi passi"
+        case .resoconto: return "Come stanno andando le posizioni?"
+        case .pensione: return "Spiegami il piano pensione"
         case .protezione: return "Dove è scoperta la protezione?"
+        case .liquidita: return "Cosa fare della liquidità?"
+        case .obiettivi: return "A che punto sono gli obiettivi?"
+        case .cambiare: return "Conviene restare o cambiare?"
         case .scadenze: return "Spiegami le scadenze in arrivo"
         }
     }
 
     var simbolo: String {
         switch self {
-        case .incontro: return "◷"
         case .riepilogo: return "≡"
+        case .checkUp: return "●"
+        case .incontro: return "◷"
         case .prossimiPassi: return "✓"
+        case .resoconto: return "↗"
+        case .pensione: return "☂"
         case .protezione: return "◈"
+        case .liquidita: return "€"
+        case .obiettivi: return "◎"
+        case .cambiare: return "⇄"
         case .scadenze: return "!"
         }
     }
@@ -64,6 +77,26 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
     static func da(_ testo: String) -> SpuntoEve? {
         let t = testo.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return allCases.first { $0.domanda.lowercased() == t }
+    }
+
+    /// L'argomento di una domanda libera, dalle parole chiave (per la sintesi dai dati, che non capisce
+    /// le frasi): "quanto paga di tasse se riscatta il fondo pensione?" → pensione.
+    static func argomento(_ testo: String) -> SpuntoEve? {
+        let t = testo.lowercased()
+        let parole: [(SpuntoEve, [String])] = [
+            (.pensione, ["pension", "previdenz", "anticipazion", "tfr", "deducib"]),
+            (.cambiare, ["cambiare", "sostitu", "restare", "switch", "conviene"]),
+            (.liquidita, ["liquidità", "liquidita", "conto corrente", "in scadenza", "salvadana"]),
+            (.obiettivi, ["obiettiv", "traguard"]),
+            (.protezione, ["protezion", "copertur", "tcm", "caso morte", "invalidità"]),
+            (.resoconto, ["rendiment", "andament", "guadagn", "tasse", "impost", "costi", "netto", "resoconto"]),
+            (.checkUp, ["check", "semaforo"]),
+            (.scadenze, ["scadenz", "scade"]),
+            (.incontro, ["incontro", "appuntamento"]),
+            (.prossimiPassi, ["passi", "cosa fare", "da fare"]),
+            (.riepilogo, ["riepilogo", "quadro", "situazione", "patrimonio"])
+        ]
+        return parole.first { $0.1.contains { t.contains($0) } }?.0
     }
 }
 
@@ -80,6 +113,28 @@ struct FonteEve {
     let simulazioni: [Simulazione]
     var incontri: [Incontro] = []
     var obiettivi: [Obiettivo] = []
+    /// Catalogo dei prodotti: penali, condizioni e costi per i calcoli fiscali e di sostituzione.
+    var prodotti: [Prodotto] = []
+    /// Le due posizioni del confronto scelto in Prospetti e report (altrimenti la coppia predefinita)
+    /// e gli anni della simulazione.
+    var confronto: (attuale: String, alternativa: String)?
+    var anniConfronto: Int?
+}
+
+extension SceltaProspetto {
+    /// Lo spunto di Eve che spiega questo documento (nil se Eve non ne ha uno).
+    var spuntoEve: SpuntoEve? {
+        switch self {
+        case .resoconto: return .resoconto
+        case .sostituzione: return .cambiare
+        case .previdenza: return .pensione
+        case .protezione: return .protezione
+        case .obiettivo: return .obiettivi
+        case .liquidita: return .liquidita
+        case .checkUp: return .checkUp
+        case .posizione, .confronto, .valutazione: return nil
+        }
+    }
 }
 
 struct RichiestaEve {

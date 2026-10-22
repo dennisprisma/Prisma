@@ -19,9 +19,21 @@ struct MotoreSintesi: MotoreEve {
         case .riepilogo: return riepilogo(f)
         case .incontro: return incontro(f)
         case .prossimiPassi: return prossimiPassi(f)
-        case .protezione: return protezione(f)
+        case .protezione: return protezioneFamiglia(f)
         case .scadenze: return scadenze(f)
+        case .checkUp: return checkUp(f)
+        case .resoconto: return resoconto(f)
+        case .pensione: return pensione(f)
+        case .liquidita: return liquidita(f)
+        case .obiettivi: return obiettivi(f)
+        case .cambiare: return cambiare(f)
         case nil:
+            // Una domanda libera su un argomento noto: rispondo con lo spunto più vicino
+            if let s = SpuntoEve.argomento(r.domanda) {
+                let risposta = componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: f, storia: []))
+                return RispostaEve(titolo: risposta.titolo, testo: risposta.testo
+                    + "\n\nHo letto la domanda come «\(s.domanda)». Per le domande libere serve il modello Apple sul Mac (Apple Intelligence).")
+            }
             var risposta = riepilogo(f)
             risposta.titolo = "Ecco cosa trovo nel dossier"
             return RispostaEve(titolo: risposta.titolo, testo: risposta.testo
@@ -114,22 +126,6 @@ struct MotoreSintesi: MotoreEve {
         if passi.isEmpty { passi.append("Nessun passo in sospeso: il dossier è in ordine.") }
         return RispostaEve(titolo: "I prossimi passi con \(f.cliente.nome)",
                            testo: passi.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n"))
-    }
-
-    private func protezione(_ f: FonteEve) -> RispostaEve {
-        let i = f.analisi.protezione
-        let e = MotoreAnalisi.protezione(i, posizioni: f.posizioni)
-        var parti = ["Se venisse a mancare il reddito di \(f.cliente.nome), alla famiglia servirebbero circa \(Formati.euro(e.fabbisogno)): debiti \(Formati.euro(i.debiti)), spese immediate \(Formati.euro(i.speseImmediate)) e \(Formati.euro(i.fabbisognoMensile)) al mese per \(i.anniSostegno) anni, meno \(Formati.euro(i.capitaleDisponibile)) già disponibili."]
-        parti.append(e.divario > 0
-            ? "Le coperture caso morte in essere valgono \(Formati.euro(e.capitaleVita)): mancano \(Formati.euro(e.divario))." + (e.divarioConProposte < e.divario ? " Con le proposte aperte il divario scenderebbe a \(Formati.euro(e.divarioConProposte))." : "")
-            : "Le coperture caso morte in essere (\(Formati.euro(e.capitaleVita))) bastano per il fabbisogno stimato.")
-        let scoperti = RischioCoperto.allCases.filter { $0 != .altro && !e.rischiCoperti.contains($0) }
-        if !scoperti.isEmpty { parti.append("Rischi senza copertura: \(scoperti.map { $0.nome.lowercased() }.joined(separator: ", ")).") }
-        if e.riservaMancante > 0 {
-            parti.append("In caso di invalidità o malattia lunga mancherebbero \(Formati.euro(e.ammanco)) al mese: per \(i.mesiRiserva) mesi servirebbe una riserva di \(Formati.euro(e.riservaNecessaria)), ne mancano \(Formati.euro(e.riservaMancante)).")
-        }
-        parti.append("Sono stime semplificate: esclusioni, carenze e massimali vanno letti nelle condizioni di polizza.")
-        return RispostaEve(titolo: "La protezione di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
     }
 
     private func scadenze(_ f: FonteEve) -> RispostaEve {

@@ -7,6 +7,8 @@ import Foundation
 /// Prisma. Eve non deve rifare i conti: legge e spiega.
 enum ContestoEve {
     static let limite = 4_200
+    /// Spazio per le cifre di uno spunto (bozza o calcoli pertinenti) passate al modello con la domanda.
+    static let limiteCalcoli = 1_800
 
     static func scheda(_ f: FonteEve) -> String {
         var righe: [String] = []

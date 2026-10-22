@@ -14,8 +14,11 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
-                    rail()
-                    Spacer(minLength: 0)
+                    // L'elenco scorre se è lungo: la finestra non si allunga mai sotto il dock
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 6) { rail() }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     ArchivioLocaleRail()
                 }
                 .padding(Misure.Analisi.margineRail)

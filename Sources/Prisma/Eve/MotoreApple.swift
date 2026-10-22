@@ -106,8 +106,13 @@ struct MotoreApple: MotoreEve {
         if r.spunto != nil {
             // Per gli spunti Prisma prepara già la bozza con i numeri esatti: il modello la rende discorsiva.
             prompt += "\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n"
-                + MotoriEve.sintesi.componi(r).testo
+                + String(MotoriEve.sintesi.componi(r).testo.prefix(ContestoEve.limiteCalcoli))
                 + "\n\nRiscrivi la bozza in modo naturale e ordinato e aggiungi al massimo due domande utili da fare al cliente."
+        } else if let s = SpuntoEve.argomento(r.domanda) {
+            // Domanda libera su un argomento che Prisma ha già calcolato: le passo le cifre pertinenti.
+            let calcoli = MotoriEve.sintesi.componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: r.fonte, storia: [])).testo
+            prompt += "\n\nCALCOLI DI PRISMA PERTINENTI (numeri esatti: usali solo se servono alla domanda, senza cambiarli)\n"
+                + String(calcoli.prefix(ContestoEve.limiteCalcoli))
         }
         do {
             let risposta = try await session.respond(to: prompt)

@@ -506,6 +506,12 @@ struct AppProspetti: View {
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Colonna.collegamento)
             }
+            if let scelta = stato.prospetto, scelta.spuntoEve != nil {
+                Button("✦ Chiedi a Eve") { stato.chiediEveDelDocumento(scelta) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .disabled(stato.eveInCorso)
+                    .help("Eve spiega le cifre di questo documento, per te")
+            }
             Button("Stampa…") { if let dati = pdf(d) { StampaCarta.stampa(dati, formato: d.formato) } }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
             Button("Archivia nei Documenti") {

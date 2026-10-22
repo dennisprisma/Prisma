@@ -1118,7 +1118,22 @@ final class StatoShell: ObservableObject {
         return FonteEve(oggi: Date(), nomeUtente: nomeUtente, cliente: c, posizioni: posizioniCliente(id),
                         appuntamenti: appuntamentiCliente(id), attivita: attivitaCliente(id),
                         analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id),
-                        incontri: incontriCliente(id), obiettivi: obiettiviCliente(id))
+                        incontri: incontriCliente(id), obiettivi: obiettiviCliente(id), prodotti: dati.prodotti,
+                        confronto: confrontoEve(id), anniConfronto: orizzonteSostituzione)
+    }
+
+    /// Il confronto aperto in Prospetti e report, se riguarda questo cliente.
+    private func confrontoEve(_ id: String) -> (attuale: String, alternativa: String)? {
+        guard case .sostituzione(let a, let b, _)? = prospetto,
+              posizioni.contains(where: { $0.id == a && $0.clienteId == id }) else { return nil }
+        return (a, b)
+    }
+
+    /// Fa spiegare a Eve il documento aperto in Prospetti e report.
+    func chiediEveDelDocumento(_ scelta: SceltaProspetto) {
+        guard let s = scelta.spuntoEve else { return }
+        apri(.eve)
+        chiediEve(s.domanda, spunto: s)
     }
 
     /// Manda una domanda a Eve per il cliente attivo.
