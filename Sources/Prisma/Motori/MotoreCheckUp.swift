@@ -125,10 +125,12 @@ enum MotoreCheckUp {
         indicatori.append(IndicatoreCheckUp(
             id: "investimenti", titolo: "Risparmi che lavorano",
             semaforo: fermo ? .giallo : (investito > 0 || eccesso < 1 ? .verde : .giallo),
-            valore: fermo ? "\(CifreDoc.euro(eccesso)) fermi" : CifreDoc.euro(investito),
+            valore: fermo ? "\(CifreDoc.euro(eccesso)) fermi" : (investito < 1 ? "nessun investimento" : CifreDoc.euro(investito)),
             lettura: fermo ? "Oltre la riserva ci sono \(CifreDoc.euro(eccesso)) sul conto che perdono valore con l'inflazione."
-                : "Investimenti e risparmio per \(CifreDoc.euro(investito)).",
-            azione: fermo ? "Destinare l'eccedenza secondo gli orizzonti degli obiettivi." : "Verificare costi e rendimento con il resoconto.",
+                : (investito < 1 ? "La liquidità serve tutta alla riserva: non c'è ancora capitale da investire."
+                                 : "Investimenti e risparmio per \(CifreDoc.euro(investito))."),
+            azione: fermo ? "Destinare l'eccedenza secondo gli orizzonti degli obiettivi."
+                : (investito < 1 ? "Avviare un piccolo piano di accumulo quando la riserva è completa." : "Verificare costi e rendimento con il resoconto."),
             area: .patrimonio))
 
         // 6. Debiti
