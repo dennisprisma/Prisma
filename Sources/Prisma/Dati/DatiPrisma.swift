@@ -35,7 +35,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 11: condizioni dei contratti nelle schede prodotto e valutazioni d'investimento.
     /// 12: rilevazioni dei valori delle posizioni (storico per il resoconto).
     /// 13: trattenuto sul rendimento e dati fiscali delle posizioni (regime, titoli di Stato, bollo, previdenza).
-    static let versioneAttuale = 13
+    /// 14: reddito lordo annuo nel profilo del cliente (previdenza e deducibilità).
+    static let versioneAttuale = 14
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],

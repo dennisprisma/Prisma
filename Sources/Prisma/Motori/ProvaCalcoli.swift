@@ -319,6 +319,151 @@ enum ProvaCalcoli {
         giovane.totaleVersato = 8_000
         verifica("Previdenza con 40 anni: nessun gradino futuro, aliquota minima", Double(MotoreFiscale.calcola(giovane).gradini.count), 0)
 
+        // 21. Sostituzione: uscita tassata, netto anno per anno, pareggio, trasferimento della previdenza
+        let oggiS = Calendar(identifier: .gregorian).startOfDay(for: Date())
+        func fondo(_ nome: String, stato: StatoPosizione, rendimento: Double, costo: Double) -> Posizione {
+            var p = Posizione(clienteId: "prova", canale: .indipendente, stato: stato, area: .investimento, nome: nome)
+            p.tipologia = "Fondo comune"
+            p.decorrenza = Calendar(identifier: .gregorian).date(byAdding: .year, value: -3, to: oggiS)
+            p.dataValore = oggiS
+            p.controvalore = stato == .inEssere ? 12_000 : nil
+            p.totaleVersato = stato == .inEssere ? 10_000 : nil
+            p.versamentoIniziale = stato == .inEssere ? 10_000 : 0
+            p.rendimentoAtteso = rendimento
+            p.costoAnnuo = costo
+            p.conBollo = false
+            p.aliquotaFiscale = 26
+            return p
+        }
+        let uguali = MotoreSostituzione.calcola(attuale: fondo("A", stato: .inEssere, rendimento: 0, costo: 0),
+                                                alternativa: fondo("B", stato: .proposta, rendimento: 0, costo: 0), anni: 5)
+        verifica("Sostituzione: imposta all'uscita (26% su 2.000 €)", uguali.impostaUscita, 520)
+        verifica("Sostituzione: netto reinvestito", uguali.reinvestito, 11_480)
+        // Senza rendimento né costi le due strade danno lo stesso netto: 12.000 − 520 restando, 11.480 cambiando
+        verifica("Sostituzione: a rendimento zero le due strade si equivalgono", uguali.finale?.differenza ?? 1, 0, tolleranza: 0.01)
+        let migliore = MotoreSostituzione.calcola(attuale: fondo("A", stato: .inEssere, rendimento: 3, costo: 2),
+                                                  alternativa: fondo("B", stato: .proposta, rendimento: 3, costo: 0.5), anni: 10)
+        verifica("Sostituzione: con costi più bassi conviene cambiare", (migliore.finale?.differenza ?? 0) > 0 ? 1 : 0, 1)
+        verifica("Sostituzione: pareggio entro il periodo", migliore.pareggio != nil ? 1 : 0, 1)
+        verifica("Sostituzione: tre scenari", Double(migliore.scenari.count), 3)
+        var pipA = fondo("PIP A", stato: .inEssere, rendimento: 2, costo: 1.5)
+        pipA.area = .previdenza
+        var pipB = fondo("PIP B", stato: .proposta, rendimento: 2, costo: 0.5)
+        pipB.area = .previdenza
+        let trasferito = MotoreSostituzione.calcola(attuale: pipA, alternativa: pipB, anni: 10)
+        verifica("Sostituzione: trasferimento tra fondi pensione senza imposte", trasferito.impostaUscita, 0)
+        verifica("Sostituzione: trasferimento dell'intero valore", trasferito.reinvestito, 12_000)
+        if let sofia = demo.first(where: { $0.id == "pos-sofia-polizza-rivalutabile" }),
+           let obbl = demo.first(where: { $0.id == "pos-sofia-obbligazionario-a-scadenza-2030" }) {
+            let s = MotoreSostituzione.calcola(attuale: sofia, alternativa: obbl)
+            // 41.000 − 35.000 = 6.000 di guadagno, aliquota 17,90% (60% in titoli di Stato)
+            verifica("Sostituzione di Sofia: imposta all'uscita", s.impostaUscita, 1_074)
+            verifica("Sostituzione di Sofia: orizzonte della proposta", Double(s.anni), Double(obbl.anniAllaScadenza ?? 0))
+        } else {
+            verifica("Posizioni di Sofia per la sostituzione presenti", 0, 1)
+        }
+
+        // 22. Previdenza: aliquota IRPEF marginale, piano alla pensione, deducibilità
+        verifica("IRPEF: aliquota marginale con 27.000 €", RegoleFiscali.aliquotaMarginale(reddito: 27_000), 23)
+        verifica("IRPEF: aliquota marginale con 32.000 €", RegoleFiscali.aliquotaMarginale(reddito: 32_000), 35)
+        verifica("IRPEF: aliquota marginale con 60.000 €", RegoleFiscali.aliquotaMarginale(reddito: 60_000), 43)
+        var fp = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .previdenza, nome: "Fondo")
+        fp.decorrenza = Calendar(identifier: .gregorian).date(byAdding: .year, value: -10, to: oggiS)
+        fp.controvalore = 10_000
+        fp.totaleVersato = 10_000
+        fp.rendimentoAtteso = 0
+        var ipotesi = IpotesiPrevidenza()
+        ipotesi.eta = 57
+        ipotesi.etaPensione = 67
+        ipotesi.redditoDesiderato = 2_000
+        ipotesi.pensionePubblica = 1_500
+        ipotesi.anniIntegrazione = 25
+        let pp = MotorePrevidenza.calcola([fp], cliente: nil, analisi: ipotesi)
+        if let piano = pp.piani.first {
+            // 20 anni di partecipazione alla pensione: 15 − 5 × 0,30 = 13,50% su 10.000 € dedotti
+            verifica("Previdenza: aliquota alla pensione dopo 20 anni", piano.aliquota, 13.5, tolleranza: 0.0001)
+            verifica("Previdenza: imposta sulla prestazione", piano.imposta, 1_350)
+            verifica("Previdenza: netto in euro di oggi (inflazione 2% per 10 anni)", piano.nettoReale, 8_650 / pow(1.02, 10), tolleranza: 0.01)
+            verifica("Previdenza: rendita mensile per 25 anni", piano.renditaMensile, 8_650 / pow(1.02, 10) / 300, tolleranza: 0.01)
+        } else {
+            verifica("Previdenza: piano di prova presente", 0, 1)
+        }
+        verifica("Previdenza: divario mensile", pp.divario, 500)
+        var conVersamenti = fp
+        conVersamenti.premio = 600
+        conVersamenti.frequenza = .mensile
+        var cli = DatiDemo.clienti()[0]
+        cli.profilo.redditoLordoAnnuo = 40_000
+        let ded = MotorePrevidenza.calcola([conVersamenti], cliente: cli, analisi: ipotesi)
+        verifica("Previdenza: deducibile fino al limite (7.200 € versati)", ded.deducibiliOggi, 5_164.57)
+        verifica("Previdenza: risparmio IRPEF al 35%", ded.risparmioOggi, 5_164.57 * 0.35, tolleranza: 0.01)
+
+        // 23. Protezione della famiglia: fabbisogno, divario, detrazione dei premi (conti a mano)
+        var ip = IpotesiProtezione()
+        ip.fabbisognoMensile = 2_000; ip.anniSostegno = 10; ip.debiti = 100_000; ip.speseImmediate = 10_000; ip.capitaleDisponibile = 20_000
+        ip.entrateSostitutive = 800; ip.mesiRiserva = 12; ip.riserva = 6_000
+        var tcm = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "TCM")
+        tcm.rischio = .vita; tcm.capitaleAssicurato = 200_000; tcm.premio = 50; tcm.frequenza = .mensile
+        var ltc = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "LTC")
+        ltc.rischio = .ltc; ltc.capitaleAssicurato = 30_000; ltc.premio = 900; ltc.frequenza = .annuale
+        let pf = MotoreProtezioneFamiglia.calcola([tcm, ltc], cliente: nil, analisi: ip)
+        // 100.000 + 10.000 + 2.000 × 12 × 10 − 20.000 = 330.000
+        verifica("Protezione: fabbisogno caso morte", pf.fabbisogno, 330_000)
+        verifica("Protezione: divario con 200.000 € assicurati", pf.divario, 130_000)
+        verifica("Protezione: anni di sostegno coperti oggi", pf.anniCoperti, (200_000 + 20_000 - 100_000 - 10_000) / 24_000.0)
+        verifica("Protezione: riserva da costruire", pf.riservaMancante, 1_200 * 12 - 6_000)
+        // Premi 600 (vita) + 900 (LTC): vita fino a 530, totale fino a 1.291,14
+        verifica("Protezione: premi detraibili nei limiti", pf.detraibili, 1_291.14)
+        verifica("Protezione: detrazione del 19%", pf.detrazione, 1_291.14 * 0.19, tolleranza: 0.001)
+
+        // 24. Piano obiettivo: rivalutazione, accantonato, versamento che colma il mancante
+        let fra5 = Calendar(identifier: .gregorian).date(byAdding: .month, value: 60, to: oggiS) ?? oggiS
+        var ob = Obiettivo(clienteId: "prova", titolo: "Prova", area: .casa, importo: 10_000, scadenza: fra5)
+        ob.accantonato = 5_000
+        ob.rendimento = 0
+        let eo = MotoreObiettivo.calcola(ob, posizioni: [], data: oggiS)
+        verifica("Obiettivo: importo rivalutato al 2% per 5 anni", eo.importoScadenza, 10_000 * pow(1.02, 5), tolleranza: 0.01)
+        verifica("Obiettivo: accantonato a rendimento zero", eo.proiezione, 5_000)
+        if let v = eo.versamentoNecessario {
+            // A rendimento zero (e quindi senza imposte) il versamento è il mancante diviso 60 mesi
+            verifica("Obiettivo: versamento mensile a rendimento zero", v, (10_000 * pow(1.02, 5) - 5_000) / 60, tolleranza: 0.05)
+        } else {
+            verifica("Obiettivo: versamento calcolato", 0, 1)
+        }
+        verifica("Obiettivo: versamento unico a rendimento zero", eo.unaTantum ?? 0, ((10_000 * pow(1.02, 5) - 5_000) / 10).rounded(.up) * 10, tolleranza: 10)
+        verifica("Obiettivo: quattro strade", Double(eo.strade.count), 4)
+
+        // 25. Liquidità: capitale in scadenza netto, riserva, salvadanai
+        if let polizza = demo.first(where: { $0.id == "pos-sofia-polizza-rivalutabile" }),
+           let conto = demo.first(where: { $0.id == "pos-sofia-liquidità" }) {
+            var ipl = IpotesiProtezione()
+            ipl.fabbisognoMensile = 2_000
+            ipl.mesiRiserva = 6
+            let el = MotoreLiquidita.calcola([polizza, conto], obiettivi: [], analisi: ipl)
+            // 41.000 − 17,90% di 6.000 = 39.926
+            verifica("Liquidità: netto della polizza in scadenza", el.nettoInScadenza, 39_926)
+            verifica("Liquidità: totale disponibile (27.000 di conto)", el.totale, 66_926)
+            verifica("Liquidità: riserva di 6 mesi", el.salvadanai.first?.importo ?? 0, 12_000)
+            verifica("Liquidità: il resto va alla crescita senza obiettivi", el.salvadanai.last?.importo ?? 0, 54_926)
+        } else {
+            verifica("Posizioni di Sofia per la liquidità presenti", 0, 1)
+        }
+
+        // 26. Check-up: semafori di Andrea (primo incontro, solo liquidità)
+        let clientiDemo = DatiDemo.clienti()
+        if let andrea = clientiDemo.first(where: { $0.id == "andrea" }) {
+            let sue = demo.filter { $0.clienteId == "andrea" }
+            var an = Analisi360(cliente: andrea, posizioni: sue)
+            an.protezione.fabbisognoMensile = 2_000
+            an.protezione.mesiRiserva = 6
+            let ck = MotoreCheckUp.calcola(cliente: andrea, posizioni: sue, analisi: an, obiettivi: [])
+            let riserva = ck.indicatori.first { $0.id == "riserva" }
+            // 12.000 € di liquidità = 6 mesi da 2.000 €: riserva piena
+            verifica("Check-up: riserva piena con 6 mesi su 6", riserva?.semaforo == .verde ? 1 : 0, 1)
+            verifica("Check-up: obiettivi da definire (grigio)", ck.indicatori.first { $0.id == "obiettivi" }?.semaforo == .grigio ? 1 : 0, 1)
+            verifica("Check-up: sette indicatori", Double(ck.indicatori.count), 7)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

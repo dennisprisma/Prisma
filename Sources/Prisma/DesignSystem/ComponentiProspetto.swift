@@ -163,3 +163,33 @@ struct FirmeProspetto: View {
         .frame(width: 145, height: 14)
     }
 }
+
+/// Le righe di un canale, sotto la sua etichetta (blu Alleanza, cuoio indipendente).
+struct GruppoCanale {
+    let canale: Canale
+    let righe: [RigaDoc]
+    var nota = ""
+}
+
+/// Una tabella divisa per canale: l'etichetta del canale, poi le sue righe.
+struct TabellaCanali: View {
+    @Environment(\.paletteDocumento) private var C
+    let colonne: [ColonnaDoc]
+    let gruppi: [GruppoCanale]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(gruppi.enumerated()), id: \.offset) { _, g in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .center) {
+                        EtichettaCanale(canale: g.canale)
+                        Spacer()
+                        Text(verbatim: g.nota).font(T.pTabellaNota).foregroundColor(C.tenue)
+                    }
+                    TabellaDoc(larghezza: FoglioProspetto<EmptyView>.larghezza, colonne: colonne, righe: g.righe, fontTesta: T.pTabellaTesta,
+                               fontTestaSotto: T.pTabellaNota, altezzaTesta: 12, margine: 4)
+                }
+            }
+        }
+    }
+}

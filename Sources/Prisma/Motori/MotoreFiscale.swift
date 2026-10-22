@@ -26,6 +26,25 @@ enum RegoleFiscali {
     /// Anni di iscrizione richiesti per le anticipazioni per la casa e per ulteriori esigenze.
     static let anniPerAnticipazione = 8
 
+    /// Imposta annua sui rendimenti dentro i fondi pensione (12,5% sulla parte in titoli di Stato).
+    static let previdenzaRendimenti = 20.0
+    /// Limite annuo di deducibilità dei contributi alla previdenza complementare.
+    static let limiteDeducibilita = 5_164.57
+    /// Scaglioni IRPEF: (fino a, aliquota). L'ultimo vale oltre.
+    static let scaglioniIrpef: [(Double, Double)] = [(28_000, 23), (50_000, 35), (.infinity, 43)]
+
+    /// Detrazione IRPEF dei premi assicurativi (art. 15 TUIR).
+    static let detrazionePremi = 19.0
+    /// Premi caso morte, invalidità permanente oltre il 5% e infortuni: limite annuo detraibile.
+    static let limitePremiVita = 530.0
+    /// Premi per la non autosufficienza (LTC): limite annuo detraibile, comprensivo dei precedenti.
+    static let limitePremiLTC = 1_291.14
+
+    /// Aliquota IRPEF marginale di un reddito complessivo lordo annuo.
+    static func aliquotaMarginale(reddito: Double) -> Double {
+        scaglioniIrpef.first { reddito <= $0.0 }?.1 ?? 43
+    }
+
     /// Aliquota agevolata della previdenza dopo `anni` interi di partecipazione: 15% fino al 15° anno,
     /// poi 0,30 punti in meno per ogni anno, fino al 9% dal 35° anno.
     static func aliquotaPrevidenza(anni: Int) -> Double {
@@ -165,6 +184,20 @@ struct EsitoFiscale {
 /// Imposte, netto incassabile oggi e costi divisi per voce. Tutto al centesimo.
 enum MotoreFiscale {
     static func centesimi(_ v: Double) -> Double { (v * 100).rounded() / 100 }
+
+    /// Aliquota sul guadagno di polizze e fondi: effettiva con i titoli di Stato, altrimenti quella
+    /// indicata nella posizione, altrimenti il 26%.
+    static func aliquotaGuadagno(_ p: Posizione) -> Double {
+        if let q = p.quotaTitoliStato { return RegoleFiscali.aliquotaEffettiva(quotaTitoliStato: q) }
+        return p.aliquotaFiscale ?? RegoleFiscali.ordinaria
+    }
+
+    /// Anni interi di partecipazione alla previdenza complementare a una data (dalla prima adesione).
+    static func anniPartecipazione(_ p: Posizione, data: Date = Date()) -> Int {
+        guard let inizio = p.primaAdesione ?? p.decorrenza else { return 0 }
+        let cal = Calendar.current
+        return max(0, cal.dateComponents([.year], from: cal.startOfDay(for: inizio), to: cal.startOfDay(for: data)).year ?? 0)
+    }
 
     /// Bollo di un anno: 0,20% del valore; per i conti correnti 34,20 € fissi.
     static func bolloAnnuo(_ p: Posizione, valore: Double) -> Double {

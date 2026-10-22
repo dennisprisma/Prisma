@@ -36,6 +36,66 @@ struct DocumentoStampabile {
         tipo = report ? .report : .prospetto
     }
 
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del check-up del primo incontro.
+    init(_ t: TestiCheckUp, report: Bool) {
+        titolo = TestiCheckUp.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportCheckUp.pagine(t) : ProspettoCheckUp.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del capitale in scadenza e della liquidità.
+    init(_ t: TestiLiquidita, report: Bool) {
+        titolo = TestiLiquidita.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportLiquidita.pagine(t) : ProspettoLiquidita.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del piano per un obiettivo.
+    init(_ t: TestiObiettivo, report: Bool) {
+        titolo = t.o.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportObiettivo.pagine(t) : ProspettoObiettivo.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) della protezione della famiglia.
+    init(_ t: TestiProtezione, report: Bool) {
+        titolo = TestiProtezione.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportProtezione.pagine(t) : ProspettoProtezione.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del piano previdenziale.
+    init(_ t: TestiPrevidenza, report: Bool) {
+        titolo = TestiPrevidenza.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportPrevidenza.pagine(t) : ProspettoPrevidenza.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) di una sostituzione o di un confronto.
+    init(_ t: TestiSostituzione, report: Bool) {
+        titolo = t.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportSostituzione.pagine(t) : ProspettoSostituzione.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del resoconto delle posizioni in essere.
     init(_ t: TestiResoconto, report: Bool) {
         titolo = TestiResoconto.titolo

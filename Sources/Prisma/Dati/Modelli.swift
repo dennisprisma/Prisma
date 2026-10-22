@@ -178,6 +178,8 @@ struct ProfiloInvestitore: Codable, Hashable {
     var esperienza: Esperienza?
     var obiettivi = ""
     var aggiornatoIl: Date?
+    /// Reddito complessivo lordo annuo, per l'aliquota IRPEF marginale (deducibilità della previdenza).
+    var redditoLordoAnnuo: Double?
 }
 
 struct Consensi: Codable, Hashable {

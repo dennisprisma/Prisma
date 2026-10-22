@@ -130,6 +130,54 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.apriProspetto(.valutazione("val-marco-orizzonte", report: true))
         }),
+        ("34-sostituzione-prospetto", { s in
+            s.clienteAttivoId = "sofia"
+            s.apriProspetto(.sostituzione("", "", report: false))
+        }),
+        ("35-sostituzione-report", { s in
+            s.clienteAttivoId = "sofia"
+            s.apriProspetto(.sostituzione("", "", report: true))
+        }),
+        ("36-previdenza-prospetto", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.previdenza(report: false))
+        }),
+        ("37-previdenza-report", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.previdenza(report: true))
+        }),
+        ("38-protezione-prospetto", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.protezione(report: false))
+        }),
+        ("39-protezione-report", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.protezione(report: true))
+        }),
+        ("40-obiettivo-prospetto", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.obiettivo("obiettivo-giulia-casa", report: false))
+        }),
+        ("41-obiettivo-report", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.obiettivo("obiettivo-giulia-casa", report: true))
+        }),
+        ("42-liquidita-prospetto", { s in
+            s.clienteAttivoId = "sofia"
+            s.apriProspetto(.liquidita(report: false))
+        }),
+        ("43-liquidita-report", { s in
+            s.clienteAttivoId = "sofia"
+            s.apriProspetto(.liquidita(report: true))
+        }),
+        ("44-checkup-prospetto", { s in
+            s.clienteAttivoId = "andrea"
+            s.apriProspetto(.checkUp(report: false))
+        }),
+        ("45-checkup-report", { s in
+            s.clienteAttivoId = "andrea"
+            s.apriProspetto(.checkUp(report: true))
+        }),
         ("25-documenti-kid", { s in
             s.clienteAttivoId = "giulia"
             s.documentoSelezionato = "doc-giulia-kid"

@@ -53,7 +53,10 @@ struct AppProspetti: View {
 
     private var vuoto: some View {
         VStack(spacing: 10) {
-            Text(scelta.tipo == .valutazione ? "Nessuna valutazione per questo cliente" : "Non c'è ancora niente da impaginare per questo cliente.")
+            Text(scelta.tipo == .valutazione ? "Nessuna valutazione per questo cliente"
+                 : scelta.tipo == .obiettivo ? "Nessun obiettivo per questo cliente: si creano nell'app Obiettivi."
+                 : scelta.tipo == .sostituzione ? "Servono due posizioni da confrontare: una in essere e un'alternativa, o due proposte."
+                 : "Non c'è ancora niente da impaginare per questo cliente.")
                 .font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
             if scelta.tipo == .valutazione { pulsanteNuova }
         }
@@ -65,7 +68,7 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetto e report")
-        ForEach([TipoProspetto.valutazione, .resoconto]) { t in
+        ForEach([TipoProspetto.checkUp, .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
@@ -87,6 +90,18 @@ struct AppProspetti: View {
             stato.prospetto = stato.valutazioniCliente(cliente).first.map { .valutazione($0.id, report: false) } ?? .valutazione("", report: false)
         case .resoconto:
             stato.prospetto = .resoconto(report: false)
+        case .sostituzione:
+            stato.prospetto = .sostituzione("", "", report: false)
+        case .previdenza:
+            stato.prospetto = .previdenza(report: false)
+        case .protezione:
+            stato.prospetto = .protezione(report: false)
+        case .obiettivo:
+            stato.prospetto = .obiettivo("", report: false)
+        case .liquidita:
+            stato.prospetto = .liquidita(report: false)
+        case .checkUp:
+            stato.prospetto = .checkUp(report: false)
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -115,6 +130,12 @@ struct AppProspetti: View {
                 VStack(alignment: .leading, spacing: 0) {
                     switch scelta {
                     case .resoconto(let report): sceltaResoconto(report: report)
+                    case .sostituzione(let a, let b, let report): sceltaSostituzione(a, b, report: report)
+                    case .previdenza(let report): sceltaPrevidenza(report: report)
+                    case .protezione(let report): sceltaProtezione(report: report)
+                    case .obiettivo(let id, let report): sceltaObiettivo(id, report: report)
+                    case .liquidita(let report): sceltaLiquidita(report: report)
+                    case .checkUp(let report): sceltaCheckUp(report: report)
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -128,6 +149,12 @@ struct AppProspetti: View {
     private var intestazioneColonna: String {
         switch scelta {
         case .resoconto: return "RESOCONTO DEL CLIENTE"
+        case .sostituzione: return "LE DUE STRADE"
+        case .previdenza: return "PREVIDENZA DEL CLIENTE"
+        case .protezione: return "PROTEZIONE DELLA FAMIGLIA"
+        case .obiettivo: return "OBIETTIVI DEL CLIENTE"
+        case .liquidita: return "LIQUIDITÀ DEL CLIENTE"
+        case .checkUp: return "PRIMO INCONTRO"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
@@ -165,6 +192,171 @@ struct AppProspetti: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
+    }
+
+    private func sceltaCheckUp(report: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .checkUp(report: $0); archiviato = nil }))
+            Text(report ? "Report per il cliente: chi sei, la fotografia, il semaforo, da dove partire, la sintesi."
+                        : "Prospetto per te: anagrafica e profilo, fotografia per area e canale, semaforo di sette aree, bisogni rilevati, prossimi passi e firme.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Text("Dopo il primo incontro: anagrafica e famiglia dal dossier, patrimonio dalle Posizioni, ipotesi dall'Analisi 360, bisogni dal profilo dei bisogni. Più dati si raccolgono, meno semafori restano grigi.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private func sceltaLiquidita(report: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .liquidita(report: $0); archiviato = nil }))
+            Text(report ? "Report per il cliente: cosa arriva, i quattro salvadanai, il costo dell'attesa, la sintesi."
+                        : "Prospetto per te: capitali in scadenza al centesimo, conti, salvadanai, confronto fermo o destinato, metodo e firme.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Text("Capitali in scadenza e conti dalle Posizioni; fabbisogno mensile e mesi di riserva dall'Analisi 360 (area Protezione); i salvadanai seguono gli Obiettivi del cliente.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private func sceltaObiettivo(_ id: String, report: Bool) -> some View {
+        let elenco = stato.obiettiviCliente(cliente)
+        let mie = stato.posizioniCliente(cliente)
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(elenco) { o in
+                let a = AvanzamentoObiettivo(o, posizioni: mie)
+                Button {
+                    archiviato = nil
+                    stato.prospetto = .obiettivo(o.id, report: report)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(o.titolo).font(Tipo.tabellaCellaForte).foregroundColor(o.id == id ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                        Text("\(Formati.euro(o.importo)) · \(Formati.dataBreve.string(from: o.scadenza)) · \(Int((a.quota * 100).rounded()))%")
+                            .font(Tipo.chip).foregroundColor(o.id == id ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota)
+                    }
+                    .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(o.id == id ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
+                    .bordoBasso(Colori.Strumenti.ipotesiRiga)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(StileSemplice())
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                if elenco.contains(where: { $0.id == id }) {
+                    SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                                    selezione: Binding(get: { report }, set: { stato.prospetto = .obiettivo(id, report: $0); archiviato = nil }))
+                }
+                Text("Importo, scadenza, rendimento e posizioni collegate si modificano nell'app Obiettivi.")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+                Button("Apri Obiettivi") {
+                    stato.obiettivoSelezionato = id.isEmpty ? nil : id
+                    stato.apri(.obiettivi)
+                }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            }
+            .padding(12)
+        }
+    }
+
+    private func sceltaProtezione(report: Bool) -> some View {
+        let voci = report
+            ? ["Copertina in cuoio: famiglia, fabbisogno, tutele", "La tua famiglia e ciò che le serve", "Se ti succedesse qualcosa",
+               "Se non potessi lavorare", "La mappa delle tutele", "Quanto costa proteggersi, in sintesi"]
+            : ["Famiglia, fabbisogno caso morte e divario", "Invalidità, malattia e riserva", "Mappa dei rischi coperti e scoperti",
+               "Coperture per canale, costo per 1.000 €", "Scadenze da verificare", "Premi, detrazione del 19%, metodo e firme"]
+        return VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .protezione(report: $0); archiviato = nil }))
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(voci, id: \.self) { voce in
+                    HStack(alignment: .top, spacing: 7) {
+                        Text("•").foregroundColor(Colori.Analisi.navBasso)
+                        Text(voce).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(Tipo.strumentoTesto)
+                    .foregroundColor(Colori.Analisi.tabellaTesto)
+                }
+            }
+            Text("Fabbisogno, anni di sostegno, entrate sostitutive e riserva vengono dall'Analisi 360 (area Protezione); la famiglia dal dossier del cliente; le coperture dalle Posizioni.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Button("Apri l'Analisi 360") {
+                stato.areaAnalisi = .protezione
+                stato.apri(.analisi360)
+            }
+            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+        }
+        .padding(12)
+    }
+
+    private func sceltaPrevidenza(report: Bool) -> some View {
+        let voci = report
+            ? ["Copertina in cuoio: pensione, divario, piani", "Quanto ti servirà: il divario", "Cosa hai già: la rendita dei piani",
+               "Come colmare il resto, con la proposta", "Il vantaggio fiscale dei versamenti", "Le tasse sulla pensione, in sintesi"]
+            : ["Divario, rendita dei piani e versamento che manca", "Ogni piano alla pensione con l'aliquota di allora",
+               "Deducibilità e risparmio IRPEF", "Aliquota della prestazione nel tempo", "Uscite di oggi per causa, al centesimo",
+               "Montante anno per anno, scenari, metodo e firme"]
+        return VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .previdenza(report: $0); archiviato = nil }))
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(voci, id: \.self) { voce in
+                    HStack(alignment: .top, spacing: 7) {
+                        Text("•").foregroundColor(Colori.Analisi.navBasso)
+                        Text(voce).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(Tipo.strumentoTesto)
+                    .foregroundColor(Colori.Analisi.tabellaTesto)
+                }
+            }
+            Text("Età di pensione, reddito desiderato, pensione pubblica e anni di integrazione vengono dall'Analisi 360 (area Previdenza); il reddito lordo annuo dal profilo del cliente; i piani dalle Posizioni.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Button("Apri l'Analisi 360") {
+                stato.areaAnalisi = .previdenza
+                stato.apri(.analisi360)
+            }
+            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+        }
+        .padding(12)
+    }
+
+    private func sceltaSostituzione(_ a: String, _ b: String, report: Bool) -> some View {
+        let elenco = posizioniOrdinate.filter { $0.area.proiettabile }
+        let attuale = elenco.first { $0.id == a }
+        return VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .sostituzione(a, b, report: $0); archiviato = nil }))
+            Text(report ? "Report per il cliente: A4 orizzontale, restare o cambiare spiegato una pagina alla volta."
+                        : "Prospetto per te: A4 verticale, uscita di oggi, netto anno per anno, scenari, costi e caratteristiche.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            sceltaPosizioneSostituzione(attuale?.stato == .proposta ? "PRIMA PROPOSTA" : "OGGI · DA SOSTITUIRE", elenco: elenco,
+                                        selezione: Binding(get: { a }, set: { stato.prospetto = .sostituzione($0, b == $0 ? a : b, report: report); archiviato = nil }))
+            sceltaPosizioneSostituzione(attuale?.stato == .proposta ? "SECONDA PROPOSTA" : "ALTERNATIVA", elenco: elenco.filter { $0.stato == .proposta || $0.id == b },
+                                        selezione: Binding(get: { b }, set: { stato.prospetto = .sostituzione(a == $0 ? b : a, $0, report: report); archiviato = nil }))
+            Toggle("Orizzonte della proposta", isOn: Binding(
+                get: { stato.orizzonteSostituzione == nil },
+                set: { stato.orizzonteSostituzione = $0 ? nil : (stato.testiSostituzione(a, b)?.e.anni ?? IpotesiCalcolo.orizzontePredefinito) }))
+                .font(Tipo.strumentoTesto)
+            if let anni = stato.orizzonteSostituzione {
+                Stepper(value: Binding(get: { anni }, set: { stato.orizzonteSostituzione = min(max($0, 1), 50) }), in: 1...50) {
+                    Text("\(anni) \(anni == 1 ? "anno" : "anni")").font(Tipo.strumentoTesto)
+                }
+            }
+            Text("Se la prima voce è in essere, cambiare vuol dire chiuderla oggi (penale, bollo, imposte) e reinvestire il netto. Le due strade ricevono gli stessi versamenti futuri. Tra due fondi pensione è un trasferimento senza imposte.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private func sceltaPosizioneSostituzione(_ titolo: String, elenco: [Posizione], selezione: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(titolo).font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
+            Picker("", selection: selezione) {
+                ForEach(elenco) { p in Text("\(p.nome) · \(p.stato == .proposta ? "proposta" : "in essere") · \(p.canale.nomeBreve)").tag(p.id) }
+            }
+            .labelsHidden()
+        }
     }
 
     private func sceltaValutazione(_ id: String, report: Bool) -> some View {
