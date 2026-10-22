@@ -138,7 +138,7 @@ private struct PaginaIncassi: View {
     }
 
     private var introduzione: Text {
-        let penali = t.c.penali.isEmpty ? "senza penali" : "con penale decrescente (\(t.c.penali.map { CifreDoc.condizione($0) }.joined(separator: ", "))), dal \(t.c.annoSenzaPenali)° anno senza penale"
+        let penali = t.c.penali.isEmpty ? "senza penali" : "con penale decrescente (\(t.c.penali.map { CifreDoc.penale($0) }.joined(separator: ", "))), dal \(t.c.annoSenzaPenali)° anno senza penale"
         return Text(verbatim: "Importi netti, cioè già al netto di costi, penali di riscatto, imposta sostitutiva e imposta di bollo. Il 1° anno è bloccato; dal \(t.primoAnno)° anno si può riscattare \(penali). ")
             + Text(verbatim: "Importi ipotetici e non garantiti").bold()
             + Text(verbatim: ", con richiesta di riscatto all'inizio di ciascun anno (ipotesi a pagina 4).")
@@ -156,7 +156,7 @@ private struct PaginaIncassi: View {
             let fav = t.e.scenario(.favorevole)?.riscatto(anno: a), sfav = t.e.scenario(.sfavorevole)?.riscatto(anno: a)
             let int = t.e.scenario(.intermedio)?.riscatto(anno: a)
             var testo = Text(verbatim: "Riscatto all'inizio del \(a)° anno").bold()
-                + Text(verbatim: " (\(t.etichettaMese(a)), penale \(CifreDoc.condizione(t.c.penale(anno: a)))): tra \(CifreDoc.euro(sfav?.netto ?? 0)) (\(CifreDoc.variazione(sfav?.variazione ?? 0))) e \(CifreDoc.euro(fav?.netto ?? 0)) (\(CifreDoc.variazione(fav?.variazione ?? 0))).")
+                + Text(verbatim: " (\(t.etichettaMese(a)), penale \(CifreDoc.penale(t.c.penale(anno: a)))): tra \(CifreDoc.euro(sfav?.netto ?? 0)) (\(CifreDoc.variazione(sfav?.variazione ?? 0))) e \(CifreDoc.euro(fav?.netto ?? 0)) (\(CifreDoc.variazione(fav?.variazione ?? 0))).")
             if a == t.anni.first {
                 testo = testo + Text(verbatim: " Nello scenario intermedio \(CifreDoc.euro(int?.netto ?? 0)). \(t.consiglio)")
             } else {
@@ -245,7 +245,7 @@ private struct TabellaDettaglio: View {
         let colore = C.scenario(scenario)
         let h = D.rigaTabellaProspetto
         var colonne = [ColonnaDoc(titolo: "Riscatto all'inizio del…", sottotitolo: "mese · penale", peso: 2.3, destra: false)]
-        colonne += anni.map { ColonnaDoc(titolo: "\($0)° anno", sottotitolo: "\(($0 - 1) * 12 + 1)° mese · \(CifreDoc.condizione(t.c.penale(anno: $0)))") }
+        colonne += anni.map { ColonnaDoc(titolo: "\($0)° anno", sottotitolo: "\(($0 - 1) * 12 + 1)° mese · \(CifreDoc.penale(t.c.penale(anno: $0)))") }
         var righe: [RigaDoc] = []
         func riga(_ nome: String, _ valori: [String], colore inchiostro: Color = C.testo, forte: Bool = false, sfondo: Color = .clear,
                   filetto: Color = C.filetto, spessore: CGFloat = 0.5) {
@@ -339,7 +339,7 @@ private struct PaginaCosti: View {
                                      CellaDoc("—", font: T.pTabella)], altezza: 14)]
         for (i, p) in t.c.penali.enumerated() {
             righe.append(RigaDoc(celle: [CellaDoc("Dal \((i + 1) * 12 + 1)° al \((i + 2) * 12)° mese (\(i + 2)ª annualità)", font: T.pTabella),
-                                         CellaDoc("consentito", font: T.pTabella), CellaDoc(CifreDoc.condizione(p), font: T.pTabella)], altezza: 14))
+                                         CellaDoc("consentito", font: T.pTabella), CellaDoc(CifreDoc.penale(p), font: T.pTabella)], altezza: 14))
         }
         righe.append(RigaDoc(celle: [CellaDoc("Dal \((t.c.annoSenzaPenali - 1) * 12 + 1)° mese in poi", font: T.pTabella),
                                      CellaDoc("consentito", font: T.pTabella), CellaDoc("nessuna", font: T.pTabella)],
@@ -395,7 +395,12 @@ private struct PaginaBasi: View {
     private func linea(_ etichetta: String) -> some View {
         HStack(alignment: .bottom, spacing: 6) {
             Text(verbatim: etichetta).font(T.pTabellaNota).foregroundColor(C.tenue)
-            Rectangle().fill(C.tenue).frame(height: 0.5)
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Rectangle().fill(C.tenue).frame(height: 0.6)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 16)
         }
     }
 

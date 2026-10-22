@@ -316,7 +316,7 @@ struct TabellaIncassi: View {
         var righe = [RigaDoc(celle: [CellaDoc("Penale di riscatto", colore: C.tenue, font: fontNota), CellaDoc("—", colore: C.tenue, font: fontNota)]
                                 + anni.map { a in
                                     let p = t.c.penale(anno: a)
-                                    return CellaDoc(p > 0 ? CifreDoc.condizione(p) : "nessuna", colore: C.tenue, font: fontNota)
+                                    return CellaDoc(p > 0 ? CifreDoc.penale(p) : "nessuna", colore: C.tenue, font: fontNota)
                                 },
                              altezza: rigaScenario * 0.5, sfondo: C.riquadro)]
         for s in TipoScenario.allCases {
@@ -470,7 +470,7 @@ private struct SlidePenali: View {
             HStack(spacing: 4) {
                 fascia("1° anno", "riscatto bloccato", "mesi 1–\(t.c.mesiBloccoRiscatto)", C.bloccato, C.titolo)
                 ForEach(Array(t.c.penali.enumerated()), id: \.offset) { i, p in
-                    fascia("\(i + 2)° anno", "penale \(CifreDoc.condizione(p))", "mesi \((i + 1) * 12 + 1)–\((i + 2) * 12)",
+                    fascia("\(i + 2)° anno", "penale \(CifreDoc.penale(p))", "mesi \((i + 1) * 12 + 1)–\((i + 2) * 12)",
                            tono(i), i < 2 ? Color.white : C.titolo)
                 }
                 fascia("dal \(t.c.annoSenzaPenali)° anno", "nessuna penale", "dal \((t.c.annoSenzaPenali - 1) * 12 + 1)° mese", C.favorevole, .white)
@@ -748,7 +748,7 @@ private struct TabellaDettaglioBreve: View {
     var body: some View {
         let anni = t.anni
         var colonne = [ColonnaDoc(titolo: "Riscatto all'inizio del…", sottotitolo: "mese · penale", peso: 2.2, destra: false)]
-        colonne += anni.map { ColonnaDoc(titolo: "\($0)° anno", sottotitolo: "\(($0 - 1) * 12 + 1)° mese · \(CifreDoc.condizione(t.c.penale(anno: $0)))") }
+        colonne += anni.map { ColonnaDoc(titolo: "\($0)° anno", sottotitolo: "\(($0 - 1) * 12 + 1)° mese · \(CifreDoc.penale(t.c.penale(anno: $0)))") }
         var righe: [RigaDoc] = []
         for s in TipoScenario.allCases {
             let colore = C.scenario(s)

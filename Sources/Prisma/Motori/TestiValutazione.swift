@@ -33,8 +33,11 @@ enum CifreDoc {
         (v >= 0 ? "+" : "") + percento(v, decimali: decimali)
     }
 
-    /// Percentuale senza decimali superflui: "1%", "1,5%", "0,20%" resta con due se indicato.
+    /// Percentuale senza decimali superflui: "1%", "1,5%".
     static func condizione(_ v: Double) -> String { Formati.percentuale(v) }
+
+    /// Penale di riscatto con un decimale ("3,5%", "1,0%"), "0%" se non c'è.
+    static func penale(_ v: Double) -> String { v == 0 ? "0%" : percento(v) }
 
     static func data(_ d: Date) -> String { Formati.dataEstesa.string(from: d) }
     static func dataBreve(_ d: Date) -> String { Formati.dataBreve.string(from: d) }
@@ -200,7 +203,8 @@ struct TestiValutazione {
 
     func raccontoAndamento(_ t: TipoScenario) -> String {
         guard let r = e.scenario(t)?.riscatti, let a = r.first, let b = r.last else { return "" }
-        let n = b.anno - a.anno
+        // Gli anni si contano dal versamento, come nel report di Denis ("in cinque anni" fino al 61° mese)
+        let n = b.anniTrascorsi
         let anni = n == 1 ? "un anno" : "\(n) anni"
         switch t {
         case .favorevole:
@@ -253,7 +257,7 @@ struct TestiValutazione {
     }
 
     var elencoPenali: String {
-        c.penali.map { CifreDoc.condizione($0) }.joined(separator: " · ")
+        c.penali.map { CifreDoc.penale($0) }.joined(separator: " · ")
     }
 
     var anniPenali: String {
@@ -346,7 +350,7 @@ struct TestiValutazione {
         var s = "Riscatto totale richiesto all'inizio di ciascun anno, rendimenti annui costanti; bollo sul valore delle quote a fine anno"
         let aliquote = c.componenti.map { "\(CifreDoc.percento(c.aliquotaParte($0))) sulla \($0.tipo == .gestioneSeparata ? "Gestione separata" : "parte nel Fondo Interno")" }
         if !aliquote.isEmpty { s += "; imposta sostitutiva stimata al " + aliquote.joined(separator: " e al ") }
-        if let f = fondo, f.costiSottostanti > 0 { s += "; costi dei fondi sottostanti (circa \(CifreDoc.condizione(f.costiSottostanti)) l'anno) stimati dai KID" }
+        if let f = fondo, f.costiSottostanti > 0 { s += "; costi dei fondi sottostanti (circa \(CifreDoc.percento(f.costiSottostanti)) l'anno) stimati dai KID" }
         return s + ". Importi arrotondati all'euro."
     }
 
