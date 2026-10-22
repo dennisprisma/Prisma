@@ -18,12 +18,14 @@ enum EstrattoreDocumento {
         var ultimoPercento = false
     }
 
-    private static let schemaNumero = #"(-?\d{1,3}(?:\.\d{3})*(?:,\d+)?|-?\d+(?:,\d+)?)"#
-    private static let schemaImporto = #"(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)(?![/\d])"#
+    private static let schemaNumero = #"(-?\d+\.\d{1,2}(?=\s*%)|-?\d{1,3}(?:\.\d{3})*(?:,\d+)?|-?\d+(?:,\d+)?)"#
+    private static let schemaImporto = #"(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)(?![/\d]|[.,]\d|\s*%)"#
+    /// Un importo con i separatori delle migliaia ("25.430,12"): non si confonde con anni o percentuali.
+    private static let schemaImportoMigliaia = #"(\d{1,3}(?:\.\d{3})+(?:,\d{2})?)(?![/\d]|[.,]\d|\s*%)"#
     private static let mesi = "gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre"
     private static let schemaData = #"(\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{1,2}°?\s+(?:"# + mesi + #")\s+\d{4})"#
     /// Testo tra un'etichetta e il suo valore, date comprese ("Controvalore al 30/09/2026: € …").
-    private static let fraEtichettaEValore = #"(?:[^\d\n]|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}){0,60}?"#
+    private static let fraEtichettaEValore = #"(?:[^\d\n]|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{1,2}\s*ann[oi]){0,60}?"#
     /// Qualificazioni del premio: "Premio annuo lordo", "Premio unico di perfezionamento"…
     private static let qualificaPremio = #"(?:\s+(?:annuo|annuale|mensile|trimestrale|semestrale|unico|ricorrente|lordo|netto|complessivo|di perfezionamento|rateo|alla firma))*"#
 
@@ -52,13 +54,17 @@ enum EstrattoreDocumento {
         Regola(campo: .scadenza, schema: #"(?:scadenza|data di scadenza)(?:[^\d\n]|\bore\s*\d{1,2}\b){0,30}?\#(schemaData)"#),
         Regola(campo: .premio, schema: #"premio\#(qualificaPremio)\s*[:\-–]?\s*(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
         Regola(campo: .capitaleAssicurato, schema: #"(?:capitale assicurato|somma assicurata|capitale caso morte)[^\d\n€]{0,30}?(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
-        Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
+        // Il controvalore vuole il simbolo della valuta o le migliaia: "pari al 95% del capitale" non è un importo
+        Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)(?:€|eur(?:o)?)\s*\#(schemaImporto)"#),
+        Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)\#(schemaImportoMigliaia)"#),
     ]
 
     /// Applica le regole pagina per pagina; per ogni campo tiene la prima occorrenza.
     static func conRegole(_ pagine: [String]) -> [CampoEstratto] {
         var trovati: [CampoDocumento: CampoEstratto] = [:]
-        for (n, testo) in pagine.enumerated() {
+        for (n, pagina) in pagine.enumerated() {
+            // Il segno meno tipografico (−) dei PDF diventa il trattino: "−3,2%" resta negativo
+            let testo = pagina.replacingOccurrences(of: "\u{2212}", with: "-")
             for r in regole where trovati[r.campo] == nil {
                 guard let regex = try? NSRegularExpression(pattern: r.schema, options: [.caseInsensitive]) else { continue }
                 let intervallo = NSRange(testo.startIndex..., in: testo)
@@ -118,8 +124,25 @@ enum EstrattoreDocumento {
         testo.components(separatedBy: .newlines).compactMap { riga in
             let parti = riga.split(separator: "|", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
             guard parti.count == 2, let campo = CampoDocumento(rawValue: parti[0]), !parti[1].isEmpty, parti[1].count < 120 else { return nil }
-            if campo == .sri, !(1...7).contains(Int(parti[1].prefix(1)) ?? 0) { return nil }
-            return CampoEstratto(chiave: campo, valore: parti[1], pagina: pagina, estratto: "", origine: "Modello Apple")
+            var valore = parti[1]
+            switch campo {
+            case .sri:
+                // "3/7", "3 su 7" → "3"
+                guard let n = Int(valore.prefix(1)), (1...7).contains(n) else { return nil }
+                valore = "\(n)"
+            case .periodoDetenzione:
+                // "5 anni" → "5"
+                let cifre = valore.prefix { $0.isNumber }
+                guard !cifre.isEmpty else { return nil }
+                valore = String(cifre)
+            case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato, .premio, .capitaleAssicurato, .controvalore:
+                valore = valore.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "€", with: "")
+                    .replacingOccurrences(of: "EUR", with: "").trimmingCharacters(in: .whitespaces)
+                guard numero(valore) != nil else { return nil }
+            default:
+                break
+            }
+            return CampoEstratto(chiave: campo, valore: valore, pagina: pagina, estratto: "", origine: "Modello Apple")
         }
     }
 
@@ -136,6 +159,11 @@ enum EstrattoreDocumento {
     /// "1,25" → 1.25; "1.250,50" → 1250.5
     static func numero(_ s: String?) -> Double? {
         guard let s else { return nil }
+        // "1200.50" o "1.20" (punto decimale, senza virgola): non sono migliaia
+        let compatto = s.replacingOccurrences(of: "€", with: "").replacingOccurrences(of: "%", with: "").replacingOccurrences(of: " ", with: "")
+        if !compatto.contains(","), let r = compatto.range(of: #"^-?\d+\.\d{1,2}$"#, options: .regularExpression), r == compatto.startIndex..<compatto.endIndex {
+            return Double(compatto)
+        }
         let pulito = s.replacingOccurrences(of: "€", with: "").replacingOccurrences(of: "%", with: "")
             .replacingOccurrences(of: " ", with: "").replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
         return Double(pulito)

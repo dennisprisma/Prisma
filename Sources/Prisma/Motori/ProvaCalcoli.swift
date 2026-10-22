@@ -267,6 +267,24 @@ enum ProvaCalcoli {
             let ce = EstrattoreDocumento.conRegole(estratto)
             verifica("Estratto conto: controvalore dopo la data", EstrattoreDocumento.numero(ce.first { $0.chiave == .controvalore }?.valore) ?? 0, 25_430.12, tolleranza: 0.001)
             verifica("Estratto conto: riconosciuto", EstrattoreDocumento.tipoProbabile(estratto) == .estrattoConto ? 1 : 0, 1)
+            // Percentuali e anni non sono importi
+            let trappole = ["""
+                Valore di riscatto pari al 95% del capitale investito
+                Capitale caso morte: 101% del capitale versato
+                Somma assicurata rivalutata del 2,5% ogni anno
+                Scenario moderato  Rendimento medio per ciascun anno  −3,2%
+                Costi correnti 1.20% all'anno
+                """]
+            let ct = EstrattoreDocumento.conRegole(trappole)
+            func t(_ k: CampoDocumento) -> CampoEstratto? { ct.first { $0.chiave == k } }
+            verifica("Trappole: «95% del capitale» non è un controvalore", t(.controvalore) == nil ? 1 : 0, 1)
+            verifica("Trappole: «101% del capitale» né «2,5%» sono un capitale assicurato", t(.capitaleAssicurato) == nil ? 1 : 0, 1)
+            verifica("Trappole: «−3,2%» resta negativo", EstrattoreDocumento.numero(t(.rendimentoModerato)?.valore) ?? 0, -3.2, tolleranza: 0.000_1)
+            verifica("Trappole: «1.20%» con il punto decimale", EstrattoreDocumento.numero(t(.costoAnnuo)?.valore) ?? 0, 1.2, tolleranza: 0.000_1)
+            verifica("Numeri dal modello: «1200.50»", EstrattoreDocumento.numero("1200.50") ?? 0, 1200.5, tolleranza: 0.001)
+            let dalModello = EstrattoreDocumento.daRisposta("sri|3/7\nperiodoDetenzione|5 anni\ncostoAnnuo|1,20%", pagina: 1)
+            verifica("Valori del modello normalizzati («3/7», «5 anni», «1,20%»)",
+                     dalModello.map(\.valore) == ["3", "5", "1,20"] ? 1 : 0, 1)
         }
         verifica("Numeri all'italiana: 1.250,50", EstrattoreDocumento.numero("1.250,50 €") ?? 0, 1_250.5, tolleranza: 0.000_1)
         let modello = EstrattoreDocumento.daRisposta("sri|9\ncostoAnnuo|1,10\ninventato|x\npremio|", pagina: 4)

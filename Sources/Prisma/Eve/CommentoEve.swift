@@ -45,14 +45,21 @@ enum CommentoEve {
     /// Ogni cifra in euro o in percentuale del testo riscritto deve stare anche nella bozza:
     /// se il modello ne inventa una, si tiene la bozza.
     static func numeriConservati(bozza: String, testo: String) -> Bool {
-        cifre(testo).isSubset(of: cifre(bozza))
+        // Cifre in parole ("55 mila euro", "due milioni"): non si possono controllare, si tiene la bozza
+        if testo.range(of: #"\d\s*(mila|milion|miliard)|\b(mille|milioni|miliardi)\b"#, options: [.regularExpression, .caseInsensitive]) != nil { return false }
+        return cifre(testo).isSubset(of: cifre(bozza))
     }
 
+    /// Tutti i numeri di un testo con il loro segno ("−4,5", "50.000", "2026"), comunque scritti:
+    /// "€ 50.000", "50.000 €" e "50.000 euro" danno lo stesso numero.
     static func cifre(_ s: String) -> Set<String> {
-        guard let re = try? NSRegularExpression(pattern: "(€\\s?[0-9][0-9.,]*|[0-9][0-9.,]*\\s?%)") else { return [] }
+        guard let re = try? NSRegularExpression(pattern: "([+\\-−]\\s?)?[0-9][0-9.,]*") else { return [] }
         let r = NSRange(s.startIndex..., in: s)
         return Set(re.matches(in: s, range: r).compactMap { m in
-            Range(m.range, in: s).map { s[$0].replacingOccurrences(of: " ", with: "").trimmingCharacters(in: CharacterSet(charactersIn: ".,")) }
+            Range(m.range, in: s).map {
+                s[$0].replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "+", with: "")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: ".,"))
+            }
         })
     }
 

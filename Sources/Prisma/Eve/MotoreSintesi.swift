@@ -34,7 +34,8 @@ struct MotoreSintesi: MotoreEve {
             if let s = SpuntoEve.argomento(r.domanda) {
                 let risposta = componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: f, storia: []))
                 return RispostaEve(titolo: risposta.titolo, testo: risposta.testo
-                    + "\n\nHo letto la domanda come «\(s.domanda)». Per le domande libere serve il modello Apple sul Mac (Apple Intelligence).")
+                    + "\n\nHo letto la domanda come «\(s.domanda)». Per le domande libere serve il modello Apple sul Mac (Apple Intelligence).",
+                    proposte: risposta.proposte)
             }
             var risposta = riepilogo(f)
             risposta.titolo = "Ecco cosa trovo nel dossier"
