@@ -153,6 +153,9 @@ struct ModuloPosizione: View {
                         if bozza.regime == .polizza || bozza.regime == .fondo {
                             CampoModulo(etichetta: "Titoli di Stato") { campoPercento($bozza.quotaTitoliStato, "% dell'investimento, tassata al 12,5%") }
                         }
+                        if bozza.multiramo {
+                            CampoModulo(etichetta: "Gestione separata") { campoPercento($bozza.quotaGestioneSeparata, "% in Ramo I, senza bollo") }
+                        }
                         if bozza.regime != .previdenza && bozza.regime != .esente {
                             CampoModulo(etichetta: "Bollo 0,20%") {
                                 Picker("", selection: $bozza.conBollo) {

@@ -35,7 +35,8 @@ struct Simulazione: Identifiable, Codable, Hashable {
         rendimento = q.rendimento
         costoIngresso = q.costoIngresso
         costoAnnuo = q.costoAnnuo
-        aliquota = q.aliquotaFiscale
+        // Depositi e fondi pensione si tassano man mano: nel simulatore vale la loro aliquota
+        aliquota = max(q.aliquotaFiscale, q.tassazioneAnnua)
         canale = p.canale
         posizioneId = p.id
     }

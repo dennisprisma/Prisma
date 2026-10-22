@@ -29,7 +29,10 @@ struct ParametriProiezione: Equatable {
     /// Parametri ricavati da una posizione, con le ipotesi predefinite dove mancano dati.
     init(posizione p: Posizione, orizzonteCliente: Int? = nil) {
         // Per una posizione in essere si parte dal valore attuale, per una proposta dal versamento iniziale.
-        capitaleIniziale = p.stato == .inEssere ? p.valore : p.versamentoIniziale
+        let inEssere = p.stato == .inEssere
+        capitaleIniziale = inEssere ? p.valore : p.versamentoIniziale
+        // Il guadagno già maturato si tassa anche lui: il versato parte da quanto versato davvero
+        versatoIniziale = inEssere ? (p.totaleVersato ?? p.valore) : nil
         versamento = p.premio
         frequenza = p.frequenza
         anni = p.anniAllaScadenza ?? orizzonteCliente ?? IpotesiCalcolo.orizzontePredefinito
@@ -38,8 +41,27 @@ struct ParametriProiezione: Equatable {
         costoIngresso = p.costoIngresso ?? 0
         // Il trattenuto sul rendimento pesa come un costo annuo
         costoAnnuo = (p.costoAnnuo ?? 0) + (p.trattenuto ?? 0)
-        aliquotaFiscale = p.aliquotaFiscale ?? IpotesiCalcolo.aliquotaPredefinita
-        ingressoSulCapitale = p.stato != .inEssere
+        ingressoSulCapitale = !inEssere
+        // Le imposte secondo il regime, come nel resto di Prisma (MotoreFiscale)
+        switch p.regime {
+        case .polizza, .fondo:
+            aliquotaFiscale = MotoreFiscale.aliquotaGuadagno(p)
+            // Il bollo dello 0,20% l'anno pesa sul valore come un costo
+            costoAnnuo += RegoleFiscali.bollo * p.quotaBollo
+        case .deposito:
+            // Gli interessi si tassano quando vengono accreditati
+            aliquotaFiscale = 0
+            tassazioneAnnua = p.aliquotaFiscale ?? RegoleFiscali.ordinaria
+        case .previdenza:
+            // Rendimenti tassati ogni anno nel fondo; alla prestazione si tassano i contributi dedotti
+            aliquotaFiscale = 0
+            tassazioneAnnua = RegoleFiscali.previdenzaRendimenti
+            aliquotaSulVersato = RegoleFiscali.aliquotaPrevidenza(anni: (inEssere ? MotoreFiscale.anniPartecipazione(p) : 0) + anni)
+            nonDedotti = p.contributiNonDedotti ?? 0
+        case .esente:
+            aliquotaFiscale = 0
+        }
+        capitaleGarantito = p.gestioneSeparata
     }
 
     init(capitaleIniziale: Double, versamento: Double, frequenza: Frequenza, anni: Int, rendimento: Double,
@@ -59,6 +81,25 @@ struct ParametriProiezione: Equatable {
 
     /// Se il costo d'ingresso si applica anche al capitale iniziale (sì per le proposte).
     var ingressoSulCapitale = true
+    /// Quanto è stato versato finora, se diverso dal capitale di partenza (posizioni in essere).
+    var versatoIniziale: Double? = nil
+    /// Aliquota sui rendimenti tassati man mano (depositi, fondi pensione), invece che alla fine.
+    var tassazioneAnnua: Double = 0
+    /// Previdenza: aliquota della prestazione sui contributi dedotti, e i contributi non dedotti.
+    var aliquotaSulVersato: Double = 0
+    var nonDedotti: Double = 0
+    /// Ramo I: la gestione separata non accredita rendimenti negativi, il capitale non scende.
+    var capitaleGarantito = false
+    /// Durata esatta in mesi, quando non è un numero intero di anni (obiettivi): prevale su `anni`.
+    var mesiEsatti: Int? = nil
+
+    /// La stessa proiezione con una durata in mesi.
+    func perMesi(_ mesi: Int) -> ParametriProiezione {
+        var q = self
+        q.mesiEsatti = max(0, mesi)
+        q.anni = max(1, Int((Double(mesi) / 12).rounded(.up)))
+        return q
+    }
 }
 
 struct PuntoProiezione: Equatable {
@@ -92,7 +133,7 @@ struct EsitoProiezione: Equatable {
 /// attualizzazione all'inflazione. È lo stesso schema del template (advice-math).
 enum MotoreProiezione {
     static func calcola(_ p: ParametriProiezione) -> EsitoProiezione {
-        let mesi = max(0, p.anni) * 12
+        let mesi = p.mesiEsatti ?? max(0, p.anni) * 12
         let crescita = pow(1 + p.rendimento / 100, 1.0 / 12)
         let mantenimento = pow(1 - min(max(p.costoAnnuo, 0), 99) / 100, 1.0 / 12)
         let ingresso = min(max(p.costoIngresso, 0), 99) / 100
@@ -100,7 +141,8 @@ enum MotoreProiezione {
 
         var costi = p.ingressoSulCapitale ? p.capitaleIniziale * ingresso : 0
         var saldo = p.capitaleIniziale - costi
-        var versato = p.capitaleIniziale
+        var versato = p.versatoIniziale ?? p.capitaleIniziale
+        var imposteMaturate = 0.0
         var punti = [PuntoProiezione(anno: 0, versato: versato, valore: saldo)]
 
         for mese in 0..<mesi {
@@ -109,18 +151,33 @@ enum MotoreProiezione {
                 costi += p.versamento * ingresso
                 saldo += p.versamento * (1 - ingresso)
             }
+            let prima = saldo
             saldo *= crescita
-            let dopoCosti = saldo * mantenimento
-            costi += saldo - dopoCosti
+            var dopoCosti = saldo * mantenimento
+            // Ramo I: il rendimento accreditato non è mai negativo
+            if p.capitaleGarantito { dopoCosti = max(dopoCosti, prima) }
+            costi += max(0, saldo - dopoCosti)
             saldo = dopoCosti
+            // Depositi e fondi pensione: imposta sul risultato del periodo, al netto dei costi
+            if p.tassazioneAnnua > 0, saldo > prima {
+                let imposta = (saldo - prima) * p.tassazioneAnnua / 100
+                imposteMaturate += imposta
+                saldo -= imposta
+            }
             if (mese + 1) % 12 == 0 {
                 punti.append(PuntoProiezione(anno: (mese + 1) / 12, versato: versato, valore: saldo))
+            } else if mese == mesi - 1 {
+                // Ultimo anno incompleto: il punto finale c'è comunque
+                punti.append(PuntoProiezione(anno: mesi / 12 + 1, versato: versato, valore: saldo))
             }
         }
 
-        let imposte = max(0, saldo - versato) * max(0, p.aliquotaFiscale) / 100
-        let netto = saldo - imposte
-        let reale = netto / pow(1 + p.inflazione / 100, Double(max(0, p.anni)))
+        // Alla fine: imposta sul guadagno (polizze, fondi) o sui contributi dedotti (previdenza)
+        let impostaFinale = max(0, saldo - versato) * max(0, p.aliquotaFiscale) / 100
+            + max(0, min(saldo, versato - p.nonDedotti)) * max(0, p.aliquotaSulVersato) / 100
+        let imposte = imposteMaturate + impostaFinale
+        let netto = saldo - impostaFinale
+        let reale = netto / pow(1 + p.inflazione / 100, p.mesiEsatti.map { Double($0) / 12 } ?? Double(max(0, p.anni)))
         return EsitoProiezione(punti: punti, versato: versato, costi: costi, lordo: saldo,
                                imposte: imposte, netto: netto, reale: reale)
     }

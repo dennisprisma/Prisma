@@ -58,9 +58,10 @@ extension MotoreSintesi {
         if prev.divarioConProposte >= 50, let v = prev.versamentoMancante, v >= 10, !giaProposta(.previdenza) {
             let mensile = arrotonda(v, a: 10)
             var perche = "alla pensione mancano \(CifreDoc.euro(prev.divarioConProposte)) al mese rispetto al reddito desiderato"
-            if let a = prev.aliquotaMarginale, prev.spazioResiduo > 0 {
+            if let reddito = prev.reddito, let a = prev.aliquotaMarginale, prev.spazioResiduo > 0 {
                 let deducibile = min(mensile * 12, prev.spazioResiduo)
-                perche += "; i versamenti si deducono: con l'aliquota del \(CifreDoc.condizione(a)) circa \(CifreDoc.euro(deducibile * a / 100)) l'anno di IRPEF in meno"
+                let risparmio = RegoleFiscali.risparmioDeduzione(reddito: reddito, deduzione: prev.deducibiliConProposte + deducibile) - prev.risparmioConProposte
+                perche += "; i versamenti si deducono: circa \(CifreDoc.euro(risparmio)) l'anno di IRPEF in meno (aliquota marginale del \(CifreDoc.condizione(a)))"
             }
             elenco.append(PropostaEve(id: "previdenza", titolo: "Piano previdenziale da \(CifreDoc.euro(mensile)) al mese", perche: perche + ".",
                                       area: .previdenza, versamentoMensile: mensile))

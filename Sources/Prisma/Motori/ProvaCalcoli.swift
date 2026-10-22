@@ -453,7 +453,50 @@ enum ProvaCalcoli {
 
         // 22. Previdenza: aliquota IRPEF marginale, piano alla pensione, deducibilità
         verifica("IRPEF: aliquota marginale con 27.000 €", RegoleFiscali.aliquotaMarginale(reddito: 27_000), 23)
-        verifica("IRPEF: aliquota marginale con 32.000 €", RegoleFiscali.aliquotaMarginale(reddito: 32_000), 35)
+        // Dalla revisione dei calcoli: casi verificati a mano
+        do {
+            // Fondo in essere: 120.000 € oggi, 100.000 versati, 3% per 10 anni, imposta del 26% su tutto il guadagno
+            var fondo = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Fondo")
+            fondo.tipologia = "Fondo comune"; fondo.controvalore = 120_000; fondo.totaleVersato = 100_000
+            fondo.rendimentoAtteso = 3; fondo.conBollo = false
+            let ef = MotoreProiezione.calcola(ParametriProiezione(posizione: fondo, orizzonteCliente: 10))
+            let lordo = 120_000 * pow(1.03, 10)
+            verifica("Proiezione: il guadagno già maturato si tassa (versato 100.000)", ef.netto, lordo - (lordo - 100_000) * 0.26, tolleranza: 0.05)
+            verifica("Proiezione: versato storico", ef.versato, 100_000)
+            // Deposito: interessi tassati al 26% man mano
+            var conto = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .liquidita, nome: "Conto deposito")
+            conto.controvalore = 20_000; conto.rendimentoAtteso = 3
+            let ed = MotoreProiezione.calcola(ParametriProiezione(posizione: conto, orizzonteCliente: 5))
+            let mese = pow(1.03, 1.0 / 12) - 1
+            verifica("Proiezione: deposito con interessi tassati all'accredito", ed.netto, 20_000 * pow(1 + mese * 0.74, 60), tolleranza: 0.05)
+            // Obiettivo a 13 mesi: 13 versamenti, non 24
+            let tredici = MotoreProiezione.calcola(ParametriProiezione(capitaleIniziale: 0, versamento: 500, frequenza: .mensile, anni: 2,
+                                                                     rendimento: 0, aliquotaFiscale: 0, inflazione: 0).perMesi(13))
+            verifica("Proiezione in mesi esatti: 13 versamenti da 500 €", tredici.versato, 6_500)
+            // Ramo I: il capitale non scende anche se i costi superano il rendimento
+            var garantita = ParametriProiezione(capitaleIniziale: 10_000, versamento: 0, frequenza: .unica, anni: 5,
+                                                rendimento: 0.5, costoAnnuo: 1.2, aliquotaFiscale: 0, inflazione: 0)
+            garantita.capitaleGarantito = true
+            verifica("Ramo I: capitale garantito con rendimento sotto i costi", MotoreProiezione.calcola(garantita).lordo, 10_000, tolleranza: 0.01)
+            // Bollo: Ramo I esente anche senza parentesi, multiramo solo sulla parte fuori dalla gestione separata
+            var ramoI = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .risparmio, nome: "Rivalutabile")
+            ramoI.tipologia = "Polizza Ramo I – gestione separata"
+            var multi = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .investimento, nome: "Multiramo")
+            multi.tipologia = "Polizza multiramo (Ramo I e Ramo III)"; multi.quotaGestioneSeparata = 50
+            var unit = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .investimento, nome: "Unit")
+            unit.tipologia = "Polizza unit linked (Ramo III)"
+            verifica("Bollo: Ramo I esente", ramoI.quotaBollo, 0)
+            verifica("Bollo: multiramo 50% in gestione separata", multi.quotaBollo, 0.5)
+            verifica("Bollo: Ramo III intero", unit.quotaBollo, 1)
+            verifica("Bollo annuo della multiramo su 50.000 €", MotoreFiscale.bolloAnnuo(multi, valore: 50_000), 50)
+        }
+
+        verifica("IRPEF: aliquota marginale con 32.000 € (33% dal 2026)", RegoleFiscali.aliquotaMarginale(reddito: 32_000), 33)
+        // 30.000 € di reddito, 5.164,57 dedotti: 2.000 al 33% e 3.164,57 al 23%
+        verifica("IRPEF: risparmio di una deduzione a cavallo di due scaglioni", RegoleFiscali.risparmioDeduzione(reddito: 30_000, deduzione: 5_164.57),
+                 2_000 * 0.33 + 3_164.57 * 0.23, tolleranza: 0.01)
+        // Fondo pensione: 4% lordo, 1,5% di costi, 20% sul risultato netto: (1,04 × 0,985 − 1) × 0,8 = 1,952%
+        verifica("Previdenza: rendimento netto dopo costi e imposta del fondo", RegoleFiscali.rendimentoNettoPrevidenza(lordo: 4, costo: 1.5), 1.952, tolleranza: 0.000_1)
         verifica("IRPEF: aliquota marginale con 60.000 €", RegoleFiscali.aliquotaMarginale(reddito: 60_000), 43)
         var fp = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .previdenza, nome: "Fondo")
         fp.decorrenza = Calendar(identifier: .gregorian).date(byAdding: .year, value: -10, to: oggiS)
@@ -484,7 +527,7 @@ enum ProvaCalcoli {
         cli.profilo.redditoLordoAnnuo = 40_000
         let ded = MotorePrevidenza.calcola([conVersamenti], cliente: cli, analisi: ipotesi)
         verifica("Previdenza: deducibile fino al limite (7.200 € versati)", ded.deducibiliOggi, 5_164.57)
-        verifica("Previdenza: risparmio IRPEF al 35%", ded.risparmioOggi, 5_164.57 * 0.35, tolleranza: 0.01)
+        verifica("Previdenza: risparmio IRPEF al 33% (40.000 € di reddito)", ded.risparmioOggi, 5_164.57 * 0.33, tolleranza: 0.01)
 
         // 23. Protezione della famiglia: fabbisogno, divario, detrazione dei premi (conti a mano)
         var ip = IpotesiProtezione()

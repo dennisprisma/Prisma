@@ -30,8 +30,9 @@ enum RegoleFiscali {
     static let previdenzaRendimenti = 20.0
     /// Limite annuo di deducibilità dei contributi alla previdenza complementare.
     static let limiteDeducibilita = 5_164.57
-    /// Scaglioni IRPEF: (fino a, aliquota). L'ultimo vale oltre.
-    static let scaglioniIrpef: [(Double, Double)] = [(28_000, 23), (50_000, 35), (.infinity, 43)]
+    /// Scaglioni IRPEF dal 2026 (legge di bilancio 2026: secondo scaglione dal 35% al 33%):
+    /// (fino a, aliquota). L'ultimo vale oltre.
+    static let scaglioniIrpef: [(Double, Double)] = [(28_000, 23), (50_000, 33), (.infinity, 43)]
 
     /// Detrazione IRPEF dei premi assicurativi (art. 15 TUIR).
     static let detrazionePremi = 19.0
@@ -45,10 +46,37 @@ enum RegoleFiscali {
         scaglioniIrpef.first { reddito <= $0.0 }?.1 ?? 43
     }
 
+    /// IRPEF lorda per scaglioni (senza detrazioni).
+    static func irpef(_ reddito: Double) -> Double {
+        var resta = max(0, reddito)
+        var da = 0.0
+        var imposta = 0.0
+        for (fino, aliquota) in scaglioniIrpef where resta > 0 {
+            let fetta = min(resta, fino - da)
+            imposta += fetta * aliquota / 100
+            resta -= fetta
+            da = fino
+        }
+        return imposta
+    }
+
+    /// IRPEF risparmiata deducendo `deduzione` da `reddito`: scaglione per scaglione, così una
+    /// deduzione che scende sotto i 28.000 € conta in parte al 23%.
+    static func risparmioDeduzione(reddito: Double, deduzione: Double) -> Double {
+        irpef(reddito) - irpef(max(0, reddito - max(0, deduzione)))
+    }
+
     /// Aliquota agevolata della previdenza dopo `anni` interi di partecipazione: 15% fino al 15° anno,
     /// poi 0,30 punti in meno per ogni anno, fino al 9% dal 35° anno.
     static func aliquotaPrevidenza(anni: Int) -> Double {
         max(previdenzaMinima, previdenzaBase - previdenzaRiduzione * Double(max(0, anni - 15)))
+    }
+
+    /// Rendimento netto annuo di un fondo pensione: prima i costi, poi il 20% sul risultato
+    /// positivo dell'anno (i risultati negativi non si tassano).
+    static func rendimentoNettoPrevidenza(lordo: Double, costo: Double) -> Double {
+        let dopoCosti = ((1 + lordo / 100) * (1 - min(max(costo, 0), 99) / 100) - 1) * 100
+        return dopoCosti > 0 ? dopoCosti * (1 - previdenzaRendimenti / 100) : dopoCosti
     }
 
     /// Aliquota effettiva sul guadagno con una quota in titoli di Stato (0–100).
@@ -206,7 +234,7 @@ enum MotoreFiscale {
         if p.regime == .deposito && testo.contains("corrente") && !testo.contains("deposito") {
             return valore > RegoleFiscali.sogliaContoCorrente ? RegoleFiscali.bolloContoCorrente : 0
         }
-        return centesimi(RegoleFiscali.bollo / 100 * valore)
+        return centesimi(RegoleFiscali.bollo / 100 * valore * p.quotaBollo)
     }
 
     static func calcola(_ p: Posizione, prodotto: Prodotto? = nil, data: Date = Date()) -> EsitoFiscale {
@@ -285,7 +313,10 @@ enum MotoreFiscale {
             var bolloMaturato = 0.0
             if regime == .polizza, p.soggettaBollo, let inizio = p.decorrenza {
                 let anni = max(0, data.timeIntervalSince(inizio) / (365.25 * 86_400))
-                bolloMaturato = centesimi(RegoleFiscali.bollo / 100 * valore * anni)
+                bolloMaturato = centesimi(RegoleFiscali.bollo / 100 * valore * p.quotaBollo * anni)
+                if p.multiramo && p.quotaGestioneSeparata == nil {
+                    note.append("Multiramo: indica la quota in gestione separata, esente da bollo; senza, il bollo è calcolato su tutto il valore.")
+                }
                 note.append("Bollo maturato stimato sul valore di oggi per \(String(format: "%.1f", anni).replacingOccurrences(of: ".", with: ",")) anni: nelle polizze si paga al riscatto.")
             }
             // Conti e depositi: gli interessi sono già tassati all'accredito

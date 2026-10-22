@@ -145,12 +145,12 @@ enum MotoreCheckUp {
                 lettura: rate < 1 ? "Nessun finanziamento in corso." : "Rate di \(CifreDoc.euro(rate)) al mese su un reddito netto stimato di \(CifreDoc.euro(nettoMensile)).",
                 azione: peso > 0.3 ? "Evitare nuovi debiti; valutare la protezione del mutuo." : "Proteggere il debito residuo con una copertura caso morte.",
                 area: .casa))
+            if rate >= 1 { note.append("Peso dei debiti: reddito netto stimato come il 72% del lordo diviso 13 mensilità.") }
         } else {
             indicatori.append(IndicatoreCheckUp(id: "debiti", titolo: "Peso dei debiti", semaforo: rate < 1 ? .verde : .grigio,
                                                 valore: rate < 1 ? "nessuna rata" : "\(CifreDoc.euro(rate)) al mese",
                                                 lettura: rate < 1 ? "Nessun finanziamento in corso." : "Per valutarne il peso serve il reddito.",
                                                 azione: "Indicare il reddito lordo annuo nel profilo del cliente.", area: .casa))
-            note.append("Peso dei debiti: reddito netto stimato come il 72% del lordo diviso 13 mensilità, quando il reddito è indicato.")
         }
 
         // 7. Obiettivi

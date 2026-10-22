@@ -197,6 +197,8 @@ struct Posizione: Identifiable, Codable, Hashable {
     var primaAdesione: Date?
     /// Previdenza: contributi versati e non dedotti, che non si tassano alla prestazione.
     var contributiNonDedotti: Double?
+    /// Multiramo: quota del valore in gestione separata (Ramo I, 0–100), esente da bollo.
+    var quotaGestioneSeparata: Double?
 
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }
@@ -206,11 +208,12 @@ struct Posizione: Identifiable, Codable, Hashable {
         controvalore ?? totaleVersato ?? versamentoIniziale
     }
 
-    /// Anni da oggi alla scadenza (almeno 1), se la scadenza è indicata.
+    /// Anni da oggi alla scadenza (almeno 1), arrotondati all'anno più vicino: 10 anni e 11 mesi
+    /// sono 11 anni, non 10.
     var anniAllaScadenza: Int? {
         guard let scadenza else { return nil }
-        let anni = Calendar.current.dateComponents([.year], from: Date(), to: scadenza).year ?? 0
-        return max(1, anni)
+        let mesi = Calendar.current.dateComponents([.month], from: Date(), to: scadenza).month ?? 0
+        return max(1, Int((Double(mesi) / 12).rounded()))
     }
 
     /// true se la scadenza cade entro `giorni` da oggi.
@@ -240,15 +243,39 @@ struct Posizione: Identifiable, Codable, Hashable {
         }
     }
 
-    /// Bollo dello 0,20%: quello indicato o, se manca, per regime (le rivalutabili di Ramo I ne sono esenti).
-    var soggettaBollo: Bool {
-        if let conBollo { return conBollo }
+    /// Polizza multiramo (Ramo I e Ramo III insieme).
+    var multiramo: Bool {
+        guard regime == .polizza else { return false }
+        let t = tipologia.lowercased()
+        return t.contains("multiramo") || (Self.ramoI(t) && t.contains("ramo iii"))
+    }
+
+    /// Polizza rivalutabile di Ramo I (gestione separata): capitale garantito, niente bollo.
+    var gestioneSeparata: Bool {
+        guard regime == .polizza, !multiramo else { return false }
+        let t = tipologia.lowercased()
+        return Self.ramoI(t) || t.contains("rivalutabil") || t.contains("gestione separata")
+    }
+
+    /// "Ramo I" come parola intera: non «Ramo III» né «Ramo IV».
+    private static func ramoI(_ t: String) -> Bool {
+        t.range(of: #"\bramo i\b"#, options: .regularExpression) != nil
+    }
+
+    /// Parte del valore su cui si paga il bollo dello 0,20% (0–1): tutto per fondi e depositi, niente
+    /// per il Ramo I, la parte fuori dalla gestione separata per le multiramo.
+    var quotaBollo: Double {
+        let fuoriGestione = 1 - min(max(quotaGestioneSeparata ?? 0, 0), 100) / 100
+        if let conBollo { return conBollo ? (multiramo ? fuoriGestione : 1) : 0 }
         switch regime {
-        case .fondo, .deposito: return true
-        case .polizza: return !tipologia.lowercased().contains("ramo i)") && !tipologia.lowercased().contains("rivalutabil")
-        case .previdenza, .esente: return false
+        case .fondo, .deposito: return 1
+        case .polizza: return gestioneSeparata ? 0 : (multiramo ? fuoriGestione : 1)
+        case .previdenza, .esente: return 0
         }
     }
+
+    /// Bollo dello 0,20%: quello indicato o, se manca, per regime (le rivalutabili di Ramo I ne sono esenti).
+    var soggettaBollo: Bool { quotaBollo > 0 }
 
     /// Lo storico completo: le rilevazioni passate e, in fondo, il valore attuale.
     var storicoValori: [Rilevazione] {

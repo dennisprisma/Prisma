@@ -134,12 +134,22 @@ enum MotoreSostituzione {
 
         func lato(_ p: Posizione, prodotto: Prodotto?, capitale: Double, ingressoSulCapitale: Bool, scarto: Double)
             -> (punti: [PuntoProiezione], costi: Double, rendimento: Double, costoAnnuo: Double) {
-            let bolloAnnuo = p.soggettaBollo && p.regime != .deposito ? RegoleFiscali.bollo : 0
+            // Bollo dello 0,20% sulla parte soggetta (il conto corrente paga il fisso di 34,20 €, trascurabile qui)
+            let testo = (p.nome + " " + p.tipologia).lowercased()
+            let contoCorrente = p.regime == .deposito && testo.contains("corrente") && !testo.contains("deposito")
+            let bolloAnnuo = contoCorrente ? 0 : RegoleFiscali.bollo * p.quotaBollo
             let costo = (p.costoComplessivo ?? 0) + bolloAnnuo
             let rendimento = (p.rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito) + scarto
-            let par = ParametriProiezione(capitaleIniziale: capitale, versamento: versamento, frequenza: frequenza, anni: anni,
+            var par = ParametriProiezione(capitaleIniziale: capitale, versamento: versamento, frequenza: frequenza, anni: anni,
                                           rendimento: rendimento, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: costo,
                                           aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: ingressoSulCapitale)
+            switch p.regime {
+            // Interessi dei depositi tassati all'accredito, rendimenti dei fondi pensione tassati ogni anno nel fondo
+            case .deposito: par.tassazioneAnnua = p.aliquotaFiscale ?? RegoleFiscali.ordinaria
+            case .previdenza: par.tassazioneAnnua = RegoleFiscali.previdenzaRendimenti
+            case .polizza, .fondo, .esente: break
+            }
+            par.capitaleGarantito = p.gestioneSeparata
             let e = MotoreProiezione.calcola(par)
             return (e.punti, e.costi, rendimento, costo)
         }
@@ -151,7 +161,9 @@ enum MotoreSostituzione {
             case .esente, .deposito:
                 return lordo - penale
             case .previdenza:
-                let dedotti = max(0, min(lordo, base) - (p.contributiNonDedotti ?? 0))
+                // In un trasferimento i contributi non dedotti sono quelli del fondo di partenza
+                let nonDedotti = (trasferimento && p.id == b.id ? a.contributiNonDedotti : p.contributiNonDedotti) ?? 0
+                let dedotti = max(0, min(lordo, base) - nonDedotti)
                 return lordo - dedotti * RegoleFiscali.aliquotaPrevidenza(anni: anniPartecipazione) / 100
             case .polizza, .fondo:
                 let imposta = max(0, lordo - penale - base) * MotoreFiscale.aliquotaGuadagno(p) / 100
@@ -166,7 +178,8 @@ enum MotoreSostituzione {
                 let pr = r.punti[min(y, r.punti.count - 1)], pc = c.punti[min(y, c.punti.count - 1)]
                 let futuriResto = pr.versato - valoreOggi, futuriCambio = pc.versato - reinvestito
                 // Il bollo già maturato nella polizza resta da pagare al riscatto anche restando
-                let nettoResto = y == 0 && sostituzione ? reinvestito
+                // Nel trasferimento anche oggi le due strade si misurano allo stesso modo (nessuna imposta all'uscita)
+                let nettoResto = y == 0 && sostituzione && !trasferimento ? reinvestito
                     : netto(a, prodotto: prodottoA, lordo: pr.valore, base: baseResto + futuriResto,
                             annoContratto: anniContrattoA + y + 1, anniPartecipazione: anniPrevidenza + y) - bollo
                 let nettoCambio = netto(b, prodotto: prodottoB, lordo: pc.valore, base: baseCambio + futuriCambio,

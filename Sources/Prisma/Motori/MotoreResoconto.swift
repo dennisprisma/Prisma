@@ -218,7 +218,15 @@ enum MotoreResoconto {
     static func variazione(_ p: Posizione) -> (delta: Double, base: Double)? {
         guard let prima = rilevazione12(p), let valore = p.controvalore else { return nil }
         let versatoOra = p.totaleVersato ?? prima.versato ?? 0
-        let versamenti = max(0, versatoOra - (prima.versato ?? versatoOra))
+        let versamenti: Double
+        if let versatoPrima = prima.versato {
+            versamenti = max(0, versatoOra - versatoPrima)
+        } else {
+            // Senza il versato della rilevazione: i versamenti periodici del periodo trascorso,
+            // perché non vengano contati come guadagno
+            let giorni = (p.dataValore ?? Date()).timeIntervalSince(prima.data) / 86_400
+            versamenti = p.premioAnnuo * max(0, giorni) / 365
+        }
         return (valore - prima.controvalore - versamenti, prima.controvalore + versamenti / 2)
     }
 
