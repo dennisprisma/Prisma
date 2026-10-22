@@ -1,14 +1,15 @@
 import SwiftUI
 
-private typealias C = Colori.Documento
-private typealias T = Tipo.Documento
+private typealias T = Tipo.Report
 private typealias D = Misure.Documento
 
-/// Il report di una valutazione d'investimento: A4 orizzontale, una slide per messaggio,
-/// da lasciare al cliente. Ricalca il report di Denis su Orizzonte Valore (ottobre 2026).
+/// Il report di una valutazione d'investimento: A4 orizzontale, una pagina per messaggio, da lasciare
+/// al cliente. I contenuti seguono il report di Denis su Orizzonte Valore (ottobre 2026); la veste è
+/// quella di Prisma: carta avorio delle slide di Presentazioni, Georgia, testata ◈ PRISMA, capitoli
+/// numerati, copertina in cuoio come il dossier del cliente, etichetta del canale sempre in vista.
 enum ReportValutazione {
     static func pagine(_ t: TestiValutazione) -> [AnyView] {
-        var slide: [AnyView] = [AnyView(SlideCopertina(t: t)), AnyView(SlideProposta(t: t))]
+        var slide: [AnyView] = [AnyView(SlideProposta(t: t))]
         if t.fondo?.storico.isEmpty == false || t.gestione?.storico.isEmpty == false {
             slide.append(AnyView(SlidePartenza(t: t)))
         }
@@ -19,26 +20,97 @@ enum ReportValutazione {
         if !t.c.garantito.isEmpty || !t.c.nonGarantito.isEmpty { slide.append(AnyView(SlideGaranzie(t: t))) }
         if !t.c.scenariKID.isEmpty { slide.append(AnyView(SlideKID(t: t))) }
         slide += [AnyView(SlideSintesi(t: t)), AnyView(SlideAppendice(t: t))]
-        return slide.enumerated().map { i, s in
-            i == 0 ? s : AnyView(CorniceSlide(numero: i + 1) { s })
+        let totale = slide.count + 1
+        let interne = slide.enumerated().map { i, s in
+            AnyView(CorniceSlide(t: t, numero: i + 2, totale: totale) { s })
+        }
+        return ([AnyView(SlideCopertina(t: t))] + interne).map {
+            AnyView($0.environment(\.paletteDocumento, Colori.Documento.prisma))
         }
     }
 }
 
-/// Margini e numero di pagina di una slide interna.
+private struct ChiaveNumeroSlide: EnvironmentKey {
+    static let defaultValue = 1
+}
+
+extension EnvironmentValues {
+    /// Numero della pagina del report, per il capitolo ("05 —").
+    fileprivate var numeroSlide: Int {
+        get { self[ChiaveNumeroSlide.self] }
+        set { self[ChiaveNumeroSlide.self] = newValue }
+    }
+}
+
+/// La cornice di una pagina interna, come le slide di Presentazioni del template: testata con il
+/// marchio e i nomi, carta avorio nei suoi toni, filigrana ◈, piede con il motto e il numero.
 private struct CorniceSlide<Contenuto: View>: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiValutazione
     let numero: Int
+    let totale: Int
     @ViewBuilder let contenuto: () -> Contenuto
 
     var body: some View {
-        FoglioDocumento(formato: D.report) {
-            VStack(alignment: .leading, spacing: 0) {
-                contenuto()
-                Spacer(minLength: 0)
-                NumeroPaginaDoc(numero: numero)
+        let tono = Colori.Documento.toniReport[numero % Colori.Documento.toniReport.count]
+        FoglioDocumento(formato: D.report, sfondo: tono.0) {
+            ZStack(alignment: .bottomTrailing) {
+                RadialGradient(colors: [tono.0, tono.1], center: UnitPoint(x: 0.1, y: 0.05), startRadius: 0, endRadius: D.report.width)
+                if numero % 4 == 0 {
+                    Text(verbatim: "◈").font(T.filigrana).foregroundColor(C.marchio.opacity(0.06))
+                        .padding(.trailing, 30).padding(.bottom, 20)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .center) {
+                        Text(verbatim: "◈ PRISMA").font(T.marchio).tracking(3).foregroundColor(C.marchio)
+                        Spacer()
+                        Text(verbatim: "\(t.prodotto.nome) · \(t.v.intestatari)".uppercased()).font(T.testata).tracking(1.6)
+                            .foregroundColor(C.tenue).lineLimit(1)
+                    }
+                    .padding(.bottom, 9)
+                    .overlay(Rectangle().fill(C.filetto).frame(height: 0.8), alignment: .bottom)
+                    contenuto()
+                        .padding(.top, 14)
+                        .environment(\.numeroSlide, numero)
+                    Spacer(minLength: 0)
+                    HStack {
+                        Text(verbatim: "PERSONE. PRIORITÀ. PROSPETTIVE.")
+                        Spacer()
+                        Text(verbatim: "\(numero) / \(totale)")
+                    }
+                    .font(T.piede).tracking(1.5).foregroundColor(C.tenue)
+                    .padding(.top, 7)
+                    .overlay(Rectangle().fill(C.filetto).frame(height: 0.8), alignment: .top)
+                }
+                .padding(EdgeInsets(top: 22, leading: D.margineReport, bottom: 14, trailing: D.margineReport))
             }
-            .padding(EdgeInsets(top: 30, leading: D.margineReport, bottom: 18, trailing: D.margineReport))
         }
+    }
+}
+
+/// Capitolo, titolo che dice la conclusione e sottotitolo (.slides-chapter, .slides-stage h2).
+private struct TestaSlide: View {
+    @Environment(\.paletteDocumento) private var C
+    @Environment(\.numeroSlide) private var numero
+    let occhiello: String
+    let titolo: String
+    var sottotitolo: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 9) {
+                Text(verbatim: String(format: "%02d", numero)).font(T.capitolo)
+                Rectangle().fill(C.filetto).frame(width: 25, height: 1)
+                Text(verbatim: occhiello.uppercased()).font(T.capitolo).tracking(1.9)
+            }
+            .foregroundColor(C.occhiello)
+            Text(verbatim: titolo).font(T.titoloSlide).tracking(-0.4).foregroundColor(C.titolo).lineLimit(1).minimumScaleFactor(0.7)
+            if let sottotitolo, !sottotitolo.isEmpty {
+                Text(verbatim: sottotitolo).font(T.sottotitoloSlide).foregroundColor(C.tenue)
+                    .lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -46,55 +118,79 @@ private var larghezzaUtile: CGFloat { D.report.width - D.margineReport * 2 }
 
 // MARK: - 1. Copertina
 
+/// Copertina in cuoio come il dossier del cliente: impuntura, marchio impresso, cartellini di carta.
 private struct SlideCopertina: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
-        FoglioDocumento(formato: D.report, sfondo: C.notte) {
-            HStack(alignment: .center, spacing: 40) {
-                VStack(alignment: .leading, spacing: 0) {
-                    OcchielloDoc(testo: "Proposta di investimento", colore: C.notteEtichetta)
-                    Text(verbatim: t.prodotto.nome).font(T.copertinaTitolo).foregroundColor(.white)
-                        .lineLimit(3).minimumScaleFactor(0.7).padding(.top, 18)
-                    Text(verbatim: t.sottotitoloCopertina).font(T.copertinaSottotitolo).foregroundColor(C.notteTesto).padding(.top, 18)
-                    Text(verbatim: t.v.intestatari).font(T.copertinaNomi).foregroundColor(.white).padding(.top, 22)
-                    HStack(spacing: 7) {
-                        ForEach(TipoScenario.allCases) { s in Circle().fill(C.scenario(s)).frame(width: 10, height: 10) }
+        FoglioDocumento(formato: D.report, sfondo: C.copertina) {
+            ZStack {
+                Materiale.Pelle()
+                    .frame(width: D.report.width, height: D.report.height)
+                    .clipped()
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(C.cucitura.opacity(0.6), style: StrokeStyle(lineWidth: 1.3, dash: [6, 4]))
+                    .padding(18)
+                HStack(alignment: .center, spacing: 36) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 8) {
+                            Text(verbatim: "◈").font(T.copertinaMarchio)
+                            Text(verbatim: "PRISMA").font(T.copertinaMarchio).tracking(4)
+                        }
+                        .foregroundColor(C.copertinaTesto)
+                        .shadow(color: Color.black.opacity(0.45), radius: 0, x: 0, y: -1)
+                        Spacer(minLength: 0)
+                        OcchielloDoc(testo: "Proposta di investimento", font: T.copertinaOcchiello, colore: C.copertinaTesto.opacity(0.75))
+                        Text(verbatim: t.prodotto.nome).font(T.copertinaTitolo).foregroundColor(.white)
+                            .shadow(color: Color.black.opacity(0.4), radius: 0, x: 0, y: -1)
+                            .lineLimit(3).minimumScaleFactor(0.7).padding(.top, 12)
+                        Text(verbatim: t.sottotitoloCopertina).font(T.copertinaSottotitolo).italic().foregroundColor(C.copertinaTesto)
+                            .padding(.top, 10)
+                        Text(verbatim: t.v.intestatari).font(T.copertinaNomi).foregroundColor(.white).padding(.top, 22)
+                        Spacer(minLength: 0)
+                        HStack(alignment: .bottom, spacing: 14) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(verbatim: TestiValutazione.consulente).font(T.copertinaConsulente).foregroundColor(.white)
+                                Text(verbatim: t.ruoloConsulente).font(T.copertinaRuolo).foregroundColor(C.copertinaTesto)
+                                Text(verbatim: CifreDoc.data(t.v.data)).font(T.copertinaRuolo).foregroundColor(C.copertinaTesto)
+                            }
+                            EtichettaCanale(canale: t.prodotto.canale)
+                        }
                     }
-                    .padding(.top, 26)
-                    Text(verbatim: TestiValutazione.consulente).font(T.copertinaConsulente).foregroundColor(.white).padding(.top, 14)
-                    Text(verbatim: t.ruoloConsulente).font(T.copertinaRuolo).foregroundColor(C.notteTesto).padding(.top, 2)
-                    Text(verbatim: CifreDoc.data(t.v.data)).font(T.copertinaRuolo).foregroundColor(C.notteTesto).padding(.top, 2)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(spacing: 12) {
-                    riquadro("Premio unico", [CifreDoc.euro(t.v.premio)])
-                    if !t.c.componenti.isEmpty {
-                        riquadro("Combinazione", t.c.componenti.map { "\(CifreDoc.condizione($0.quota)) \($0.tipo.nome)" })
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    VStack(spacing: 12) {
+                        cartellino("Premio unico", [CifreDoc.euro(t.v.premio)])
+                        if !t.c.componenti.isEmpty {
+                            cartellino("Combinazione", t.c.componenti.map { "\(CifreDoc.condizione($0.quota)) \($0.tipo.nome)" })
+                        }
+                        cartellino("Riscatto", [t.riscattoPossibile])
                     }
-                    riquadro("Riscatto", [t.riscattoPossibile])
+                    .frame(width: 240)
                 }
-                .frame(width: 250)
+                .padding(EdgeInsets(top: 52, leading: 56, bottom: 50, trailing: 56))
             }
-            .padding(.horizontal, 46)
-            .frame(maxHeight: .infinity)
         }
     }
 
-    private func riquadro(_ titolo: String, _ righe: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            OcchielloDoc(testo: titolo, font: T.copertinaEtichetta, colore: C.notteEtichetta)
-            ForEach(righe, id: \.self) { Text(verbatim: $0).font(T.copertinaValore).foregroundColor(.white) }
+    /// Cartellino di carta avorio sul cuoio.
+    private func cartellino(_ titolo: String, _ righe: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            OcchielloDoc(testo: titolo, font: T.copertinaEtichetta, colore: C.copertinaEtichetta)
+            ForEach(righe, id: \.self) { Text(verbatim: $0).font(T.copertinaValore).foregroundColor(C.titolo) }
         }
-        .padding(16)
+        .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .riquadroDoc(C.notteRiquadro)
+        .background(RoundedRectangle(cornerRadius: 4).fill(C.copertinaRiquadro))
+        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.black.opacity(0.25), lineWidth: 0.8))
+        .shadow(color: Color.black.opacity(0.45), radius: 3, x: 0, y: 2)
     }
 }
 
 // MARK: - 2. La proposta
 
 private struct SlideProposta: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -152,6 +248,7 @@ private struct SlideProposta: View {
 // MARK: - 3. I numeri di partenza
 
 private struct SlidePartenza: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -223,6 +320,7 @@ private struct SlidePartenza: View {
 // MARK: - 4. Le ipotesi
 
 private struct SlideIpotesi: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -269,6 +367,7 @@ private struct SlideIpotesi: View {
 // MARK: - 5. Quanto si incassa
 
 private struct SlideIncassi: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -300,6 +399,7 @@ private struct SlideIncassi: View {
 
 /// La tabella degli incassi netti per anno di riscatto, usata dal report e dal prospetto.
 struct TabellaIncassi: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
     let larghezza: CGFloat
     var rigaScenario: CGFloat
@@ -341,6 +441,7 @@ struct TabellaIncassi: View {
 // MARK: - 6. Andamento
 
 private struct SlideAndamento: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -387,6 +488,7 @@ private struct SlideAndamento: View {
 // MARK: - 7. Il primo riscatto
 
 private struct SlidePrimoRiscatto: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -462,6 +564,7 @@ private struct SlidePrimoRiscatto: View {
 // MARK: - 8. Le penali
 
 private struct SlidePenali: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -516,6 +619,7 @@ private struct SlidePenali: View {
 // MARK: - 9. Costi
 
 private struct SlideCosti: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -531,6 +635,7 @@ private struct SlideCosti: View {
 
 /// Costi e trattenute anno per anno (scenario intermedio), per il report e il prospetto.
 struct TabellaCosti: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
     let larghezza: CGFloat
     let riga: CGFloat
@@ -584,6 +689,7 @@ struct TabellaCosti: View {
 // MARK: - 10. Garanzie e fiscalità
 
 private struct SlideGaranzie: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -635,6 +741,7 @@ private struct SlideGaranzie: View {
 // MARK: - 11. Il KID
 
 private struct SlideKID: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -655,6 +762,7 @@ private struct SlideKID: View {
 
 /// Scenari del KID affiancati alla simulazione.
 struct TabellaKID: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
     let larghezza: CGFloat
     let riga: CGFloat
@@ -688,6 +796,7 @@ struct TabellaKID: View {
 // MARK: - 12. In sintesi
 
 private struct SlideSintesi: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -724,6 +833,7 @@ extension SlideSintesi {
 // MARK: - 13. Appendice
 
 private struct SlideAppendice: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -742,6 +852,7 @@ private struct SlideAppendice: View {
 
 /// Valore, penale, imposte e netto per scenario e anno di riscatto (appendice del report).
 private struct TabellaDettaglioBreve: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
     let larghezza: CGFloat
 

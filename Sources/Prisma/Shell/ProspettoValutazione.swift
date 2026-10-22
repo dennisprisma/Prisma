@@ -1,6 +1,5 @@
 import SwiftUI
 
-private typealias C = Colori.Documento
 private typealias T = Tipo.Documento
 private typealias D = Misure.Documento
 
@@ -20,6 +19,7 @@ private var larghezza: CGFloat { D.prospetto.width - D.margineProspetto * 2 }
 
 /// Margini e piè di pagina del prospetto.
 private struct FoglioProspetto<Contenuto: View>: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
     let numero: Int
     let totale: Int
@@ -50,6 +50,7 @@ private struct FoglioProspetto<Contenuto: View>: View {
 
 /// Titolo di sezione con il paragrafo sotto.
 private struct SezioneProspetto: View {
+    @Environment(\.paletteDocumento) private var C
     let titolo: String
     var testo: Text? = nil
 
@@ -66,6 +67,7 @@ private struct SezioneProspetto: View {
 
 /// Riquadro con la barra blu a sinistra ("In sintesi", "Se il bisogno di liquidità è probabile").
 private struct RiquadroBarra<Contenuto: View>: View {
+    @Environment(\.paletteDocumento) private var C
     let titolo: String
     @ViewBuilder let contenuto: () -> Contenuto
 
@@ -81,17 +83,25 @@ private struct RiquadroBarra<Contenuto: View>: View {
     }
 }
 
-private func puntoElenco(_ testo: Text) -> some View {
-    HStack(alignment: .top, spacing: 7) {
-        Text(verbatim: "•").font(T.pCorpoForte)
-        testo.font(T.pCorpo).lineSpacing(1.6).fixedSize(horizontal: false, vertical: true)
+private func puntoElenco(_ testo: Text) -> some View { PuntoElenco(testo: testo) }
+
+private struct PuntoElenco: View {
+    @Environment(\.paletteDocumento) private var C
+    let testo: Text
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 7) {
+            Text(verbatim: "•").font(T.pCorpoForte)
+            testo.font(T.pCorpo).lineSpacing(1.6).fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundColor(C.testo)
     }
-    .foregroundColor(C.testo)
 }
 
 // MARK: - Pagina 1: quanto si incassa
 
 private struct PaginaIncassi: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -200,6 +210,7 @@ private struct PaginaIncassi: View {
 // MARK: - Pagina 2: dettaglio anno per anno
 
 private struct PaginaDettaglio: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -235,6 +246,7 @@ private struct PaginaDettaglio: View {
 }
 
 private struct TabellaDettaglio: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
     let scenario: TipoScenario
 
@@ -247,8 +259,10 @@ private struct TabellaDettaglio: View {
         var colonne = [ColonnaDoc(titolo: "Riscatto all'inizio del…", sottotitolo: "mese · penale", peso: 2.3, destra: false)]
         colonne += anni.map { ColonnaDoc(titolo: "\($0)° anno", sottotitolo: "\(($0 - 1) * 12 + 1)° mese · \(CifreDoc.penale(t.c.penale(anno: $0)))") }
         var righe: [RigaDoc] = []
-        func riga(_ nome: String, _ valori: [String], colore inchiostro: Color = C.testo, forte: Bool = false, sfondo: Color = .clear,
-                  filetto: Color = C.filetto, spessore: CGFloat = 0.5) {
+        let testo = C.testo
+        func riga(_ nome: String, _ valori: [String], colore: Color? = nil, forte: Bool = false, sfondo: Color = .clear,
+                  filetto: Color? = nil, spessore: CGFloat = 0.5) {
+            let inchiostro = colore ?? testo
             let font = forte ? T.pTabellaForte : T.pTabella
             righe.append(RigaDoc(celle: [CellaDoc(nome, colore: inchiostro, font: font)] + valori.map { CellaDoc($0, colore: inchiostro, font: font) },
                                  altezza: h, sfondo: sfondo, filetto: filetto, spessore: spessore))
@@ -276,6 +290,7 @@ private struct TabellaDettaglio: View {
 // MARK: - Pagina 3: costi e penali
 
 private struct PaginaCosti: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -351,6 +366,7 @@ private struct PaginaCosti: View {
 // MARK: - Pagina 4: su cosa si basano gli scenari
 
 private struct PaginaBasi: View {
+    @Environment(\.paletteDocumento) private var C
     let t: TestiValutazione
 
     var body: some View {
@@ -388,6 +404,7 @@ private struct PaginaBasi: View {
                 linea("Cliente")
                 linea("Consulente")
             }
+            .frame(width: larghezza, alignment: .leading)
             .padding(.top, 10)
         }
     }
@@ -395,12 +412,7 @@ private struct PaginaBasi: View {
     private func linea(_ etichetta: String) -> some View {
         HStack(alignment: .bottom, spacing: 6) {
             Text(verbatim: etichetta).font(T.pTabellaNota).foregroundColor(C.tenue)
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                Rectangle().fill(C.tenue).frame(height: 0.6)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 16)
+            Rectangle().fill(C.tenue).frame(width: (larghezza - 110) / 2 - 50, height: 0.7)
         }
     }
 
