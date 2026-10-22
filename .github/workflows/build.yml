@@ -114,6 +114,8 @@ jobs:
           "$APP/Contents/MacOS/Prisma" --prova-eve
           # Prova dei prospetti: cifre, impaginazione A4 e PDF
           "$APP/Contents/MacOS/Prisma" --prova-prospetti
+          # Prova di carico: 200 clienti, velocità e memoria (il Mac dell'utente ha 8 GB)
+          "$APP/Contents/MacOS/Prisma" --prova-carico
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 
