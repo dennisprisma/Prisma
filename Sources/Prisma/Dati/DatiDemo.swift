@@ -321,6 +321,99 @@ enum DatiDemo {
     }
 
     /// Obiettivi di prova di Giulia e Marco.
+    /// Orizzonte Valore di Alleanza: condizioni dal prospetto illustrativo di ottobre 2026
+    /// (KID 30% Gestione separata – 70% Fondo Interno, 13/07/2026). Da verificare sui documenti ufficiali.
+    static func orizzonteValore() -> Prodotto {
+        var x = Prodotto(nome: "Orizzonte Valore di Alleanza", canale: .alleanza, area: .investimento)
+        x.id = "prodotto-orizzonte-valore"
+        x.emittente = "Alleanza Assicurazioni"
+        x.tipologia = "Polizza multiramo a premio unico"
+        x.rendimentoAtteso = 4.7
+        x.costoIngresso = 1
+        x.costoAnnuo = 2.31
+        x.aliquotaFiscale = 24.8
+        x.sri = 3
+        x.garanzie = "In caso di decesso nei primi 10 anni almeno i premi investiti; dopo, la parte in Gestione separata."
+        x.liquidabilita = "Riscatto dal 13° mese, con penale del 3,5%, 2,5% e 1,0% nel 2°, 3° e 4° anno; poi senza penali."
+        x.fonte = "KID 30% GS – 70% FI (13/07/2026), DIP aggiuntivo IBIP, Condizioni mod. 10320671"
+        x.verificatoIl = data(-7)
+        var gs = ComponenteContratto(tipo: .gestioneSeparata, nome: "Fondo Euro San Giorgio", quota: 30)
+        gs.id = "gs-san-giorgio"
+        gs.trattenuto = 1.30
+        gs.titoliStato = 30.5
+        gs.descrizione = "La parte stabile: investe soprattutto in titoli di Stato e obbligazioni di buona qualità. Ogni anno si rivaluta con il rendimento della gestione, meno l'1,30% trattenuto dalla Compagnia. Negli ultimi anni il rendimento lordo è stato intorno al 3%, ma la rivalutazione può essere anche negativa."
+        gs.caratteristiche = "Rivalutazione riconosciuta = rendimento lordo − 1,30%; può essere anche negativa. Periodo di osservazione 1° novembre – 31 ottobre."
+        gs.storico = [PuntoStorico(etichetta: "2020", valore: 3.05), PuntoStorico(etichetta: "2021", valore: 2.84),
+                      PuntoStorico(etichetta: "2022", valore: 2.82), PuntoStorico(etichetta: "2023", valore: 3.02),
+                      PuntoStorico(etichetta: "2024", valore: nil, nota: "Dato non reperito nelle fonti pubbliche consultate."),
+                      PuntoStorico(etichetta: "2025", valore: 3.15)]
+        var fi = ComponenteContratto(tipo: .fondoInterno, nome: "Allocazione Dinamica", quota: 70)
+        fi.id = "fi-allocazione-dinamica"
+        fi.commissione = 1.70
+        fi.costiSottostanti = 0.99
+        fi.bollo = true
+        fi.descrizione = "Il motore della crescita: un fondo flessibile che investe dal 50% al 100% in azioni dei mercati internazionali. Il valore delle quote sale e scende con le borse. La commissione di gestione (1,70% l'anno) è già compresa nel valore delle quote."
+        fi.caratteristiche = "Fondo flessibile con azioni dal 50% al 100%. Volatilità media annua attesa: 12% (Regolamento). I valori della quota sono già al netto dei costi del fondo."
+        fi.storico = [PuntoStorico(etichetta: "Avvio, maggio 2025", valore: 10.000), PuntoStorico(etichetta: "31/12/2025", valore: 10.611),
+                      PuntoStorico(etichetta: "12/10/2026", valore: 11.806)]
+        var c = CondizioniContratto()
+        c.versione = "versione Base, senza copertura complementare infortuni"
+        c.componenti = [gs, fi]
+        c.costoIngresso = 1
+        c.costoIngressoMassimo = 200
+        c.mesiBloccoRiscatto = 12
+        c.penali = [3.5, 2.5, 1.0]
+        c.periodoRaccomandato = 10
+        c.anniKID = 5
+        c.esempioKID = "Il KID usa un esempio di € 10.000 con costo di ingresso dell'1% (€ 100)."
+        c.scenariKID = [ScenarioKID(nome: "Stress", unAnno: -32.64, periodo: -8.54),
+                        ScenarioKID(nome: "Sfavorevole", unAnno: -12.38, periodo: -1.10),
+                        ScenarioKID(nome: "Moderato", unAnno: 0.97, periodo: 5.06),
+                        ScenarioKID(nome: "Favorevole", unAnno: 15.48, periodo: 7.67)]
+        c.dataDocumenti = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 7, day: 13))
+        c.garantito = [
+            "In caso di decesso nei primi 10 anni i beneficiari ricevono il valore del contratto (quote maggiorate dello 0,2%) e comunque non meno dei premi investiti, ridotti in proporzione agli eventuali riscatti parziali.",
+            "Dopo 10 anni resta garantita, in caso di decesso, la parte in Gestione separata.",
+            "Somme ai beneficiari esenti da imposta di successione e, nei limiti di legge, non pignorabili.",
+        ]
+        c.nonGarantito = [
+            "In caso di riscatto non c'è alcuna garanzia: si può incassare meno di quanto versato.",
+            "Il valore delle quote del Fondo Interno dipende dai mercati e può scendere.",
+            "La rivalutazione della Gestione separata può essere anche negativa.",
+        ]
+        c.riscattoParziale = "Dopo 12 mesi si può chiedere un riscatto parziale: minimo € 1.000, con almeno € 5.000 che restano investiti. La penale si applica solo alla parte riscattata; il resto continua a lavorare."
+        c.recesso = "Entro 30 giorni dalla conclusione del contratto si può recedere: viene restituito il premio, con la parte nel Fondo Interno al valore corrente delle quote."
+        c.fonti = "Alleanza Assicurazioni: KID «30% Gestione separata – 70% Fondo Interno» (13/07/2026); DIP aggiuntivo IBIP (13/07/2026); Condizioni di assicurazione mod. 10320671 (13/07/2026); Regolamento e Rendiconto al 31/12/2025 del Fondo Interno Allocazione Dinamica; valore della quota pubblicato su alleanza.it al 12/10/2026; Prospetto annuale della Gestione separata Fondo Euro San Giorgio (28/11/2025)."
+        x.condizioni = c
+        return x
+    }
+
+    /// Valutazione di prova: Marco ed Elena valutano 50.000 € su Orizzonte Valore.
+    static func valutazioni() -> [ValutazioneInvestimento] {
+        var v = ValutazioneInvestimento(clienteId: "marco", intestatari: "Marco ed Elena Bianchi",
+                                        prodottoId: "prodotto-orizzonte-valore", premio: 50_000)
+        v.id = "val-marco-orizzonte"
+        v.data = data(-2)
+        v.creataIl = data(-2)
+        v.anni = 5
+        v.esigenza = "Volete far crescere € 50.000, ma potreste averne bisogno già tra uno o due anni."
+        v.notaScenarioCentrale = "Su base annua il fondo ha reso circa +12,7%. È però una storia di poco più di un anno, in un periodo molto favorevole per le borse: per prudenza lo scenario intermedio usa un rendimento di circa la metà."
+        v.consiglio = "La penale del 3,5% assorbe circa tre quarti della crescita del primo anno. Se potete, aspettate almeno il 25° mese."
+        let gs = "gs-san-giorgio", fi = "fi-allocazione-dinamica"
+        v.scenari = [
+            ScenarioValutazione(tipo: .favorevole, rendimenti: [gs: 3.40, fi: 14.0],
+                                perche: "Tra il rendimento del fondo dal lancio (+12,7% annuo) e il ritmo 2026 (≈ +14,6% annuo); Gestione separata sopra il massimo recente.",
+                                racconto: "Il fondo cresce ogni anno a un ritmo vicino a quello degli ultimi mesi (circa +14,6% su base annua nel 2026)."),
+            ScenarioValutazione(tipo: .intermedio, rendimenti: [gs: 3.10, fi: 6.0],
+                                perche: "Vicino allo scenario moderato del KID; Gestione separata poco sopra la media degli anni disponibili (2,98%).",
+                                racconto: "Il fondo cresce a un ritmo vicino allo scenario moderato del KID, il documento ufficiale della Compagnia."),
+            ScenarioValutazione(tipo: .sfavorevole, rendimenti: [gs: 2.60, fi: -3.0],
+                                perche: "Calo costante del fondo, circa −14% in 5 anni; Gestione separata sotto il minimo recente (2,82%).",
+                                racconto: "Il fondo perde un po' ogni anno: circa il 14% in cinque anni, senza recupero."),
+        ]
+        return [v]
+    }
+
     static func obiettivi() -> [Obiettivo] {
         var casa = Obiettivo(clienteId: "giulia", titolo: "Anticipo per la casa", area: .casa, importo: 60_000, scadenza: anni(3))
         casa.id = "obiettivo-giulia-casa"
