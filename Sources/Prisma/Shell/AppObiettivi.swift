@@ -235,6 +235,7 @@ struct AppObiettivi: View {
                             stato.mostraAvviso("Attività aggiunta: \(t.titolo)")
                         }
                     }
+                    PulsanteAzione(titolo: "Prospetto e report") { stato.apriProspetto(.obiettivo(o.id, report: false)) }
                     Button("Elimina l'obiettivo…") { confermaEliminazione = true }
                         .buttonStyle(StileSemplice())
                         .font(Tipo.kpiNota)

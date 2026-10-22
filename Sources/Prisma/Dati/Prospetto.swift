@@ -12,6 +12,8 @@ enum SceltaProspetto: Hashable {
     case previdenza(report: Bool)
     /// Protezione della famiglia: prospetto (A4 verticale) o report per il cliente (A4 orizzontale).
     case protezione(report: Bool)
+    /// Piano per un obiettivo del cliente: prospetto (A4 verticale) o report per il cliente (A4 orizzontale).
+    case obiettivo(String, report: Bool)
     /// Una posizione o una proposta, in ogni dettaglio.
     case posizione(String)
     /// Due voci del dossier fianco a fianco.
@@ -25,6 +27,7 @@ enum SceltaProspetto: Hashable {
         case .sostituzione: return .sostituzione
         case .previdenza: return .previdenza
         case .protezione: return .protezione
+        case .obiettivo: return .obiettivo
         case .posizione: return .posizione
         case .confronto: return .confronto
         case .valutazione: return .valutazione
@@ -33,7 +36,7 @@ enum SceltaProspetto: Hashable {
 }
 
 enum TipoProspetto: String, CaseIterable, Identifiable {
-    case valutazione, resoconto, sostituzione, previdenza, protezione, posizione, confronto
+    case valutazione, resoconto, sostituzione, previdenza, protezione, obiettivo, posizione, confronto
 
     var id: String { rawValue }
 
@@ -43,6 +46,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
         case .sostituzione: return "Sostituzione o confronto"
         case .previdenza: return "Piano previdenziale"
         case .protezione: return "Protezione della famiglia"
+        case .obiettivo: return "Piano obiettivo"
         case .posizione: return "Posizione o proposta"
         case .confronto: return "Confronto"
         case .valutazione: return "Valutazione di un investimento"
@@ -54,6 +58,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
         case .sostituzione: return "Restare o cambiare: l'uscita di oggi con penali e imposte, il netto anno per anno delle due strade, il pareggio, tre scenari, costi e caratteristiche. Anche tra due proposte. Prospetto per te, report per il cliente."
         case .previdenza: return "Divario tra reddito desiderato e pensione pubblica, piani portati alla pensione con l'aliquota di allora, risparmio IRPEF dei versamenti, uscite anticipate, versamento che manca. Prospetto per te, report per il cliente."
         case .protezione: return "Fabbisogno caso morte e divario, invalidità e riserva, mappa dei rischi coperti e scoperti, coperture per canale, premi e detrazione del 19%. Prospetto per te, report per il cliente."
+        case .obiettivo: return "Un obiettivo del cliente: importo rivalutato alla scadenza, posizioni collegate portate a quella data, quota raggiunta, quattro strade per arrivarci, scenari, quadro di tutti gli obiettivi. Prospetto per te, report per il cliente."
         case .resoconto: return "Cosa ha il cliente e come sta andando: versato, valore, risultato e rendimento di ogni posizione, ultimi 12 mesi, tutele, debiti, scadenze e costi. Prospetto per te, report per il cliente."
         case .posizione: return "Contratto, costi, proiezione anno per anno nei tre scenari, fonti e pagine dei documenti."
         case .confronto: return "Ipotesi ed esiti a fronte, differenze anno per anno, peso dei costi."

@@ -542,6 +542,9 @@ final class StatoShell: ObservableObject {
             return .previdenza(report: report)
         case .protezione(let report)?:
             return .protezione(report: report)
+        case .obiettivo(let id, let report)?:
+            let elenco = obiettiviCliente(clienteAttivoId)
+            return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
         case .sostituzione(let a, let b, let report)?:
             let mie = posizioniCliente(clienteAttivoId)
             if a != b, mie.contains(where: { $0.id == a }), mie.contains(where: { $0.id == b }) { return .sostituzione(a, b, report: report) }
@@ -564,6 +567,9 @@ final class StatoShell: ObservableObject {
         if case .sostituzione(let a, let b, let report) = scelta {
             return testiSostituzione(a, b).map { DocumentoStampabile($0, report: report) }
         }
+        if case .obiettivo(let id, let report) = scelta {
+            return testiObiettivo(id).map { DocumentoStampabile($0, report: report) }
+        }
         if case .protezione(let report) = scelta {
             return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report)
         }
@@ -574,6 +580,14 @@ final class StatoShell: ObservableObject {
             return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
         }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
+    }
+
+    /// I testi e i numeri del piano per un obiettivo, con il quadro degli altri obiettivi del cliente.
+    func testiObiettivo(_ id: String) -> TestiObiettivo? {
+        guard let o = dati.obiettivi.first(where: { $0.id == id }) else { return nil }
+        let mie = posizioniCliente(o.clienteId)
+        let altri = obiettiviCliente(o.clienteId).map { ($0, AvanzamentoObiettivo($0, posizioni: mie)) }
+        return TestiObiettivo(MotoreObiettivo.calcola(o, posizioni: mie), cliente: self.cliente(o.clienteId), altri: altri)
     }
 
     /// I testi e i numeri della protezione della famiglia di un cliente (ipotesi dall'Analisi 360).

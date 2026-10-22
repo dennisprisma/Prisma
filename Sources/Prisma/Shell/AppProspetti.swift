@@ -54,6 +54,7 @@ struct AppProspetti: View {
     private var vuoto: some View {
         VStack(spacing: 10) {
             Text(scelta.tipo == .valutazione ? "Nessuna valutazione per questo cliente"
+                 : scelta.tipo == .obiettivo ? "Nessun obiettivo per questo cliente: si creano nell'app Obiettivi."
                  : scelta.tipo == .sostituzione ? "Servono due posizioni da confrontare: una in essere e un'alternativa, o due proposte."
                  : "Non c'è ancora niente da impaginare per questo cliente.")
                 .font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
@@ -67,7 +68,7 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetto e report")
-        ForEach([TipoProspetto.valutazione, .resoconto, .sostituzione, .previdenza, .protezione]) { t in
+        ForEach([TipoProspetto.valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
@@ -95,6 +96,8 @@ struct AppProspetti: View {
             stato.prospetto = .previdenza(report: false)
         case .protezione:
             stato.prospetto = .protezione(report: false)
+        case .obiettivo:
+            stato.prospetto = .obiettivo("", report: false)
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -126,6 +129,7 @@ struct AppProspetti: View {
                     case .sostituzione(let a, let b, let report): sceltaSostituzione(a, b, report: report)
                     case .previdenza(let report): sceltaPrevidenza(report: report)
                     case .protezione(let report): sceltaProtezione(report: report)
+                    case .obiettivo(let id, let report): sceltaObiettivo(id, report: report)
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -142,6 +146,7 @@ struct AppProspetti: View {
         case .sostituzione: return "LE DUE STRADE"
         case .previdenza: return "PREVIDENZA DEL CLIENTE"
         case .protezione: return "PROTEZIONE DELLA FAMIGLIA"
+        case .obiettivo: return "OBIETTIVI DEL CLIENTE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
@@ -179,6 +184,46 @@ struct AppProspetti: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
+    }
+
+    private func sceltaObiettivo(_ id: String, report: Bool) -> some View {
+        let elenco = stato.obiettiviCliente(cliente)
+        let mie = stato.posizioniCliente(cliente)
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(elenco) { o in
+                let a = AvanzamentoObiettivo(o, posizioni: mie)
+                Button {
+                    archiviato = nil
+                    stato.prospetto = .obiettivo(o.id, report: report)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(o.titolo).font(Tipo.tabellaCellaForte).foregroundColor(o.id == id ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                        Text("\(Formati.euro(o.importo)) · \(Formati.dataBreve.string(from: o.scadenza)) · \(Int((a.quota * 100).rounded()))%")
+                            .font(Tipo.chip).foregroundColor(o.id == id ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota)
+                    }
+                    .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(o.id == id ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
+                    .bordoBasso(Colori.Strumenti.ipotesiRiga)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(StileSemplice())
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                if elenco.contains(where: { $0.id == id }) {
+                    SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                                    selezione: Binding(get: { report }, set: { stato.prospetto = .obiettivo(id, report: $0); archiviato = nil }))
+                }
+                Text("Importo, scadenza, rendimento e posizioni collegate si modificano nell'app Obiettivi.")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+                Button("Apri Obiettivi") {
+                    stato.obiettivoSelezionato = id.isEmpty ? nil : id
+                    stato.apri(.obiettivi)
+                }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            }
+            .padding(12)
+        }
     }
 
     private func sceltaProtezione(report: Bool) -> some View {

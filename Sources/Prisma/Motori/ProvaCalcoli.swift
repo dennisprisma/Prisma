@@ -416,6 +416,23 @@ enum ProvaCalcoli {
         verifica("Protezione: premi detraibili nei limiti", pf.detraibili, 1_291.14)
         verifica("Protezione: detrazione del 19%", pf.detrazione, 1_291.14 * 0.19, tolleranza: 0.001)
 
+        // 24. Piano obiettivo: rivalutazione, accantonato, versamento che colma il mancante
+        let fra5 = Calendar(identifier: .gregorian).date(byAdding: .month, value: 60, to: oggiS) ?? oggiS
+        var ob = Obiettivo(clienteId: "prova", titolo: "Prova", area: .casa, importo: 10_000, scadenza: fra5)
+        ob.accantonato = 5_000
+        ob.rendimento = 0
+        let eo = MotoreObiettivo.calcola(ob, posizioni: [], data: oggiS)
+        verifica("Obiettivo: importo rivalutato al 2% per 5 anni", eo.importoScadenza, 10_000 * pow(1.02, 5), tolleranza: 0.01)
+        verifica("Obiettivo: accantonato a rendimento zero", eo.proiezione, 5_000)
+        if let v = eo.versamentoNecessario {
+            // A rendimento zero (e quindi senza imposte) il versamento è il mancante diviso 60 mesi
+            verifica("Obiettivo: versamento mensile a rendimento zero", v, (10_000 * pow(1.02, 5) - 5_000) / 60, tolleranza: 0.05)
+        } else {
+            verifica("Obiettivo: versamento calcolato", 0, 1)
+        }
+        verifica("Obiettivo: versamento unico a rendimento zero", eo.unaTantum ?? 0, ((10_000 * pow(1.02, 5) - 5_000) / 10).rounded(.up) * 10, tolleranza: 10)
+        verifica("Obiettivo: quattro strade", Double(eo.strade.count), 4)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
