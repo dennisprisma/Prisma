@@ -5,10 +5,11 @@ private typealias D = Misure.Documento
 
 /// Il report del check-up del primo incontro: A4 orizzontale, per il cliente.
 enum ReportCheckUp {
-    static func pagine(_ t: TestiCheckUp) -> [AnyView] {
+    static func pagine(_ t: TestiCheckUp, commento: String? = nil) -> [AnyView] {
         let slide: [AnyView] = [AnyView(SlideChiSei(t: t)), AnyView(SlideFotografia(t: t)), AnyView(SlideSemaforo(t: t)),
                                 AnyView(SlidePartire(t: t)), AnyView(SlideSintesiCheckUp(t: t))]
-        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiCheckUp.titolo) · \(t.cliente)")
+        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiCheckUp.titolo) · \(t.cliente)",
+                                     lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
 
     private static func copertina(_ t: TestiCheckUp) -> CopertinaReport {

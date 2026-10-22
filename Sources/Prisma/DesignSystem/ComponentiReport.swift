@@ -9,7 +9,9 @@ private typealias D = Misure.Documento
 
 /// Mette in fila copertina e pagine interne: numera le pagine e applica la tavolozza di Prisma.
 enum ImpaginaReport {
-    static func pagine(copertina: AnyView, interne: [AnyView], intestazione: String) -> [AnyView] {
+    static func pagine(copertina: AnyView, interne: [AnyView], intestazione: String, lettera: LetteraConsulente? = nil) -> [AnyView] {
+        // La lettera del consulente, se c'è, apre il report subito dopo la copertina
+        let interne = (lettera.map { [AnyView($0)] } ?? []) + interne
         let totale = interne.count + 1
         let numerate = interne.enumerated().map { i, s in
             AnyView(CorniceReport(intestazione: intestazione, numero: i + 2, totale: totale) { s })
@@ -177,5 +179,37 @@ struct CopertinaReport: View {
         .background(RoundedRectangle(cornerRadius: 4).fill(C.copertinaRiquadro)
             .shadow(color: C.ombraCartellino, radius: 3, x: 0, y: 2))
         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(C.ombraCartellino, lineWidth: 0.8))
+    }
+}
+
+/// La lettera del consulente al cliente, dopo la copertina: il commento scritto con Eve e riletto
+/// dal consulente, con la firma.
+struct LetteraConsulente: View {
+    @Environment(\.paletteDocumento) private var C
+    let testo: String
+    let ruolo: String
+    let data: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TestaReport(occhiello: "Il commento del consulente", titolo: "Due parole per te")
+            HStack(alignment: .top, spacing: 22) {
+                Text(verbatim: testo)
+                    .font(T.lettera).foregroundColor(C.titolo).lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(EdgeInsets(top: 20, leading: 24, bottom: 20, trailing: 24))
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .riquadroDoc()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: TestiValutazione.consulente).font(T.letteraFirma).foregroundColor(C.titolo)
+                    Rectangle().fill(C.filetto).frame(width: 150, height: 0.8)
+                    Text(verbatim: ruolo).font(T.piccolo).foregroundColor(C.testo).fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: CifreDoc.data(data)).font(T.piccolo).foregroundColor(C.tenue)
+                }
+                .padding(.top, 18)
+                .frame(width: 190, alignment: .topLeading)
+            }
+            Spacer(minLength: 0)
+        }
     }
 }

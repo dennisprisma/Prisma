@@ -10,7 +10,7 @@ enum ReportResoconto {
     /// Schede delle posizioni per pagina (2 × 2).
     static let schedePerPagina = 4
 
-    static func pagine(_ t: TestiResoconto) -> [AnyView] {
+    static func pagine(_ t: TestiResoconto, commento: String? = nil) -> [AnyView] {
         var slide: [AnyView] = [AnyView(SlideQuadro(t: t))]
         let finanziarie = t.e.finanziarie
         if !finanziarie.isEmpty {
@@ -27,7 +27,8 @@ enum ReportResoconto {
         if t.e.costoAnnuo > 0 { slide.append(AnyView(SlideCosti(t: t))) }
         slide.append(AnyView(SlideSintesi(t: t)))
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide,
-                                     intestazione: "\(TestiResoconto.titolo) · \(t.cliente)")
+                                     intestazione: "\(TestiResoconto.titolo) · \(t.cliente)",
+                                     lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.e.data) })
     }
 
     private static func copertina(_ t: TestiResoconto) -> CopertinaReport {

@@ -20,6 +20,8 @@ struct DatiPrisma: Codable, Equatable {
     var valutazioni: [ValutazioneInvestimento] = []
     /// Conversazioni con Eve, per cliente.
     var conversazioni: [String: [MessaggioEve]] = [:]
+    /// Commenti del consulente nei report per i clienti.
+    var commenti: [CommentoReport] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -36,7 +38,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 12: rilevazioni dei valori delle posizioni (storico per il resoconto).
     /// 13: trattenuto sul rendimento e dati fiscali delle posizioni (regime, titoli di Stato, bollo, previdenza).
     /// 14: reddito lordo annuo nel profilo del cliente (previdenza e deducibilità).
-    static let versioneAttuale = 14
+    /// 15: commenti del consulente nei report (scritti con Eve).
+    static let versioneAttuale = 15
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
@@ -75,7 +78,7 @@ struct DatiPrisma: Codable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, clienteAttivoId, impostazioni
+        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, clienteAttivoId, impostazioni
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -94,6 +97,7 @@ struct DatiPrisma: Codable, Equatable {
         documenti = (try? c.decodeIfPresent([Documento].self, forKey: .documenti)) ?? []
         valutazioni = (try? c.decodeIfPresent([ValutazioneInvestimento].self, forKey: .valutazioni)) ?? []
         conversazioni = (try? c.decodeIfPresent([String: [MessaggioEve]].self, forKey: .conversazioni)) ?? [:]
+        commenti = (try? c.decodeIfPresent([CommentoReport].self, forKey: .commenti)) ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }

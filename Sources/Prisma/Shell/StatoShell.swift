@@ -563,31 +563,36 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    /// Il testo del commento da stampare nel report (nil nei prospetti e se non c'è).
+    private func testoCommento(_ scelta: SceltaProspetto) -> String? {
+        scelta.conCommento ? commento(scelta)?.testo : nil
+    }
+
     /// Il documento da mostrare e stampare per una scelta.
     func documentoProspetto(_ scelta: SceltaProspetto) -> DocumentoStampabile? {
         if case .valutazione(let id, let report) = scelta {
             return valutazione(id).flatMap(testiValutazione).map { DocumentoStampabile($0, report: report) }
         }
         if case .sostituzione(let a, let b, let report) = scelta {
-            return testiSostituzione(a, b).map { DocumentoStampabile($0, report: report) }
+            return testiSostituzione(a, b).map { DocumentoStampabile($0, report: report, commento: testoCommento(scelta)) }
         }
         if case .obiettivo(let id, let report) = scelta {
-            return testiObiettivo(id).map { DocumentoStampabile($0, report: report) }
+            return testiObiettivo(id).map { DocumentoStampabile($0, report: report, commento: testoCommento(scelta)) }
         }
         if case .checkUp(let report) = scelta {
-            return DocumentoStampabile(testiCheckUp(clienteAttivoId), report: report)
+            return DocumentoStampabile(testiCheckUp(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         if case .liquidita(let report) = scelta {
-            return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report)
+            return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         if case .protezione(let report) = scelta {
-            return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report)
+            return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         if case .previdenza(let report) = scelta {
-            return DocumentoStampabile(testiPrevidenza(clienteAttivoId), report: report)
+            return DocumentoStampabile(testiPrevidenza(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         if case .resoconto(let report) = scelta {
-            return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
+            return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
     }
@@ -1127,6 +1132,79 @@ final class StatoShell: ObservableObject {
         guard case .sostituzione(let a, let b, _)? = prospetto,
               posizioni.contains(where: { $0.id == a && $0.clienteId == id }) else { return nil }
         return (a, b)
+    }
+
+    // MARK: - Commento del consulente nei report
+
+    func commento(_ scelta: SceltaProspetto) -> CommentoReport? {
+        guard let chiave = scelta.chiaveCommento(cliente: clienteAttivoId) else { return nil }
+        return dati.commenti.first { $0.id == chiave }
+    }
+
+    func salvaCommento(_ scelta: SceltaProspetto, testo: String, bozzaDi: String? = nil) {
+        guard let chiave = scelta.chiaveCommento(cliente: clienteAttivoId) else { return }
+        let pulito = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        dati.commenti.removeAll { $0.id == chiave }
+        guard !pulito.isEmpty else { return }
+        dati.commenti.append(CommentoReport(id: chiave, clienteId: clienteAttivoId, testo: String(pulito.prefix(CommentoEve.limite)),
+                                            bozzaDi: bozzaDi, aggiornatoIl: Appuntamento.alMinuto(Date())))
+    }
+
+    /// La bozza del commento composta dai testi del documento (stesse frasi e cifre del report).
+    func bozzaCommento(_ scelta: SceltaProspetto) -> String? {
+        let id = clienteAttivoId
+        let nome = cliente(id)?.nome ?? ""
+        switch scelta {
+        case .checkUp:
+            let t = testiCheckUp(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio la prima fotografia della tua situazione che abbiamo costruito insieme: cosa è in ordine e da dove conviene partire.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .resoconto:
+            let t = testiResoconto(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ecco il punto sulle tue posizioni: cosa hai, come stanno andando, quanto costano e quanto incasseresti oggi al netto delle imposte.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .previdenza:
+            let t = testiPrevidenza(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro della tua pensione: quanto potrebbe mancare, quanto aggiungono i tuoi piani e quanto ti restituisce il fisco sui versamenti.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .protezione:
+            let t = testiProtezione(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro della protezione della tua famiglia: cosa è già coperto e cosa ancora no.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .liquidita:
+            let t = testiLiquidita(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio qualche idea su come far lavorare il capitale che arriva e la liquidità che hai, secondo quando ti servirà.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .obiettivo(let oid, _):
+            guard let t = testiObiettivo(oid) else { return nil }
+            return CommentoEve.bozza(nome: nome, apertura: "ecco il punto sul tuo obiettivo «\(t.o.titolo)»: dove sei, dove arrivi e cosa serve per raggiungerlo.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .sostituzione(let a, let b, _):
+            guard let t = testiSostituzione(a, b) else { return nil }
+            let punti = [("Il verdetto", t.titoloVerdetto + "."), ("Le cifre", t.sottotitoloVerdetto)].filter { !$0.1.isEmpty }
+            return CommentoEve.bozza(nome: nome, apertura: t.e.sostituzione ? "ti lascio il confronto tra restare in \(t.a.nome) e passare a \(t.b.nome), con quello che costa uscire e quello che rende ciascuna strada."
+                                                                            : "ti lascio il confronto tra \(t.a.nome) e \(t.b.nome), al netto di costi e imposte.",
+                                     punti: punti, passo: t.prossimiPassi.first)
+        case .posizione, .confronto, .valutazione:
+            return nil
+        }
+    }
+
+    /// Fa scrivere a Eve il commento del report aperto (il consulente poi lo rilegge e lo modifica).
+    func scriviCommentoConEve(_ scelta: SceltaProspetto) {
+        guard !eveInCorso, let bozza = bozzaCommento(scelta) else { return }
+        let preferenza = dati.impostazioni.eve.motore
+        let id = clienteAttivoId
+        if preferenza == .sintesi || MotoriEve.motivoAppleNonDisponibile != nil {
+            salvaCommento(scelta, testo: bozza, bozzaDi: MotoriEve.sintesi.nome)
+            return
+        }
+        eveInCorso = true
+        Task { @MainActor in
+            let r = await CommentoEve.scrivi(bozza: bozza, preferenza: preferenza)
+            if self.clienteAttivoId == id { self.salvaCommento(scelta, testo: r.testo, bozzaDi: r.motore) }
+            self.eveInCorso = false
+        }
     }
 
     /// Fa spiegare a Eve il documento aperto in Prospetti e report.

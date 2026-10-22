@@ -5,9 +5,10 @@ private typealias D = Misure.Documento
 
 /// Il report del capitale in scadenza e della liquidità: A4 orizzontale, per il cliente.
 enum ReportLiquidita {
-    static func pagine(_ t: TestiLiquidita) -> [AnyView] {
+    static func pagine(_ t: TestiLiquidita, commento: String? = nil) -> [AnyView] {
         let slide: [AnyView] = [AnyView(SlideArriva(t: t)), AnyView(SlideSalvadanai(t: t)), AnyView(SlideFermo(t: t)), AnyView(SlideSintesiLiquidita(t: t))]
-        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiLiquidita.titolo) · \(t.cliente)")
+        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiLiquidita.titolo) · \(t.cliente)",
+                                     lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
 
     private static func copertina(_ t: TestiLiquidita) -> CopertinaReport {

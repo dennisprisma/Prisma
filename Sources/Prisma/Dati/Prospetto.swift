@@ -173,3 +173,40 @@ extension BloccoProspetto {
         }
     }
 }
+
+/// Il commento del consulente in un report per il cliente: Eve scrive la bozza dalle cifre del
+/// documento, il consulente la rilegge e la modifica. Compare nella pagina dopo la copertina.
+struct CommentoReport: Codable, Equatable, Identifiable {
+    /// Chiave del documento (vedi `SceltaProspetto.chiaveCommento`).
+    var id: String
+    var clienteId: String
+    var testo: String
+    /// Chi ha scritto la prima stesura ("Modello Apple", "Sintesi dai dati"); nil se scritto a mano.
+    var bozzaDi: String?
+    var aggiornatoIl = Date()
+}
+
+extension SceltaProspetto {
+    /// true per i report dei documenti di analisi, che possono avere il commento del consulente.
+    var conCommento: Bool {
+        switch self {
+        case .resoconto(let r), .previdenza(let r), .protezione(let r), .liquidita(let r), .checkUp(let r): return r
+        case .sostituzione(_, _, let r), .obiettivo(_, let r): return r
+        case .posizione, .confronto, .valutazione: return false
+        }
+    }
+
+    /// Dove si conserva il commento: lo stesso documento, per lo stesso cliente, ritrova il suo testo.
+    func chiaveCommento(cliente: String) -> String? {
+        switch self {
+        case .resoconto: return "resoconto·\(cliente)"
+        case .previdenza: return "previdenza·\(cliente)"
+        case .protezione: return "protezione·\(cliente)"
+        case .liquidita: return "liquidita·\(cliente)"
+        case .checkUp: return "checkUp·\(cliente)"
+        case .sostituzione(let a, let b, _): return a.isEmpty || b.isEmpty ? nil : "sostituzione·\(a)·\(b)"
+        case .obiettivo(let id, _): return id.isEmpty ? nil : "obiettivo·\(id)"
+        case .posizione, .confronto, .valutazione: return nil
+        }
+    }
+}

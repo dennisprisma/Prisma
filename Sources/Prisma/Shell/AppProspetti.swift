@@ -140,6 +140,9 @@ struct AppProspetti: View {
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
                     }
+                    if scelta.conCommento, let chiave = scelta.chiaveCommento(cliente: cliente) {
+                        PannelloCommento(scelta: scelta).id(chiave)
+                    }
                 }
             }
         }
@@ -551,5 +554,63 @@ private struct TavoloDocumento: View {
         }
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// Il commento del consulente nel report: Eve scrive la bozza dalle cifre del documento, il consulente
+/// la rilegge, la modifica e la salva. Compare nella pagina «Due parole per te», dopo la copertina.
+private struct PannelloCommento: View {
+    @EnvironmentObject var stato: StatoShell
+    let scelta: SceltaProspetto
+    @State private var testo = ""
+    @State private var caricato = false
+
+    static func nota(_ c: CommentoReport) -> String {
+        let data = "salvato il \(Formati.dataEstesa.string(from: c.aggiornatoIl))"
+        guard let chi = c.bozzaDi else { return "Scritto da te, " + data }
+        return "Prima stesura: \(chi), " + data
+    }
+
+    var body: some View {
+        let salvato = stato.commento(scelta)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("IL COMMENTO DEL CONSULENTE").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
+            if salvato == nil && testo.isEmpty {
+                Text("Una lettera breve al cliente, nella pagina dopo la copertina. Eve la scrive con le cifre del report; tu la rileggi e la cambi come vuoi.")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            } else {
+                TextEditor(text: $testo)
+                    .font(Tipo.kpiNota)
+                    .scrollContentBackground(.hidden)
+                    .padding(4)
+                    .frame(height: 210)
+                    .background(RoundedRectangle(cornerRadius: Misure.Strumenti.raggio).fill(Colori.Strumenti.carta))
+                    .overlay(RoundedRectangle(cornerRadius: Misure.Strumenti.raggio).strokeBorder(Colori.Strumenti.schedaBordo, lineWidth: 1))
+                if let s = salvato {
+                    Text(PannelloCommento.nota(s)).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                }
+            }
+            HStack(spacing: 6) {
+                Button(stato.eveInCorso ? "Eve scrive…" : (salvato == nil ? "✦ Scrivi con Eve" : "✦ Riscrivi")) {
+                    stato.scriviCommentoConEve(scelta)
+                }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 9, bottom: 4, trailing: 9)))
+                .disabled(stato.eveInCorso)
+                if !testo.isEmpty && testo != salvato?.testo {
+                    Button("Salva") { stato.salvaCommento(scelta, testo: testo, bozzaDi: salvato?.bozzaDi) }
+                        .buttonStyle(StileBlu())
+                }
+                if salvato != nil {
+                    Button("Togli") { stato.salvaCommento(scelta, testo: ""); testo = "" }
+                        .buttonStyle(StileSemplice())
+                        .font(Tipo.kpiNota)
+                        .foregroundColor(Colori.Colonna.collegamento)
+                }
+            }
+        }
+        .padding(12)
+        .onAppear { if !caricato { testo = salvato?.testo ?? ""; caricato = true } }
+        .onChange(of: salvato?.aggiornatoIl) { _ in testo = stato.commento(scelta)?.testo ?? "" }
+        .onChange(of: salvato?.testo) { nuovo in testo = nuovo ?? "" }
     }
 }

@@ -194,6 +194,13 @@ enum Istantanee {
             s.chiediEve(SpuntoEve.incontro.domanda, spunto: .incontro)
             s.apri(.eve)
         }),
+        ("48-report-commento", { s in
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.clienteAttivoId = "giulia"
+            s.prospetto = .checkUp(report: true)
+            s.scriviCommentoConEve(.checkUp(report: true))
+            s.apri(.presentazioni)
+        }),
         ("46-eve-pensione", { s in
             s.dati.impostazioni.eve.motore = .sintesi
             s.clienteAttivoId = "marco"

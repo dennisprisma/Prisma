@@ -6,10 +6,11 @@ private typealias D = Misure.Documento
 /// Il report del piano previdenziale: A4 orizzontale, per il cliente. Quanto servirà, cosa c'è già,
 /// come colmare il resto, il vantaggio fiscale, le tasse sulla pensione, la sintesi.
 enum ReportPrevidenza {
-    static func pagine(_ t: TestiPrevidenza) -> [AnyView] {
+    static func pagine(_ t: TestiPrevidenza, commento: String? = nil) -> [AnyView] {
         let slide: [AnyView] = [AnyView(SlideServira(t: t)), AnyView(SlideHaiGia(t: t)), AnyView(SlideColmare(t: t)),
                                 AnyView(SlideVantaggio(t: t)), AnyView(SlideTassePensione(t: t)), AnyView(SlideSintesiPrevidenza(t: t))]
-        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiPrevidenza.titolo) · \(t.cliente)")
+        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiPrevidenza.titolo) · \(t.cliente)",
+                                     lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
 
     private static func copertina(_ t: TestiPrevidenza) -> CopertinaReport {

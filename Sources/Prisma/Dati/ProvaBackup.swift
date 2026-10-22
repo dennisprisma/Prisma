@@ -24,6 +24,9 @@ enum ProvaBackup {
                 MessaggioEve(autore: .eve, testo: "Il quadro…", titolo: "Il quadro", motore: "Sintesi dai dati"),
             ]
             originale.impostazioni.eve.motore = .sintesi
+            // E il commento del consulente in un report
+            originale.commenti = [CommentoReport(id: "checkUp·giulia", clienteId: "giulia", testo: "Gentile Giulia, …", bozzaDi: "Sintesi dai dati",
+                                                 aggiornatoIl: Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down)))]
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
@@ -72,7 +75,7 @@ enum ProvaBackup {
                   letto.appuntamenti.first?.tipo == .altro, letto.appuntamenti.first?.canale == nil,
                   letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil,
                   letto.simulazioni.isEmpty, letto.analisi.isEmpty, letto.conversazioni.isEmpty,
-                  letto.clienti.first?.bisogni == ProfiloBisogni(), letto.incontri.isEmpty, letto.prodotti.isEmpty, letto.obiettivi.isEmpty, letto.documenti.isEmpty, letto.valutazioni.isEmpty,
+                  letto.clienti.first?.bisogni == ProfiloBisogni(), letto.incontri.isEmpty, letto.prodotti.isEmpty, letto.obiettivi.isEmpty, letto.documenti.isEmpty, letto.valutazioni.isEmpty, letto.commenti.isEmpty,
                   letto.impostazioni.eve == ImpostazioniEve(), letto.impostazioni.nomeUtente == "Denis" else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1

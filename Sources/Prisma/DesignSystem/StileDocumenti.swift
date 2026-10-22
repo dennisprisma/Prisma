@@ -242,6 +242,9 @@ extension Tipo {
         static let scenarioRendimento = georgia(25)
         static let sintesiNumero = georgia(30)
         static let filigrana = georgia(150)
+        /// La lettera del consulente dopo la copertina.
+        static let lettera = georgia(11.5)
+        static let letteraFirma = Font.custom("Georgia-Italic", fixedSize: 19)
     }
 }
 

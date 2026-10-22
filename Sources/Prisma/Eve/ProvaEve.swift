@@ -89,6 +89,38 @@ enum ProvaEve {
         controlla(stato.conversazione("laura").last?.titolo == "La pensione di Laura Moretti",
                   "Chiedi a Eve dal piano previdenziale: risposta salvata")
 
+        // Il commento dei report: bozza per ogni documento di analisi e cliente, nei limiti, con le cifre del report
+        controlla(IstruzioniEve.testo("commento") != nil, "Istruzioni del commento nel pacchetto (\(IstruzioniEve.cartella)/commento.md)")
+        for c in stato.clienti {
+            stato.clienteAttivoId = c.id
+            for scelta in [SceltaProspetto.checkUp(report: true), .resoconto(report: true), .previdenza(report: true),
+                           .protezione(report: true), .liquidita(report: true)] {
+                guard let b = stato.bozzaCommento(scelta) else {
+                    controlla(false, "Bozza del commento «\(scelta.tipo.nome)» per \(c.nome)")
+                    continue
+                }
+                if !b.hasPrefix("Gentile ") || b.count > CommentoEve.limite {
+                    controlla(false, "Bozza del commento «\(scelta.tipo.nome)» per \(c.nome): \(b.count) caratteri")
+                }
+            }
+        }
+        stato.clienteAttivoId = "giulia"
+        if let b = stato.bozzaCommento(.previdenza(report: true)) {
+            let t = stato.testiPrevidenza("giulia")
+            controlla(t.sintesi.prefix(4).allSatisfy { b.contains(String($0.1.dropFirst())) }, "Commento della previdenza di Giulia: stesse frasi e cifre del report")
+            controlla(CommentoEve.numeriConservati(bozza: b, testo: b), "Commento: la bozza conserva le sue cifre")
+            controlla(!CommentoEve.numeriConservati(bozza: b, testo: b + " Potresti guadagnare € 99.999 e il 12,5%."),
+                      "Commento: una cifra inventata dal modello viene scartata")
+        }
+        if let coppia = MotoreSostituzione.coppia(stato.posizioniCliente("giulia")) {
+            controlla(stato.bozzaCommento(.sostituzione(coppia.0, coppia.1, report: true)) != nil, "Bozza del commento per restare o cambiare")
+        }
+        stato.salvaCommento(.checkUp(report: true), testo: "  Gentile Giulia, prova.  ")
+        controlla(stato.commento(.checkUp(report: true))?.testo == "Gentile Giulia, prova." && stato.commento(.checkUp(report: false))?.testo == "Gentile Giulia, prova.",
+                  "Commento salvato per cliente e documento (lo stesso per prospetto e report)")
+        stato.salvaCommento(.checkUp(report: true), testo: "")
+        controlla(stato.commento(.checkUp(report: true)) == nil, "Commento tolto")
+
         // La chat in modalità sintesi aggiunge domanda e risposta
         stato.dati.impostazioni.eve.motore = .sintesi
         stato.clienteAttivoId = "marco"
