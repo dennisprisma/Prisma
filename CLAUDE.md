@@ -28,7 +28,7 @@ Tutto resta in locale sul Mac: niente server, niente cloud.
   - Design/Icone/ → icone dell'interfaccia e icona dell'app
 - Il template è il punto di partenza e l'identità grafica: il tema è iOS 5 di Apple (skeuomorfico). Nuove schermate, funzioni ed elementi si possono aggiungere purché coerenti con questo stile.
 - Struttura scelta: un'unica finestra Prisma che riproduce barra superiore, scrivania, dock e finestre interne del template.
-- Canale sempre riconoscibile: Alleanza = etichetta blu lucida (con logo Alleanza, se fornito dall'utente); indipendente = etichetta in cuoio chiaro con la scritta "Dennis Vincenzoni · Consulenza finanziaria".
+- Canale sempre riconoscibile: Alleanza = etichetta blu lucida (con logo Alleanza, se fornito dall'utente); indipendente = etichetta in cuoio chiaro con la scritta "Denis Vicenzoni · Consulenza finanziaria".
 - L'icona Agenda mostra la data del giorno (mese e giorno disegnati dall'app sopra l'icona senza data).
 - Dati di prova: i 5 clienti del template, per valutare i motori di calcolo.
 - Tutti i colori, font, misure, raggi e ombre vanno centralizzati in Sources/Prisma/DesignSystem/ e ricavati dal template: mai valori sparsi nel codice.

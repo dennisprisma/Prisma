@@ -10,7 +10,7 @@ enum Canale: String, Codable, CaseIterable, Identifiable {
     var nome: String {
         switch self {
         case .alleanza: return "Alleanza Assicurazioni"
-        case .indipendente: return "Dennis Vincenzoni · Consulenza finanziaria"
+        case .indipendente: return "Denis Vicenzoni · Consulenza finanziaria"
         }
     }
 

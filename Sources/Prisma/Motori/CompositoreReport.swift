@@ -11,7 +11,7 @@ enum CompositoreReport {
     prodotto, che fanno fede. Importi arrotondati all'euro.
     """
 
-    /// Il nome del consulente, dall'etichetta del canale indipendente ("Dennis Vincenzoni · Consulenza finanziaria").
+    /// Il nome del consulente, dall'etichetta del canale indipendente ("Denis Vicenzoni · Consulenza finanziaria").
     static var consulente: String {
         Canale.indipendente.nome.components(separatedBy: " · ").first ?? Canale.indipendente.nome
     }

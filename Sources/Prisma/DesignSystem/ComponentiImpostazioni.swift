@@ -115,7 +115,7 @@ struct RigaImpostazione<Accessorio: View>: View {
     }
 }
 
-/// Valore azzurro con freccia a destra di una riga ("Dennis ›").
+/// Valore azzurro con freccia a destra di una riga ("Denis ›").
 struct ValoreRiga: View {
     let testo: String
     let azione: () -> Void
