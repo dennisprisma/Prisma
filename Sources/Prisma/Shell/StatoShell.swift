@@ -641,6 +641,13 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    /// Dalla scheda prodotto: una nuova valutazione per il cliente attivo, da completare nel modulo.
+    func valutaProdotto(_ id: String) {
+        guard let v = nuovaValutazione(prodotto: id) else { return }
+        apri(.presentazioni)
+        valutazioneInModifica = v
+    }
+
     /// Una nuova valutazione per il cliente attivo, con ipotesi di partenza da rivedere.
     func nuovaValutazione(prodotto id: String? = nil, posizione: Posizione? = nil) -> ValutazioneInvestimento? {
         guard let p = prodotto(id ?? posizione?.prodottoId) ?? prodottiValutabili.first, let c = p.condizioni else { return nil }

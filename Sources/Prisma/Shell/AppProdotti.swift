@@ -5,6 +5,7 @@ import SwiftUI
 struct AppProdotti: View {
     @EnvironmentObject var stato: StatoShell
     @State var modulo: Prodotto?
+    @State var moduloCondizioni: Prodotto?
     @State var confermaEliminazione = false
     @State var ricerca = ""
 
@@ -45,11 +46,52 @@ struct AppProdotti: View {
         .sheet(item: $modulo) { p in
             ModuloProdotto(bozza: p, nuovo: stato.prodotto(p.id) == nil) { stato.salvaProdotto($0) }
         }
+        .sheet(item: $moduloCondizioni) { p in
+            ModuloCondizioni(bozza: p.condizioni ?? CondizioniContratto(), prodotto: p.nome) { nuove in
+                var x = p
+                x.condizioni = nuove
+                stato.salvaProdotto(x)
+            }
+        }
         .alert("Eliminare la scheda?", isPresented: $confermaEliminazione) {
             Button("Annulla", role: .cancel) {}
             Button("Elimina", role: .destructive) { if let p = scelto { stato.eliminaProdotto(p.id) } }
         } message: {
             Text("Le proposte già create restano nelle Posizioni, senza collegamento alla scheda.")
+        }
+    }
+
+    /// Le condizioni dettagliate del contratto, per le valutazioni di riscatto (prospetto e report).
+    private func condizioni(_ p: Prodotto) -> some View {
+        PannelloAnalisi(titolo: "Condizioni del contratto",
+                        nota: p.condizioni == nil ? "Servono per prospetto e report di una valutazione d'investimento" : "Per le valutazioni di riscatto") {
+            EmptyView()
+        } contenuto: {
+            VStack(alignment: .leading, spacing: 0) {
+                if let c = p.condizioni {
+                    RigaDato("Parti", c.composizione)
+                    RigaDato("Costo d'ingresso", "\(Formati.percentuale(c.costoIngresso))" + (c.costoIngressoMassimo.map { ", massimo \(Formati.euro($0))" } ?? ""))
+                    RigaDato("Riscatto", (c.mesiBloccoRiscatto > 0 ? "bloccato per \(c.mesiBloccoRiscatto) mesi; " : "")
+                             + (c.penali.isEmpty ? "senza penali" : "penali " + c.penali.map { CifreDoc.penale($0) }.joined(separator: " · ") + ", dal \(c.annoSenzaPenali)° anno nessuna"))
+                    RigaDato("Imposte", "bollo \(CifreDoc.percento(c.bollo, decimali: 2)) · sostitutiva \(Formati.percentuale(c.aliquota)), titoli di Stato \(Formati.percentuale(c.aliquotaTitoliStato))")
+                    RigaDato("KID", c.scenariKID.isEmpty ? "scenari non inseriti" : "\(c.scenariKID.count) scenari" + (c.dataDocumenti.map { " · \(Formati.dataBreve.string(from: $0))" } ?? ""))
+                    RigaDato("Storico", c.componenti.map { "\($0.tipo.nome): \($0.storico.count) dati" }.joined(separator: " · "))
+                } else {
+                    Text("Parti del contratto (Gestione separata, Fondi Interni), penali di riscatto, bollo, scenari del KID e storico: con questi dati Prisma calcola quanto si incassa anno per anno.")
+                        .font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 6)
+                }
+                HStack(spacing: 8) {
+                    Button(p.condizioni == nil ? "Aggiungi le condizioni…" : "Modifica le condizioni…") { moduloCondizioni = p }
+                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    if p.condizioni != nil {
+                        Button("Valuta per \(stato.clienteAttivo?.nome ?? "il cliente")…") { stato.valutaProdotto(p.id) }
+                            .buttonStyle(StileBlu())
+                    }
+                }
+                .padding(.top, 8)
+            }
         }
     }
 
@@ -200,6 +242,7 @@ struct AppProdotti: View {
                     }
                     .frame(width: 280, alignment: .leading)
                 }
+                condizioni(p)
                 PannelloAnalisi(titolo: "Dove è usata", nota: usi.isEmpty ? "Nessuna posizione o proposta collegata" : nil) { EmptyView() } contenuto: {
                     VStack(spacing: 0) {
                         ForEach(usi) { u in
