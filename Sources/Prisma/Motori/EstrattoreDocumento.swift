@@ -10,37 +10,49 @@ enum EstrattoreDocumento {
 
     // MARK: - Regole
 
-    /// Un modello: il primo gruppo catturato è il valore.
+    /// Un modello: il primo gruppo catturato è il valore. Con `ultimoPercento` il gruppo è un tratto
+    /// di tabella e vale l'ultima percentuale (la colonna del periodo raccomandato, nei KID).
     private struct Regola {
         let campo: CampoDocumento
         let schema: String
+        var ultimoPercento = false
     }
 
     private static let schemaNumero = #"(-?\d{1,3}(?:\.\d{3})*(?:,\d+)?|-?\d+(?:,\d+)?)"#
-    private static let schemaImporto = #"(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)"#
-    private static let schemaData = #"(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})"#
+    private static let schemaImporto = #"(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)(?![/\d])"#
+    private static let mesi = "gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre"
+    private static let schemaData = #"(\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{1,2}°?\s+(?:"# + mesi + #")\s+\d{4})"#
+    /// Testo tra un'etichetta e il suo valore, date comprese ("Controvalore al 30/09/2026: € …").
+    private static let fraEtichettaEValore = #"(?:[^\d\n]|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}){0,60}?"#
+    /// Qualificazioni del premio: "Premio annuo lordo", "Premio unico di perfezionamento"…
+    private static let qualificaPremio = #"(?:\s+(?:annuo|annuale|mensile|trimestrale|semestrale|unico|ricorrente|lordo|netto|complessivo|di perfezionamento|rateo|alla firma))*"#
 
     private static let regole: [Regola] = [
-        Regola(campo: .nomeProdotto, schema: #"(?:nome del prodotto|prodotto)\s*[:\-–]\s*([^\n]{3,90})"#),
-        Regola(campo: .emittente, schema: #"(?:ideatore del priip|nome dell'ideatore|ideatore|compagnia|impresa di assicurazione|emittente|società di gestione)\s*[:\-–]\s*([^\n]{3,80})"#),
+        Regola(campo: .nomeProdotto, schema: #"(?:nome del prodotto|denominazione(?: del prodotto)?|prodotto)\s*[:\-–]\s*([^\n]{3,90})"#),
+        Regola(campo: .emittente, schema: #"(?:ideatore del priip|nome dell'ideatore(?: del priip)?|ideatore|compagnia|impresa di assicurazione|emittente|società di gestione)\s*[:\-–]\s*([^\n]{3,80})"#),
         Regola(campo: .tipologia, schema: #"(?:tipo(?: di prodotto)?|tipologia)\s*[:\-–]\s*([^\n]{3,90})"#),
-        Regola(campo: .sri, schema: #"(?:classe(?: di rischio)?|indicatore[^\n]{0,40}rischio[^\n]{0,60}?)\D{0,20}([1-7])\s*su\s*(?:una scala (?:da 1 a )?)?7"#),
+        Regola(campo: .sri, schema: #"(?:classe(?: di rischio)?|livello|categoria(?: di rischio)?|indicatore[^\n]{0,40}rischio[^\n]{0,60}?)\D{0,20}([1-7])\s*(?:su|di)\s*(?:una scala (?:da 1 a )?)?7"#),
         Regola(campo: .sri, schema: #"([1-7])\s*su\s*7[^\n]{0,40}(?:classe|rischio)"#),
-        Regola(campo: .periodoDetenzione, schema: #"periodo di detenzione raccomandato[^\d\n]{0,40}(\d{1,2})\s*anni"#),
+        Regola(campo: .periodoDetenzione, schema: #"periodo di detenzione raccomandato[^\d\n]{0,50}(\d{1,2})\s*ann[oi]"#),
+        Regola(campo: .periodoDetenzione, schema: #"periodo di detenzione raccomandato[\s\S]{0,40}?\n[^\d\n]{0,20}(\d{1,2})\s*ann[oi]"#),
         Regola(campo: .costoIngresso, schema: #"costi di (?:ingresso|sottoscrizione)[^\n%]{0,80}?\#(schemaNumero)\s*%"#),
+        Regola(campo: .costoIngresso, schema: #"costi di (?:ingresso|sottoscrizione)[^\n]{0,60}?(non (?:addebitiamo|applichiamo|sono previst|è previst|vengono applicat))"#),
         Regola(campo: .costoUscita, schema: #"costi di (?:uscita|rimborso)[^\n%]{0,80}?\#(schemaNumero)\s*%"#),
+        Regola(campo: .costoUscita, schema: #"costi di (?:uscita|rimborso)[^\n]{0,60}?(non (?:addebitiamo|applichiamo|sono previst|è previst|vengono applicat))"#),
         Regola(campo: .costoAnnuo, schema: #"(?:costi correnti|commissioni di gestione e altri costi amministrativi o di esercizio|costi ricorrenti)[^\n%]{0,90}?\#(schemaNumero)\s*%"#),
+        // Nei KID la riga ha due o tre colonne (uscita dopo 1 anno … periodo raccomandato): vale l'ultima
+        Regola(campo: .incidenzaCosti, schema: #"incidenza annuale dei costi(?:\s*\(\*+\))?([^\n]{0,120})"#, ultimoPercento: true),
         Regola(campo: .incidenzaCosti, schema: #"incidenza (?:annuale )?dei costi[^\n%]{0,80}?\#(schemaNumero)\s*%"#),
-        Regola(campo: .rendimentoModerato, schema: #"scenario moderato[\s\S]{0,260}?rendimento medio[^\n%]{0,60}?\#(schemaNumero)\s*%"#),
-        Regola(campo: .numeroContratto, schema: #"(?:polizza|contratto)\s*(?:n\.?|numero|nr\.?)\s*[:°]?\s*([A-Z0-9][A-Z0-9/\-]{3,24})"#),
+        Regola(campo: .rendimentoModerato, schema: #"scenario moderato[\s\S]{0,260}?rendimento medio[^\n]{0,40}?(?:annuo|per ciascun anno|annuale)?([^\n]{0,80})"#, ultimoPercento: true),
+        Regola(campo: .numeroContratto, schema: #"(?:numero (?:di |della )?(?:polizza|contratto)|polizza|contratto)\s*(?:n\.?|numero|nr\.?)?\s*[:°]?\s*((?=[A-Z0-9/\-]*\d)[A-Z0-9][A-Z0-9/\-]{3,24})"#),
         Regola(campo: .contraente, schema: #"contraente\s*[:\-–]\s*([^\n]{3,60})"#),
         Regola(campo: .assicurato, schema: #"assicurato\s*[:\-–]\s*([^\n]{3,60})"#),
-        Regola(campo: .beneficiari, schema: #"beneficiari?\s*[:\-–]\s*([^\n]{3,90})"#),
-        Regola(campo: .decorrenza, schema: #"(?:decorrenza|data di effetto|data di sottoscrizione)\s*[:\-–]?\s*\#(schemaData)"#),
-        Regola(campo: .scadenza, schema: #"(?:scadenza|data di scadenza)\s*[:\-–]?\s*\#(schemaData)"#),
-        Regola(campo: .premio, schema: #"premio(?: annuo| mensile| unico| ricorrente| lordo)?\s*[:\-–]?\s*(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
-        Regola(campo: .capitaleAssicurato, schema: #"(?:capitale assicurato|somma assicurata|capitale caso morte)\s*[:\-–]?\s*(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
-        Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione)(?: al \S+)?\s*[:\-–]?\s*(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
+        Regola(campo: .beneficiari, schema: #"beneficiari?(?: caso morte| designati)?\s*[:\-–]\s*([^\n]{3,90})"#),
+        Regola(campo: .decorrenza, schema: #"(?:decorrenza|data di effetto|data di sottoscrizione|in vigore dal)(?:[^\d\n]|\bore\s*\d{1,2}\b){0,30}?\#(schemaData)"#),
+        Regola(campo: .scadenza, schema: #"(?:scadenza|data di scadenza)(?:[^\d\n]|\bore\s*\d{1,2}\b){0,30}?\#(schemaData)"#),
+        Regola(campo: .premio, schema: #"premio\#(qualificaPremio)\s*[:\-–]?\s*(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
+        Regola(campo: .capitaleAssicurato, schema: #"(?:capitale assicurato|somma assicurata|capitale caso morte)[^\d\n€]{0,30}?(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
+        Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)(?:€|eur(?:o)?)?\s*\#(schemaImporto)"#),
     ]
 
     /// Applica le regole pagina per pagina; per ogni campo tiene la prima occorrenza.
@@ -52,7 +64,8 @@ enum EstrattoreDocumento {
                 let intervallo = NSRange(testo.startIndex..., in: testo)
                 guard let m = regex.firstMatch(in: testo, range: intervallo), m.numberOfRanges > 1,
                       let rv = Range(m.range(at: 1), in: testo), let rt = Range(m.range, in: testo) else { continue }
-                let valore = pulisci(String(testo[rv]), campo: r.campo)
+                let grezzo = r.ultimoPercento ? (ultimaPercentuale(String(testo[rv])) ?? "") : String(testo[rv])
+                let valore = pulisci(grezzo, campo: r.campo)
                 guard !valore.isEmpty else { continue }
                 let riga = String(testo[rt]).replacingOccurrences(of: "\n", with: " ")
                 trovati[r.campo] = CampoEstratto(chiave: r.campo, valore: valore, pagina: n + 1, estratto: String(riga.prefix(160)))
@@ -61,7 +74,21 @@ enum EstrattoreDocumento {
         return CampoDocumento.allCases.compactMap { trovati[$0] }
     }
 
+    /// L'ultima percentuale di un tratto di testo ("5,2% | 2,1%" → "2,1"), prima di eventuali note.
+    private static func ultimaPercentuale(_ s: String) -> String? {
+        var tratto = s
+        for fine in ["(*)", "Dimostra", "dimostra", "Composizione", "Ciò significa"] {
+            if let r = tratto.range(of: fine) { tratto = String(tratto[..<r.lowerBound]) }
+        }
+        guard let re = try? NSRegularExpression(pattern: schemaNumero + #"\s*%"#) else { return nil }
+        let trovate = re.matches(in: tratto, range: NSRange(tratto.startIndex..., in: tratto))
+        guard let ultima = trovate.last, let r = Range(ultima.range(at: 1), in: tratto) else { return nil }
+        return String(tratto[r])
+    }
+
     private static func pulisci(_ s: String, campo: CampoDocumento) -> String {
+        // "Non addebitiamo una commissione di uscita" → 0
+        if campo.unita == "%", s.lowercased().hasPrefix("non ") { return "0" }
         let testuale = [.nomeProdotto, .emittente, .tipologia, .contraente, .assicurato, .beneficiari].contains(campo)
         // Nei nomi il punto finale fa parte del testo ("S.p.A.")
         var v = s.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: testuale ? ",;:" : ".,;:")))
@@ -116,6 +143,12 @@ enum EstrattoreDocumento {
 
     static func data(_ s: String?) -> Date? {
         guard let s else { return nil }
+        // "1° dicembre 2025"
+        let parole = s.lowercased().replacingOccurrences(of: "°", with: "").split(separator: " ").map(String.init)
+        if parole.count == 3, let g = Int(parole[0]), let a = Int(parole[2]),
+           let m = mesi.components(separatedBy: "|").firstIndex(of: parole[1]) {
+            return Calendar(identifier: .gregorian).date(from: DateComponents(year: a, month: m + 1, day: g))
+        }
         let parti = s.split(whereSeparator: { "/.-".contains($0) }).compactMap { Int($0) }
         guard parti.count == 3 else { return nil }
         return Calendar(identifier: .gregorian).date(from: DateComponents(year: parti[2], month: parti[1], day: parti[0]))
