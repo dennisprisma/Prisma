@@ -91,7 +91,7 @@ struct DatiPrisma: Codable, Equatable {
 }
 
 struct Impostazioni: Codable, Equatable {
-    var nomeUtente = "Dennis"
+    var nomeUtente = "Denis"
     var inizialiUtente = "DV"
     var backup = ImpostazioniBackup()
     /// Dalla versione 6 dell'archivio.
@@ -103,7 +103,9 @@ struct Impostazioni: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        nomeUtente = try c.decodeIfPresent(String.self, forKey: .nomeUtente) ?? "Dennis"
+        nomeUtente = try c.decodeIfPresent(String.self, forKey: .nomeUtente) ?? "Denis"
+        // Correzione del nome predefinito delle prime versioni ("Dennis")
+        if nomeUtente == "Dennis" { nomeUtente = "Denis" }
         inizialiUtente = try c.decodeIfPresent(String.self, forKey: .inizialiUtente) ?? "DV"
         backup = try c.decodeIfPresent(ImpostazioniBackup.self, forKey: .backup) ?? ImpostazioniBackup()
         eve = (try? c.decodeIfPresent(ImpostazioniEve.self, forKey: .eve)) ?? ImpostazioniEve()

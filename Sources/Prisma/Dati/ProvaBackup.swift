@@ -73,7 +73,7 @@ enum ProvaBackup {
                   letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil,
                   letto.simulazioni.isEmpty, letto.analisi.isEmpty, letto.conversazioni.isEmpty,
                   letto.clienti.first?.bisogni == ProfiloBisogni(), letto.incontri.isEmpty, letto.prodotti.isEmpty, letto.obiettivi.isEmpty, letto.documenti.isEmpty,
-                  letto.impostazioni.eve == ImpostazioniEve() else {
+                  letto.impostazioni.eve == ImpostazioniEve(), letto.impostazioni.nomeUtente == "Denis" else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }
