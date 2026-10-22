@@ -36,7 +36,7 @@ extension MotoreSintesi {
         // Il resto dei dati trovati, se non già detti
         let detti: Set<CampoDocumento> = [.nomeProdotto, .tipologia, .emittente, .sri, .periodoDetenzione, .costoIngresso, .costoUscita, .costoAnnuo,
                                           .incidenzaCosti, .rendimentoModerato, .contraente, .assicurato, .beneficiari, .decorrenza, .scadenza,
-                                          .premio, .capitaleAssicurato, .controvalore]
+                                          .premio, .capitaleAssicurato, .controvalore, .numeroContratto]
         let altri = campi.filter { !detti.contains($0.chiave) }
         if !altri.isEmpty { parti.append(altri.map { "\($0.chiave.nome): \(cifra($0)) \(pagina($0))" }.joined(separator: "; ") + ".") }
 
