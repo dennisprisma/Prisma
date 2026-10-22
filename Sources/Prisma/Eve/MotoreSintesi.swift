@@ -27,6 +27,7 @@ struct MotoreSintesi: MotoreEve {
         case .liquidita: return liquidita(f)
         case .obiettivi: return obiettivi(f)
         case .cambiare: return cambiare(f)
+        case .documenti: return documenti(f)
         case nil:
             // Una domanda libera su un argomento noto: rispondo con lo spunto più vicino
             if let s = SpuntoEve.argomento(r.domanda) {

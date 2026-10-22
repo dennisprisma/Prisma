@@ -1123,7 +1123,7 @@ final class StatoShell: ObservableObject {
         return FonteEve(oggi: Date(), nomeUtente: nomeUtente, cliente: c, posizioni: posizioniCliente(id),
                         appuntamenti: appuntamentiCliente(id), attivita: attivitaCliente(id),
                         analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id),
-                        incontri: incontriCliente(id), obiettivi: obiettiviCliente(id), prodotti: dati.prodotti,
+                        incontri: incontriCliente(id), obiettivi: obiettiviCliente(id), prodotti: dati.prodotti, documenti: documentiCliente(id),
                         confronto: confrontoEve(id), anniConfronto: orizzonteSostituzione)
     }
 
@@ -1132,6 +1132,42 @@ final class StatoShell: ObservableObject {
         guard case .sostituzione(let a, let b, _)? = prospetto,
               posizioni.contains(where: { $0.id == a && $0.clienteId == id }) else { return nil }
         return (a, b)
+    }
+
+    /// Fa spiegare a Eve un documento del cliente: dati con la pagina, confronto con il dossier,
+    /// cosa resta da verificare. Con il modello Apple la spiegazione diventa discorsiva sulle stesse cifre.
+    func spiegaDocumentoConEve(_ docId: String) {
+        guard !eveInCorso, let d = documento(docId) else { return }
+        clienteAttivoId = d.clienteId
+        let id = d.clienteId
+        guard let fonte = fonteEve(id) else { return }
+        apri(.eve)
+        let domanda = "Spiegami il documento «\(d.titolo)»"
+        let bozza = MotoriEve.sintesi.documento(d, fonte: fonte)
+        aggiungiMessaggio(MessaggioEve(autore: .utente, testo: domanda), cliente: id)
+        let motore = motoreEve
+        guard !(motore is MotoreSintesi), !d.campi.isEmpty else {
+            aggiungiMessaggio(MessaggioEve(autore: .eve, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriEve.sintesi.nome), cliente: id)
+            return
+        }
+        // Al modello: la bozza con i dati esatti e un estratto delle prime pagine, entro la sua finestra
+        let estratto = String(testoDocumento(d).joined(separator: "\n").prefix(ContestoEve.limiteCalcoli))
+        let richiesta = "DOMANDA DEL CONSULENTE\n\(domanda)\n\nBOZZA PREPARATA DA PRISMA (dati estratti con la pagina: non cambiarli e non aggiungerne)\n"
+            + String(bozza.testo.prefix(ContestoEve.limiteCalcoli))
+            + "\n\nESTRATTO DEL DOCUMENTO\n\(estratto)\n\nSpiega il documento al consulente in modo ordinato, con le pagine, e segnala cosa verificare."
+        eveInCorso = true
+        Task { @MainActor in
+            var testo = bozza.testo
+            var nome = MotoriEve.sintesi.nome
+            if let r = try? await MotoriEve.generaConApple(istruzioni: IstruzioniEve.chat, richiesta: richiesta),
+               !r.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               CommentoEve.numeriConservati(bozza: bozza.testo + "\n" + estratto, testo: r) {
+                testo = r.trimmingCharacters(in: .whitespacesAndNewlines)
+                nome = "Modello Apple"
+            }
+            self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: testo, titolo: bozza.titolo, motore: nome), cliente: id)
+            self.eveInCorso = false
+        }
     }
 
     // MARK: - Commento del consulente nei report

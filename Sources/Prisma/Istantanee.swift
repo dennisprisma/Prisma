@@ -201,6 +201,10 @@ enum Istantanee {
             s.scriviCommentoConEve(.checkUp(report: true))
             s.apri(.presentazioni)
         }),
+        ("49-eve-documento", { s in
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.spiegaDocumentoConEve("doc-marco-polizza")
+        }),
         ("46-eve-pensione", { s in
             s.dati.impostazioni.eve.motore = .sintesi
             s.clienteAttivoId = "marco"

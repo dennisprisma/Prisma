@@ -37,7 +37,7 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
 /// Gli spunti pronti sotto la conversazione. Quelli di analisi leggono gli stessi motori dei
 /// prospetti e dei report: i numeri di Eve e quelli dei documenti coincidono.
 enum SpuntoEve: String, CaseIterable, Identifiable {
-    case riepilogo, checkUp, incontro, prossimiPassi, resoconto, pensione, protezione, liquidita, obiettivi, cambiare, scadenze
+    case riepilogo, checkUp, incontro, prossimiPassi, resoconto, pensione, protezione, liquidita, obiettivi, cambiare, documenti, scadenze
 
     var id: String { rawValue }
 
@@ -53,6 +53,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         case .liquidita: return "Cosa fare della liquidità?"
         case .obiettivi: return "A che punto sono gli obiettivi?"
         case .cambiare: return "Conviene restare o cambiare?"
+        case .documenti: return "Cosa dicono i documenti?"
         case .scadenze: return "Spiegami le scadenze in arrivo"
         }
     }
@@ -69,6 +70,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         case .liquidita: return "€"
         case .obiettivi: return "◎"
         case .cambiare: return "⇄"
+        case .documenti: return "▤"
         case .scadenze: return "!"
         }
     }
@@ -86,6 +88,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         let parole: [(SpuntoEve, [String])] = [
             (.pensione, ["pension", "previdenz", "anticipazion", "tfr", "deducib"]),
             (.cambiare, ["cambiare", "sostitu", "restare", "switch", "conviene"]),
+            (.documenti, ["documento", "documenti", "kid", "estratto conto", "set informativo"]),
             (.liquidita, ["liquidità", "liquidita", "conto corrente", "in scadenza", "salvadana"]),
             (.obiettivi, ["obiettiv", "traguard"]),
             (.protezione, ["protezion", "copertur", "tcm", "caso morte", "invalidità"]),
@@ -115,6 +118,8 @@ struct FonteEve {
     var obiettivi: [Obiettivo] = []
     /// Catalogo dei prodotti: penali, condizioni e costi per i calcoli fiscali e di sostituzione.
     var prodotti: [Prodotto] = []
+    /// Documenti del cliente con i dati estratti (KID, polizze, estratti conto).
+    var documenti: [Documento] = []
     /// Le due posizioni del confronto scelto in Prospetti e report (altrimenti la coppia predefinita)
     /// e gli anni della simulazione.
     var confronto: (attuale: String, alternativa: String)?

@@ -43,6 +43,9 @@ Eve non calcola da sola: chiede all'app. Esempi:
 ## Eve e i documenti di analisi
 Gli spunti di Eve (check-up, resoconto, pensione, protezione, liquidità, obiettivi, restare o cambiare) usano gli stessi motori dei prospetti e dei report (`Sources/Prisma/Eve/AnalisiEve.swift`): le cifre in chat e sui documenti coincidono. Da Prospetti e report il pulsante «Chiedi a Eve» apre la spiegazione del documento aperto. Con il modello Apple le cifre arrivano come bozza (spunti) o come calcoli pertinenti (domande libere riconosciute dalle parole chiave); senza modello risponde la sintesi dai dati.
 
+## Eve e i documenti del cliente
+Da Documenti, «Chiedi a Eve» spiega un KID, una polizza o un estratto conto (`Sources/Prisma/Eve/DocumentiEve.swift`): i dati trovati con la pagina, il rischio e il periodo raccomandato letti con il profilo del cliente, i costi, cosa non torna con la posizione collegata, i dati ancora da confermare e quelli da verificare nelle condizioni. Lo spunto «Cosa dicono i documenti?» riassume tutti i documenti del cliente. Con il modello Apple la spiegazione diventa discorsiva, sulle stesse cifre.
+
 ## Contenuto della cartella
 - `Istruzioni/` — istruzioni di sistema e prompt per ogni compito (chat, estrazione, commento ai report).
 - `Schemi/` — schemi dei dati da estrarre (es. polizza, KID, estratto conto, proposta).

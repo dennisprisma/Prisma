@@ -188,6 +188,12 @@ struct AppDocumenti: View {
                 }
                 .labelsHidden()
                 .frame(width: 210)
+                if !d.tipo.creatoDaPrisma {
+                    Button("✦ Chiedi a Eve") { stato.spiegaDocumentoConEve(d.id) }
+                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                        .disabled(stato.eveInCorso || stato.documentiInLettura.contains(d.id))
+                        .help("Eve spiega il documento con le pagine e lo confronta con il dossier")
+                }
                 if let url = stato.urlDocumento(d) {
                     Button("Apri") { NSWorkspace.shared.open(url) }
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
