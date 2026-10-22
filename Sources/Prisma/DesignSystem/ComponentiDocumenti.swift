@@ -1,0 +1,415 @@
+import SwiftUI
+
+
+// MARK: - Pagina
+
+/// Un foglio di dimensione fissa (A4 orizzontale o verticale), bianco, identico a schermo e nel PDF.
+struct FoglioDocumento<Contenuto: View>: View {
+    let formato: CGSize
+    var sfondo: Color = Colori.Documento.foglio
+    @ViewBuilder let contenuto: () -> Contenuto
+
+    var body: some View {
+        contenuto()
+            .frame(width: formato.width, height: formato.height, alignment: .topLeading)
+            .background(sfondo)
+            .environment(\.colorScheme, .light)
+            .clipped()
+    }
+}
+
+/// Occhiello in maiuscoletto spaziato ("LA PROPOSTA").
+struct OcchielloDoc: View {
+    let testo: String
+    var font = Tipo.Documento.occhiello
+    var colore = Colori.Documento.occhiello
+
+    var body: some View {
+        Text(verbatim: testo.uppercased()).font(font).tracking(Misure.Documento.tracciatoOcchiello).foregroundColor(colore)
+    }
+}
+
+/// Intestazione di una slide del report: occhiello, titolo che dice la conclusione, sottotitolo.
+struct TestaSlide: View {
+    let occhiello: String
+    let titolo: String
+    var sottotitolo: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            OcchielloDoc(testo: occhiello)
+            Text(verbatim: titolo).font(Tipo.Documento.titoloSlide).foregroundColor(Colori.Documento.titolo).lineLimit(1).minimumScaleFactor(0.7)
+            if let sottotitolo, !sottotitolo.isEmpty {
+                Text(verbatim: sottotitolo).font(Tipo.Documento.sottotitoloSlide).foregroundColor(Colori.Documento.tenue)
+                    .lineSpacing(1.5).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Numero di pagina in basso a destra.
+struct NumeroPaginaDoc: View {
+    let numero: Int
+
+    var body: some View {
+        Text(verbatim: "\(numero)").font(Tipo.Documento.numeroPagina).foregroundColor(Colori.Documento.tenue)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+}
+
+extension View {
+    /// Riquadro arrotondato pieno.
+    func riquadroDoc(_ colore: Color = Colori.Documento.riquadro, raggio: CGFloat = Misure.Documento.raggio) -> some View {
+        background(RoundedRectangle(cornerRadius: raggio).fill(colore))
+    }
+}
+
+// MARK: - Tabella
+
+struct ColonnaDoc {
+    var titolo: String
+    var sottotitolo = ""
+    var peso: CGFloat = 1
+    var destra = true
+}
+
+struct CellaDoc {
+    var testo: String
+    var sotto = ""
+    var colore: Color = Colori.Documento.testo
+    var font: Font = Tipo.Documento.corpo
+    var fontSotto: Font = Tipo.Documento.minimo
+    var coloreSotto: Color = Colori.Documento.tenue
+    /// Righe di testo ammesse (1 per i numeri, di più per le spiegazioni).
+    var righe = 1
+
+    init(_ testo: String, sotto: String = "", colore: Color = Colori.Documento.testo, font: Font = Tipo.Documento.corpo) {
+        self.testo = testo
+        self.sotto = sotto
+        self.colore = colore
+        self.font = font
+    }
+}
+
+struct RigaDoc {
+    var celle: [CellaDoc]
+    var altezza: CGFloat
+    var sfondo: Color = .clear
+    /// Filetto sotto la riga.
+    var filetto: Color = Colori.Documento.filetto
+    var spessore: CGFloat = 0.6
+}
+
+/// Tabella a colonne pesate: testate a due righe, righe di altezza fissa, filetti sottili.
+struct TabellaDoc: View {
+    let larghezza: CGFloat
+    let colonne: [ColonnaDoc]
+    let righe: [RigaDoc]
+    var fontTesta: Font = Tipo.Documento.corpoForte
+    var fontTestaSotto: Font = Tipo.Documento.minimo
+    var altezzaTesta: CGFloat = 30
+    var filettoTesta: Color = Colori.Documento.filettoForte
+    var margine: CGFloat = 5
+    /// Colonne con fondo grigio chiaro (per esempio i totali).
+    var colonneEvidenziate: Set<Int> = []
+
+    private var larghezze: [CGFloat] {
+        let somma = colonne.reduce(0) { $0 + $1.peso }
+        return colonne.map { larghezza * $0.peso / max(somma, 0.01) }
+    }
+
+    var body: some View {
+        let w = larghezze
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(Array(colonne.enumerated()), id: \.offset) { i, c in
+                    VStack(alignment: c.destra ? .trailing : .leading, spacing: 1) {
+                        Text(verbatim: c.titolo).font(fontTesta).foregroundColor(Colori.Documento.tenue).lineLimit(1).minimumScaleFactor(0.7)
+                        if !c.sottotitolo.isEmpty {
+                            Text(verbatim: c.sottotitolo).font(fontTestaSotto).foregroundColor(Colori.Documento.tenue).lineLimit(1).minimumScaleFactor(0.7)
+                        }
+                    }
+                    .padding(.horizontal, margine)
+                    .frame(width: w[i], alignment: c.destra ? .bottomTrailing : .bottomLeading)
+                }
+            }
+            .frame(height: altezzaTesta, alignment: .bottom)
+            .padding(.bottom, 4)
+            .overlay(Rectangle().fill(filettoTesta).frame(height: 0.8), alignment: .bottom)
+            ForEach(Array(righe.enumerated()), id: \.offset) { _, r in
+                HStack(spacing: 0) {
+                    ForEach(Array(colonne.enumerated()), id: \.offset) { i, c in
+                        let cella = i < r.celle.count ? r.celle[i] : CellaDoc("")
+                        VStack(alignment: c.destra ? .trailing : .leading, spacing: 1) {
+                            Text(verbatim: cella.testo).font(cella.font).foregroundColor(cella.colore)
+                                .lineLimit(cella.righe).minimumScaleFactor(cella.righe > 1 ? 0.9 : 0.65)
+                                .fixedSize(horizontal: false, vertical: cella.righe > 1)
+                            if !cella.sotto.isEmpty {
+                                Text(verbatim: cella.sotto).font(cella.fontSotto).foregroundColor(cella.coloreSotto).lineLimit(1).minimumScaleFactor(0.7)
+                            }
+                        }
+                        .padding(.horizontal, margine)
+                        .frame(width: w[i], height: r.altezza, alignment: c.destra ? .trailing : .leading)
+                        .background(colonneEvidenziate.contains(i) ? Colori.Documento.riquadro : Color.clear)
+                    }
+                }
+                .background(r.sfondo)
+                .overlay(Rectangle().fill(r.filetto).frame(height: r.spessore), alignment: .bottom)
+            }
+        }
+        .frame(width: larghezza)
+    }
+}
+
+// MARK: - Grafici
+
+/// Una linea di scenario per i grafici.
+struct LineaScenario: Identifiable {
+    let tipo: TipoScenario
+    /// Punti (indice sull'asse, valore).
+    let punti: [(Int, Double)]
+    var id: TipoScenario { tipo }
+}
+
+/// Grafico dei tre scenari: linee con i punti, il premio versato tratteggiato, etichette.
+struct GraficoScenariDoc: View {
+    let linee: [LineaScenario]
+    let etichetteAsse: [String]
+    let premio: Double
+    var etichettePunti = true
+    var etichetteFinali = false
+    /// Prima posizione dell'asse ombreggiata (il primo anno bloccato), con la sua scritta.
+    var bloccoIniziale: String? = nil
+    /// Punto di partenza "oggi" collegato con un tratto punteggiato.
+    var partenza: Double? = nil
+    var fontAssi: Font = Tipo.Documento.piccolo
+    var fontValori: Font = Tipo.Documento.minimo
+    var formatoAsse: (Double) -> String = { CifreDoc.euro($0) }
+
+    var body: some View {
+        GeometryReader { geo in
+            let sinistra: CGFloat = 54
+            let destra: CGFloat = etichetteFinali ? 74 : 16
+            let basso: CGFloat = 18
+            let alto: CGFloat = 12
+            let w = max(1, geo.size.width - sinistra - destra)
+            let h = max(1, geo.size.height - basso - alto)
+            let valori = linee.flatMap { l in l.punti.map { $0.1 } } + [premio] + (partenza.map { [$0] } ?? [])
+            let passo = MisuraAsse.passo((valori.max() ?? 1) - (valori.min() ?? 0))
+            let minimo = ((valori.min() ?? 0) / passo).rounded(.down) * passo
+            let massimo = ((valori.max() ?? 1) / passo).rounded(.up) * passo
+            let n = max(etichetteAsse.count - 1, 1)
+            let x: (Int) -> CGFloat = { sinistra + CGFloat($0) / CGFloat(n) * w }
+            let y: (Double) -> CGFloat = { alto + h - CGFloat(($0 - minimo) / max(massimo - minimo, 1)) * h }
+            let tacche = Array(stride(from: minimo, through: massimo + 0.5, by: passo))
+            ZStack(alignment: .topLeading) {
+                if let blocco = bloccoIniziale {
+                    Rectangle().fill(Colori.Documento.bloccato)
+                        .frame(width: w / CGFloat(n), height: h)
+                        .position(x: sinistra + w / CGFloat(n) / 2, y: alto + h / 2)
+                    Text(verbatim: blocco).font(fontValori).foregroundColor(Colori.Documento.tenue).multilineTextAlignment(.center)
+                        .frame(width: w / CGFloat(n) - 6)
+                        .position(x: sinistra + w / CGFloat(n) / 2, y: alto + 18)
+                }
+                ForEach(Array(tacche.enumerated()), id: \.offset) { _, v in
+                    Path { p in
+                        p.move(to: CGPoint(x: sinistra, y: y(v)))
+                        p.addLine(to: CGPoint(x: sinistra + w, y: y(v)))
+                    }
+                    .stroke(Colori.Documento.griglia, lineWidth: 0.7)
+                    Text(verbatim: formatoAsse(v)).font(fontAssi).foregroundColor(Colori.Documento.tenue)
+                        .frame(width: sinistra - 6, alignment: .trailing)
+                        .position(x: (sinistra - 6) / 2, y: y(v))
+                }
+                ForEach(Array(etichetteAsse.enumerated()), id: \.offset) { i, s in
+                    Text(verbatim: s).font(fontAssi).foregroundColor(Colori.Documento.tenue).lineLimit(1).fixedSize()
+                        .position(x: x(i), y: geo.size.height - basso / 2 + 2)
+                }
+                Path { p in
+                    p.move(to: CGPoint(x: sinistra, y: y(premio)))
+                    p.addLine(to: CGPoint(x: sinistra + w, y: y(premio)))
+                }
+                .stroke(Colori.Documento.premio, style: StrokeStyle(lineWidth: 0.9, dash: [4, 3]))
+                Text(verbatim: "premio versato \(CifreDoc.euro(premio))").font(fontValori).foregroundColor(Colori.Documento.tenue)
+                    .fixedSize()
+                    .position(x: sinistra + w - 50, y: y(premio) - 8)
+                ForEach(linee) { l in
+                    let colore = Colori.Documento.scenario(l.tipo)
+                    if let partenza, let primo = l.punti.first {
+                        Path { p in
+                            p.move(to: CGPoint(x: x(0), y: y(partenza)))
+                            p.addLine(to: CGPoint(x: x(primo.0), y: y(primo.1)))
+                        }
+                        .stroke(colore, style: StrokeStyle(lineWidth: 1.2, dash: [1.5, 2.5]))
+                    }
+                    Path { p in
+                        for (i, pt) in l.punti.enumerated() {
+                            let q = CGPoint(x: x(pt.0), y: y(pt.1))
+                            if i == 0 { p.move(to: q) } else { p.addLine(to: q) }
+                        }
+                    }
+                    .stroke(colore, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
+                    ForEach(Array(l.punti.enumerated()), id: \.offset) { _, pt in
+                        Circle().fill(colore).overlay(Circle().stroke(Color.white, lineWidth: 1))
+                            .frame(width: 7, height: 7)
+                            .position(x: x(pt.0), y: y(pt.1))
+                        if etichettePunti {
+                            Text(verbatim: Formati.numeroFormatter.string(from: NSNumber(value: pt.1.rounded())) ?? "")
+                                .font(fontValori.weight(.bold)).foregroundColor(colore).fixedSize()
+                                .position(x: x(pt.0), y: y(pt.1) + (l.tipo == .sfavorevole ? 11 : -11))
+                        }
+                    }
+                    if etichetteFinali, let ultimo = l.punti.last {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(verbatim: l.tipo.nome).font(fontValori.weight(.bold))
+                            Text(verbatim: CifreDoc.euro(ultimo.1)).font(fontValori.weight(.bold))
+                        }
+                        .foregroundColor(colore).fixedSize()
+                        .position(x: x(ultimo.0) + 36, y: y(ultimo.1))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Scelta del passo dell'asse dei valori (1, 2, 2,5 o 5 per potenze di 10).
+enum MisuraAsse {
+    static func passo(_ intervallo: Double, tacche: Double = 5) -> Double {
+        let grezzo = max(intervallo, 1) / tacche
+        let potenza = pow(10, (log10(grezzo)).rounded(.down))
+        for m in [1.0, 2.0, 2.5, 5.0, 10.0] where grezzo <= m * potenza { return m * potenza }
+        return 10 * potenza
+    }
+}
+
+/// Barre verticali con il valore sopra (rendimenti storici).
+struct GraficoBarreDoc: View {
+    let punti: [(String, Double)]
+    var colore: Color = Colori.Documento.gestioneSeparata
+    var fontValori: Font = Tipo.Documento.corpoForte
+    var fontAssi: Font = Tipo.Documento.piccolo
+    var formato: (Double) -> String = { CifreDoc.percento($0, decimali: 2) }
+
+    var body: some View {
+        GeometryReader { geo in
+            let basso: CGFloat = 20
+            let alto: CGFloat = 22
+            let h = geo.size.height - basso - alto
+            let massimo = max(punti.map { $0.1 }.max() ?? 1, 0.01)
+            let larghezza = geo.size.width / CGFloat(max(punti.count, 1))
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(Array(punti.enumerated()), id: \.offset) { _, p in
+                    VStack(spacing: 4) {
+                        Text(verbatim: formato(p.1)).font(fontValori).foregroundColor(Colori.Documento.titolo).fixedSize()
+                        Rectangle().fill(colore)
+                            .frame(width: larghezza * 0.62, height: max(1, h * CGFloat(p.1 / massimo)))
+                        Text(verbatim: p.0).font(fontAssi).foregroundColor(Colori.Documento.tenue).frame(height: basso - 4)
+                    }
+                    .frame(width: larghezza)
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
+            .overlay(Rectangle().fill(Colori.Documento.filetto).frame(height: 0.8).padding(.bottom, basso), alignment: .bottom)
+        }
+    }
+}
+
+/// Grafico a cascata "dove va il denaro".
+struct GraficoCascataDoc: View {
+    let voci: [VoceCascata]
+    var fontValori: Font = Tipo.Documento.pTabellaForte
+    var fontAssi: Font = Tipo.Documento.pAssi
+
+    var body: some View {
+        GeometryReader { geo in
+            let sinistra: CGFloat = 44
+            let basso: CGFloat = 26
+            let alto: CGFloat = 14
+            let w = geo.size.width - sinistra
+            let h = geo.size.height - basso - alto
+            let livelli = progressione()
+            let tutti = livelli.flatMap { [$0.0, $0.1] }
+            let passo = MisuraAsse.passo((tutti.max() ?? 1) - (tutti.min() ?? 0), tacche: 3)
+            let minimo = ((tutti.min() ?? 0) / passo).rounded(.down) * passo - passo / 2
+            let massimo = ((tutti.max() ?? 1) / passo).rounded(.up) * passo
+            let y: (Double) -> CGFloat = { alto + h - CGFloat(($0 - minimo) / max(massimo - minimo, 1)) * h }
+            let colonna = w / CGFloat(max(voci.count, 1))
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(stride(from: (minimo / passo).rounded(.up) * passo, through: massimo, by: passo).enumerated()), id: \.offset) { _, v in
+                    Path { p in
+                        p.move(to: CGPoint(x: sinistra, y: y(v)))
+                        p.addLine(to: CGPoint(x: geo.size.width, y: y(v)))
+                    }
+                    .stroke(Colori.Documento.griglia, lineWidth: 0.6)
+                    Text(verbatim: CifreDoc.euro(v)).font(fontAssi).foregroundColor(Colori.Documento.tenue)
+                        .frame(width: sinistra - 4, alignment: .trailing)
+                        .position(x: (sinistra - 4) / 2, y: y(v))
+                }
+                ForEach(Array(voci.enumerated()), id: \.offset) { i, voce in
+                    let livello = livelli[i]
+                    let cx = sinistra + colonna * (CGFloat(i) + 0.5)
+                    let top = y(max(livello.0, livello.1))
+                    let bottom = y(min(livello.0, livello.1))
+                    Rectangle().fill(colore(voce.genere))
+                        .frame(width: colonna * 0.6, height: max(1.2, bottom - top))
+                        .position(x: cx, y: (top + bottom) / 2)
+                    Text(verbatim: etichettaValore(voce)).font(fontValori)
+                        .foregroundColor(voce.genere == .partenza || voce.genere == .arrivo || voce.genere == .subtotale ? Colori.Documento.titolo : Colori.Documento.tenue)
+                        .fixedSize()
+                        .position(x: cx, y: top - 7)
+                    Text(verbatim: voce.etichetta).font(fontAssi).foregroundColor(Colori.Documento.tenue).multilineTextAlignment(.center)
+                        .frame(width: colonna - 4)
+                        .position(x: cx, y: geo.size.height - basso / 2)
+                }
+            }
+        }
+    }
+
+    /// Per ogni voce, il livello di partenza e di arrivo della barra.
+    private func progressione() -> [(Double, Double)] {
+        var livello = 0.0
+        return voci.map { v -> (Double, Double) in
+            switch v.genere {
+            case .partenza, .subtotale, .arrivo:
+                livello = v.importo
+                return (baseAsse, v.importo)
+            case .piu, .meno:
+                let da = livello
+                livello += v.importo
+                return (da, livello)
+            }
+        }
+    }
+
+    /// Le barre dei totali partono poco sotto il minimo, come nel prospetto (l'asse non parte da zero).
+    private var baseAsse: Double {
+        var livello = 0.0
+        var minimo = Double.greatestFiniteMagnitude
+        for v in voci {
+            switch v.genere {
+            case .partenza, .subtotale, .arrivo: livello = v.importo
+            case .piu, .meno: livello += v.importo
+            }
+            minimo = min(minimo, livello)
+        }
+        return minimo - max(1_000, minimo * 0.03)
+    }
+
+    private func colore(_ g: VoceCascata.Genere) -> Color {
+        switch g {
+        case .partenza, .subtotale: return Colori.Documento.cascataTotale
+        case .arrivo: return Colori.Documento.intermedio
+        case .piu: return Colori.Documento.cascataPiu
+        case .meno: return Colori.Documento.cascataMeno
+        }
+    }
+
+    private func etichettaValore(_ v: VoceCascata) -> String {
+        switch v.genere {
+        case .partenza, .subtotale, .arrivo: return CifreDoc.euro(v.importo)
+        case .piu, .meno: return CifreDoc.euroSegno(v.importo)
+        }
+    }
+}

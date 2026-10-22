@@ -196,6 +196,28 @@ struct ValutazioneInvestimento: Identifiable, Codable, Hashable {
 
     /// Più intestatari: il report dà del voi.
     var plurale: Bool { intestatari.contains(" e ") || intestatari.contains(" ed ") }
+
+    /// Ipotesi di partenza da rivedere: Gestione separata attorno alla media storica, Fondo Interno
+    /// attorno allo scenario moderato del KID. Il consulente le corregge e scrive il perché.
+    static func ipotesiDiPartenza(_ c: CondizioniContratto) -> [ScenarioValutazione] {
+        let moderato = c.scenariKID.first { $0.nome.lowercased().hasPrefix("moder") }?.periodo ?? 4
+        return TipoScenario.allCases.map { t in
+            var s = ScenarioValutazione(tipo: t)
+            for p in c.componenti {
+                switch p.tipo {
+                case .gestioneSeparata:
+                    let valori = p.storico.compactMap(\.valore)
+                    let media = valori.isEmpty ? 3 : valori.reduce(0, +) / Double(valori.count)
+                    let base = (media * 10).rounded() / 10
+                    s.rendimenti[p.id] = t == .favorevole ? base + 0.4 : t == .intermedio ? base + 0.1 : base - 0.4
+                case .fondoInterno:
+                    let base = moderato.rounded()
+                    s.rendimenti[p.id] = t == .favorevole ? base * 2 : t == .intermedio ? base : -3
+                }
+            }
+            return s
+        }
+    }
 }
 
 // MARK: - Letture tolleranti: i campi mancanti prendono il valore predefinito

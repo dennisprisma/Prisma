@@ -39,6 +39,9 @@ extension Colori {
         static let penaleLieve = Color(hex: "#e0b5ab")
         static let griglia = Color(hex: "#e6e8ec")
         static let premio = Color(hex: "#7d8796")
+        static let cascataTotale = Color(hex: "#8e98a8")
+        static let cascataPiu = Color(hex: "#7fb093")
+        static let cascataMeno = Color(hex: "#d3897a")
 
         static func scenario(_ t: TipoScenario) -> Color {
             switch t {

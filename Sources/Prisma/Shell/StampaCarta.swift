@@ -3,25 +3,58 @@ import PDFKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Dalla carta al PDF: ogni pagina è la stessa vista dell'anteprima, disegnata in un contesto PDF
-/// (testo vettoriale, selezionabile e ricercabile). Tutto sul Mac.
+/// Un documento pronto per la stampa: le pagine (viste di dimensione fissa) e il loro formato.
+/// Le stesse viste servono per l'anteprima a schermo e per il PDF.
+struct DocumentoStampabile {
+    let titolo: String
+    let cliente: String
+    /// "Prospetto" o "Report": compare nel nome del file e in Documenti.
+    let genere: String
+    let formato: CGSize
+    let pagine: [AnyView]
+    var tipo: Documento.Tipo = .prospetto
+
+    /// Un prospetto di dettaglio impaginato su carta (quadro, posizione, confronto).
+    init(_ contenuto: ContenutoProspetto) {
+        let impaginate = ImpaginatoreProspetto.pagine(contenuto)
+        titolo = contenuto.titolo
+        cliente = contenuto.cliente
+        genere = "Prospetto"
+        formato = Misure.Carta.pagina
+        pagine = impaginate.enumerated().map { i, blocchi in
+            AnyView(PaginaCarta(contenuto: contenuto, blocchi: blocchi, numero: i + 1, totale: impaginate.count))
+        }
+    }
+
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) di una valutazione.
+    init(_ t: TestiValutazione, report: Bool) {
+        titolo = t.prodotto.nome
+        cliente = t.v.intestatari
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportValutazione.pagine(t) : ProspettoValutazione.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+}
+
+/// Dalle viste al PDF: ogni pagina è disegnata in un contesto PDF (testo vettoriale, selezionabile
+/// e ricercabile). Tutto sul Mac.
 enum StampaCarta {
     @MainActor
-    static func pdf(_ contenuto: ContenutoProspetto) -> Data? {
-        let pagine = ImpaginatoreProspetto.pagine(contenuto)
+    static func pdf(_ d: DocumentoStampabile) -> Data? {
         let dati = NSMutableData()
         guard let consumatore = CGDataConsumer(data: dati as CFMutableData) else { return nil }
-        var riquadro = CGRect(origin: .zero, size: Misure.Carta.pagina)
+        var riquadro = CGRect(origin: .zero, size: d.formato)
         let info: [String: Any] = [
-            kCGPDFContextTitle as String: "\(contenuto.titolo) · \(contenuto.cliente)",
+            kCGPDFContextTitle as String: "\(d.titolo) · \(d.cliente)",
             kCGPDFContextCreator as String: "Prisma",
-            kCGPDFContextSubject as String: contenuto.genere,
+            kCGPDFContextAuthor as String: TestiValutazione.consulente,
+            kCGPDFContextSubject as String: d.genere,
         ]
         guard let contesto = CGContext(consumer: consumatore, mediaBox: &riquadro, info as CFDictionary) else { return nil }
-        for (i, blocchi) in pagine.enumerated() {
-            let renderer = ImageRenderer(content: PaginaCarta(contenuto: contenuto, blocchi: blocchi, numero: i + 1,
-                                                              totale: pagine.count))
-            renderer.proposedSize = ProposedViewSize(Misure.Carta.pagina)
+        for pagina in d.pagine {
+            let renderer = ImageRenderer(content: pagina.frame(width: d.formato.width, height: d.formato.height))
+            renderer.proposedSize = ProposedViewSize(d.formato)
             contesto.beginPDFPage(nil)
             renderer.render { _, disegna in disegna(contesto) }
             contesto.endPDFPage()
@@ -30,10 +63,13 @@ enum StampaCarta {
         return dati.length > 0 ? dati as Data : nil
     }
 
-    /// "Prospetto · Giulia Rossi · Piano previdenziale integrativo · 2026-10-21.pdf"
-    static func nomeFile(_ c: ContenutoProspetto) -> String {
-        let data = Formati.formato("yyyy-MM-dd").string(from: c.data)
-        let pulito = "\(c.perCliente ? "Report" : "Prospetto") · \(c.cliente) · \(c.titolo) · \(data)"
+    @MainActor
+    static func pdf(_ contenuto: ContenutoProspetto) -> Data? { pdf(DocumentoStampabile(contenuto)) }
+
+    /// "Prospetto · Marco ed Elena Bianchi · Orizzonte Valore di Alleanza · 2026-10-22.pdf"
+    static func nomeFile(_ d: DocumentoStampabile) -> String {
+        let data = Formati.formato("yyyy-MM-dd").string(from: Date())
+        let pulito = "\(d.genere) · \(d.cliente) · \(d.titolo) · \(data)"
             .replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         return pulito + ".pdf"
     }
@@ -51,16 +87,16 @@ enum StampaCarta {
     }
 
     @MainActor
-    static func stampa(_ dati: Data) {
+    static func stampa(_ dati: Data, formato: CGSize) {
         guard let documento = PDFDocument(data: dati) else { return }
         let info = NSPrintInfo.shared.copy() as? NSPrintInfo ?? NSPrintInfo()
-        info.paperSize = Misure.Carta.pagina
+        info.paperSize = formato.width > formato.height ? CGSize(width: formato.height, height: formato.width) : formato
+        info.orientation = formato.width > formato.height ? .landscape : .portrait
         info.topMargin = 0
         info.bottomMargin = 0
         info.leftMargin = 0
         info.rightMargin = 0
-        info.orientation = .portrait
-        documento.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: false)?.run()
+        documento.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true)?.run()
     }
 
     /// Testo delle pagine di un PDF (per Eve e per la scheda Testo dei Documenti).

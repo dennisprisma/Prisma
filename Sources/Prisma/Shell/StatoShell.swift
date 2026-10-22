@@ -91,6 +91,8 @@ final class StatoShell: ObservableObject {
     // Prospetti e report
     /// Prospetto scelto (nil = quadro delle posizioni del cliente attivo).
     @Published var prospetto: SceltaProspetto?
+    /// Valutazione aperta nel modulo di modifica.
+    @Published var valutazioneInModifica: ValutazioneInvestimento?
     private var testiDocumenti: [String: [String]] = [:]
 
     // Eve
@@ -284,6 +286,7 @@ final class StatoShell: ObservableObject {
         dati.conversazioni[id] = nil
         dati.incontri.removeAll { $0.clienteId == id }
         dati.obiettivi.removeAll { $0.clienteId == id }
+        dati.valutazioni.removeAll { $0.clienteId == id }
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
         if dati.clienteAttivoId == id {
@@ -517,22 +520,34 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Prospetti
 
-    /// Il prospetto da mostrare per il cliente attivo; una scelta di un altro cliente torna al quadro.
+    /// Il prospetto da mostrare per il cliente attivo. Una scelta di un altro cliente torna alla prima
+    /// valutazione del cliente, o al quadro delle posizioni se non ne ha.
     var sceltaProspetto: SceltaProspetto {
+        let predefinita: SceltaProspetto = valutazioniCliente(clienteAttivoId).first.map { .valutazione($0.id, report: false) } ?? .quadro
         switch prospetto {
         case .posizione(let id)? where posizioni.contains(where: { $0.id == id && $0.clienteId == clienteAttivoId }):
             return .posizione(id)
-        case .reportQuadro?:
-            return .reportQuadro
-        case .reportProposta(let id)? where posizioni.contains(where: { $0.id == id && $0.clienteId == clienteAttivoId }):
-            return .reportProposta(id)
+        case .valutazione(let id, let report)?:
+            // Se la valutazione non è di questo cliente, la sua prima; se non ne ha, la pagina vuota con "Nuova valutazione"
+            let elenco = valutazioniCliente(clienteAttivoId)
+            return .valutazione(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
+        case .quadro?:
+            return .quadro
         case .confronto(let a, let b)?:
             let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
             if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
-            return .quadro
+            return predefinita
         default:
-            return .quadro
+            return predefinita
         }
+    }
+
+    /// Il documento da mostrare e stampare per una scelta.
+    func documentoProspetto(_ scelta: SceltaProspetto) -> DocumentoStampabile? {
+        if case .valutazione(let id, let report) = scelta {
+            return valutazione(id).flatMap(testiValutazione).map { DocumentoStampabile($0, report: report) }
+        }
+        return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
@@ -555,9 +570,9 @@ final class StatoShell: ObservableObject {
 
     /// Salva il PDF nella cartella Documenti del cliente: entra nei backup e si ritrova in Documenti.
     @discardableResult
-    func archiviaProspetto(_ pdf: Data, contenuto: ContenutoProspetto, tipo: Documento.Tipo = .prospetto) -> String? {
+    func archiviaProspetto(_ pdf: Data, documento: DocumentoStampabile) -> String? {
         let cliente = clienteAttivoId
-        var d = Documento(clienteId: cliente, titolo: "\(tipo.breve) · \(contenuto.titolo)", tipo: tipo)
+        var d = Documento(clienteId: cliente, titolo: "\(documento.genere) · \(documento.titolo)", tipo: documento.tipo)
         d.importatoIl = Appuntamento.alMinuto(Date())
         d.lettura = .letto
         let pagine = StampaCarta.testo(pdf)
@@ -579,6 +594,64 @@ final class StatoShell: ObservableObject {
         testiDocumenti[d.id] = pagine
         dati.documenti.append(d)
         return d.id
+    }
+
+    // MARK: - Valutazioni d'investimento
+
+    func valutazioniCliente(_ id: String) -> [ValutazioneInvestimento] {
+        dati.valutazioni.filter { $0.clienteId == id }.sorted { $0.creataIl > $1.creataIl }
+    }
+
+    func valutazione(_ id: String?) -> ValutazioneInvestimento? {
+        guard let id else { return nil }
+        return dati.valutazioni.first { $0.id == id }
+    }
+
+    /// I testi e i calcoli di una valutazione (serve un prodotto con le condizioni del contratto).
+    func testiValutazione(_ v: ValutazioneInvestimento) -> TestiValutazione? {
+        guard let p = prodotto(v.prodottoId), let c = p.condizioni else { return nil }
+        return TestiValutazione(v, prodotto: p, condizioni: c)
+    }
+
+    /// Prodotti con le condizioni dettagliate, utilizzabili per una valutazione.
+    var prodottiValutabili: [Prodotto] { dati.prodotti.filter { $0.condizioni != nil }.sorted { $0.nome < $1.nome } }
+
+    func salvaValutazione(_ v: ValutazioneInvestimento) {
+        if let i = dati.valutazioni.firstIndex(where: { $0.id == v.id }) {
+            dati.valutazioni[i] = v
+        } else {
+            dati.valutazioni.append(v)
+        }
+        prospetto = .valutazione(v.id, report: false)
+    }
+
+    func eliminaValutazione(_ id: String) {
+        dati.valutazioni.removeAll { $0.id == id }
+        if case .valutazione(id, _)? = prospetto { prospetto = nil }
+    }
+
+    /// Dal dettaglio di una proposta: apre la sua valutazione o ne prepara una nuova.
+    func valutaPosizione(_ p: Posizione) {
+        clienteAttivoId = p.clienteId
+        if let v = dati.valutazioni.first(where: { $0.posizioneId == p.id }) {
+            apriProspetto(.valutazione(v.id, report: false))
+        } else if let v = nuovaValutazione(posizione: p) {
+            apri(.presentazioni)
+            valutazioneInModifica = v
+        }
+    }
+
+    /// Una nuova valutazione per il cliente attivo, con ipotesi di partenza da rivedere.
+    func nuovaValutazione(prodotto id: String? = nil, posizione: Posizione? = nil) -> ValutazioneInvestimento? {
+        guard let p = prodotto(id ?? posizione?.prodottoId) ?? prodottiValutabili.first, let c = p.condizioni else { return nil }
+        let cliente = clienteAttivoId
+        var v = ValutazioneInvestimento(clienteId: cliente, intestatari: self.cliente(cliente)?.nome ?? "", prodottoId: p.id,
+                                        premio: posizione.map { $0.versamentoIniziale > 0 ? $0.versamentoIniziale : 10_000 } ?? 10_000)
+        v.posizioneId = posizione?.id
+        v.data = Calendar.current.startOfDay(for: Date())
+        v.creataIl = Appuntamento.alMinuto(Date())
+        v.scenari = ValutazioneInvestimento.ipotesiDiPartenza(c)
+        return v
     }
 
     /// Scheda prodotto con i soli dati confermati.

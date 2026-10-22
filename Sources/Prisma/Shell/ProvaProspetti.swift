@@ -21,9 +21,6 @@ enum ProvaProspetti {
             ("posizione-giulia-etf", "giulia", .posizione("pos-giulia-etf-azionario-globale")),
             ("copertura-marco-infortuni", "marco", .posizione("pos-marco-infortuni-famiglia")),
             ("quadro-marco", "marco", .quadro),
-            ("report-quadro-giulia", "giulia", .reportQuadro),
-            ("report-proposta-giulia", "giulia", .reportProposta("pos-giulia-piano-previdenziale-integrativo")),
-            ("report-quadro-marco", "marco", .reportQuadro),
         ]
         var tutti = casi
         let voci = ElementoConfronto.elenco(dati, cliente: "marco")
@@ -89,21 +86,34 @@ enum ProvaProspetti {
                 verifica("\(nome): entrambi i canali nella ripartizione", testo.contains("Alleanza") && testo.contains("Indipendente"))
             case .confronto:
                 verifica("\(nome): differenza B − A presente", testo.contains("B − A"))
-            case .reportQuadro:
-                let r = RiepilogoPosizioni(dati.posizioni.filter { $0.clienteId == cliente && $0.stato != .chiusa })
-                verifica("\(nome): patrimonio netto nel report", testo.contains(spazi(Formati.euro(r.patrimonioNetto))))
-                verifica("\(nome): firma del consulente", testo.contains(CompositoreReport.consulente))
-                verifica("\(nome): niente tabelle fitte", !c.blocchi.contains { if case .tabella = $0 { return true } else { return false } })
-            case .reportProposta(let id):
-                guard let p = dati.posizioni.first(where: { $0.id == id }) else { break }
-                let par = ParametriProiezione(posizione: p, orizzonteCliente: dati.clienti.first { $0.id == cliente }?.profilo.orizzonteAnni)
-                let s = MotoreProiezione.scenari(par)
-                for (i, sc) in s.enumerated() {
-                    verifica("\(nome): scenario \(i + 1) \(Formati.euro(sc.esito.netto))", testo.contains(spazi(Formati.euro(sc.esito.netto))))
-                }
-                if let sri = p.sri { verifica("\(nome): classe di rischio \(sri) su 7", testo.contains("Classe \(sri) su 7")) }
-                verifica("\(nome): al massimo 3 pagine", pagine.count <= 3, "\(pagine.count)")
+            case .valutazione:
+                break
             }
+        }
+
+        // Valutazione di un investimento: prospetto (A4 verticale) e report (A4 orizzontale)
+        if let v = dati.valutazioni.first, let p = dati.prodotti.first(where: { $0.id == v.prodottoId }), let c = p.condizioni {
+            let t = TestiValutazione(v, prodotto: p, condizioni: c)
+            for report in [false, true] {
+                let d = DocumentoStampabile(t, report: report)
+                let nome = report ? "valutazione-report" : "valutazione-prospetto"
+                guard let pdf = StampaCarta.pdf(d), let documento = PDFDocument(data: pdf) else {
+                    verifica("\(nome): PDF creato", false)
+                    continue
+                }
+                verifica("\(nome): PDF di \(d.pagine.count) pagine", documento.pageCount == d.pagine.count && d.pagine.count >= (report ? 12 : 4),
+                         "\(documento.pageCount) pagine, \(pdf.count / 1024) KB")
+                let orizzontale = (documento.page(at: 0)?.bounds(for: .mediaBox).width ?? 0) > (documento.page(at: 0)?.bounds(for: .mediaBox).height ?? 0)
+                verifica("\(nome): \(report ? "A4 orizzontale" : "A4 verticale")", orizzontale == report)
+                let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
+                for cifra in ["€ 52.227", "€ 50.178", "€ 47.168"] {
+                    verifica("\(nome): incasso al 13° mese \(cifra) nel PDF", testo.contains(cifra))
+                }
+                verifica("\(nome): intestatari e consulente", testo.contains(v.intestatari) && testo.contains(TestiValutazione.consulente))
+                if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
+            }
+        } else {
+            verifica("Valutazione di prova presente", false)
         }
 
         if errori == 0 {
