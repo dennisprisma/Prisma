@@ -68,7 +68,7 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetto e report")
-        ForEach([TipoProspetto.valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo]) { t in
+        ForEach([TipoProspetto.valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
@@ -98,6 +98,8 @@ struct AppProspetti: View {
             stato.prospetto = .protezione(report: false)
         case .obiettivo:
             stato.prospetto = .obiettivo("", report: false)
+        case .liquidita:
+            stato.prospetto = .liquidita(report: false)
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -130,6 +132,7 @@ struct AppProspetti: View {
                     case .previdenza(let report): sceltaPrevidenza(report: report)
                     case .protezione(let report): sceltaProtezione(report: report)
                     case .obiettivo(let id, let report): sceltaObiettivo(id, report: report)
+                    case .liquidita(let report): sceltaLiquidita(report: report)
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -147,6 +150,7 @@ struct AppProspetti: View {
         case .previdenza: return "PREVIDENZA DEL CLIENTE"
         case .protezione: return "PROTEZIONE DELLA FAMIGLIA"
         case .obiettivo: return "OBIETTIVI DEL CLIENTE"
+        case .liquidita: return "LIQUIDITÀ DEL CLIENTE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
@@ -182,6 +186,19 @@ struct AppProspetti: View {
             Text("Tutte le cifre vengono dalle Posizioni del cliente: aggiornale lì e il resoconto si ricompone. Ogni volta che cambi un controvalore, il valore precedente resta nello storico.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private func sceltaLiquidita(report: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .liquidita(report: $0); archiviato = nil }))
+            Text(report ? "Report per il cliente: cosa arriva, i quattro salvadanai, il costo dell'attesa, la sintesi."
+                        : "Prospetto per te: capitali in scadenza al centesimo, conti, salvadanai, confronto fermo o destinato, metodo e firme.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Text("Capitali in scadenza e conti dalle Posizioni; fabbisogno mensile e mesi di riserva dall'Analisi 360 (area Protezione); i salvadanai seguono gli Obiettivi del cliente.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
     }

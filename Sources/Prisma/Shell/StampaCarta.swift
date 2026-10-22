@@ -36,6 +36,16 @@ struct DocumentoStampabile {
         tipo = report ? .report : .prospetto
     }
 
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del capitale in scadenza e della liquidità.
+    init(_ t: TestiLiquidita, report: Bool) {
+        titolo = TestiLiquidita.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportLiquidita.pagine(t) : ProspettoLiquidita.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del piano per un obiettivo.
     init(_ t: TestiObiettivo, report: Bool) {
         titolo = t.o.titolo

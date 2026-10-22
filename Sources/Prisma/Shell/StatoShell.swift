@@ -542,6 +542,8 @@ final class StatoShell: ObservableObject {
             return .previdenza(report: report)
         case .protezione(let report)?:
             return .protezione(report: report)
+        case .liquidita(let report)?:
+            return .liquidita(report: report)
         case .obiettivo(let id, let report)?:
             let elenco = obiettiviCliente(clienteAttivoId)
             return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
@@ -570,6 +572,9 @@ final class StatoShell: ObservableObject {
         if case .obiettivo(let id, let report) = scelta {
             return testiObiettivo(id).map { DocumentoStampabile($0, report: report) }
         }
+        if case .liquidita(let report) = scelta {
+            return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report)
+        }
         if case .protezione(let report) = scelta {
             return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report)
         }
@@ -580,6 +585,12 @@ final class StatoShell: ObservableObject {
             return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
         }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
+    }
+
+    /// I testi e i numeri del capitale in scadenza e della liquidità di un cliente.
+    func testiLiquidita(_ id: String) -> TestiLiquidita {
+        let e = MotoreLiquidita.calcola(posizioniCliente(id), obiettivi: obiettiviCliente(id), analisi: analisi360(id).protezione, prodotti: dati.prodotti)
+        return TestiLiquidita(e, cliente: self.cliente(id))
     }
 
     /// I testi e i numeri del piano per un obiettivo, con il quadro degli altri obiettivi del cliente.

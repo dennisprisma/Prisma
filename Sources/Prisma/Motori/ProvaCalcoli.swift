@@ -433,6 +433,22 @@ enum ProvaCalcoli {
         verifica("Obiettivo: versamento unico a rendimento zero", eo.unaTantum ?? 0, ((10_000 * pow(1.02, 5) - 5_000) / 10).rounded(.up) * 10, tolleranza: 10)
         verifica("Obiettivo: quattro strade", Double(eo.strade.count), 4)
 
+        // 25. Liquidità: capitale in scadenza netto, riserva, salvadanai
+        if let polizza = demo.first(where: { $0.id == "pos-sofia-polizza-rivalutabile" }),
+           let conto = demo.first(where: { $0.id == "pos-sofia-liquidità" }) {
+            var ipl = IpotesiProtezione()
+            ipl.fabbisognoMensile = 2_000
+            ipl.mesiRiserva = 6
+            let el = MotoreLiquidita.calcola([polizza, conto], obiettivi: [], analisi: ipl)
+            // 41.000 − 17,90% di 6.000 = 39.926
+            verifica("Liquidità: netto della polizza in scadenza", el.nettoInScadenza, 39_926)
+            verifica("Liquidità: totale disponibile (27.000 di conto)", el.totale, 66_926)
+            verifica("Liquidità: riserva di 6 mesi", el.salvadanai.first?.importo ?? 0, 12_000)
+            verifica("Liquidità: il resto va alla crescita senza obiettivi", el.salvadanai.last?.importo ?? 0, 54_926)
+        } else {
+            verifica("Posizioni di Sofia per la liquidità presenti", 0, 1)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
