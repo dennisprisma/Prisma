@@ -10,9 +10,14 @@ enum CommentoEve {
     /// La bozza composta dai testi del documento (sempre disponibile, numeri esatti).
     static func bozza(nome: String, apertura: String, punti: [(String, String)], passo: String?) -> String {
         var parti = ["Gentile \(primoNome(nome)),", apertura]
-        if !punti.isEmpty { parti.append(punti.prefix(4).map { "• \($0.0): \(minuscola($0.1))" }.joined(separator: "\n")) }
+        let elenco = punti.prefix(4).map { "• \($0.0): \(dopoDuePunti(minuscola($0.1)))" }
+        if !elenco.isEmpty { parti.append(elenco.joined(separator: "\n")) }
+        // Il primo passo, se non è già detto nell'elenco
         if let passo, !passo.isEmpty {
-            parti.append("Il primo passo che ti propongo: \(minuscola(passo))")
+            let frase = dopoDuePunti(minuscola(passo))
+            if !elenco.contains(where: { $0.contains(frase) }) {
+                parti.append("Il primo passo che ti propongo: \(frase)")
+            }
         }
         parti.append("Ne parliamo con calma al prossimo incontro: per ogni domanda sono a disposizione.")
         return String(parti.joined(separator: "\n\n").prefix(limite))
@@ -58,6 +63,12 @@ enum CommentoEve {
             return parole[0...(i + 1)].joined(separator: " ")
         }
         return parole.first ?? nome
+    }
+
+    /// "protezione della famiglia: Valutare un capitale" → "…: valutare un capitale" (le sigle restano).
+    private static func dopoDuePunti(_ s: String) -> String {
+        guard let r = s.range(of: ": ") else { return s }
+        return String(s[..<r.upperBound]) + minuscola(String(s[r.upperBound...]))
     }
 
     private static func minuscola(_ s: String) -> String {
