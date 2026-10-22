@@ -18,6 +18,9 @@ struct PrismaApp: App {
         if argomenti.contains("--prova-eve") {
             exit(ProvaEve.esegui())
         }
+        if argomenti.contains("--prova-carico") {
+            exit(ProvaCarico.esegui())
+        }
         if let i = argomenti.firstIndex(of: "--prova-prospetti") {
             let cartella = i + 1 < argomenti.count && !argomenti[i + 1].hasPrefix("--") ? URL(fileURLWithPath: argomenti[i + 1], isDirectory: true) : nil
             exit(ProvaProspetti.esegui(cartella: cartella))
