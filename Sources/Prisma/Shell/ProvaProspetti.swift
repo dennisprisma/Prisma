@@ -153,6 +153,10 @@ enum ProvaProspetti {
     }
 
     static func spazi(_ s: String) -> String {
-        s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")
+        // Le legature tipografiche (ﬁ, ﬃ…) tornano lettere separate: "autosufficienza" resta cercabile
+        let legature = ["\u{FB00}": "ff", "\u{FB01}": "fi", "\u{FB02}": "fl", "\u{FB03}": "ffi", "\u{FB04}": "ffl"]
+        return legature.reduce(s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")) {
+            $0.replacingOccurrences(of: $1.key, with: $1.value)
+        }
     }
 }
