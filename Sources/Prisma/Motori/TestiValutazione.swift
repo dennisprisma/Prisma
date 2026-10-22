@@ -9,6 +9,17 @@ enum CifreDoc {
         return (v.rounded() < 0 ? "\(meno) " : "") + "€ \(n)"
     }
 
+    /// Al centesimo: "€ 4.212,35".
+    static func euroCentesimi(_ v: Double) -> String {
+        let f = NumberFormatter()
+        f.locale = Formati.localeImporti
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 2
+        f.maximumFractionDigits = 2
+        let n = f.string(from: NSNumber(value: abs(v))) ?? "\(abs(v))"
+        return ((v * 100).rounded() < 0 ? "\(meno) " : "") + "€ \(n)"
+    }
+
     /// Con il segno esplicito: "+ € 3.521", "− € 1.160".
     static func euroSegno(_ v: Double) -> String {
         v.rounded() < 0 ? euro(v) : "+ \(euro(v))"

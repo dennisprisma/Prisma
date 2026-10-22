@@ -15,6 +15,7 @@ enum ReportResoconto {
         let finanziarie = t.e.finanziarie
         if !finanziarie.isEmpty {
             slide.append(AnyView(SlideAndamento(t: t)))
+            slide.append(AnyView(SlideNetto(t: t)))
             let gruppi = stride(from: 0, to: finanziarie.count, by: schedePerPagina).map {
                 Array(finanziarie[$0..<min($0 + schedePerPagina, finanziarie.count)])
             }
@@ -441,8 +442,8 @@ private struct SlideCosti: View {
                         HStack(spacing: 10) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(verbatim: v.posizione.nome).font(T.corpoForte).foregroundColor(C.titolo).lineLimit(1)
-                                Text(verbatim: "\(v.posizione.canale.nome) · \(CifreDoc.condizione(v.posizione.costoAnnuo ?? 0)) l'anno sul valore")
-                                    .font(T.minimo).foregroundColor(C.tenue).lineLimit(1)
+                                Text(verbatim: "\(v.posizione.canale.nome) · " + dettaglioCosti(v.fisco))
+                                    .font(T.minimo).foregroundColor(C.tenue).lineLimit(1).minimumScaleFactor(0.8)
                             }
                             .frame(width: 230, alignment: .leading)
                             GeometryReader { geo in
@@ -467,6 +468,103 @@ private struct SlideCosti: View {
                 .riquadroDoc(C.evidenza)
             }
         }
+    }
+}
+
+extension SlideCosti {
+    /// "gestione € 72,80 · bollo € 72,80"
+    fileprivate func dettaglioCosti(_ f: EsitoFiscale) -> String {
+        var parti: [String] = []
+        if f.costoGestione > 0.005 { parti.append("gestione \(CifreDoc.euro(f.costoGestione))") }
+        if f.costoTrattenuto > 0.005 { parti.append("trattenuto sul rendimento \(CifreDoc.euro(f.costoTrattenuto))") }
+        if f.costoBollo > 0.005 { parti.append("bollo \(CifreDoc.euro(f.costoBollo))") }
+        return parti.joined(separator: " · ")
+    }
+}
+
+// MARK: - Quanto incasseresti oggi
+
+private struct SlideNetto: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiResoconto
+
+    private var e: EsitoResoconto { t.e }
+
+    var body: some View {
+        let previdenze = e.previdenze
+        return VStack(alignment: .leading, spacing: 14) {
+            TestaReport(occhiello: "Al netto delle imposte", titolo: t.titoloNetto, sottotitolo: t.sottotitoloNetto)
+            HStack(spacing: 10) {
+                CifraReport(etichetta: "Valore oggi", valore: CifreDoc.euro(e.valoreFinanziario))
+                if e.penaliFinanziarie > 0.5 {
+                    Text(verbatim: "−").font(T.numeroMedio).foregroundColor(C.tenue)
+                    CifraReport(etichetta: "Penali e bollo", valore: CifreDoc.euro(e.penaliFinanziarie), colore: C.negativo)
+                }
+                Text(verbatim: "−").font(T.numeroMedio).foregroundColor(C.tenue)
+                CifraReport(etichetta: "Imposte", valore: CifreDoc.euro(e.imposteFinanziarie), colore: C.negativo)
+                Text(verbatim: "=").font(T.numeroMedio).foregroundColor(C.tenue)
+                CifraReport(etichetta: "Netto in tasca", valore: CifreDoc.euro(e.nettoFinanziario),
+                            nota: "\(CifreDoc.euroSegno(e.nettoFinanziario - e.versato)) rispetto a quanto hai versato", colore: C.positivo)
+            }
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(e.finanziarie) { v in
+                        HStack(spacing: 10) {
+                            Circle().fill(C.area(v.posizione.area)).frame(width: 7, height: 7)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(verbatim: v.posizione.nome).font(T.corpoForte).foregroundColor(C.titolo).lineLimit(1)
+                                Text(verbatim: descrizione(v.fisco)).font(T.minimo).foregroundColor(C.tenue).lineLimit(1).minimumScaleFactor(0.8)
+                            }
+                            Spacer(minLength: 6)
+                            Text(verbatim: CifreDoc.euro(v.fisco.netto)).font(T.corpoForte).foregroundColor(C.titolo)
+                        }
+                        .padding(.vertical, 3)
+                        .overlay(Rectangle().fill(C.filetto).frame(height: 0.6), alignment: .bottom)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                if let v = previdenze.first {
+                    previdenza(v)
+                }
+            }
+        }
+    }
+
+    private func descrizione(_ f: EsitoFiscale) -> String {
+        if f.regime == .previdenza { return "previdenza: al pensionamento \(CifreDoc.percento(f.aliquota, decimali: 2)) sui contributi dedotti" }
+        if f.imposta < 0.005 { return "\(f.regime.nome.lowercased()): nessuna imposta, non c'è guadagno tassabile" }
+        var s = "imposta \(CifreDoc.euro(f.imposta)) (\(CifreDoc.percento(f.aliquota, decimali: 2)) sul guadagno)"
+        if f.penale + f.bolloMaturato > 0.5 { s += " · penale e bollo \(CifreDoc.euro(f.penale + f.bolloMaturato))" }
+        return s
+    }
+
+    /// Il fondo pensione: aliquota di oggi e netto per le richieste più comuni.
+    private func previdenza(_ v: VoceResoconto) -> some View {
+        let f = v.fisco
+        let anni = f.anniPartecipazione ?? 0
+        let prossimo = f.gradini.first
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: v.posizione.nome).font(T.titoloRiquadro).foregroundColor(C.evidenzaTitolo)
+            Text(verbatim: "\(anni) anni di partecipazione: oggi paghi il \(CifreDoc.percento(RegoleFiscali.aliquotaPrevidenza(anni: anni), decimali: 2))"
+                 + (prossimo.map { ", dal \(CifreDoc.dataBreve($0.dal)) il \(CifreDoc.percento($0.aliquota, decimali: 2))" } ?? "") + ".")
+                .font(T.piccolo).foregroundColor(C.testo).fixedSize(horizontal: false, vertical: true)
+            ForEach(f.uscite.filter { [.pensione, .anticipazioneCasa, .anticipazioneUlteriori].contains($0.causa) }) { u in
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(verbatim: u.causa.nomeBreve).font(T.piccolo).foregroundColor(C.testo)
+                        Text(verbatim: u.possibile ? "aliquota \(CifreDoc.percento(u.aliquota, decimali: 2))" : "dopo 8 anni di iscrizione")
+                            .font(T.minimo).foregroundColor(C.tenue)
+                    }
+                    Spacer()
+                    Text(verbatim: u.possibile ? CifreDoc.euro(u.netto) : "—").font(T.corpoForte).foregroundColor(C.titolo)
+                }
+            }
+            Text(verbatim: "Netti; per casa e ulteriori esigenze fino al 75% e al 30% della posizione.").font(T.minimo).foregroundColor(C.tenue)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(width: 270, alignment: .topLeading)
+        .riquadroDoc(C.evidenza)
     }
 }
 

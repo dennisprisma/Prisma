@@ -137,10 +137,12 @@ struct AppProspetti: View {
     private func sceltaResoconto(report: Bool) -> some View {
         let voci = report
             ? ["Copertina in cuoio con il patrimonio netto", "Il quadro: aree e canali in una pagina",
-               "Come sta andando: versato, valore, risultato", "Posizione per posizione, in schede",
+               "Come sta andando: versato, valore, risultato", "Quanto incasseresti oggi, dopo le imposte",
+               "Posizione per posizione, in schede",
                "Le tutele, i prossimi 12 mesi, i costi", "In sintesi e prossimi passi"]
             : ["Cifre chiave: patrimonio, versato, risultato, rendimento", "Ogni posizione finanziaria, divisa per canale",
                "Ripartizione per area e per canale", "Tutele, liquidità e debiti, impegni dell'anno",
+               "Imposte e netto incassabile al centesimo, costi voce per voce", "Previdenza: netto e aliquota per ogni causa",
                "Scadenze dei prossimi 12 mesi e proposte aperte", "Storico dei valori, metodo e firme"]
         return VStack(alignment: .leading, spacing: 10) {
             SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],

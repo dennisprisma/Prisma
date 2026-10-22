@@ -8,11 +8,11 @@ struct TestiResoconto {
     let cliente: String
     let nome: String
 
-    init(_ posizioni: [Posizione], cliente: Cliente?, data: Date = Date()) {
+    init(_ posizioni: [Posizione], cliente: Cliente?, prodotti: [Prodotto] = [], data: Date = Date()) {
         let nomeCompleto = cliente?.nome ?? "Cliente"
         self.cliente = nomeCompleto
         nome = nomeCompleto.split(separator: " ").first.map(String.init) ?? nomeCompleto
-        e = MotoreResoconto.calcola(posizioni, cliente: nomeCompleto, data: data)
+        e = MotoreResoconto.calcola(posizioni, cliente: nomeCompleto, prodotti: prodotti, data: data)
     }
 
     static let titolo = "Resoconto delle posizioni in essere"
@@ -72,6 +72,17 @@ struct TestiResoconto {
         return s + ", già al netto dei costi dei prodotti."
     }
 
+    var titoloNetto: String {
+        "Se chiudessi tutto oggi: circa \(CifreDoc.euro(e.nettoFinanziario)) netti"
+    }
+
+    var sottotitoloNetto: String {
+        var s = "Dal valore di oggi si tolgono "
+        s += e.penaliFinanziarie > 0.5 ? "le penali di riscatto, il bollo maturato e le imposte sul guadagno" : "le imposte sul guadagno"
+        if let r = e.rendimentoNettoAnnuo { s += ": il rendimento dei tuoi versamenti, dopo le imposte, è di circa il \(CifreDoc.percento(r)) l'anno" }
+        return s + "."
+    }
+
     var titoloTutele: String {
         e.coperture.isEmpty ? "Le tue tutele: oggi nessuna copertura in essere"
             : "Le tue tutele: \(CifreDoc.euro(e.riepilogo.capitaleAssicurato)) di capitali assicurati"
@@ -113,6 +124,7 @@ struct TestiResoconto {
             if let v = e.variazione12, let p = e.variazione12Percento {
                 s += " Negli ultimi 12 mesi \(CifreDoc.euroSegno(v)) (\(CifreDoc.variazione(p))), al netto dei nuovi versamenti."
             }
+            s += " Chiudendo tutto oggi, dopo imposte e penali, incasseresti circa \(CifreDoc.euro(e.nettoFinanziario))."
             punti.append(("Come sta andando", s))
         }
         if !e.coperture.isEmpty {
@@ -145,7 +157,9 @@ struct TestiResoconto {
         ("Risultato", "valore meno totale versato, già al netto dei costi del prodotto; prima delle imposte sul guadagno."),
         ("Rendimento medio annuo", "tasso che porta i versamenti, alle loro date, al valore di oggi: il versamento iniziale alla decorrenza e gli altri distribuiti mese per mese. Solo per le posizioni con almeno un anno."),
         ("Ultimi 12 mesi", "variazione rispetto al valore rilevato circa un anno fa, tolti i versamenti del periodo e misurata sul valore di partenza più metà dei versamenti."),
-        ("Costi stimati", "costo annuo percentuale della posizione per il valore attuale."),
+        ("Costi stimati", "costo annuo di gestione, trattenuto sul rendimento della gestione separata e imposta di bollo (0,20% del valore; 34,20 € per i conti correnti), sul valore attuale."),
+        ("Imposte e netto", "polizze vita, fondi ed ETF: 26% sul guadagno al netto della penale, 12,5% sulla parte in titoli di Stato; nelle polizze il bollo maturato si paga al riscatto. Conti e depositi: interessi già tassati all'accredito."),
+        ("Previdenza", "si tassano solo i contributi dedotti: 15% fino al 15° anno di partecipazione, poi 0,30 punti in meno ogni anno fino al 9%, per pensionamento, riscatti agevolati e spese sanitarie; 23% per anticipazioni casa e ulteriori esigenze e per i riscatti per altre cause."),
         ("Quote", "per area e per canale calcolate sulle attività in essere, debiti esclusi."),
     ]
 }

@@ -558,7 +558,7 @@ final class StatoShell: ObservableObject {
 
     /// I testi e i numeri del resoconto delle posizioni in essere di un cliente.
     func testiResoconto(_ cliente: String) -> TestiResoconto {
-        TestiResoconto(posizioniCliente(cliente), cliente: self.cliente(cliente))
+        TestiResoconto(posizioniCliente(cliente), cliente: self.cliente(cliente), prodotti: dati.prodotti)
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {

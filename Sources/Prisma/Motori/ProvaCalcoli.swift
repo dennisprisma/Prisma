@@ -271,9 +271,53 @@ enum ProvaCalcoli {
         verifica("Resoconto di Giulia: versato nelle posizioni finanziarie", resocontoGiulia.versato, 58_000)
         verifica("Resoconto di Giulia: valore delle posizioni finanziarie", resocontoGiulia.valoreFinanziario, 65_050)
         verifica("Resoconto di Giulia: patrimonio netto", resocontoGiulia.riepilogo.patrimonioNetto, 204_050)
-        verifica("Resoconto di Giulia: costi stimati di un anno", resocontoGiulia.costoAnnuo, 395.6)
+        // Gestione, trattenuto e bollo: piano 91,80 (trattenuto) + ETF 72,80 + 72,80 + fondo 231 + 42 + conto deposito 48
+        verifica("Resoconto di Giulia: costi stimati di un anno", resocontoGiulia.costoAnnuo, 558.4)
         verifica("Resoconto di Giulia: posizioni in essere", Double(resocontoGiulia.voci.count), 7)
         verifica("Resoconto di Giulia: storico di 12 mesi su tutte le finanziarie", Double(resocontoGiulia.conStorico.count), 3)
+
+        // 20. Fiscalità: aliquote della previdenza, imposte sul guadagno, netto incassabile (conti a mano)
+        for (anni, attesa) in [(5, 15.0), (15, 15.0), (16, 14.7), (25, 12.0), (34, 9.3), (35, 9.0), (40, 9.0)] {
+            verifica("Previdenza: aliquota con \(anni) anni di partecipazione", RegoleFiscali.aliquotaPrevidenza(anni: anni), attesa, tolleranza: 0.0001)
+        }
+        verifica("Previdenza: anticipazione per la casa al 23% anche con 5 anni", CausaPrevidenza.anticipazioneCasa.aliquota(anni: 5), 23)
+        verifica("Aliquota effettiva con il 60% in titoli di Stato", RegoleFiscali.aliquotaEffettiva(quotaTitoliStato: 60), 17.9, tolleranza: 0.0001)
+        let demo = DatiDemo.posizioni()
+        if let pip = demo.first(where: { $0.id == "pos-marco-piano-individuale-pensionistico" }) {
+            let f = MotoreFiscale.calcola(pip)
+            let uscita: (CausaPrevidenza) -> UscitaPrevidenza? = { c in f.uscite.first { $0.causa == c } }
+            verifica("PIP di Marco: anni di partecipazione", Double(f.anniPartecipazione ?? 0), 10)
+            verifica("PIP di Marco: imposta al pensionamento (15% su 28.000 € dedotti)", uscita(.pensione)?.imposta ?? 0, 4_200)
+            verifica("PIP di Marco: netto al pensionamento", uscita(.pensione)?.netto ?? 0, 33_800)
+            verifica("PIP di Marco: anticipazione casa, 75% di 38.000 €", uscita(.anticipazioneCasa)?.importo ?? 0, 28_500)
+            verifica("PIP di Marco: anticipazione casa, imposta al 23% sulla parte dedotta", uscita(.anticipazioneCasa)?.imposta ?? 0, 4_830)
+            verifica("PIP di Marco: ulteriori esigenze, imposta al 23% su 8.400 €", uscita(.anticipazioneUlteriori)?.imposta ?? 0, 1_932)
+        } else {
+            verifica("PIP di Marco presente", 0, 1)
+        }
+        if let fp = demo.first(where: { $0.id == "pos-laura-fondo-pensione-aperto" }) {
+            let f = MotoreFiscale.calcola(fp)
+            verifica("Fondo pensione di Laura: 17 anni dalla prima adesione, aliquota 14,40%", f.aliquota, 14.4, tolleranza: 0.0001)
+            verifica("Fondo pensione di Laura: imposta al pensionamento", f.imposta, 2_073.6)
+            verifica("Fondo pensione di Laura: anticipazione casa non ancora possibile? (17 anni: sì)", (f.uscite.first { $0.causa == .anticipazioneCasa }?.possibile ?? false) ? 1 : 0, 1)
+        }
+        if let pol = demo.first(where: { $0.id == "pos-marco-polizza-rivalutabile-a-premio-unico" }) {
+            let f = MotoreFiscale.calcola(pol)
+            verifica("Polizza rivalutabile di Marco: imposta al 17,90% su 4.300 €", f.imposta, 769.7)
+            verifica("Polizza rivalutabile di Marco: nessun bollo (Ramo I)", f.bolloMaturato + f.costoBollo, 0)
+            verifica("Polizza rivalutabile di Marco: trattenuto 1,30% su 54.300 €", f.costoTrattenuto, 705.9)
+            verifica("Polizza rivalutabile di Marco: netto incassabile", f.netto, 53_530.3)
+        }
+        if let etf = demo.first(where: { $0.id == "pos-giulia-etf-azionario-globale" }) {
+            let f = MotoreFiscale.calcola(etf)
+            verifica("ETF di Giulia: imposta al 26% su 5.600 €", f.imposta, 1_456)
+            verifica("ETF di Giulia: bollo annuo 0,20%", f.costoBollo, 72.8)
+        }
+        var giovane = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .previdenza, nome: "Prova")
+        giovane.decorrenza = Calendar(identifier: .gregorian).date(byAdding: .year, value: -40, to: Date())
+        giovane.controvalore = 10_000
+        giovane.totaleVersato = 8_000
+        verifica("Previdenza con 40 anni: nessun gradino futuro, aliquota minima", Double(MotoreFiscale.calcola(giovane).gradini.count), 0)
 
         if errori == 0 {
             print("OK: motori di calcolo verificati")

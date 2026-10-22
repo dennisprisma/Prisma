@@ -22,7 +22,10 @@ struct DettaglioPosizione: View {
                         if posizione.area.proiettabile {
                             VStack(alignment: .leading, spacing: 22) {
                                 costiERischio
-                                if posizione.stato == .inEssere { storico }
+                                if posizione.stato == .inEssere {
+                                    fiscalita
+                                    storico
+                                }
                             }
                             .frame(width: 320, alignment: .leading)
                         }
@@ -169,6 +172,34 @@ struct DettaglioPosizione: View {
                     ScalaRischio(valore: p.sri)
                 }
                 .padding(.vertical, 8)
+            }
+        }
+    }
+
+    /// Imposte e netto se si chiudesse oggi; per la previdenza l'aliquota per causa.
+    private var fiscalita: some View {
+        let f = MotoreFiscale.calcola(posizione, prodotto: stato.prodotto(posizione.prodottoId))
+        return PannelloAnalisi(titolo: "Se si chiudesse oggi") { EmptyView() } contenuto: {
+            VStack(alignment: .leading, spacing: 0) {
+                RigaDato("Regime", f.regime.nome, larghezza: 118)
+                if f.regime == .previdenza {
+                    RigaDato("Partecipazione", "\(f.anniPartecipazione ?? 0) anni", larghezza: 118)
+                    ForEach(f.uscite.filter(\.possibile)) { u in
+                        RigaDato(u.causa.nomeBreve, "\(CifreDoc.euroCentesimi(u.netto)) netti · \(CifreDoc.percento(u.aliquota, decimali: 2))", larghezza: 118)
+                    }
+                    if let g = f.gradini.first {
+                        RigaDato("Prossimo calo", "dal \(Formati.dataBreve.string(from: g.dal)) al \(CifreDoc.percento(g.aliquota, decimali: 2))", larghezza: 118)
+                    }
+                } else {
+                    if f.penale + f.bolloMaturato > 0.005 {
+                        RigaDato("Penale e bollo", CifreDoc.euroCentesimi(f.penale + f.bolloMaturato), larghezza: 118)
+                    }
+                    RigaDato("Imposta", f.imposta > 0.005 ? "\(CifreDoc.euroCentesimi(f.imposta)) (\(CifreDoc.percento(f.aliquota, decimali: 2)))" : "nessuna", larghezza: 118)
+                    RigaDato("Netto", CifreDoc.euroCentesimi(f.netto), larghezza: 118)
+                }
+                if f.costoTotale > 0.005 {
+                    RigaDato("Costi in un anno", CifreDoc.euroCentesimi(f.costoTotale), larghezza: 118)
+                }
             }
         }
     }

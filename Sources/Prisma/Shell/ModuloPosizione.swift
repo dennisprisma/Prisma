@@ -128,7 +128,8 @@ struct ModuloPosizione: View {
                         CampoModulo(etichetta: "Rendimento atteso") { campoPercento($bozza.rendimentoAtteso, "% annuo") }
                         CampoModulo(etichetta: "Costo d'ingresso") { campoPercento($bozza.costoIngresso, "% dei versamenti") }
                         CampoModulo(etichetta: "Costo annuo") { campoPercento($bozza.costoAnnuo, "% all'anno") }
-                        CampoModulo(etichetta: "Fiscalità") { campoPercento($bozza.aliquotaFiscale, "% sul rendimento") }
+                        CampoModulo(etichetta: "Trattenuto") { campoPercento($bozza.trattenuto, "punti l'anno sul rendimento (gestione separata)") }
+                        CampoModulo(etichetta: "Aliquota") { campoPercento($bozza.aliquotaFiscale, "% sul guadagno (proiezioni)") }
                         CampoModulo(etichetta: "Rischio (SRI)") {
                             Picker("", selection: $bozza.sri) {
                                 Text("Non indicato").tag(Int?.none)
@@ -136,6 +137,41 @@ struct ModuloPosizione: View {
                             }
                             .labelsHidden()
                             .frame(width: 140)
+                        }
+                    }
+                }
+                if bozza.area.proiettabile || bozza.area == .liquidita {
+                    sezione("Fiscalità (per il netto incassabile)") {
+                        CampoModulo(etichetta: "Regime") {
+                            Picker("", selection: $bozza.regimeFiscale) {
+                                Text("Automatico · \(bozza.regime.nome)").tag(RegimeFiscale?.none)
+                                ForEach(RegimeFiscale.allCases) { Text($0.nome).tag(Optional($0)) }
+                            }
+                            .labelsHidden()
+                            .frame(width: 280)
+                        }
+                        if bozza.regime == .polizza || bozza.regime == .fondo {
+                            CampoModulo(etichetta: "Titoli di Stato") { campoPercento($bozza.quotaTitoliStato, "% dell'investimento, tassata al 12,5%") }
+                        }
+                        if bozza.regime != .previdenza && bozza.regime != .esente {
+                            CampoModulo(etichetta: "Bollo 0,20%") {
+                                Picker("", selection: $bozza.conBollo) {
+                                    Text("Automatico · \(bozza.soggettaBollo ? "sì" : "no")").tag(Bool?.none)
+                                    Text("Sì").tag(Optional(true))
+                                    Text("No (per esempio Ramo I)").tag(Optional(false))
+                                }
+                                .labelsHidden()
+                                .frame(width: 220)
+                            }
+                        }
+                        if bozza.regime == .previdenza {
+                            CampoModulo(etichetta: "Prima adesione") {
+                                CampoDataFacoltativa(data: $bozza.primaAdesione, predefinita: bozza.decorrenza ?? Date())
+                            }
+                            CampoModulo(etichetta: "Non dedotti") { campoEuroFacoltativo($bozza.contributiNonDedotti) }
+                            Text("Gli anni di partecipazione contano dalla prima adesione a una forma complementare, anche se poi trasferita. I contributi non dedotti non si tassano alla prestazione.")
+                                .font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }

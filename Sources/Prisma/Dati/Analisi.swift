@@ -220,14 +220,14 @@ struct Analisi360: Codable, Equatable {
         investimenti.capitale = inv.reduce(0) { $0 + $1.valore }
         investimenti.versamentoMensile = mensile(inv)
         if let r = media(inv, \.rendimentoAtteso) { investimenti.rendimento = r }
-        if let c = media(inv, \.costoAnnuo) { investimenti.costoAnnuo = c }
+        if let c = media(inv, \.costoComplessivo) { investimenti.costoAnnuo = c }
         if let h = cliente?.profilo.orizzonteAnni { investimenti.anni = h }
 
         let ris = dell(.risparmio)
         risparmio.capitale = ris.reduce(0) { $0 + $1.valore }
         risparmio.versamentoMensile = mensile(ris)
         if let r = media(ris, \.rendimentoAtteso) { risparmio.rendimento = r }
-        if let c = media(ris, \.costoAnnuo) { risparmio.costoAnnuo = c }
+        if let c = media(ris, \.costoComplessivo) { risparmio.costoAnnuo = c }
     }
 
     private enum CodingKeys: String, CodingKey {

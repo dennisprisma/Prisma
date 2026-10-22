@@ -111,7 +111,7 @@ enum CompositoreProspetti {
         b.append(.voci(voci))
 
         // Costi
-        if p.area.proiettabile || p.costoAnnuo != nil || p.costoIngresso != nil {
+        if p.area.proiettabile || p.costoAnnuo != nil || p.trattenuto != nil || p.costoIngresso != nil {
             sezione("Costi e fiscalità")
             let impatto = MotoreProiezione.impattoCosti(par)
             b.append(.tabella(TabellaProspetto(
@@ -120,7 +120,9 @@ enum CompositoreProspetti {
                 righe: [
                     [.t("Costo d'ingresso"), percentualeOpzionale(p.costoIngresso), .n(p.stato == .inEssere ? "versamenti futuri" : "capitale iniziale e versamenti"),
                      .t(euro(costoIngressoNelPeriodo(par)))],
-                    [.t("Costo annuo di gestione"), percentualeOpzionale(p.costoAnnuo), .n("capitale investito, ogni anno, pro quota mensile"),
+                    [.t(p.trattenuto == nil ? "Costo annuo di gestione" : "Costo annuo e trattenuto sul rendimento"),
+                     condizioneCostoAnnuo(p),
+                     .n("capitale investito, ogni anno, pro quota mensile"),
                      .t(euro(max(0, atteso.costi - costoIngressoNelPeriodo(par))))],
                     [.t("Imposta sulle plusvalenze"), .t(percentuale(par.aliquotaFiscale)), .n("guadagno a fine periodo"), .t(euro(atteso.imposte))],
                 ],
@@ -382,12 +384,19 @@ enum CompositoreProspetti {
         return "ipotesi predefinita"
     }
 
+    /// "1,5%", oppure "1,5% + 1,3%" con il trattenuto sul rendimento.
+    private static func condizioneCostoAnnuo(_ p: Posizione) -> CellaProspetto {
+        guard let trattenuto = p.trattenuto else { return percentualeOpzionale(p.costoAnnuo) }
+        let gestione = p.costoAnnuo.map { percentuale($0) + " + " } ?? ""
+        return .t(gestione + percentuale(trattenuto))
+    }
+
     static func ipotesiMancanti(_ p: Posizione, orizzonteCliente: Int?) -> [String] {
         guard p.area.proiettabile else { return [] }
         var m: [String] = []
         if p.rendimentoAtteso == nil { m.append("rendimento atteso \(percentuale(IpotesiCalcolo.rendimentoPredefinito))") }
         if p.aliquotaFiscale == nil { m.append("imposta \(percentuale(IpotesiCalcolo.aliquotaPredefinita))") }
-        if p.costoAnnuo == nil { m.append("costo annuo non indicato, calcolato a zero") }
+        if p.costoAnnuo == nil && p.trattenuto == nil { m.append("costo annuo non indicato, calcolato a zero") }
         if p.anniAllaScadenza == nil && orizzonteCliente == nil { m.append("orizzonte di \(IpotesiCalcolo.orizzontePredefinito) anni") }
         return m
     }

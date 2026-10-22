@@ -481,7 +481,7 @@ enum DatiDemo {
                 $0.numeroContratto = "AL-2022-104851"; $0.contraente = "Giulia Rossi"; $0.assicurato = "Giulia Rossi"
                 $0.beneficiari = "Eredi legittimi"; $0.decorrenza = anni(-4); $0.scadenza = anni(11)
                 $0.premio = 150; $0.frequenza = .mensile; $0.totaleVersato = 7_200; $0.controvalore = 7_650
-                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20
+                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.trattenuto = 1.2; $0.quotaTitoliStato = 60; $0.aliquotaFiscale = 20
                 $0.garanzie = "Capitale garantito a scadenza e in caso di decesso; consolidamento annuo dei rendimenti."
             },
             p("giulia", .alleanza, .inEssere, .protezione, "Temporanea caso morte") {
@@ -527,7 +527,7 @@ enum DatiDemo {
                 $0.numeroContratto = "AL-2020-055120"; $0.contraente = "Marco Bianchi"; $0.assicurato = "Marco Bianchi"
                 $0.decorrenza = anni(-6); $0.scadenza = anni(6); $0.versamentoIniziale = 50_000
                 $0.totaleVersato = 50_000; $0.controvalore = 54_300
-                $0.rendimentoAtteso = 2.8; $0.costoAnnuo = 1.3; $0.aliquotaFiscale = 20
+                $0.rendimentoAtteso = 2.8; $0.trattenuto = 1.3; $0.quotaTitoliStato = 60; $0.aliquotaFiscale = 20
             },
             p("marco", .alleanza, .inEssere, .investimento, "Polizza multiramo") {
                 $0.tipologia = "Polizza multiramo (Ramo I e Ramo III)"; $0.emittente = alleanza
@@ -549,7 +549,7 @@ enum DatiDemo {
             p("marco", .alleanza, .inEssere, .previdenza, "Piano individuale pensionistico") {
                 $0.tipologia = "Piano individuale pensionistico (PIP)"; $0.emittente = alleanza
                 $0.decorrenza = anni(-10); $0.scadenza = anni(20); $0.premio = 250; $0.frequenza = .mensile
-                $0.totaleVersato = 30_000; $0.controvalore = 38_000
+                $0.totaleVersato = 30_000; $0.controvalore = 38_000; $0.contributiNonDedotti = 2_000
                 $0.rendimentoAtteso = 3.2; $0.costoAnnuo = 1.5; $0.aliquotaFiscale = 15
             },
             p("marco", .alleanza, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 35_000 },
@@ -562,7 +562,7 @@ enum DatiDemo {
                 $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
                 $0.contraente = "Marco Bianchi"; $0.assicurato = "Anna Bianchi"; $0.scadenza = anni(6)
                 $0.premio = 200; $0.frequenza = .mensile
-                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20
+                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.trattenuto = 1.2; $0.aliquotaFiscale = 20
                 $0.esito = .bozza
             },
 
@@ -570,6 +570,8 @@ enum DatiDemo {
             p("laura", .indipendente, .inEssere, .previdenza, "Fondo pensione aperto") {
                 $0.tipologia = "Fondo pensione aperto, comparto bilanciato"; $0.emittente = "Gestore indipendente"
                 $0.decorrenza = anni(-4); $0.scadenza = anni(26); $0.premio = 150; $0.frequenza = .mensile
+                // Trasferito da un fondo negoziale: gli anni di partecipazione contano dalla prima adesione
+                $0.primaAdesione = anni(-17); $0.contributiNonDedotti = 0
                 $0.totaleVersato = 14_400; $0.controvalore = 18_000
                 $0.rendimentoAtteso = 4; $0.costoAnnuo = 0.8; $0.aliquotaFiscale = 15
             },
@@ -593,7 +595,7 @@ enum DatiDemo {
             p("andrea", .alleanza, .proposta, .risparmio, "Piano di risparmio rivalutabile") {
                 $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
                 $0.scadenza = anni(15); $0.premio = 100; $0.frequenza = .mensile
-                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20
+                $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.trattenuto = 1.2; $0.aliquotaFiscale = 20
                 $0.esito = .bozza
             },
             p("andrea", .alleanza, .proposta, .protezione, "Temporanea caso morte") {
@@ -607,7 +609,7 @@ enum DatiDemo {
                 $0.tipologia = "Polizza rivalutabile a premio unico (Ramo I)"; $0.emittente = alleanza
                 $0.numeroContratto = "AL-2016-009311"; $0.decorrenza = anni(-10); $0.scadenza = data(70)
                 $0.versamentoIniziale = 35_000; $0.totaleVersato = 35_000; $0.controvalore = 41_000
-                $0.rendimentoAtteso = 2.5; $0.costoAnnuo = 1.3; $0.aliquotaFiscale = 20
+                $0.rendimentoAtteso = 2.5; $0.trattenuto = 1.3; $0.quotaTitoliStato = 60; $0.aliquotaFiscale = 20
                 $0.note = "In scadenza: valutare il reinvestimento."
             },
             p("sofia", .alleanza, .inEssere, .protezione, "Non autosufficienza") {

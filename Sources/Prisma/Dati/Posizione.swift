@@ -95,6 +95,34 @@ enum RischioCoperto: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Come si tassa il guadagno di una posizione (dalla versione 13 dell'archivio).
+enum RegimeFiscale: String, Codable, CaseIterable, Identifiable {
+    /// Polizze vita (Ramo I, Ramo III, multiramo, capitalizzazione): 26% sul guadagno al riscatto,
+    /// 12,5% sulla parte in titoli di Stato.
+    case polizza
+    /// Fondi, ETF, titoli: 26% sulla plusvalenza, 12,5% sulla parte in titoli di Stato.
+    case fondo
+    /// Previdenza complementare (fondi pensione, PIP): rendimenti già tassati nel fondo, prestazione
+    /// tassata secondo la causa e gli anni di partecipazione.
+    case previdenza
+    /// Conti e depositi: 26% sugli interessi.
+    case deposito
+    /// Nessuna imposta sul guadagno (coperture, immobili, debiti).
+    case esente
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .polizza: return "Polizza vita"
+        case .fondo: return "Fondo, ETF o titoli"
+        case .previdenza: return "Previdenza complementare"
+        case .deposito: return "Conto o deposito"
+        case .esente: return "Nessuna imposta sul guadagno"
+        }
+    }
+}
+
 /// Un valore della posizione registrato in una data: lo storico serve al resoconto per mostrare
 /// come è andata negli ultimi mesi (dalla versione 12 dell'archivio).
 struct Rilevazione: Codable, Hashable {
@@ -155,6 +183,21 @@ struct Posizione: Identifiable, Codable, Hashable {
     /// Valori precedenti a quello attuale, dal più vecchio (dalla versione 12 dell'archivio).
     var rilevazioni: [Rilevazione]?
 
+    // Costi e fiscalità (dalla versione 13 dell'archivio)
+    /// Trattenuto sul rendimento della gestione separata, in punti percentuali all'anno.
+    var trattenuto: Double?
+    /// Regime fiscale scelto; se manca si ricava dall'area e dalla tipologia (`regime`).
+    var regimeFiscale: RegimeFiscale?
+    /// Quota investita in titoli di Stato ed equiparati (0–100), tassata al 12,5%.
+    var quotaTitoliStato: Double?
+    /// Soggetta all'imposta di bollo dello 0,20% annuo (Ramo III, multiramo, fondi, depositi).
+    var conBollo: Bool?
+    /// Previdenza: data della prima adesione a una forma pensionistica complementare (conta per gli anni
+    /// di partecipazione, anche se la posizione è nata da un trasferimento).
+    var primaAdesione: Date?
+    /// Previdenza: contributi versati e non dedotti, che non si tassano alla prestazione.
+    var contributiNonDedotti: Double?
+
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }
 
@@ -175,6 +218,36 @@ struct Posizione: Identifiable, Codable, Hashable {
         guard let scadenza, stato == .inEssere else { return false }
         let limite = Calendar.current.date(byAdding: .day, value: giorni, to: Date()) ?? Date()
         return scadenza >= Calendar.current.startOfDay(for: Date()) && scadenza <= limite
+    }
+
+    /// Costo annuo complessivo in percentuale: gestione più trattenuto sul rendimento.
+    var costoComplessivo: Double? {
+        guard costoAnnuo != nil || trattenuto != nil else { return nil }
+        return (costoAnnuo ?? 0) + (trattenuto ?? 0)
+    }
+
+    /// Il regime fiscale: quello scelto o, se manca, quello dell'area e della tipologia.
+    var regime: RegimeFiscale {
+        if let regimeFiscale { return regimeFiscale }
+        switch area {
+        case .previdenza: return .previdenza
+        case .liquidita: return .deposito
+        case .protezione, .immobili, .debiti: return .esente
+        case .investimento, .risparmio:
+            let testo = (tipologia + " " + emittente).lowercased()
+            let polizza = ["polizza", "ramo", "capitalizzazione", "multiramo", "unit", "assicuraz"].contains { testo.contains($0) }
+            return polizza ? .polizza : .fondo
+        }
+    }
+
+    /// Bollo dello 0,20%: quello indicato o, se manca, per regime (le rivalutabili di Ramo I ne sono esenti).
+    var soggettaBollo: Bool {
+        if let conBollo { return conBollo }
+        switch regime {
+        case .fondo, .deposito: return true
+        case .polizza: return !tipologia.lowercased().contains("ramo i)") && !tipologia.lowercased().contains("rivalutabil")
+        case .previdenza, .esente: return false
+        }
     }
 
     /// Lo storico completo: le rilevazioni passate e, in fondo, il valore attuale.
