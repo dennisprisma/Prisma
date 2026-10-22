@@ -117,12 +117,16 @@ final class StatoShell: ObservableObject {
     private var abbonamenti = Set<AnyCancellable>()
     private var timerBackup: Timer?
     private var salvataggioSospeso = false
+    /// Archivio di una versione più recente di Prisma: niente salvataggi né backup automatici.
+    private(set) var solaLettura = false
 
     init(persistente: Bool = true) {
         self.persistente = persistente
         if persistente {
             let caricati = Archivio.carica()
             dati = caricati.dati
+            salvataggioSospeso = caricati.solaLettura
+            solaLettura = caricati.solaLettura
             if let a = caricati.avviso {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
             }
@@ -1522,6 +1526,7 @@ final class StatoShell: ObservableObject {
     /// Ripristina un backup. Prima salva una copia di sicurezza dello stato attuale.
     func ripristina(_ zip: URL) {
         guard persistente, !backupInCorso else { return }
+        guard !solaLettura else { mostraAvviso("Archivio in sola lettura: apri l'ultima versione di Prisma per ripristinare."); return }
         salvaOra()
         salvataggioSospeso = true
         backupInCorso = true
@@ -1548,9 +1553,47 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    /// Gli identificativi dei clienti di prova.
+    static let clientiDiProva: Set<String> = Set(DatiDemo.clienti().map(\.id))
+    var haDatiDiProva: Bool { dati.clienti.contains { Self.clientiDiProva.contains($0.id) } }
+
+    /// Toglie i 5 clienti di prova con tutti i loro dati (e le schede prodotto di esempio non usate),
+    /// lasciando i clienti veri. Prima salva un backup.
+    func togliDatiDiProva() {
+        guard persistente, !backupInCorso, !solaLettura else { return }
+        salvaOra()
+        backupInCorso = true
+        let destinazione = cartellaBackup
+        DispatchQueue.global(qos: .userInitiated).async {
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima di togliere i dati di prova") }
+            DispatchQueue.main.async {
+                self.backupInCorso = false
+                switch esito {
+                case .success:
+                    self.rimuoviDatiDiProva()
+                    self.aggiornaElencoBackup()
+                    self.mostraAvviso("Clienti di prova tolti. Lo stato precedente è salvato in un backup.")
+                case .failure(let e):
+                    self.mostraAvviso("Operazione annullata, backup non riuscito: \(e.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// La parte senza backup (usata anche dalle prove).
+    func rimuoviDatiDiProva() {
+        for id in Self.clientiDiProva { eliminaCliente(id) }
+        let esempi = Set((DatiDemo.prodotti() + [DatiDemo.orizzonteValore()]).map(\.id))
+        let usati = Set(dati.posizioni.compactMap(\.prodottoId) + dati.valutazioni.map(\.prodottoId))
+        dati.prodotti.removeAll { esempi.contains($0.id) && !usati.contains($0.id) }
+        if dati.clienti.first(where: { $0.id == dati.clienteAttivoId }) == nil {
+            dati.clienteAttivoId = dati.clienti.first?.id ?? ""
+        }
+    }
+
     /// Torna ai 5 clienti di prova (con backup di sicurezza dello stato attuale).
     func ripristinaDatiDiProva() {
-        guard persistente, !backupInCorso else { return }
+        guard persistente, !backupInCorso, !solaLettura else { return }
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup

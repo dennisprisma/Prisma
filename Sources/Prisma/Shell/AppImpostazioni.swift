@@ -8,6 +8,7 @@ struct AppImpostazioni: View {
     @State var daRipristinare: VoceBackup?
     @State var fileDaRipristinare: URL?
     @State var confermaDatiProva = false
+    @State var confermaTogliProva = false
     @State var modificaNome = false
 
     var body: some View {
@@ -47,6 +48,12 @@ struct AppImpostazioni: View {
             }
         } message: {
             Text("I dati attuali verranno sostituiti da quelli del backup \"\(daRipristinare?.nome ?? fileDaRipristinare?.lastPathComponent ?? "")\". Prima del ripristino Prisma salva una copia di sicurezza dello stato attuale.")
+        }
+        .alert("Togliere i clienti di prova?", isPresented: $confermaTogliProva) {
+            Button("Annulla", role: .cancel) {}
+            Button("Togli i clienti di prova", role: .destructive) { stato.togliDatiDiProva() }
+        } message: {
+            Text("Giulia, Marco, Laura, Andrea e Sofia vengono tolti con posizioni, agenda, documenti e conversazioni. I tuoi clienti restano. Prima Prisma salva un backup dello stato attuale.")
         }
         .alert("Tornare ai dati di prova?", isPresented: $confermaDatiProva) {
             Button("Annulla", role: .cancel) {}
@@ -172,7 +179,20 @@ struct AppImpostazioni: View {
             }
             .padding(.horizontal, 4)
 
+            if stato.solaLettura {
+                Text("Archivio in sola lettura: è stato salvato da una versione più recente di Prisma. Le modifiche non vengono salvate: apri l'ultima versione dell'app.")
+                    .font(Tipo.informazioniTesto)
+                    .foregroundColor(Colori.Analisi.erroreTesto)
+                    .padding(.horizontal, 4)
+            }
+
             GruppoImpostazioni(titolo: "Dati di prova") {
+                if stato.haDatiDiProva {
+                    RigaImpostazione(titolo: "Togli i 5 clienti di prova",
+                                     sottotitolo: "Per lavorare solo con i tuoi clienti: restano i clienti che hai inserito tu. Prima viene salvato un backup.") {
+                        ValoreRiga(testo: "Togli") { confermaTogliProva = true }
+                    }
+                }
                 RigaImpostazione(titolo: "Ripristina i 5 clienti di prova",
                                  sottotitolo: "Utile per provare i motori di calcolo. Prima viene salvato un backup.", ultima: true) {
                     ValoreRiga(testo: "Ripristina") { confermaDatiProva = true }
