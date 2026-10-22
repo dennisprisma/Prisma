@@ -20,7 +20,11 @@ struct DettaglioPosizione: View {
                     HStack(alignment: .top, spacing: 28) {
                         contratto.frame(maxWidth: .infinity, alignment: .leading)
                         if posizione.area.proiettabile {
-                            costiERischio.frame(width: 320, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 22) {
+                                costiERischio
+                                if posizione.stato == .inEssere { storico }
+                            }
+                            .frame(width: 320, alignment: .leading)
                         }
                     }
                     if posizione.area.proiettabile {
@@ -165,6 +169,27 @@ struct DettaglioPosizione: View {
                     ScalaRischio(valore: p.sri)
                 }
                 .padding(.vertical, 8)
+            }
+        }
+    }
+
+    /// I valori rilevati nel tempo: si arricchisce da solo a ogni aggiornamento del controvalore.
+    private var storico: some View {
+        let punti = Array(posizione.storicoValori.reversed())
+        return PannelloAnalisi(titolo: "Storico dei valori") { EmptyView() } contenuto: {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(punti.prefix(8).enumerated()), id: \.offset) { _, r in
+                    RigaDato(Formati.dataBreve.string(from: r.data),
+                             Formati.euro(r.controvalore) + (r.versato.map { " · versato \(Formati.euro($0))" } ?? ""), larghezza: 118)
+                }
+                if let v = MotoreResoconto.voce(posizione).variazione12, let q = MotoreResoconto.voce(posizione).variazione12Percento {
+                    RigaDato("Ultimi 12 mesi", "\(CifreDoc.euroSegno(v)) (\(CifreDoc.variazione(q))), tolti i versamenti", larghezza: 118)
+                }
+                Text(punti.count < 2 ? "Quando aggiorni il controvalore, il valore precedente resta qui: serve al resoconto per gli ultimi 12 mesi."
+                                     : "Il valore precedente resta qui a ogni aggiornamento del controvalore.")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
             }
         }
     }

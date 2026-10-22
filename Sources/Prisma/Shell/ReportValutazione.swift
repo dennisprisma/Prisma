@@ -20,172 +20,23 @@ enum ReportValutazione {
         if !t.c.garantito.isEmpty || !t.c.nonGarantito.isEmpty { slide.append(AnyView(SlideGaranzie(t: t))) }
         if !t.c.scenariKID.isEmpty { slide.append(AnyView(SlideKID(t: t))) }
         slide += [AnyView(SlideSintesi(t: t)), AnyView(SlideAppendice(t: t))]
-        let totale = slide.count + 1
-        let interne = slide.enumerated().map { i, s in
-            AnyView(CorniceSlide(t: t, numero: i + 2, totale: totale) { s })
-        }
-        return ([AnyView(SlideCopertina(t: t))] + interne).map {
-            AnyView($0.environment(\.paletteDocumento, Colori.Documento.prisma))
-        }
+        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide,
+                                     intestazione: "\(t.prodotto.nome) · \(t.v.intestatari)")
     }
-}
 
-private struct ChiaveNumeroSlide: EnvironmentKey {
-    static let defaultValue = 1
-}
-
-extension EnvironmentValues {
-    /// Numero della pagina del report, per il capitolo ("05 —").
-    fileprivate var numeroSlide: Int {
-        get { self[ChiaveNumeroSlide.self] }
-        set { self[ChiaveNumeroSlide.self] = newValue }
-    }
-}
-
-/// La cornice di una pagina interna, come le slide di Presentazioni del template: testata con il
-/// marchio e i nomi, carta avorio nei suoi toni, filigrana ◈, piede con il motto e il numero.
-private struct CorniceSlide<Contenuto: View>: View {
-    @Environment(\.paletteDocumento) private var C
-    let t: TestiValutazione
-    let numero: Int
-    let totale: Int
-    @ViewBuilder let contenuto: () -> Contenuto
-
-    var body: some View {
-        let tono = Colori.Documento.toniReport[numero % Colori.Documento.toniReport.count]
-        FoglioDocumento(formato: D.report, sfondo: tono.0) {
-            ZStack(alignment: .bottomTrailing) {
-                RadialGradient(colors: [tono.0, tono.1], center: UnitPoint(x: 0.1, y: 0.05), startRadius: 0, endRadius: D.report.width)
-                if numero % 4 == 0 {
-                    Text(verbatim: "◈").font(T.filigrana).foregroundColor(C.marchio.opacity(0.06))
-                        .padding(.trailing, 30).padding(.bottom, 20)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(alignment: .center) {
-                        Text(verbatim: "◈ PRISMA").font(T.marchio).tracking(3).foregroundColor(C.marchio)
-                        Spacer()
-                        Text(verbatim: "\(t.prodotto.nome) · \(t.v.intestatari)".uppercased()).font(T.testata).tracking(1.6)
-                            .foregroundColor(C.tenue).lineLimit(1)
-                    }
-                    .padding(.bottom, 9)
-                    .overlay(Rectangle().fill(C.filetto).frame(height: 0.8), alignment: .bottom)
-                    contenuto()
-                        .padding(.top, 14)
-                        .environment(\.numeroSlide, numero)
-                    Spacer(minLength: 0)
-                    HStack {
-                        Text(verbatim: "PERSONE. PRIORITÀ. PROSPETTIVE.")
-                        Spacer()
-                        Text(verbatim: "\(numero) / \(totale)")
-                    }
-                    .font(T.piede).tracking(1.5).foregroundColor(C.tenue)
-                    .padding(.top, 7)
-                    .overlay(Rectangle().fill(C.filetto).frame(height: 0.8), alignment: .top)
-                }
-                .padding(EdgeInsets(top: 22, leading: D.margineReport, bottom: 14, trailing: D.margineReport))
-            }
+    private static func copertina(_ t: TestiValutazione) -> CopertinaReport {
+        var cartellini: [(String, [String])] = [("Premio unico", [CifreDoc.euro(t.v.premio)])]
+        if !t.c.componenti.isEmpty {
+            cartellini.append(("Combinazione", t.c.componenti.map { "\(CifreDoc.condizione($0.quota)) \($0.tipo.nome)" }))
         }
-    }
-}
-
-/// Capitolo, titolo che dice la conclusione e sottotitolo (.slides-chapter, .slides-stage h2).
-private struct TestaSlide: View {
-    @Environment(\.paletteDocumento) private var C
-    @Environment(\.numeroSlide) private var numero
-    let occhiello: String
-    let titolo: String
-    var sottotitolo: String? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 9) {
-                Text(verbatim: String(format: "%02d", numero)).font(T.capitolo)
-                Rectangle().fill(C.filetto).frame(width: 25, height: 1)
-                Text(verbatim: occhiello.uppercased()).font(T.capitolo).tracking(1.9)
-            }
-            .foregroundColor(C.occhiello)
-            Text(verbatim: titolo).font(T.titoloSlide).tracking(-0.4).foregroundColor(C.titolo).lineLimit(1).minimumScaleFactor(0.7)
-            if let sottotitolo, !sottotitolo.isEmpty {
-                Text(verbatim: sottotitolo).font(T.sottotitoloSlide).foregroundColor(C.tenue)
-                    .lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        cartellini.append(("Riscatto", [t.riscattoPossibile]))
+        return CopertinaReport(occhiello: "Proposta di investimento", titolo: t.prodotto.nome, sottotitolo: t.sottotitoloCopertina,
+                               nomi: t.v.intestatari, ruolo: t.ruoloConsulente, data: t.v.data, canali: [t.prodotto.canale],
+                               cartellini: cartellini)
     }
 }
 
 private var larghezzaUtile: CGFloat { D.report.width - D.margineReport * 2 }
-
-// MARK: - 1. Copertina
-
-/// Copertina in cuoio come il dossier del cliente: impuntura, marchio impresso, cartellini di carta.
-private struct SlideCopertina: View {
-    @Environment(\.paletteDocumento) private var C
-    let t: TestiValutazione
-
-    var body: some View {
-        FoglioDocumento(formato: D.report, sfondo: C.copertina) {
-            ZStack {
-                Materiale.Pelle()
-                    .frame(width: D.report.width, height: D.report.height)
-                    .clipped()
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(C.cucitura.opacity(0.6), style: StrokeStyle(lineWidth: 1.3, dash: [6, 4]))
-                    .padding(18)
-                HStack(alignment: .center, spacing: 36) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 8) {
-                            Text(verbatim: "◈").font(T.copertinaMarchio)
-                            Text(verbatim: "PRISMA").font(T.copertinaMarchio).tracking(4)
-                        }
-                        .foregroundColor(C.copertinaTesto)
-                        .shadow(color: Color.black.opacity(0.45), radius: 0, x: 0, y: -1)
-                        Spacer(minLength: 0)
-                        OcchielloDoc(testo: "Proposta di investimento", font: T.copertinaOcchiello, colore: C.copertinaTesto.opacity(0.75))
-                        Text(verbatim: t.prodotto.nome).font(T.copertinaTitolo).foregroundColor(.white)
-                            .shadow(color: Color.black.opacity(0.4), radius: 0, x: 0, y: -1)
-                            .lineLimit(3).minimumScaleFactor(0.7).padding(.top, 12)
-                        Text(verbatim: t.sottotitoloCopertina).font(T.copertinaSottotitolo).italic().foregroundColor(C.copertinaTesto)
-                            .padding(.top, 10)
-                        Text(verbatim: t.v.intestatari).font(T.copertinaNomi).foregroundColor(.white).padding(.top, 22)
-                        Spacer(minLength: 0)
-                        HStack(alignment: .bottom, spacing: 14) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(verbatim: TestiValutazione.consulente).font(T.copertinaConsulente).foregroundColor(.white)
-                                Text(verbatim: t.ruoloConsulente).font(T.copertinaRuolo).foregroundColor(C.copertinaTesto)
-                                Text(verbatim: CifreDoc.data(t.v.data)).font(T.copertinaRuolo).foregroundColor(C.copertinaTesto)
-                            }
-                            EtichettaCanale(canale: t.prodotto.canale)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                    VStack(spacing: 12) {
-                        cartellino("Premio unico", [CifreDoc.euro(t.v.premio)])
-                        if !t.c.componenti.isEmpty {
-                            cartellino("Combinazione", t.c.componenti.map { "\(CifreDoc.condizione($0.quota)) \($0.tipo.nome)" })
-                        }
-                        cartellino("Riscatto", [t.riscattoPossibile])
-                    }
-                    .frame(width: 240)
-                }
-                .padding(EdgeInsets(top: 52, leading: 56, bottom: 50, trailing: 56))
-            }
-        }
-    }
-
-    /// Cartellino di carta avorio sul cuoio.
-    private func cartellino(_ titolo: String, _ righe: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            OcchielloDoc(testo: titolo, font: T.copertinaEtichetta, colore: C.copertinaEtichetta)
-            ForEach(righe, id: \.self) { Text(verbatim: $0).font(T.copertinaValore).foregroundColor(C.titolo) }
-        }
-        .padding(15)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 4).fill(C.copertinaRiquadro))
-        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.black.opacity(0.25), lineWidth: 0.8))
-        .shadow(color: Color.black.opacity(0.45), radius: 3, x: 0, y: 2)
-    }
-}
 
 // MARK: - 2. La proposta
 
@@ -195,7 +46,7 @@ private struct SlideProposta: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            TestaSlide(occhiello: "La proposta", titolo: t.titoloProposta, sottotitolo: t.sottotitoloProposta)
+            TestaReport(occhiello: "La proposta", titolo: t.titoloProposta, sottotitolo: t.sottotitoloProposta)
             HStack(spacing: 10) {
                 cifra("Premio versato", CifreDoc.euro(t.e.premio), C.titolo)
                 Text(verbatim: "→").font(T.numeroMedio).foregroundColor(C.tenue)
@@ -253,7 +104,7 @@ private struct SlidePartenza: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            TestaSlide(occhiello: "I numeri di partenza", titolo: "Da dove partiamo: i rendimenti degli ultimi anni",
+            TestaReport(occhiello: "I numeri di partenza", titolo: "Da dove partiamo: i rendimenti degli ultimi anni",
                        sottotitolo: t.sottotitoloPartenza)
             HStack(alignment: .top, spacing: 30) {
                 if let f = t.fondo, !f.storico.isEmpty {
@@ -325,7 +176,7 @@ private struct SlideIpotesi: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            TestaSlide(occhiello: "Le ipotesi", titolo: "Tre possibili andamenti dei mercati",
+            TestaReport(occhiello: "Le ipotesi", titolo: "Tre possibili andamenti dei mercati",
                        sottotitolo: t.f("Si tratta di ipotesi: servono a comprendere cosa potrebbe accadere al vostro capitale se i mercati dovessero andare bene, nella media oppure male.",
                                         "Si tratta di ipotesi: servono a comprendere cosa potrebbe accadere al tuo capitale se i mercati dovessero andare bene, nella media oppure male."))
             HStack(alignment: .top, spacing: 12) {
@@ -372,7 +223,7 @@ private struct SlideIncassi: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            TestaSlide(occhiello: t.f("Quanto potreste incassare", "Quanto potresti incassare"),
+            TestaReport(occhiello: t.f("Quanto potreste incassare", "Quanto potresti incassare"),
                        titolo: t.f("Quanto potreste incassare, anno per anno", "Quanto potresti incassare, anno per anno"),
                        sottotitolo: t.sottotitoloIncassi)
             TabellaIncassi(t: t, larghezza: larghezzaUtile, rigaScenario: 44, fontValore: T.numeroMedio, fontNota: T.piccolo,
@@ -446,7 +297,7 @@ private struct SlideAndamento: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TestaSlide(occhiello: "Come evolve nel tempo", titolo: t.titoloAndamento)
+            TestaReport(occhiello: "Come evolve nel tempo", titolo: t.titoloAndamento)
             HStack(alignment: .top, spacing: 20) {
                 VStack(spacing: 8) {
                     GraficoScenariDoc(linee: linee, etichetteAsse: t.anni.map { "inizio \($0)° anno" }, premio: t.v.premio)
@@ -494,7 +345,7 @@ private struct SlidePrimoRiscatto: View {
     var body: some View {
         let anno = t.anni.first ?? 2
         return VStack(alignment: .leading, spacing: 12) {
-            TestaSlide(occhiello: "Riscatto all'inizio del \(anno)° anno", titolo: t.titoloPrimoRiscatto, sottotitolo: t.sottotitoloPrimoRiscatto)
+            TestaReport(occhiello: "Riscatto all'inizio del \(anno)° anno", titolo: t.titoloPrimoRiscatto, sottotitolo: t.sottotitoloPrimoRiscatto)
             HStack(alignment: .top, spacing: 36) {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(voci.enumerated()), id: \.offset) { i, v in
@@ -569,7 +420,7 @@ private struct SlidePenali: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            TestaSlide(occhiello: "Le penali di riscatto", titolo: "Penali di riscatto e flessibilità", sottotitolo: t.sottotitoloPenali)
+            TestaReport(occhiello: "Le penali di riscatto", titolo: "Penali di riscatto e flessibilità", sottotitolo: t.sottotitoloPenali)
             HStack(spacing: 4) {
                 fascia("1° anno", "riscatto bloccato", "mesi 1–\(t.c.mesiBloccoRiscatto)", C.bloccato, C.titolo)
                 ForEach(Array(t.c.penali.enumerated()), id: \.offset) { i, p in
@@ -624,7 +475,7 @@ private struct SlideCosti: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            TestaSlide(occhiello: "Costi e trattenute", titolo: t.titoloCosti,
+            TestaReport(occhiello: "Costi e trattenute", titolo: t.titoloCosti,
                        sottotitolo: t.f("Scenario intermedio. I costi sono già compresi negli importi che avete visto: non vanno sottratti di nuovo.",
                                         "Scenario intermedio. I costi sono già compresi negli importi che hai visto: non vanno sottratti di nuovo."))
             TabellaCosti(t: t, larghezza: larghezzaUtile, riga: 26, font: T.corpo, fontForte: T.corpoForte, fontNota: T.minimo)
@@ -694,7 +545,7 @@ private struct SlideGaranzie: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            TestaSlide(occhiello: "Garanzie e fiscalità", titolo: "Garanzie e imposte: cosa sapere")
+            TestaReport(occhiello: "Garanzie e fiscalità", titolo: "Garanzie e imposte: cosa sapere")
             HStack(alignment: .top, spacing: 14) {
                 elenco("Cosa è garantito", t.c.garantito, C.favorevole, C.favorevoleFondo)
                 elenco("Cosa non è garantito", t.c.nonGarantito, C.sfavorevole, C.sfavorevoleFondo)
@@ -746,7 +597,7 @@ private struct SlideKID: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TestaSlide(occhiello: "Il confronto ufficiale", titolo: "Il confronto con il KID ufficiale",
+            TestaReport(occhiello: "Il confronto ufficiale", titolo: "Il confronto con il KID ufficiale",
                        sottotitolo: "Il KID è il documento ufficiale della Compagnia" + (t.c.dataDocumenti.map { " (\(CifreDoc.dataBreve($0)))" } ?? "")
                         + ". Rendimento medio annuo al lordo delle imposte. " + t.c.esempioKID)
             TabellaKID(t: t, larghezza: larghezzaUtile, riga: 23, font: T.corpo, fontTesta: T.corpoForte, fontNota: T.piccolo)
@@ -802,7 +653,7 @@ private struct SlideSintesi: View {
     var body: some View {
         let punti = t.sintesi
         return VStack(alignment: .leading, spacing: 16) {
-            TestaSlide(occhiello: "In sintesi", titolo: "In sintesi")
+            TestaReport(occhiello: "In sintesi", titolo: "In sintesi")
             VStack(spacing: 14) {
                 ForEach(Array(stride(from: 0, to: punti.count, by: 2)), id: \.self) { inizio in
                     HStack(spacing: 14) {
@@ -838,7 +689,7 @@ private struct SlideAppendice: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TestaSlide(occhiello: "Appendice", titolo: "Appendice: il dettaglio anno per anno")
+            TestaReport(occhiello: "Appendice", titolo: "Appendice: il dettaglio anno per anno")
             TabellaDettaglioBreve(t: t, larghezza: larghezzaUtile)
             Group {
                 (Text("Come leggere la simulazione. ").bold() + Text(verbatim: t.comeLeggere)

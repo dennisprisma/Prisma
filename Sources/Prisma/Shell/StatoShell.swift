@@ -328,7 +328,10 @@ final class StatoShell: ObservableObject {
 
     func salvaPosizione(_ posizione: Posizione) {
         if let i = dati.posizioni.firstIndex(where: { $0.id == posizione.id }) {
-            dati.posizioni[i] = posizione
+            // Il valore che cambia resta nello storico, per il resoconto
+            var nuova = posizione
+            nuova.registraValorePrecedente(dati.posizioni[i])
+            dati.posizioni[i] = nuova
         } else {
             dati.posizioni.append(posizione)
         }
@@ -521,9 +524,9 @@ final class StatoShell: ObservableObject {
     // MARK: - Prospetti
 
     /// Il prospetto da mostrare per il cliente attivo. Una scelta di un altro cliente torna alla prima
-    /// valutazione del cliente, o al quadro delle posizioni se non ne ha.
+    /// valutazione del cliente, o al resoconto delle posizioni se non ne ha.
     var sceltaProspetto: SceltaProspetto {
-        let predefinita: SceltaProspetto = valutazioniCliente(clienteAttivoId).first.map { .valutazione($0.id, report: false) } ?? .quadro
+        let predefinita: SceltaProspetto = valutazioniCliente(clienteAttivoId).first.map { .valutazione($0.id, report: false) } ?? .resoconto(report: false)
         switch prospetto {
         case .posizione(let id)? where posizioni.contains(where: { $0.id == id && $0.clienteId == clienteAttivoId }):
             return .posizione(id)
@@ -531,8 +534,8 @@ final class StatoShell: ObservableObject {
             // Se la valutazione non è di questo cliente, la sua prima; se non ne ha, la pagina vuota con "Nuova valutazione"
             let elenco = valutazioniCliente(clienteAttivoId)
             return .valutazione(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
-        case .quadro?:
-            return .quadro
+        case .resoconto(let report)?:
+            return .resoconto(report: report)
         case .confronto(let a, let b)?:
             let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
             if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
@@ -547,7 +550,15 @@ final class StatoShell: ObservableObject {
         if case .valutazione(let id, let report) = scelta {
             return valutazione(id).flatMap(testiValutazione).map { DocumentoStampabile($0, report: report) }
         }
+        if case .resoconto(let report) = scelta {
+            return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
+        }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
+    }
+
+    /// I testi e i numeri del resoconto delle posizioni in essere di un cliente.
+    func testiResoconto(_ cliente: String) -> TestiResoconto {
+        TestiResoconto(posizioniCliente(cliente), cliente: self.cliente(cliente))
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {

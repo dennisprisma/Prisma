@@ -16,11 +16,9 @@ enum ProvaProspetti {
 
         let dati = DatiPrisma.demo()
         let casi: [(String, String, SceltaProspetto)] = [
-            ("quadro-giulia", "giulia", .quadro),
             ("proposta-giulia-previdenza", "giulia", .posizione("pos-giulia-piano-previdenziale-integrativo")),
             ("posizione-giulia-etf", "giulia", .posizione("pos-giulia-etf-azionario-globale")),
             ("copertura-marco-infortuni", "marco", .posizione("pos-marco-infortuni-famiglia")),
-            ("quadro-marco", "marco", .quadro),
         ]
         var tutti = casi
         let voci = ElementoConfronto.elenco(dati, cliente: "marco")
@@ -80,13 +78,9 @@ enum ProvaProspetti {
                 } else if p.area == .protezione, let mille = CompositoreProspetti.costoPerMille(p) {
                     verifica("\(nome): costo per 1.000 € assicurati", testo.contains(spazi(Formati.euroDecimali(mille))), Formati.euroDecimali(mille))
                 }
-            case .quadro:
-                let r = RiepilogoPosizioni(dati.posizioni.filter { $0.clienteId == cliente && $0.stato != .chiusa })
-                verifica("\(nome): patrimonio netto \(Formati.euro(r.patrimonioNetto)) nel PDF", testo.contains(spazi(Formati.euro(r.patrimonioNetto))))
-                verifica("\(nome): entrambi i canali nella ripartizione", testo.contains("Alleanza") && testo.contains("Indipendente"))
             case .confronto:
                 verifica("\(nome): differenza B − A presente", testo.contains("B − A"))
-            case .valutazione:
+            case .valutazione, .resoconto:
                 break
             }
         }
@@ -116,6 +110,40 @@ enum ProvaProspetti {
             verifica("Valutazione di prova presente", false)
         }
 
+        // Resoconto delle posizioni in essere: prospetto e report per ogni cliente con posizioni in essere
+        for cliente in dati.clienti where dati.posizioni.contains(where: { $0.clienteId == cliente.id && $0.stato == .inEssere }) {
+            let t = TestiResoconto(dati.posizioni.filter { $0.clienteId == cliente.id }, cliente: cliente)
+            for report in [false, true] {
+                let d = DocumentoStampabile(t, report: report)
+                let nome = "resoconto-\(cliente.id)-\(report ? "report" : "prospetto")"
+                guard let pdf = StampaCarta.pdf(d), let documento = PDFDocument(data: pdf) else {
+                    verifica("\(nome): PDF creato", false)
+                    continue
+                }
+                verifica("\(nome): PDF di \(d.pagine.count) pagine", documento.pageCount == d.pagine.count && d.pagine.count >= (report ? 5 : 3),
+                         "\(documento.pageCount) pagine, \(pdf.count / 1024) KB")
+                let orizzontale = (documento.page(at: 0)?.bounds(for: .mediaBox).width ?? 0) > (documento.page(at: 0)?.bounds(for: .mediaBox).height ?? 0)
+                verifica("\(nome): \(report ? "A4 orizzontale" : "A4 verticale")", orizzontale == report)
+                let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
+                let netto = spazi(CifreDoc.euro(t.e.riepilogo.patrimonioNetto))
+                verifica("\(nome): patrimonio netto \(netto) nel PDF", testo.contains(netto))
+                if t.e.versato > 0 {
+                    let valore = spazi(CifreDoc.euro(t.e.valoreFinanziario))
+                    verifica("\(nome): valore delle posizioni finanziarie \(valore) nel PDF", testo.contains(valore))
+                }
+                verifica("\(nome): cliente e consulente", testo.contains(cliente.nome) && testo.contains(TestiValutazione.consulente))
+                for c in t.e.canaliPresenti {
+                    verifica("\(nome): etichetta \(c.nomeBreve) nel PDF", testo.contains(c.nome))
+                }
+                if !report {
+                    // Ogni posizione in essere compare nel prospetto
+                    let mancanti = t.e.voci.filter { !testo.contains(spazi($0.posizione.nome)) }.map(\.posizione.nome)
+                    verifica("\(nome): tutte le posizioni in essere", mancanti.isEmpty, mancanti.joined(separator: ", "))
+                }
+                if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
+            }
+        }
+
         if errori == 0 {
             print("OK: prospetti verificati")
             return 0
@@ -125,6 +153,10 @@ enum ProvaProspetti {
     }
 
     static func spazi(_ s: String) -> String {
-        s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")
+        // Le legature tipografiche (ﬁ, ﬃ…) tornano lettere separate: "autosufficienza" resta cercabile
+        let legature = ["\u{FB00}": "ff", "\u{FB01}": "fi", "\u{FB02}": "fl", "\u{FB03}": "ffi", "\u{FB04}": "ffl"]
+        return legature.reduce(s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")) {
+            $0.replacingOccurrences(of: $1.key, with: $1.value)
+        }
     }
 }

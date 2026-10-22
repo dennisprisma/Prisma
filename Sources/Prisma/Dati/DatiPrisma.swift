@@ -33,7 +33,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 9: schede prodotto e obiettivi dei clienti.
     /// 10: documenti dei clienti con i dati estratti.
     /// 11: condizioni dei contratti nelle schede prodotto e valutazioni d'investimento.
-    static let versioneAttuale = 11
+    /// 12: rilevazioni dei valori delle posizioni (storico per il resoconto).
+    static let versioneAttuale = 12
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],

@@ -10,93 +10,14 @@ enum ProspettoValutazione {
         let pagine: [AnyView] = [AnyView(PaginaIncassi(t: t)), AnyView(PaginaDettaglio(t: t)),
                                  AnyView(PaginaCosti(t: t)), AnyView(PaginaBasi(t: t))]
         return pagine.enumerated().map { i, p in
-            AnyView(FoglioProspetto(t: t, numero: i + 1, totale: pagine.count) { p })
+            AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiValutazione.piedeAvvertenza, numero: i + 1, totale: pagine.count) { p })
         }
     }
 }
 
-private var larghezza: CGFloat { D.prospetto.width - D.margineProspetto * 2 }
-
-/// Margini e piè di pagina del prospetto.
-private struct FoglioProspetto<Contenuto: View>: View {
-    @Environment(\.paletteDocumento) private var C
-    let t: TestiValutazione
-    let numero: Int
-    let totale: Int
-    @ViewBuilder let contenuto: () -> Contenuto
-
-    var body: some View {
-        FoglioDocumento(formato: D.prospetto) {
-            VStack(alignment: .leading, spacing: 0) {
-                contenuto()
-                Spacer(minLength: 0)
-                VStack(spacing: 4) {
-                    Rectangle().fill(C.filetto).frame(height: 0.6)
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(verbatim: t.piede)
-                            Text(verbatim: TestiValutazione.piedeAvvertenza)
-                        }
-                        Spacer()
-                        Text(verbatim: "pag. \(numero) di \(totale)")
-                    }
-                    .font(T.pPiede).foregroundColor(C.tenue)
-                }
-            }
-            .padding(EdgeInsets(top: 34, leading: D.margineProspetto, bottom: 22, trailing: D.margineProspetto))
-        }
-    }
-}
-
-/// Titolo di sezione con il paragrafo sotto.
-private struct SezioneProspetto: View {
-    @Environment(\.paletteDocumento) private var C
-    let titolo: String
-    var testo: Text? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(verbatim: titolo).font(T.pSezione).foregroundColor(C.titolo)
-            if let testo {
-                testo.font(T.pCorpo).foregroundColor(C.tenue).lineSpacing(1.6).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// Riquadro con la barra blu a sinistra ("In sintesi", "Se il bisogno di liquidità è probabile").
-private struct RiquadroBarra<Contenuto: View>: View {
-    @Environment(\.paletteDocumento) private var C
-    let titolo: String
-    @ViewBuilder let contenuto: () -> Contenuto
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(verbatim: titolo).font(T.pSezione).foregroundColor(C.titolo)
-            contenuto()
-        }
-        .padding(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 12))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(C.evidenza)
-        .overlay(Rectangle().fill(C.barraLaterale).frame(width: 3), alignment: .leading)
-    }
-}
+private var larghezza: CGFloat { FoglioProspetto<EmptyView>.larghezza }
 
 private func puntoElenco(_ testo: Text) -> some View { PuntoElenco(testo: testo) }
-
-private struct PuntoElenco: View {
-    @Environment(\.paletteDocumento) private var C
-    let testo: Text
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 7) {
-            Text(verbatim: "•").font(T.pCorpoForte)
-            testo.font(T.pCorpo).lineSpacing(1.6).fixedSize(horizontal: false, vertical: true)
-        }
-        .foregroundColor(C.testo)
-    }
-}
 
 // MARK: - Pagina 1: quanto si incassa
 
@@ -115,17 +36,17 @@ private struct PaginaIncassi: View {
                     .font(T.pSottotitolo).foregroundColor(C.testo).lineSpacing(1.5).fixedSize(horizontal: false, vertical: true)
             }
             HStack(alignment: .bottom, spacing: 14) {
-                firma("Cliente", t.v.intestatari)
-                firma("Consulente", TestiValutazione.consulente)
-                firma("Data", CifreDoc.dataBreve(t.v.data)).frame(width: 90)
+                CampoProspetto(etichetta: "Cliente", valore: t.v.intestatari)
+                CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
+                CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.v.data)).frame(width: 90)
             }
             HStack(spacing: 6) {
-                cifra("Premio unico versato", CifreDoc.euro(t.e.premio), "versamento iniziale")
-                cifra("Costo di ingresso", CifreDoc.euro(t.e.ingresso),
+                CifraProspetto("Premio unico versato", CifreDoc.euro(t.e.premio), "versamento iniziale")
+                CifraProspetto("Costo di ingresso", CifreDoc.euro(t.e.ingresso),
                       "\(CifreDoc.condizione(t.c.costoIngresso))" + (t.c.costoIngressoMassimo.map { ", massimo \(CifreDoc.euro($0))" } ?? ""))
-                cifra("Capitale investito", CifreDoc.euro(t.e.capitale), "premio al netto del costo")
+                CifraProspetto("Capitale investito", CifreDoc.euro(t.e.capitale), "premio al netto del costo")
                 ForEach(t.c.componenti) { p in
-                    cifra(p.tipo == .gestioneSeparata ? "In Gestione separata" : "Nel Fondo Interno",
+                    CifraProspetto(p.tipo == .gestioneSeparata ? "In Gestione separata" : "Nel Fondo Interno",
                           CifreDoc.euro(t.e.partiIniziali[p.id] ?? 0), "\(CifreDoc.condizione(p.quota)) del capitale")
                 }
             }
@@ -183,27 +104,6 @@ private struct PaginaIncassi: View {
         orizzonte += " Il 1° anno è bloccato" + (t.c.penali.isEmpty ? "." : " e dal \(t.c.annoSenzaPenali)° anno (\(t.etichettaMese(t.c.annoSenzaPenali))) non si pagano più penali.")
         punti.append(Text(verbatim: "Orizzonte del prodotto: ").bold() + Text(verbatim: orizzonte))
         return punti
-    }
-
-    private func firma(_ etichetta: String, _ valore: String) -> some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            Text(verbatim: etichetta).font(T.pTabellaNota).foregroundColor(C.tenue)
-            VStack(spacing: 2) {
-                Text(verbatim: valore).font(T.pCorpo).foregroundColor(C.titolo).lineLimit(1).minimumScaleFactor(0.7)
-                Rectangle().fill(C.tenue).frame(height: 0.5)
-            }
-        }
-    }
-
-    private func cifra(_ etichetta: String, _ valore: String, _ nota: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(verbatim: etichetta).font(T.pKpiEtichetta).foregroundColor(C.tenue).lineLimit(1).minimumScaleFactor(0.8)
-            Text(verbatim: valore).font(T.pKpiValore).foregroundColor(C.titolo).lineLimit(1).minimumScaleFactor(0.7)
-            Text(verbatim: nota).font(T.pKpiNota).foregroundColor(C.tenue).lineLimit(1).minimumScaleFactor(0.8)
-        }
-        .padding(9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .riquadroDoc(C.riquadro, raggio: D.raggioPiccolo)
     }
 }
 
@@ -399,30 +299,8 @@ private struct PaginaBasi: View {
                 (Text(verbatim: "Fonti. ").bold() + Text(verbatim: t.c.fonti))
                     .font(T.pTabellaNota).foregroundColor(C.tenue).lineSpacing(1.2).fixedSize(horizontal: false, vertical: true)
             }
-            HStack(alignment: .bottom, spacing: 0) {
-                etichettaFirma("Per presa visione", 92)
-                etichettaFirma("Cliente", 40)
-                lineaFirma
-                Spacer(minLength: 0)
-                etichettaFirma("Consulente", 56)
-                lineaFirma
-            }
-            .frame(width: larghezza)
-            .padding(.top, 14)
+            FirmeProspetto()
         }
-    }
-
-    private func etichettaFirma(_ testo: String, _ larghezza: CGFloat) -> some View {
-        Text(verbatim: testo).font(T.pTabellaNota).foregroundColor(C.tenue).lineLimit(1).fixedSize()
-            .frame(width: larghezza, alignment: .leading)
-    }
-
-    private var lineaFirma: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            Rectangle().fill(C.tenue).frame(height: 0.8)
-        }
-        .frame(width: 145, height: 14)
     }
 
     private func storicoFondo(_ f: ComponenteContratto) -> some View {

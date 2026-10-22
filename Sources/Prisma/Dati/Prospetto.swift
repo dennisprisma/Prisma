@@ -3,8 +3,8 @@ import Foundation
 /// Cosa si vuole stampare. I prospetti sono per il consulente (dettagliati, un tema alla volta);
 /// la valutazione di un investimento ha anche il report da lasciare al cliente.
 enum SceltaProspetto: Hashable {
-    /// Tutte le posizioni del cliente, in essere e in proposta.
-    case quadro
+    /// Resoconto delle posizioni in essere: prospetto (A4 verticale) o report per il cliente (A4 orizzontale).
+    case resoconto(report: Bool)
     /// Una posizione o una proposta, in ogni dettaglio.
     case posizione(String)
     /// Due voci del dossier fianco a fianco.
@@ -14,7 +14,7 @@ enum SceltaProspetto: Hashable {
 
     var tipo: TipoProspetto {
         switch self {
-        case .quadro: return .quadro
+        case .resoconto: return .resoconto
         case .posizione: return .posizione
         case .confronto: return .confronto
         case .valutazione: return .valutazione
@@ -23,13 +23,13 @@ enum SceltaProspetto: Hashable {
 }
 
 enum TipoProspetto: String, CaseIterable, Identifiable {
-    case valutazione, quadro, posizione, confronto
+    case valutazione, resoconto, posizione, confronto
 
     var id: String { rawValue }
 
     var nome: String {
         switch self {
-        case .quadro: return "Quadro delle posizioni"
+        case .resoconto: return "Resoconto delle posizioni in essere"
         case .posizione: return "Posizione o proposta"
         case .confronto: return "Confronto"
         case .valutazione: return "Valutazione di un investimento"
@@ -38,7 +38,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
 
     var descrizione: String {
         switch self {
-        case .quadro: return "Patrimonio, canali, aree, ogni posizione, coperture, proposte, scadenze e obiettivi."
+        case .resoconto: return "Cosa ha il cliente e come sta andando: versato, valore, risultato e rendimento di ogni posizione, ultimi 12 mesi, tutele, debiti, scadenze e costi. Prospetto per te, report per il cliente."
         case .posizione: return "Contratto, costi, proiezione anno per anno nei tre scenari, fonti e pagine dei documenti."
         case .confronto: return "Ipotesi ed esiti a fronte, differenze anno per anno, peso dei costi."
         case .valutazione: return "Il cliente valuta un investimento: incassi netti anno per anno in tre scenari, penali, costi, imposte, confronto con il KID. Prospetto per te, report per il cliente."
