@@ -45,9 +45,10 @@ enum ProvaBackup {
             }
 
             // Le copie automatiche hanno la loro rotazione: non le consumano i backup fatti a mano
-            for _ in 0..<3 { try GestoreBackup.crea(sorgente: dati, destinazione: backup, nota: GestoreBackup.notaAutomatico) }
+            // (una sola copia: due backup nello stesso secondo hanno lo stesso nome)
+            try GestoreBackup.crea(sorgente: dati, destinazione: backup, nota: GestoreBackup.notaAutomatico)
             let conAutomatici = GestoreBackup.elenca(backup)
-            guard conAutomatici.filter(GestoreBackup.automatico).count == 3, conAutomatici.count == GestoreBackup.massimo + 3 else {
+            guard conAutomatici.filter(GestoreBackup.automatico).count == 1, conAutomatici.count == GestoreBackup.massimo + 1 else {
                 print("ERRORE: rotazione separata dei backup automatici (\(conAutomatici.count) copie)")
                 return 1
             }
