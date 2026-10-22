@@ -37,72 +37,72 @@ struct DocumentoStampabile {
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del check-up del primo incontro.
-    init(_ t: TestiCheckUp, report: Bool) {
+    init(_ t: TestiCheckUp, report: Bool, commento: String? = nil) {
         titolo = TestiCheckUp.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportCheckUp.pagine(t) : ProspettoCheckUp.pagine(t)
+        pagine = report ? ReportCheckUp.pagine(t, commento: commento) : ProspettoCheckUp.pagine(t)
         tipo = report ? .report : .prospetto
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del capitale in scadenza e della liquidità.
-    init(_ t: TestiLiquidita, report: Bool) {
+    init(_ t: TestiLiquidita, report: Bool, commento: String? = nil) {
         titolo = TestiLiquidita.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportLiquidita.pagine(t) : ProspettoLiquidita.pagine(t)
+        pagine = report ? ReportLiquidita.pagine(t, commento: commento) : ProspettoLiquidita.pagine(t)
         tipo = report ? .report : .prospetto
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del piano per un obiettivo.
-    init(_ t: TestiObiettivo, report: Bool) {
+    init(_ t: TestiObiettivo, report: Bool, commento: String? = nil) {
         titolo = t.o.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportObiettivo.pagine(t) : ProspettoObiettivo.pagine(t)
+        pagine = report ? ReportObiettivo.pagine(t, commento: commento) : ProspettoObiettivo.pagine(t)
         tipo = report ? .report : .prospetto
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) della protezione della famiglia.
-    init(_ t: TestiProtezione, report: Bool) {
+    init(_ t: TestiProtezione, report: Bool, commento: String? = nil) {
         titolo = TestiProtezione.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportProtezione.pagine(t) : ProspettoProtezione.pagine(t)
+        pagine = report ? ReportProtezione.pagine(t, commento: commento) : ProspettoProtezione.pagine(t)
         tipo = report ? .report : .prospetto
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del piano previdenziale.
-    init(_ t: TestiPrevidenza, report: Bool) {
+    init(_ t: TestiPrevidenza, report: Bool, commento: String? = nil) {
         titolo = TestiPrevidenza.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportPrevidenza.pagine(t) : ProspettoPrevidenza.pagine(t)
+        pagine = report ? ReportPrevidenza.pagine(t, commento: commento) : ProspettoPrevidenza.pagine(t)
         tipo = report ? .report : .prospetto
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) di una sostituzione o di un confronto.
-    init(_ t: TestiSostituzione, report: Bool) {
+    init(_ t: TestiSostituzione, report: Bool, commento: String? = nil) {
         titolo = t.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportSostituzione.pagine(t) : ProspettoSostituzione.pagine(t)
+        pagine = report ? ReportSostituzione.pagine(t, commento: commento) : ProspettoSostituzione.pagine(t)
         tipo = report ? .report : .prospetto
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del resoconto delle posizioni in essere.
-    init(_ t: TestiResoconto, report: Bool) {
+    init(_ t: TestiResoconto, report: Bool, commento: String? = nil) {
         titolo = TestiResoconto.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportResoconto.pagine(t) : ProspettoResoconto.pagine(t)
+        pagine = report ? ReportResoconto.pagine(t, commento: commento) : ProspettoResoconto.pagine(t)
         tipo = report ? .report : .prospetto
     }
 }

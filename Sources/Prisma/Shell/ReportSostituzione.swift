@@ -6,12 +6,13 @@ private typealias D = Misure.Documento
 /// Il report della sostituzione (o del confronto tra due proposte): A4 orizzontale, per il cliente.
 /// Le due strade, quanto costa cambiare oggi, dove si arriva, gli scenari, cosa cambia, la sintesi.
 enum ReportSostituzione {
-    static func pagine(_ t: TestiSostituzione) -> [AnyView] {
+    static func pagine(_ t: TestiSostituzione, commento: String? = nil) -> [AnyView] {
         var slide: [AnyView] = [AnyView(SlideStrade(t: t))]
         if t.e.sostituzione { slide.append(AnyView(SlideUscita(t: t))) }
         slide += [AnyView(SlideArrivo(t: t)), AnyView(SlideScenari(t: t)), AnyView(SlideCambia(t: t)), AnyView(SlideSintesiSostituzione(t: t))]
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide,
-                                     intestazione: "\(t.e.sostituzione ? "Restare o cambiare" : "Due proposte a confronto") · \(t.cliente)")
+                                     intestazione: "\(t.e.sostituzione ? "Restare o cambiare" : "Due proposte a confronto") · \(t.cliente)",
+                                     lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
 
     private static func copertina(_ t: TestiSostituzione) -> CopertinaReport {

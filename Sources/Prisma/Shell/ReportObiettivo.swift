@@ -6,11 +6,12 @@ private typealias D = Misure.Documento
 /// Il report del piano obiettivo: A4 orizzontale, per il cliente. Il traguardo, dove sei oggi,
 /// dove arrivi così, le strade per arrivarci, gli scenari, la sintesi.
 enum ReportObiettivo {
-    static func pagine(_ t: TestiObiettivo) -> [AnyView] {
+    static func pagine(_ t: TestiObiettivo, commento: String? = nil) -> [AnyView] {
         var slide: [AnyView] = [AnyView(SlideTraguardo(t: t)), AnyView(SlideArrivoObiettivo(t: t))]
         if !t.e.strade.isEmpty { slide.append(AnyView(SlideStradeObiettivo(t: t))) }
         slide += [AnyView(SlideScenariObiettivo(t: t)), AnyView(SlideSintesiObiettivo(t: t))]
-        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(t.o.titolo) · \(t.cliente)")
+        return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(t.o.titolo) · \(t.cliente)",
+                                     lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
 
     private static func copertina(_ t: TestiObiettivo) -> CopertinaReport {

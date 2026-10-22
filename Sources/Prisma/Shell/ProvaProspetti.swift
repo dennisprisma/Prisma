@@ -311,6 +311,31 @@ enum ProvaProspetti {
             }
         }
 
+        // Il commento del consulente: pagina «Due parole per te» dopo la copertina, solo nei report
+        let stato = StatoShell(persistente: false)
+        stato.dati.impostazioni.eve.motore = .sintesi
+        stato.clienteAttivoId = "giulia"
+        for scelta in [SceltaProspetto.checkUp(report: true), .previdenza(report: true), .resoconto(report: true)] {
+            let senza = stato.documentoProspetto(scelta)?.pagine.count ?? 0
+            stato.scriviCommentoConEve(scelta)
+            let testoCommento = stato.commento(scelta)?.testo ?? ""
+            guard let d = stato.documentoProspetto(scelta), let pdf = StampaCarta.pdf(d) else {
+                verifica("Commento in «\(scelta.tipo.nome)»: PDF creato", false)
+                continue
+            }
+            let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
+            let primaRiga = testoCommento.components(separatedBy: "\n").first ?? "—"
+            verifica("Commento in «\(scelta.tipo.nome)»: una pagina in più, con il commento e la firma",
+                     d.pagine.count == senza + 1 && testo.contains("Due parole per te") && testo.contains(spazi(primaRiga)),
+                     "\(senza) → \(d.pagine.count) pagine")
+            if case .checkUp = scelta {
+                verifica("Il prospetto del check-up non ha il commento", stato.documentoProspetto(.checkUp(report: false)).map {
+                    !(spazi(StampaCarta.testo(StampaCarta.pdf($0) ?? Data()).joined()).contains("Due parole per te"))
+                } ?? false)
+                if let cartella { try? pdf.write(to: cartella.appendingPathComponent("checkup-giulia-report-commento.pdf")) }
+            }
+        }
+
         if errori == 0 {
             print("OK: prospetti verificati")
             return 0
