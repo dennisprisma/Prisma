@@ -240,11 +240,11 @@ enum ProvaCalcoli {
         }
 
         // 19. Resoconto delle posizioni in essere: rendimento dei versamenti, ultimi 12 mesi, totali
-        let cinque = MotoreResoconto.Flussi(versamenti: [(36, 10_000)], valore: 10_000 * pow(1.05, 3))
+        let cinque = MotoreResoconto.Flussi(versamenti: [(mesi: 36, importo: 10_000)], valore: 10_000 * pow(1.05, 3))
         verifica("Resoconto: rendimento annuo di 10.000 € diventati 11.576 € in 3 anni", MotoreResoconto.tir([cinque]) ?? 0, 5)
-        let due = MotoreResoconto.Flussi(versamenti: [(24, 5_000)], valore: 5_000 * pow(1.05, 2))
+        let due = MotoreResoconto.Flussi(versamenti: [(mesi: 24, importo: 5_000)], valore: 5_000 * pow(1.05, 2))
         verifica("Resoconto: rendimento annuo di due posizioni al 5%", MotoreResoconto.tir([cinque, due]) ?? 0, 5)
-        let mensili = MotoreResoconto.Flussi(versamenti: (0..<12).map { (Double(12 - $0), 100.0) }, valore: 1_200)
+        let mensili = MotoreResoconto.Flussi(versamenti: (0..<12).map { (mesi: Double(12 - $0), importo: 100.0) }, valore: 1_200)
         verifica("Resoconto: versamenti senza guadagno, rendimento zero", MotoreResoconto.tir([mensili]) ?? 1, 0)
         let cal = Calendar(identifier: .gregorian)
         let oggi = cal.startOfDay(for: Date())

@@ -52,7 +52,7 @@ private struct CifraReport: View {
     let valore: String
     var nota = ""
     var colore: Color? = nil
-    var font = T.numeroGrande
+    var font = Tipo.Report.numeroGrande
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -383,9 +383,7 @@ private struct SlideScadenze: View {
                             .clipShape(RoundedRectangle(cornerRadius: 3))
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(verbatim: s.posizione.nome).font(T.titoloRiquadro).foregroundColor(C.titolo)
-                                Text(verbatim: (s.scaduta ? "Già passata: " : "") + s.cosa.prefix(1).uppercased() + s.cosa.dropFirst()
-                                     + (s.posizione.area == .protezione ? " · premio \(CifreDoc.euro(s.posizione.premioAnnuo)) l'anno" : " · \(CifreDoc.euro(s.posizione.valore))"))
-                                    .font(T.piccolo).foregroundColor(C.testo)
+                                Text(verbatim: descrizione(s)).font(T.piccolo).foregroundColor(C.testo)
                             }
                             Spacer(minLength: 6)
                             EtichettaCanale(canale: s.posizione.canale)
@@ -409,6 +407,12 @@ private struct SlideScadenze: View {
                 .riquadroDoc(C.evidenza)
             }
         }
+    }
+
+    private func descrizione(_ s: ScadenzaResoconto) -> String {
+        let cosa = s.cosa.prefix(1).uppercased() + String(s.cosa.dropFirst())
+        let importo = s.posizione.area == .protezione ? "premio \(CifreDoc.euro(s.posizione.premioAnnuo)) l'anno" : CifreDoc.euro(s.posizione.valore)
+        return (s.scaduta ? "Già passata: " : "") + cosa + " · " + importo
     }
 
     private func voce(_ etichetta: String, _ anno: Double) -> some View {

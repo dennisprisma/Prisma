@@ -120,15 +120,19 @@ private struct PaginaQuadro: View {
 
     private var e: EsitoResoconto { t.e }
 
+    private var sottotitolo: String {
+        var parti = ["Situazione al \(CifreDoc.data(e.data))", "\(TestiResoconto.posizioni(e.voci.count)) in essere"]
+        if !e.proposte.isEmpty { parti.append(e.proposte.count == 1 ? "1 proposta aperta" : "\(e.proposte.count) proposte aperte") }
+        parti.append("valori dichiarati nelle Posizioni")
+        return parti.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 OcchielloDoc(testo: "Prospetto di dettaglio · Resoconto delle posizioni in essere", font: T.pOcchiello)
                 Text(verbatim: "Le posizioni di \(t.cliente)").font(T.pTitolo).foregroundColor(C.titolo)
-                Text(verbatim: "Situazione al \(CifreDoc.data(e.data)) · \(TestiResoconto.posizioni(e.voci.count)) in essere"
-                     + (e.proposte.isEmpty ? "" : " · \(e.proposte.count == 1 ? "1 proposta aperta" : "\(e.proposte.count) proposte aperte")")
-                     + " · valori dichiarati nelle Posizioni")
-                    .font(T.pSottotitolo).foregroundColor(C.testo)
+                Text(verbatim: sottotitolo).font(T.pSottotitolo).foregroundColor(C.testo)
             }
             HStack(alignment: .bottom, spacing: 14) {
                 CampoProspetto(etichetta: "Cliente", valore: t.cliente)
@@ -316,14 +320,18 @@ private struct PaginaTutele: View {
                 SezioneProspetto(titolo: "Proposte ancora aperte")
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(e.proposte) { p in
-                        PuntoElenco(testo: Text(verbatim: p.nome).bold()
-                                    + Text(verbatim: " · \(p.canale.nome) · \(p.area.nome.lowercased()) · \(p.esito?.nome.lowercased() ?? "bozza")"
-                                           + (p.premioAnnuo > 0 ? " · \(CifreDoc.euro(p.premioAnnuo))/anno" : "")
-                                           + (p.versamentoIniziale > 0 ? " · iniziale \(CifreDoc.euro(p.versamentoIniziale))" : "")))
+                        PuntoElenco(testo: Text(verbatim: p.nome).bold() + Text(verbatim: dettaglioProposta(p)))
                     }
                 }
             }
         }
+    }
+
+    private func dettaglioProposta(_ p: Posizione) -> String {
+        var parti = [p.canale.nome, p.area.nome.lowercased(), p.esito?.nome.lowercased() ?? "bozza"]
+        if p.premioAnnuo > 0 { parti.append("\(CifreDoc.euro(p.premioAnnuo))/anno") }
+        if p.versamentoIniziale > 0 { parti.append("iniziale \(CifreDoc.euro(p.versamentoIniziale))") }
+        return " · " + parti.joined(separator: " · ")
     }
 
     private func gruppi(_ voci: [VoceResoconto], _ celle: (VoceResoconto) -> [CellaDoc]) -> [GruppoCanale] {
