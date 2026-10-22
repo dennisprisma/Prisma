@@ -121,11 +121,38 @@ enum ProvaEve {
         stato.salvaCommento(.checkUp(report: true), testo: "")
         controlla(stato.commento(.checkUp(report: true)) == nil, "Commento tolto")
 
+        // Eve spiega i documenti: dati con la pagina, confronto con il dossier
+        if let f = stato.fonteEve("giulia"), let kid = f.documenti.first(where: { $0.tipo == .kid }) {
+            let r = MotoriEve.sintesi.documento(kid, fonte: f)
+            let sri = kid.campo(.sri)?.valore ?? "?"
+            controlla(r.testo.contains("Rischio \(sri) su 7") && r.testo.contains("(pag. "), "KID di Giulia: rischio \(sri) su 7 con la pagina")
+            controlla(kid.campi.allSatisfy(\.confermato) || r.testo.contains("Da confermare"), "KID di Giulia: segnala i dati da confermare")
+        } else {
+            controlla(false, "Giulia ha un KID di prova")
+        }
+        if let f = stato.fonteEve("marco"), var polizza = f.documenti.first(where: { $0.tipo == .polizza }) {
+            let r = MotoriEve.sintesi.documento(polizza, fonte: f)
+            controlla(r.testo.contains("(pag. ") && r.testo.contains("condizioni di polizza"), "Polizza di Marco: dati con la pagina e verifiche")
+            if let i = polizza.campi.firstIndex(where: { $0.chiave == .capitaleAssicurato }) {
+                polizza.campi[i].valore = "1.234.567,00"
+                let diff = MotoriEve.sintesi.confronta(polizza, fonte: f)
+                controlla(diff.contains { $0.contains("capitale assicurato € 1.234.567") }, "Polizza di Marco: un capitale diverso dalla posizione viene segnalato")
+            }
+            stato.dati.impostazioni.eve.motore = .sintesi
+            let prima = stato.conversazione("marco").count
+            stato.spiegaDocumentoConEve(polizza.id)
+            controlla(stato.conversazione("marco").count == prima + 2 && stato.clienteAttivoId == "marco", "«Chiedi a Eve» da Documenti: domanda e spiegazione salvate")
+        } else {
+            controlla(false, "Marco ha una polizza di prova")
+        }
+        controlla(SpuntoEve.argomento("Cosa c'è scritto nel KID?") == .documenti, "Argomento: domanda su un KID → documenti")
+
         // La chat in modalità sintesi aggiunge domanda e risposta
         stato.dati.impostazioni.eve.motore = .sintesi
         stato.clienteAttivoId = "marco"
+        let primaChat = stato.conversazione("marco").count
         stato.chiediEve(SpuntoEve.prossimiPassi.domanda, spunto: .prossimiPassi)
-        controlla(stato.conversazione("marco").count == 2, "Conversazione: domanda e risposta salvate")
+        controlla(stato.conversazione("marco").count == primaChat + 2, "Conversazione: domanda e risposta salvate")
 
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
