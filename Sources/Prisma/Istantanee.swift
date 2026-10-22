@@ -114,6 +114,10 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             if let c = s.confrontoPredefinito() { s.apriProspetto(c) }
         }),
+        ("32-prodotti-condizioni", { s in
+            s.prodottoSelezionato = "prodotto-orizzonte-valore"
+            s.apri(.prodotti)
+        }),
         ("30-valutazione-prospetto", { s in
             s.clienteAttivoId = "marco"
             s.apriProspetto(.valutazione("val-marco-orizzonte", report: false))
