@@ -14,7 +14,7 @@ struct DocumentoStampabile {
     let pagine: [AnyView]
     var tipo: Documento.Tipo = .prospetto
 
-    /// Un prospetto di dettaglio impaginato su carta (quadro, posizione, confronto).
+    /// Un prospetto di dettaglio impaginato su carta (posizione, confronto).
     init(_ contenuto: ContenutoProspetto) {
         let impaginate = ImpaginatoreProspetto.pagine(contenuto)
         titolo = contenuto.titolo
@@ -33,6 +33,16 @@ struct DocumentoStampabile {
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
         pagine = report ? ReportValutazione.pagine(t) : ProspettoValutazione.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del resoconto delle posizioni in essere.
+    init(_ t: TestiResoconto, report: Bool) {
+        titolo = TestiResoconto.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportResoconto.pagine(t) : ProspettoResoconto.pagine(t)
         tipo = report ? .report : .prospetto
     }
 }

@@ -239,6 +239,42 @@ enum ProvaCalcoli {
             verifica("Valutazione di prova presente", 0, 1)
         }
 
+        // 19. Resoconto delle posizioni in essere: rendimento dei versamenti, ultimi 12 mesi, totali
+        let cinque = MotoreResoconto.Flussi(versamenti: [(36, 10_000)], valore: 10_000 * pow(1.05, 3))
+        verifica("Resoconto: rendimento annuo di 10.000 € diventati 11.576 € in 3 anni", MotoreResoconto.tir([cinque]) ?? 0, 5)
+        let due = MotoreResoconto.Flussi(versamenti: [(24, 5_000)], valore: 5_000 * pow(1.05, 2))
+        verifica("Resoconto: rendimento annuo di due posizioni al 5%", MotoreResoconto.tir([cinque, due]) ?? 0, 5)
+        let mensili = MotoreResoconto.Flussi(versamenti: (0..<12).map { (Double(12 - $0), 100.0) }, valore: 1_200)
+        verifica("Resoconto: versamenti senza guadagno, rendimento zero", MotoreResoconto.tir([mensili]) ?? 1, 0)
+        let cal = Calendar(identifier: .gregorian)
+        let oggi = cal.startOfDay(for: Date())
+        var prova = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Prova")
+        prova.decorrenza = cal.date(byAdding: .year, value: -2, to: oggi)
+        prova.dataValore = oggi
+        prova.versamentoIniziale = 10_000
+        prova.totaleVersato = 10_000
+        prova.controvalore = 11_025
+        verifica("Resoconto: rendimento di una posizione (10.000 € → 11.025 € in 2 anni)", MotoreResoconto.voce(prova).rendimentoAnnuo ?? 0, 5, tolleranza: 0.05)
+        verifica("Resoconto: risultato sul versato", MotoreResoconto.voce(prova).risultato ?? 0, 1_025)
+        prova.totaleVersato = 21_200
+        prova.controvalore = 22_400
+        prova.rilevazioni = [Rilevazione(data: cal.date(byAdding: .day, value: -365, to: oggi) ?? oggi, controvalore: 20_000, versato: 20_000)]
+        verifica("Resoconto: ultimi 12 mesi al netto dei 1.200 € versati", MotoreResoconto.voce(prova).variazione12 ?? 0, 1_200)
+        verifica("Resoconto: ultimi 12 mesi in percentuale (Dietz)", MotoreResoconto.voce(prova).variazione12Percento ?? 0, 1_200 / 20_600 * 100)
+        var aggiornata = prova
+        aggiornata.controvalore = 23_000
+        aggiornata.dataValore = cal.date(byAdding: .day, value: 1, to: oggi)
+        aggiornata.registraValorePrecedente(prova)
+        verifica("Resoconto: il valore precedente resta nello storico", Double(aggiornata.rilevazioni?.count ?? 0), 2)
+        verifica("Resoconto: storico con il valore attuale in fondo", aggiornata.storicoValori.last?.controvalore ?? 0, 23_000)
+        let giulia = MotoreResoconto.calcola(DatiDemo.posizioni().filter { $0.clienteId == "giulia" }, cliente: "Giulia Rossi")
+        verifica("Resoconto di Giulia: versato nelle posizioni finanziarie", giulia.versato, 58_000)
+        verifica("Resoconto di Giulia: valore delle posizioni finanziarie", giulia.valoreFinanziario, 65_050)
+        verifica("Resoconto di Giulia: patrimonio netto", giulia.riepilogo.patrimonioNetto, 204_050)
+        verifica("Resoconto di Giulia: costi stimati di un anno", giulia.costoAnnuo, 395.6)
+        verifica("Resoconto di Giulia: posizioni in essere", Double(giulia.voci.count), 7)
+        verifica("Resoconto di Giulia: storico di 12 mesi su tutte le finanziarie", Double(giulia.conStorico.count), 3)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

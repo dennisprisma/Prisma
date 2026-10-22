@@ -275,7 +275,7 @@ enum DatiDemo {
             return x
         }
         let alleanza = "Alleanza Assicurazioni"
-        return [
+        return conRilevazioni([
             p("prodotto-risparmio-rivalutabile", "Piano di risparmio rivalutabile", .alleanza, .risparmio) {
                 $0.emittente = alleanza; $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"
                 $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20; $0.sri = 2
@@ -474,7 +474,7 @@ enum DatiDemo {
             return x
         }
         let alleanza = "Alleanza Assicurazioni"
-        return [
+        return conRilevazioni([
             // Giulia Rossi: entrambi i canali
             p("giulia", .alleanza, .inEssere, .risparmio, "Piano di risparmio rivalutabile") {
                 $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
@@ -628,7 +628,32 @@ enum DatiDemo {
                 $0.rendimentoAtteso = 3.2; $0.costoAnnuo = 0.6; $0.aliquotaFiscale = 20; $0.sri = 2
                 $0.esito = .presentata; $0.note = "Ipotesi di reinvestimento della polizza in scadenza."
             },
-        ]
+        ])
+    }
+
+    /// Lo storico di prova: i valori di 12 e 6 mesi fa delle posizioni finanziarie in essere, ricavati
+    /// all'indietro dal valore attuale con un andamento diverso per area (le azioni oscillano di più).
+    private static func conRilevazioni(_ elenco: [Posizione]) -> [Posizione] {
+        elenco.map { p in
+            guard p.stato == .inEssere, p.area.proiettabile, let valore = p.controvalore, let decorrenza = p.decorrenza else { return p }
+            var x = p
+            let versato = p.totaleVersato ?? p.versamentoIniziale
+            // Andamento dei due semestri: il secondo più vivace per gli investimenti
+            let semestri: (Double, Double) = p.area == .investimento ? (0.012, 0.034) : (0.011, 0.013)
+            var rilevazioni: [Rilevazione] = []
+            var v = valore
+            var vers = versato
+            for (mesi, crescita) in [(6, semestri.1), (12, semestri.0)] {
+                let d = data(-mesi * 365 / 12)
+                guard d > decorrenza else { break }
+                let premi = min(p.premioAnnuo / 2, max(0, vers - p.versamentoIniziale))
+                v = ((v - premi) / (1 + crescita)).rounded()
+                vers -= premi
+                rilevazioni.insert(Rilevazione(data: d, controvalore: v, versato: vers), at: 0)
+            }
+            x.rilevazioni = rilevazioni
+            return x
+        }
     }
 
     private static func anni(_ n: Int) -> Date {

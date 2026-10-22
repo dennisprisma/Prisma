@@ -95,6 +95,15 @@ enum RischioCoperto: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Un valore della posizione registrato in una data: lo storico serve al resoconto per mostrare
+/// come è andata negli ultimi mesi (dalla versione 12 dell'archivio).
+struct Rilevazione: Codable, Hashable {
+    var data: Date
+    var controvalore: Double
+    /// Totale versato a quella data, se noto.
+    var versato: Double?
+}
+
 /// Una posizione del cliente: un prodotto in essere o una proposta, sempre con il suo canale.
 struct Posizione: Identifiable, Codable, Hashable {
     var id = UUID().uuidString
@@ -143,6 +152,8 @@ struct Posizione: Identifiable, Codable, Hashable {
     /// Scheda prodotto da cui nasce (dalla versione 9 dell'archivio).
     var prodottoId: String?
     var creataIl = Date()
+    /// Valori precedenti a quello attuale, dal più vecchio (dalla versione 12 dell'archivio).
+    var rilevazioni: [Rilevazione]?
 
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }
@@ -164,6 +175,29 @@ struct Posizione: Identifiable, Codable, Hashable {
         guard let scadenza, stato == .inEssere else { return false }
         let limite = Calendar.current.date(byAdding: .day, value: giorni, to: Date()) ?? Date()
         return scadenza >= Calendar.current.startOfDay(for: Date()) && scadenza <= limite
+    }
+
+    /// Lo storico completo: le rilevazioni passate e, in fondo, il valore attuale.
+    var storicoValori: [Rilevazione] {
+        var elenco = (rilevazioni ?? []).sorted { $0.data < $1.data }
+        if let controvalore, let d = dataValore ?? decorrenza {
+            elenco.removeAll { Calendar.current.isDate($0.data, inSameDayAs: d) }
+            elenco.append(Rilevazione(data: d, controvalore: controvalore, versato: totaleVersato))
+        }
+        return elenco
+    }
+
+    /// Conserva il valore attuale tra le rilevazioni se quello nuovo è cambiato.
+    mutating func registraValorePrecedente(_ prima: Posizione) {
+        guard prima.stato == .inEssere, let valore = prima.controvalore, valore > 0,
+              prima.controvalore != controvalore || prima.dataValore != dataValore else { return }
+        let d = prima.dataValore ?? prima.creataIl
+        var elenco = rilevazioni ?? []
+        elenco.removeAll { Calendar.current.isDate($0.data, inSameDayAs: d) }
+        // Date a secondi interi, come il resto dell'archivio
+        elenco.append(Rilevazione(data: Date(timeIntervalSinceReferenceDate: d.timeIntervalSinceReferenceDate.rounded(.down)),
+                                  controvalore: valore, versato: prima.totaleVersato))
+        rilevazioni = elenco.sorted { $0.data < $1.data }
     }
 
     var scaduta: Bool {

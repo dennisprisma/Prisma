@@ -3,7 +3,8 @@ import SwiftUI
 /// App Prospetti e report (nello spazio Presentazioni del dock).
 /// - Valutazione di un investimento: prospetto A4 verticale per il consulente e report A4 orizzontale
 ///   da lasciare al cliente, sul modello dei documenti di Denis.
-/// - Prospetti di dettaglio: il quadro delle posizioni, una posizione o una proposta, un confronto.
+/// - Resoconto delle posizioni in essere: prospetto per il consulente e report per il cliente.
+/// - Prospetti di dettaglio: una posizione o una proposta, un confronto.
 /// Le pagine a schermo sono le stesse del PDF.
 struct AppProspetti: View {
     @EnvironmentObject var stato: StatoShell
@@ -64,9 +65,11 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetto e report")
-        VoceNavigazione(titolo: TipoProspetto.valutazione.nome, attiva: scelta.tipo == .valutazione) { scegli(.valutazione) }
+        ForEach([TipoProspetto.valutazione, .resoconto]) { t in
+            VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
+        }
         EtichettaRail(testo: "Prospetti di dettaglio")
-        ForEach(TipoProspetto.allCases.filter { $0 != .valutazione }) { t in
+        ForEach([TipoProspetto.posizione, .confronto]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         Text(scelta.tipo.descrizione)
@@ -82,8 +85,8 @@ struct AppProspetti: View {
         switch t {
         case .valutazione:
             stato.prospetto = stato.valutazioniCliente(cliente).first.map { .valutazione($0.id, report: false) } ?? .valutazione("", report: false)
-        case .quadro:
-            stato.prospetto = .quadro
+        case .resoconto:
+            stato.prospetto = .resoconto(report: false)
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -111,7 +114,7 @@ struct AppProspetti: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     switch scelta {
-                    case .quadro: sceltaQuadro
+                    case .resoconto(let report): sceltaResoconto(report: report)
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -124,30 +127,40 @@ struct AppProspetti: View {
 
     private var intestazioneColonna: String {
         switch scelta {
-        case .quadro: return "CHE COSA CONTIENE"
+        case .resoconto: return "RESOCONTO DEL CLIENTE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
         }
     }
 
-    private var sceltaQuadro: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            ForEach(["Patrimonio netto, debiti, premi annui", "Ripartizione per canale: Alleanza e indipendente",
-                     "Ripartizione per area", "Ogni posizione in essere, con costi, SRI e scadenza",
-                     "Coperture: capitali, premi, costo per 1.000 €", "Proposte aperte e loro esito",
-                     "Scadenze dei prossimi 90 giorni", "Obiettivi e versamento che serve"], id: \.self) { voce in
-                HStack(alignment: .top, spacing: 7) {
-                    Text("•").foregroundColor(Colori.Analisi.navBasso)
-                    Text(voce).fixedSize(horizontal: false, vertical: true)
+    private func sceltaResoconto(report: Bool) -> some View {
+        let voci = report
+            ? ["Copertina in cuoio con il patrimonio netto", "Il quadro: aree e canali in una pagina",
+               "Come sta andando: versato, valore, risultato", "Posizione per posizione, in schede",
+               "Le tutele, i prossimi 12 mesi, i costi", "In sintesi e prossimi passi"]
+            : ["Cifre chiave: patrimonio, versato, risultato, rendimento", "Ogni posizione finanziaria, divisa per canale",
+               "Ripartizione per area e per canale", "Tutele, liquidità e debiti, impegni dell'anno",
+               "Scadenze dei prossimi 12 mesi e proposte aperte", "Storico dei valori, metodo e firme"]
+        return VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .resoconto(report: $0); archiviato = nil }))
+            Text(report ? "Report per il cliente: A4 orizzontale, una pagina per messaggio, da lasciare al cliente."
+                        : "Prospetto per te: A4 verticale, ogni cifra posizione per posizione, da mostrare al cliente.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(voci, id: \.self) { voce in
+                    HStack(alignment: .top, spacing: 7) {
+                        Text("•").foregroundColor(Colori.Analisi.navBasso)
+                        Text(voce).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(Tipo.strumentoTesto)
+                    .foregroundColor(Colori.Analisi.tabellaTesto)
                 }
-                .font(Tipo.strumentoTesto)
-                .foregroundColor(Colori.Analisi.tabellaTesto)
             }
-            Text("Tutte le cifre vengono dalle Posizioni del cliente: aggiornale lì e il prospetto si ricompone.")
+            Text("Tutte le cifre vengono dalle Posizioni del cliente: aggiornale lì e il resoconto si ricompone. Ogni volta che cambi un controvalore, il valore precedente resta nello storico.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
         }
         .padding(12)
     }

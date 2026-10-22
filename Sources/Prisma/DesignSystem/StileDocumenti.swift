@@ -55,6 +55,15 @@ struct PaletteDocumento {
     var cascataTotale: Color
     var cascataPiu: Color
     var cascataMeno: Color
+    /// Aree delle posizioni, nell'ordine di AreaPosizione.ordine (previdenza … debiti).
+    var aree: [Color]
+    /// Canali nei grafici: blu Alleanza e cuoio dell'indipendente, come le etichette.
+    var alleanza: Color
+    var indipendente: Color
+
+    func area(_ a: AreaPosizione) -> Color { aree[a.ordine % aree.count] }
+
+    func canale(_ c: Canale) -> Color { c == .alleanza ? alleanza : indipendente }
 
     func scenario(_ t: TipoScenario) -> Color {
         switch t {
@@ -95,7 +104,10 @@ extension Colori {
             gestioneSeparata: Color(hex: "#6f86a6"), fondoInterno: Color(hex: "#c4913f"),
             negativo: Color(hex: "#c0553a"), positivo: Color(hex: "#2e7d5b"),
             penaleForte: Color(hex: "#b5513a"), penaleMedia: Color(hex: "#c9806f"), penaleLieve: Color(hex: "#e0b5ab"),
-            cascataTotale: Color(hex: "#8e98a8"), cascataPiu: Color(hex: "#7fb093"), cascataMeno: Color(hex: "#d3897a")
+            cascataTotale: Color(hex: "#8e98a8"), cascataPiu: Color(hex: "#7fb093"), cascataMeno: Color(hex: "#d3897a"),
+            aree: [Color(hex: "#2f5ea8"), Color(hex: "#2e7d5b"), Color(hex: "#6f86a6"), Color(hex: "#8a6fb0"),
+                   Color(hex: "#c4913f"), Color(hex: "#9aa3ad"), Color(hex: "#c0553a")],
+            alleanza: Color(hex: "#2a5fa8"), indipendente: Color(hex: "#9a6a3e")
         )
 
         /// Report: l'identità di Prisma (template, app Presentazioni: .slides-stage). Carta avorio con la
@@ -117,7 +129,10 @@ extension Colori {
             gestioneSeparata: Color(hex: "#6d8a96"), fondoInterno: Color(hex: "#b98a4e"),
             negativo: Color(hex: "#a65a3c"), positivo: Color(hex: "#4d7f5b"),
             penaleForte: Color(hex: "#a65a3c"), penaleMedia: Color(hex: "#c28b6c"), penaleLieve: Color(hex: "#dfc0a8"),
-            cascataTotale: Color(hex: "#9aa6a2"), cascataPiu: Color(hex: "#8fb194"), cascataMeno: Color(hex: "#cf9c84")
+            cascataTotale: Color(hex: "#9aa6a2"), cascataPiu: Color(hex: "#8fb194"), cascataMeno: Color(hex: "#cf9c84"),
+            aree: [Color(hex: "#2f6e9b"), Color(hex: "#4d7f5b"), Color(hex: "#6d8a96"), Color(hex: "#8b6f93"),
+                   Color(hex: "#b98a4e"), Color(hex: "#a89f8c"), Color(hex: "#a65a3c")],
+            alleanza: Color(hex: "#2f6ea5"), indipendente: Color(hex: "#8a5a33")
         )
     }
 }

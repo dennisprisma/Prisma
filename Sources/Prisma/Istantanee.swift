@@ -106,9 +106,13 @@ enum Istantanee {
             s.clienteAttivoId = "giulia"
             s.apriProspetto(.posizione("pos-giulia-piano-previdenziale-integrativo"))
         }),
-        ("28-prospetto-quadro", { s in
-            s.clienteAttivoId = "marco"
-            s.apriProspetto(.quadro)
+        ("28-resoconto-prospetto", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.resoconto(report: false))
+        }),
+        ("33-resoconto-report", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.resoconto(report: true))
         }),
         ("29-prospetto-confronto", { s in
             s.clienteAttivoId = "marco"
