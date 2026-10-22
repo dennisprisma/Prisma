@@ -69,6 +69,8 @@ final class StatoShell: ObservableObject {
     @Published var confrontoB: VoceConfronto?
     /// Orizzonte comune del confronto (nil = ognuno il suo).
     @Published var orizzonteConfronto: Int?
+    /// Orizzonte scelto per la sostituzione (nil: la durata della proposta o l'orizzonte del cliente).
+    @Published var orizzonteSostituzione: Int?
 
     // Incontri
     @Published var incontroAperto: String?
@@ -536,6 +538,11 @@ final class StatoShell: ObservableObject {
             return .valutazione(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
         case .resoconto(let report)?:
             return .resoconto(report: report)
+        case .sostituzione(let a, let b, let report)?:
+            let mie = posizioniCliente(clienteAttivoId)
+            if a != b, mie.contains(where: { $0.id == a }), mie.contains(where: { $0.id == b }) { return .sostituzione(a, b, report: report) }
+            let coppia = MotoreSostituzione.coppia(mie)
+            return .sostituzione(coppia?.0 ?? "", coppia?.1 ?? "", report: report)
         case .confronto(let a, let b)?:
             let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
             if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
@@ -550,10 +557,22 @@ final class StatoShell: ObservableObject {
         if case .valutazione(let id, let report) = scelta {
             return valutazione(id).flatMap(testiValutazione).map { DocumentoStampabile($0, report: report) }
         }
+        if case .sostituzione(let a, let b, let report) = scelta {
+            return testiSostituzione(a, b).map { DocumentoStampabile($0, report: report) }
+        }
         if case .resoconto(let report) = scelta {
             return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
         }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
+    }
+
+    /// I testi e i numeri della sostituzione di `a` con `b` (o del confronto tra due proposte).
+    func testiSostituzione(_ a: String, _ b: String) -> TestiSostituzione? {
+        guard a != b, let pa = posizioni.first(where: { $0.id == a }), let pb = posizioni.first(where: { $0.id == b }) else { return nil }
+        let intestatario = self.cliente(pa.clienteId)
+        let e = MotoreSostituzione.calcola(attuale: pa, alternativa: pb, prodotti: dati.prodotti, anni: orizzonteSostituzione,
+                                           orizzonteCliente: intestatario?.profilo.orizzonteAnni)
+        return TestiSostituzione(e, cliente: intestatario)
     }
 
     /// I testi e i numeri del resoconto delle posizioni in essere di un cliente.

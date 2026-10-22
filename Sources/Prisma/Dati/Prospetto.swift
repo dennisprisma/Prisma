@@ -5,6 +5,9 @@ import Foundation
 enum SceltaProspetto: Hashable {
     /// Resoconto delle posizioni in essere: prospetto (A4 verticale) o report per il cliente (A4 orizzontale).
     case resoconto(report: Bool)
+    /// Sostituzione di una posizione in essere con un'alternativa (o confronto tra due proposte):
+    /// prospetto (A4 verticale) o report per il cliente (A4 orizzontale).
+    case sostituzione(String, String, report: Bool)
     /// Una posizione o una proposta, in ogni dettaglio.
     case posizione(String)
     /// Due voci del dossier fianco a fianco.
@@ -15,6 +18,7 @@ enum SceltaProspetto: Hashable {
     var tipo: TipoProspetto {
         switch self {
         case .resoconto: return .resoconto
+        case .sostituzione: return .sostituzione
         case .posizione: return .posizione
         case .confronto: return .confronto
         case .valutazione: return .valutazione
@@ -23,13 +27,14 @@ enum SceltaProspetto: Hashable {
 }
 
 enum TipoProspetto: String, CaseIterable, Identifiable {
-    case valutazione, resoconto, posizione, confronto
+    case valutazione, resoconto, sostituzione, posizione, confronto
 
     var id: String { rawValue }
 
     var nome: String {
         switch self {
         case .resoconto: return "Resoconto delle posizioni in essere"
+        case .sostituzione: return "Sostituzione o confronto"
         case .posizione: return "Posizione o proposta"
         case .confronto: return "Confronto"
         case .valutazione: return "Valutazione di un investimento"
@@ -38,6 +43,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
 
     var descrizione: String {
         switch self {
+        case .sostituzione: return "Restare o cambiare: l'uscita di oggi con penali e imposte, il netto anno per anno delle due strade, il pareggio, tre scenari, costi e caratteristiche. Anche tra due proposte. Prospetto per te, report per il cliente."
         case .resoconto: return "Cosa ha il cliente e come sta andando: versato, valore, risultato e rendimento di ogni posizione, ultimi 12 mesi, tutele, debiti, scadenze e costi. Prospetto per te, report per il cliente."
         case .posizione: return "Contratto, costi, proiezione anno per anno nei tre scenari, fonti e pagine dei documenti."
         case .confronto: return "Ipotesi ed esiti a fronte, differenze anno per anno, peso dei costi."

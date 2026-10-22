@@ -53,7 +53,9 @@ struct AppProspetti: View {
 
     private var vuoto: some View {
         VStack(spacing: 10) {
-            Text(scelta.tipo == .valutazione ? "Nessuna valutazione per questo cliente" : "Non c'è ancora niente da impaginare per questo cliente.")
+            Text(scelta.tipo == .valutazione ? "Nessuna valutazione per questo cliente"
+                 : scelta.tipo == .sostituzione ? "Servono due posizioni da confrontare: una in essere e un'alternativa, o due proposte."
+                 : "Non c'è ancora niente da impaginare per questo cliente.")
                 .font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
             if scelta.tipo == .valutazione { pulsanteNuova }
         }
@@ -65,7 +67,7 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetto e report")
-        ForEach([TipoProspetto.valutazione, .resoconto]) { t in
+        ForEach([TipoProspetto.valutazione, .resoconto, .sostituzione]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
@@ -87,6 +89,8 @@ struct AppProspetti: View {
             stato.prospetto = stato.valutazioniCliente(cliente).first.map { .valutazione($0.id, report: false) } ?? .valutazione("", report: false)
         case .resoconto:
             stato.prospetto = .resoconto(report: false)
+        case .sostituzione:
+            stato.prospetto = .sostituzione("", "", report: false)
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -115,6 +119,7 @@ struct AppProspetti: View {
                 VStack(alignment: .leading, spacing: 0) {
                     switch scelta {
                     case .resoconto(let report): sceltaResoconto(report: report)
+                    case .sostituzione(let a, let b, let report): sceltaSostituzione(a, b, report: report)
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -128,6 +133,7 @@ struct AppProspetti: View {
     private var intestazioneColonna: String {
         switch scelta {
         case .resoconto: return "RESOCONTO DEL CLIENTE"
+        case .sostituzione: return "LE DUE STRADE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
@@ -165,6 +171,44 @@ struct AppProspetti: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
+    }
+
+    private func sceltaSostituzione(_ a: String, _ b: String, report: Bool) -> some View {
+        let elenco = posizioniOrdinate.filter { $0.area.proiettabile }
+        let attuale = elenco.first { $0.id == a }
+        return VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .sostituzione(a, b, report: $0); archiviato = nil }))
+            Text(report ? "Report per il cliente: A4 orizzontale, restare o cambiare spiegato una pagina alla volta."
+                        : "Prospetto per te: A4 verticale, uscita di oggi, netto anno per anno, scenari, costi e caratteristiche.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            sceltaPosizioneSostituzione(attuale?.stato == .proposta ? "PRIMA PROPOSTA" : "OGGI · DA SOSTITUIRE", elenco: elenco,
+                                        selezione: Binding(get: { a }, set: { stato.prospetto = .sostituzione($0, b == $0 ? a : b, report: report); archiviato = nil }))
+            sceltaPosizioneSostituzione(attuale?.stato == .proposta ? "SECONDA PROPOSTA" : "ALTERNATIVA", elenco: elenco.filter { $0.stato == .proposta || $0.id == b },
+                                        selezione: Binding(get: { b }, set: { stato.prospetto = .sostituzione(a == $0 ? b : a, $0, report: report); archiviato = nil }))
+            Toggle("Orizzonte della proposta", isOn: Binding(
+                get: { stato.orizzonteSostituzione == nil },
+                set: { stato.orizzonteSostituzione = $0 ? nil : (stato.testiSostituzione(a, b)?.e.anni ?? IpotesiCalcolo.orizzontePredefinito) }))
+                .font(Tipo.strumentoTesto)
+            if let anni = stato.orizzonteSostituzione {
+                Stepper(value: Binding(get: { anni }, set: { stato.orizzonteSostituzione = min(max($0, 1), 50) }), in: 1...50) {
+                    Text("\(anni) \(anni == 1 ? "anno" : "anni")").font(Tipo.strumentoTesto)
+                }
+            }
+            Text("Se la prima voce è in essere, cambiare vuol dire chiuderla oggi (penale, bollo, imposte) e reinvestire il netto. Le due strade ricevono gli stessi versamenti futuri. Tra due fondi pensione è un trasferimento senza imposte.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private func sceltaPosizioneSostituzione(_ titolo: String, elenco: [Posizione], selezione: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(titolo).font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
+            Picker("", selection: selezione) {
+                ForEach(elenco) { p in Text("\(p.nome) · \(p.stato == .proposta ? "proposta" : "in essere") · \(p.canale.nomeBreve)").tag(p.id) }
+            }
+            .labelsHidden()
+        }
     }
 
     private func sceltaValutazione(_ id: String, report: Bool) -> some View {

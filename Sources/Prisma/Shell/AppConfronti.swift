@@ -108,6 +108,10 @@ struct AppConfronti: View {
             EtichettaRail(testo: "Prospetto")
             Button("Prospetto in PDF") { stato.apriProspetto(.confronto(a.voce, b.voce)) }
                 .buttonStyle(StileBlu())
+            if case .posizione(let ia) = a.voce, case .posizione(let ib) = b.voce {
+                Button("Restare o cambiare…") { stato.apriProspetto(.sostituzione(ia, ib, report: false)) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            }
             Text("Ipotesi, esiti e differenze anno per anno, impaginati su carta.")
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Analisi.kpiNota)

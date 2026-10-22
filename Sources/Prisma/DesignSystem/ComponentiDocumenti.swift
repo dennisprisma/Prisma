@@ -273,6 +273,103 @@ struct GraficoScenariDoc: View {
     }
 }
 
+/// Una serie del grafico a linee libere: nome, colore e valori per ogni posizione dell'asse.
+struct SerieDoc: Identifiable {
+    let nome: String
+    let colore: Color
+    let valori: [Double]
+    var tratteggio = false
+    var id: String { nome }
+}
+
+/// Grafico a linee per due (o più) strade: assi, griglia, punti, nome e valore finale a destra.
+/// Una linea verticale punteggiata segna, se c'è, l'anno di pareggio.
+struct GraficoLineeDoc: View {
+    @Environment(\.paletteDocumento) private var p
+    let serie: [SerieDoc]
+    let etichetteAsse: [String]
+    var pareggio: Int? = nil
+    var fontAssi: Font = Tipo.Documento.piccolo
+    var fontValori: Font = Tipo.Documento.minimo
+
+    var body: some View {
+        GeometryReader { geo in
+            let sinistra: CGFloat = 54
+            let destra: CGFloat = 86
+            let basso: CGFloat = 18
+            let alto: CGFloat = 12
+            let w = max(1, geo.size.width - sinistra - destra)
+            let h = max(1, geo.size.height - basso - alto)
+            let valori = serie.flatMap(\.valori)
+            let passo = MisuraAsse.passo((valori.max() ?? 1) - (valori.min() ?? 0))
+            let minimo = ((valori.min() ?? 0) / passo).rounded(.down) * passo
+            let massimo = ((valori.max() ?? 1) / passo).rounded(.up) * passo
+            let n = max(etichetteAsse.count - 1, 1)
+            let x: (Int) -> CGFloat = { sinistra + CGFloat($0) / CGFloat(n) * w }
+            let y: (Double) -> CGFloat = { alto + h - CGFloat(($0 - minimo) / max(massimo - minimo, 1)) * h }
+            let tacche = Array(stride(from: minimo, through: massimo + 0.5, by: passo))
+            let etichette = GraficoLineeDoc.altezzeEtichette(serie.map { y($0.valori.last ?? 0) }, distanza: 20)
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(tacche.enumerated()), id: \.offset) { _, v in
+                    Path { q in
+                        q.move(to: CGPoint(x: sinistra, y: y(v)))
+                        q.addLine(to: CGPoint(x: sinistra + w, y: y(v)))
+                    }
+                    .stroke(p.griglia, lineWidth: 0.7)
+                    Text(verbatim: CifreDoc.euro(v)).font(fontAssi).foregroundColor(p.tenue)
+                        .frame(width: sinistra - 6, alignment: .trailing)
+                        .position(x: (sinistra - 6) / 2, y: y(v))
+                }
+                ForEach(Array(etichetteAsse.enumerated()), id: \.offset) { i, s in
+                    Text(verbatim: s).font(fontAssi).foregroundColor(p.tenue).lineLimit(1).fixedSize()
+                        .position(x: x(i), y: geo.size.height - basso / 2 + 2)
+                }
+                if let pareggio, pareggio <= n {
+                    Path { q in
+                        q.move(to: CGPoint(x: x(pareggio), y: alto))
+                        q.addLine(to: CGPoint(x: x(pareggio), y: alto + h))
+                    }
+                    .stroke(p.tenue, style: StrokeStyle(lineWidth: 0.8, dash: [2, 3]))
+                    Text(verbatim: "pareggio").font(fontValori).foregroundColor(p.tenue).fixedSize()
+                        .position(x: x(pareggio), y: alto + 4)
+                }
+                ForEach(Array(serie.enumerated()), id: \.offset) { indice, s in
+                    Path { q in
+                        for (i, v) in s.valori.enumerated() {
+                            let pt = CGPoint(x: x(i), y: y(v))
+                            if i == 0 { q.move(to: pt) } else { q.addLine(to: pt) }
+                        }
+                    }
+                    .stroke(s.colore, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round, dash: s.tratteggio ? [5, 3] : []))
+                    ForEach(Array(s.valori.enumerated()), id: \.offset) { i, v in
+                        Circle().fill(s.colore).overlay(Circle().stroke(Color.white, lineWidth: 1))
+                            .frame(width: 6, height: 6)
+                            .position(x: x(i), y: y(v))
+                    }
+                    if let ultimo = s.valori.last {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(verbatim: s.nome).font(fontValori.weight(.bold)).lineLimit(1)
+                            Text(verbatim: CifreDoc.euro(ultimo)).font(fontValori.weight(.bold))
+                        }
+                        .foregroundColor(s.colore).frame(width: destra - 8, alignment: .leading)
+                        .position(x: x(s.valori.count - 1) + 6 + (destra - 8) / 2, y: etichette[indice])
+                    }
+                }
+            }
+        }
+    }
+
+    /// Le altezze delle etichette finali, allontanate quando le linee finiscono vicine.
+    static func altezzeEtichette(_ altezze: [CGFloat], distanza: CGFloat) -> [CGFloat] {
+        let ordine = altezze.indices.sorted { altezze[$0] < altezze[$1] }
+        var risultato = altezze
+        for k in 1..<max(ordine.count, 1) where risultato[ordine[k]] - risultato[ordine[k - 1]] < distanza {
+            risultato[ordine[k]] = risultato[ordine[k - 1]] + distanza
+        }
+        return risultato
+    }
+}
+
 /// Scelta del passo dell'asse dei valori (1, 2, 2,5 o 5 per potenze di 10).
 enum MisuraAsse {
     static func passo(_ intervallo: Double, tacche: Double = 5) -> Double {

@@ -319,6 +319,50 @@ enum ProvaCalcoli {
         giovane.totaleVersato = 8_000
         verifica("Previdenza con 40 anni: nessun gradino futuro, aliquota minima", Double(MotoreFiscale.calcola(giovane).gradini.count), 0)
 
+        // 21. Sostituzione: uscita tassata, netto anno per anno, pareggio, trasferimento della previdenza
+        let oggiS = Calendar(identifier: .gregorian).startOfDay(for: Date())
+        func fondo(_ nome: String, stato: StatoPosizione, rendimento: Double, costo: Double) -> Posizione {
+            var p = Posizione(clienteId: "prova", canale: .indipendente, stato: stato, area: .investimento, nome: nome)
+            p.tipologia = "Fondo comune"
+            p.decorrenza = Calendar(identifier: .gregorian).date(byAdding: .year, value: -3, to: oggiS)
+            p.dataValore = oggiS
+            p.controvalore = stato == .inEssere ? 12_000 : nil
+            p.totaleVersato = stato == .inEssere ? 10_000 : nil
+            p.versamentoIniziale = stato == .inEssere ? 10_000 : 0
+            p.rendimentoAtteso = rendimento
+            p.costoAnnuo = costo
+            p.conBollo = false
+            p.aliquotaFiscale = 26
+            return p
+        }
+        let uguali = MotoreSostituzione.calcola(attuale: fondo("A", stato: .inEssere, rendimento: 0, costo: 0),
+                                                alternativa: fondo("B", stato: .proposta, rendimento: 0, costo: 0), anni: 5)
+        verifica("Sostituzione: imposta all'uscita (26% su 2.000 €)", uguali.impostaUscita, 520)
+        verifica("Sostituzione: netto reinvestito", uguali.reinvestito, 11_480)
+        // Senza rendimento né costi le due strade danno lo stesso netto: 12.000 − 520 restando, 11.480 cambiando
+        verifica("Sostituzione: a rendimento zero le due strade si equivalgono", uguali.finale?.differenza ?? 1, 0, tolleranza: 0.01)
+        let migliore = MotoreSostituzione.calcola(attuale: fondo("A", stato: .inEssere, rendimento: 3, costo: 2),
+                                                  alternativa: fondo("B", stato: .proposta, rendimento: 3, costo: 0.5), anni: 10)
+        verifica("Sostituzione: con costi più bassi conviene cambiare", (migliore.finale?.differenza ?? 0) > 0 ? 1 : 0, 1)
+        verifica("Sostituzione: pareggio entro il periodo", migliore.pareggio != nil ? 1 : 0, 1)
+        verifica("Sostituzione: tre scenari", Double(migliore.scenari.count), 3)
+        var pipA = fondo("PIP A", stato: .inEssere, rendimento: 2, costo: 1.5)
+        pipA.area = .previdenza
+        var pipB = fondo("PIP B", stato: .proposta, rendimento: 2, costo: 0.5)
+        pipB.area = .previdenza
+        let trasferito = MotoreSostituzione.calcola(attuale: pipA, alternativa: pipB, anni: 10)
+        verifica("Sostituzione: trasferimento tra fondi pensione senza imposte", trasferito.impostaUscita, 0)
+        verifica("Sostituzione: trasferimento dell'intero valore", trasferito.reinvestito, 12_000)
+        if let sofia = demo.first(where: { $0.id == "pos-sofia-polizza-rivalutabile" }),
+           let obbl = demo.first(where: { $0.id == "pos-sofia-obbligazionario-a-scadenza-2030" }) {
+            let s = MotoreSostituzione.calcola(attuale: sofia, alternativa: obbl)
+            // 41.000 − 35.000 = 6.000 di guadagno, aliquota 17,90% (60% in titoli di Stato)
+            verifica("Sostituzione di Sofia: imposta all'uscita", s.impostaUscita, 1_074)
+            verifica("Sostituzione di Sofia: orizzonte della proposta", Double(s.anni), Double(obbl.anniAllaScadenza ?? 0))
+        } else {
+            verifica("Posizioni di Sofia per la sostituzione presenti", 0, 1)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

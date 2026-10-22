@@ -166,6 +166,20 @@ struct EsitoFiscale {
 enum MotoreFiscale {
     static func centesimi(_ v: Double) -> Double { (v * 100).rounded() / 100 }
 
+    /// Aliquota sul guadagno di polizze e fondi: effettiva con i titoli di Stato, altrimenti quella
+    /// indicata nella posizione, altrimenti il 26%.
+    static func aliquotaGuadagno(_ p: Posizione) -> Double {
+        if let q = p.quotaTitoliStato { return RegoleFiscali.aliquotaEffettiva(quotaTitoliStato: q) }
+        return p.aliquotaFiscale ?? RegoleFiscali.ordinaria
+    }
+
+    /// Anni interi di partecipazione alla previdenza complementare a una data (dalla prima adesione).
+    static func anniPartecipazione(_ p: Posizione, data: Date = Date()) -> Int {
+        guard let inizio = p.primaAdesione ?? p.decorrenza else { return 0 }
+        let cal = Calendar.current
+        return max(0, cal.dateComponents([.year], from: cal.startOfDay(for: inizio), to: cal.startOfDay(for: data)).year ?? 0)
+    }
+
     /// Bollo di un anno: 0,20% del valore; per i conti correnti 34,20 € fissi.
     static func bolloAnnuo(_ p: Posizione, valore: Double) -> Double {
         guard p.soggettaBollo else { return 0 }

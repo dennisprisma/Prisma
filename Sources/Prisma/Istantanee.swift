@@ -130,6 +130,14 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.apriProspetto(.valutazione("val-marco-orizzonte", report: true))
         }),
+        ("34-sostituzione-prospetto", { s in
+            s.clienteAttivoId = "sofia"
+            s.apriProspetto(.sostituzione("", "", report: false))
+        }),
+        ("35-sostituzione-report", { s in
+            s.clienteAttivoId = "sofia"
+            s.apriProspetto(.sostituzione("", "", report: true))
+        }),
         ("25-documenti-kid", { s in
             s.clienteAttivoId = "giulia"
             s.documentoSelezionato = "doc-giulia-kid"
