@@ -173,8 +173,9 @@ struct CopertinaReport: View {
         }
         .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 4).fill(C.copertinaRiquadro))
+        // L'ombra va solo al cartoncino, non alle scritte
+        .background(RoundedRectangle(cornerRadius: 4).fill(C.copertinaRiquadro)
+            .shadow(color: C.ombraCartellino, radius: 3, x: 0, y: 2))
         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(C.ombraCartellino, lineWidth: 0.8))
-        .shadow(color: C.ombraCartellino, radius: 3, x: 0, y: 2)
     }
 }

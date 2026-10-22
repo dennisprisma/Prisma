@@ -77,7 +77,7 @@ private struct SlideQuadro: View {
     private var e: EsitoResoconto { t.e }
 
     var body: some View {
-        let attive = e.aree.filter { !$0.area.passivo }
+        let attive = e.aree.filter { !$0.area.passivo && $0.valore > 0.5 }
         return VStack(alignment: .leading, spacing: 16) {
             TestaReport(occhiello: "Il quadro", titolo: t.titoloQuadro, sottotitolo: t.sottotitoloQuadro)
             // La barra del patrimonio: ogni area in proporzione

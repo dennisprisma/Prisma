@@ -171,7 +171,7 @@ private struct PaginaQuadro: View {
             HStack(alignment: .top, spacing: 18) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(verbatim: "Per area").font(T.pSottosezione).foregroundColor(C.titolo)
-                    ForEach(e.aree) { a in
+                    ForEach(e.aree.filter { $0.valore > 0.5 }) { a in
                         BarraQuota(etichetta: a.area.nome, nota: TestiResoconto.posizioni(a.posizioni), valore: a.valore,
                                    quota: a.quota, colore: C.area(a.area), passivo: a.area.passivo)
                     }
