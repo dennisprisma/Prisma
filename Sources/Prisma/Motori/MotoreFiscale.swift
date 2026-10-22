@@ -26,6 +26,18 @@ enum RegoleFiscali {
     /// Anni di iscrizione richiesti per le anticipazioni per la casa e per ulteriori esigenze.
     static let anniPerAnticipazione = 8
 
+    /// Imposta annua sui rendimenti dentro i fondi pensione (12,5% sulla parte in titoli di Stato).
+    static let previdenzaRendimenti = 20.0
+    /// Limite annuo di deducibilità dei contributi alla previdenza complementare.
+    static let limiteDeducibilita = 5_164.57
+    /// Scaglioni IRPEF: (fino a, aliquota). L'ultimo vale oltre.
+    static let scaglioniIrpef: [(Double, Double)] = [(28_000, 23), (50_000, 35), (.infinity, 43)]
+
+    /// Aliquota IRPEF marginale di un reddito complessivo lordo annuo.
+    static func aliquotaMarginale(reddito: Double) -> Double {
+        scaglioniIrpef.first { reddito <= $0.0 }?.1 ?? 43
+    }
+
     /// Aliquota agevolata della previdenza dopo `anni` interi di partecipazione: 15% fino al 15° anno,
     /// poi 0,30 punti in meno per ogni anno, fino al 9% dal 35° anno.
     static func aliquotaPrevidenza(anni: Int) -> Double {

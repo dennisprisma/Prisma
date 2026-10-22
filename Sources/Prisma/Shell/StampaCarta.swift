@@ -36,6 +36,16 @@ struct DocumentoStampabile {
         tipo = report ? .report : .prospetto
     }
 
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del piano previdenziale.
+    init(_ t: TestiPrevidenza, report: Bool) {
+        titolo = TestiPrevidenza.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportPrevidenza.pagine(t) : ProspettoPrevidenza.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) di una sostituzione o di un confronto.
     init(_ t: TestiSostituzione, report: Bool) {
         titolo = t.titolo

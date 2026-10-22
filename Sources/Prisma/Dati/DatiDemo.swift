@@ -44,6 +44,7 @@ enum DatiDemo {
             c.profilo.aggiornatoIl = c.creatoIl
             switch c.id {
             case "giulia":
+                c.profilo.redditoLordoAnnuo = 32_000
                 c.dataNascita = nascita(1989, 3, 14)
                 c.professione = "Architetta"
                 c.statoCivile = .convivente
@@ -62,6 +63,7 @@ enum DatiDemo {
                                                nota: "Trilocale in città, anticipo del 20%")]
                 c.bisogni.aggiornatoIl = c.creatoIl
             case "marco":
+                c.profilo.redditoLordoAnnuo = 48_000
                 c.dataNascita = nascita(1978, 11, 5)
                 c.professione = "Ingegnere"
                 c.statoCivile = .coniugato
@@ -84,6 +86,7 @@ enum DatiDemo {
                                                nota: "Università di Anna, forse fuori sede")]
                 c.bisogni.aggiornatoIl = c.creatoIl
             case "laura":
+                c.profilo.redditoLordoAnnuo = 41_000
                 c.dataNascita = nascita(1985, 6, 30)
                 c.professione = "Consulente di comunicazione (libera professionista)"
                 c.statoCivile = .celibeNubile
@@ -95,6 +98,7 @@ enum DatiDemo {
                 c.profilo.esperienza = .media
                 c.profilo.obiettivi = "Avviare un progetto indipendente e costruire la previdenza integrativa."
             case "andrea":
+                c.profilo.redditoLordoAnnuo = 27_000
                 c.dataNascita = nascita(1996, 1, 18)
                 c.professione = "Infermiere"
                 c.statoCivile = .celibeNubile
@@ -105,6 +109,7 @@ enum DatiDemo {
                 c.profilo.esperienza = .nessuna
                 c.profilo.obiettivi = "Da definire al primo incontro."
             case "sofia":
+                c.profilo.redditoLordoAnnuo = 36_000
                 c.dataNascita = nascita(1968, 10, 9)
                 c.professione = "Dirigente scolastica"
                 c.statoCivile = .vedovo

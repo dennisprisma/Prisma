@@ -157,6 +157,14 @@ struct ModuloCliente: View {
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 80)
                     }
+                    CampoModulo(etichetta: "Reddito lordo annuo") {
+                        HStack(spacing: 6) {
+                            TextField("—", value: $bozza.profilo.redditoLordoAnnuo, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 120)
+                            Text("€ · per l'aliquota IRPEF e la deducibilità").font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                        }
+                    }
                     CampoModulo(etichetta: "Esperienza finanziaria") {
                         Picker("", selection: $bozza.profilo.esperienza) {
                             Text("Non indicata").tag(ProfiloInvestitore.Esperienza?.none)

@@ -363,6 +363,41 @@ enum ProvaCalcoli {
             verifica("Posizioni di Sofia per la sostituzione presenti", 0, 1)
         }
 
+        // 22. Previdenza: aliquota IRPEF marginale, piano alla pensione, deducibilità
+        verifica("IRPEF: aliquota marginale con 27.000 €", RegoleFiscali.aliquotaMarginale(reddito: 27_000), 23)
+        verifica("IRPEF: aliquota marginale con 32.000 €", RegoleFiscali.aliquotaMarginale(reddito: 32_000), 35)
+        verifica("IRPEF: aliquota marginale con 60.000 €", RegoleFiscali.aliquotaMarginale(reddito: 60_000), 43)
+        var fp = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .previdenza, nome: "Fondo")
+        fp.decorrenza = Calendar(identifier: .gregorian).date(byAdding: .year, value: -10, to: oggiS)
+        fp.controvalore = 10_000
+        fp.totaleVersato = 10_000
+        fp.rendimentoAtteso = 0
+        var ipotesi = IpotesiPrevidenza()
+        ipotesi.eta = 57
+        ipotesi.etaPensione = 67
+        ipotesi.redditoDesiderato = 2_000
+        ipotesi.pensionePubblica = 1_500
+        ipotesi.anniIntegrazione = 25
+        let pp = MotorePrevidenza.calcola([fp], cliente: nil, analisi: ipotesi)
+        if let piano = pp.piani.first {
+            // 20 anni di partecipazione alla pensione: 15 − 5 × 0,30 = 13,50% su 10.000 € dedotti
+            verifica("Previdenza: aliquota alla pensione dopo 20 anni", piano.aliquota, 13.5, tolleranza: 0.0001)
+            verifica("Previdenza: imposta sulla prestazione", piano.imposta, 1_350)
+            verifica("Previdenza: netto in euro di oggi (inflazione 2% per 10 anni)", piano.nettoReale, 8_650 / pow(1.02, 10), tolleranza: 0.01)
+            verifica("Previdenza: rendita mensile per 25 anni", piano.renditaMensile, 8_650 / pow(1.02, 10) / 300, tolleranza: 0.01)
+        } else {
+            verifica("Previdenza: piano di prova presente", 0, 1)
+        }
+        verifica("Previdenza: divario mensile", pp.divario, 500)
+        var conVersamenti = fp
+        conVersamenti.premio = 600
+        conVersamenti.frequenza = .mensile
+        var cli = DatiDemo.clienti()[0]
+        cli.profilo.redditoLordoAnnuo = 40_000
+        let ded = MotorePrevidenza.calcola([conVersamenti], cliente: cli, analisi: ipotesi)
+        verifica("Previdenza: deducibile fino al limite (7.200 € versati)", ded.deducibiliOggi, 5_164.57)
+        verifica("Previdenza: risparmio IRPEF al 35%", ded.risparmioOggi, 5_164.57 * 0.35, tolleranza: 0.01)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

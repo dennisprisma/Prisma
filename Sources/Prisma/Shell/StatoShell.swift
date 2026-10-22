@@ -538,6 +538,8 @@ final class StatoShell: ObservableObject {
             return .valutazione(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
         case .resoconto(let report)?:
             return .resoconto(report: report)
+        case .previdenza(let report)?:
+            return .previdenza(report: report)
         case .sostituzione(let a, let b, let report)?:
             let mie = posizioniCliente(clienteAttivoId)
             if a != b, mie.contains(where: { $0.id == a }), mie.contains(where: { $0.id == b }) { return .sostituzione(a, b, report: report) }
@@ -560,10 +562,20 @@ final class StatoShell: ObservableObject {
         if case .sostituzione(let a, let b, let report) = scelta {
             return testiSostituzione(a, b).map { DocumentoStampabile($0, report: report) }
         }
+        if case .previdenza(let report) = scelta {
+            return DocumentoStampabile(testiPrevidenza(clienteAttivoId), report: report)
+        }
         if case .resoconto(let report) = scelta {
             return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report)
         }
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
+    }
+
+    /// I testi e i numeri del piano previdenziale di un cliente (ipotesi dall'Analisi 360).
+    func testiPrevidenza(_ id: String) -> TestiPrevidenza {
+        let intestatario = self.cliente(id)
+        let e = MotorePrevidenza.calcola(posizioniCliente(id), cliente: intestatario, analisi: analisi360(id).previdenza)
+        return TestiPrevidenza(e, cliente: intestatario)
     }
 
     /// I testi e i numeri della sostituzione di `a` con `b` (o del confronto tra due proposte).

@@ -205,6 +205,7 @@ struct AppClienti: View {
                 RigaCampo(etichetta: "Propensione al rischio", valore: c.profilo.propensione?.nome ?? "")
                 RigaCampo(etichetta: "Orizzonte temporale", valore: c.profilo.orizzonteAnni.map { "\($0) anni" } ?? "")
                 RigaCampo(etichetta: "Esperienza finanziaria", valore: c.profilo.esperienza?.nome ?? "")
+                RigaCampo(etichetta: "Reddito lordo annuo", valore: c.profilo.redditoLordoAnnuo.map { Formati.euro($0) } ?? "")
                 RigaCampo(etichetta: "Obiettivi principali", valore: c.profilo.obiettivi)
             }
             VStack(alignment: .leading, spacing: 4) {

@@ -26,7 +26,7 @@ enum CompositoreProspetti {
             let voci = ElementoConfronto.elenco(dati, cliente: cliente)
             guard let a = voci.first(where: { $0.voce == va }), let b = voci.first(where: { $0.voce == vb }) else { return nil }
             return confronto(a, b, orizzonte: orizzonteConfronto, dati: dati, cliente: cliente)
-        case .valutazione, .resoconto, .sostituzione:
+        case .valutazione, .resoconto, .sostituzione, .previdenza:
             // Valutazioni e resoconto hanno pagine proprie (ProspettoValutazione, ReportResoconto…)
             return nil
         }
