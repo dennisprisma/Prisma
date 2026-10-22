@@ -275,7 +275,7 @@ enum DatiDemo {
             return x
         }
         let alleanza = "Alleanza Assicurazioni"
-        return conRilevazioni([
+        return [
             p("prodotto-risparmio-rivalutabile", "Piano di risparmio rivalutabile", .alleanza, .risparmio) {
                 $0.emittente = alleanza; $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"
                 $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20; $0.sri = 2
