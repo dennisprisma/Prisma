@@ -201,10 +201,11 @@ struct WidgetCliente: View {
     var body: some View {
         // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri:
         // prima toglie la nota e la barra dei canali, poi la seconda riga di numeri.
-        ViewThatFits(in: .vertical) {
-            contenuto(dettaglio: 2)
-            contenuto(dettaglio: 1)
-            contenuto(dettaglio: 0)
+        // Soglie misurate sulle anteprime (330 punti mostrano tutto, 251 la seconda riga).
+        GeometryReader { geo in
+            contenuto(dettaglio: geo.size.height >= Misure.Widget.clienteCompleto ? 2
+                      : geo.size.height >= Misure.Widget.clienteDueRighe ? 1 : 0)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
         .corniceWidget(fondoPelle, bordo: Colori.Colonna.pelleBordo)
     }

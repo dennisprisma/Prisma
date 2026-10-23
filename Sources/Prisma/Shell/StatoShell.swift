@@ -251,8 +251,12 @@ final class StatoShell: ObservableObject {
     }
 
     /// Cornice effettiva da disegnare.
-    func cornice(di f: Finestra) -> CGRect {
-        f.ingrandita ? CGRect(origin: .zero, size: area.size) : limita(f.cornice)
+    func cornice(di f: Finestra) -> CGRect { cornice(di: f, in: area) }
+
+    /// Cornice dentro un'area precisa: il disegno usa la stessa area in cui mette le finestre,
+    /// così una finestra non è mai più alta del suo spazio (e la barra del titolo resta visibile).
+    func cornice(di f: Finestra, in area: CGRect) -> CGRect {
+        f.ingrandita ? CGRect(origin: .zero, size: area.size) : limita(f.cornice, in: area)
     }
 
     private func corniceIniziale() -> CGRect {
@@ -263,7 +267,9 @@ final class StatoShell: ObservableObject {
     }
 
     /// Tiene la finestra dentro l'area (la barra del titolo resta sempre raggiungibile).
-    private func limita(_ c: CGRect) -> CGRect {
+    private func limita(_ c: CGRect) -> CGRect { limita(c, in: area) }
+
+    private func limita(_ c: CGRect, in area: CGRect) -> CGRect {
         var r = c
         r.size.width = min(r.width, area.width)
         r.size.height = min(r.height, area.height)
@@ -700,7 +706,12 @@ final class StatoShell: ObservableObject {
     @discardableResult
     func archiviaProspetto(_ pdf: Data, documento: DocumentoStampabile) -> String? {
         let cliente = clienteAttivoId
-        var d = Documento(clienteId: cliente, titolo: "\(documento.genere) · \(documento.titolo)", tipo: documento.tipo)
+        let titolo = "\(documento.genere) · \(documento.titolo)"
+        // Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima
+        if let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && Calendar.current.isDateInToday($0.importatoIl) }) {
+            eliminaDocumento(vecchio.id)
+        }
+        var d = Documento(clienteId: cliente, titolo: titolo, tipo: documento.tipo)
         d.importatoIl = Appuntamento.alMinuto(Date())
         d.lettura = .letto
         let pagine = StampaCarta.testo(pdf)

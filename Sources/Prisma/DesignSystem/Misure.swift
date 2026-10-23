@@ -79,6 +79,9 @@ enum Misure {
         static let rigaFoglietto: CGFloat = 26
         static let rilegatura: CGFloat = 26
         static let avatarCliente: CGFloat = 54
+        /// Altezze del widget del cliente per mostrare tutto o le due righe di numeri.
+        static let clienteCompleto: CGFloat = 325
+        static let clienteDueRighe: CGFloat = 240
     }
 
     enum Agenda {

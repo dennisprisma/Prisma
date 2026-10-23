@@ -94,7 +94,7 @@ struct ShellView: View {
         ZStack(alignment: .topLeading) {
             let visibili = stato.finestreVisibili
             ForEach(visibili) { f in
-                let c = stato.cornice(di: f)
+                let c = stato.cornice(di: f, in: area)
                 FinestraInterna(finestra: f, attiva: f.app == visibili.last?.app)
                     .frame(width: c.width, height: c.height)
                     .offset(x: c.minX, y: c.minY)
