@@ -48,7 +48,7 @@ extension AppPosizioni {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .leading, spacing: 18) {
-                        PannelloAnalisi(titolo: "Concentrazione per emittente", nota: "Quota delle attività in essere") { EmptyView() } contenuto: {
+                        PannelloAnalisi(titolo: "Concentrazione per emittente", nota: "Quota delle attività finanziarie in essere (immobili esclusi)") { EmptyView() } contenuto: {
                             emittenti(p.emittenti)
                         }
                         PannelloAnalisi(titolo: "Proposte", nota: "Per esito") { EmptyView() } contenuto: {

@@ -51,7 +51,8 @@ struct AppPosizioni: View {
                     if let id = stato.posizioneInDettaglio, let p = stato.posizioni.first(where: { $0.id == id }) {
                         DettaglioPosizione(posizione: p, modifica: { modulo = p })
                     } else if stato.portafoglio {
-                        portafoglio(perStato.filter { area == nil || $0.area == area })
+                        // Come nel dossier: gli indicatori contano in essere e proposte, lo stato filtra solo l'elenco
+                        portafoglio(delCliente.filter { area == nil || $0.area == area })
                     } else {
                         principale
                     }

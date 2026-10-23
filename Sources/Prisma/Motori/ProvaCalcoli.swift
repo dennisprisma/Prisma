@@ -602,7 +602,10 @@ enum ProvaCalcoli {
             let pf = MotorePortafoglio.calcola(demo.posizioni, clienti: demo.clienti)
             verifica("Portafoglio: attività per cliente uguali al totale", pf.clienti.reduce(0) { $0 + $1.attivita }, pf.riepilogo.attivita)
             verifica("Portafoglio: quote dei clienti al 100%", pf.clienti.reduce(0) { $0 + $1.quota }, 1)
-            verifica("Portafoglio: emittenti uguali alle attività", pf.emittenti.reduce(0) { $0 + $1.valore }, pf.riepilogo.attivita)
+            verifica("Portafoglio: emittenti uguali alle attività finanziarie", pf.emittenti.reduce(0) { $0 + $1.valore }, pf.attivitaFinanziarie)
+            verifica("Portafoglio: quote degli emittenti al 100%", pf.emittenti.reduce(0) { $0 + $1.quota }, 1)
+            verifica("Portafoglio: immobili fuori dalla concentrazione",
+                     pf.attivitaFinanziarie, pf.riepilogo.attivita - (pf.riepilogo.perArea[.immobili] ?? 0))
             verifica("Portafoglio: clienti dal più seguito", zip(pf.clienti, pf.clienti.dropFirst()).allSatisfy { $0.attivita >= $1.attivita } ? 1 : 0, 1)
             verifica("Portafoglio: al massimo \(Portafoglio.massimoEmittenti) emittenti", pf.emittenti.count <= Portafoglio.massimoEmittenti ? 1 : 0, 1)
             let fine = Calendar.current.date(byAdding: .month, value: 13, to: Date()) ?? Date()

@@ -45,6 +45,8 @@ struct Portafoglio {
     let clienti: [VoceCliente]
     let scadenze: [Mese]
     let emittenti: [Emittente]
+    /// Attività in essere senza immobili né debiti: la base della concentrazione per emittente.
+    let attivitaFinanziarie: Double
     let esiti: [EsitoProposta: Int]
 
     /// Proposte accettate sul totale di quelle decise (accettate più rifiutate); nil se nessuna è decisa.
@@ -96,8 +98,9 @@ enum MotorePortafoglio {
                                     coperture: elenco.filter { $0.area == .protezione }.count)
         }
 
-        // Concentrazione per emittente (attività in essere, debiti esclusi)
-        let attive = posizioni.filter { $0.stato == .inEssere && !$0.area.passivo && $0.valore > 0 }
+        // Concentrazione per emittente: attività finanziarie in essere (immobili e debiti esclusi)
+        let attive = posizioni.filter { $0.stato == .inEssere && !$0.area.passivo && $0.area != .immobili && $0.valore > 0 }
+        let finanziarie = attive.reduce(0) { $0 + $1.valore }
         let perEmittente = Dictionary(grouping: attive) { p -> String in
             let e = p.emittente.trimmingCharacters(in: .whitespacesAndNewlines)
             return e.isEmpty ? Portafoglio.senzaEmittente : e
@@ -105,7 +108,7 @@ enum MotorePortafoglio {
         var emittenti = perEmittente.map { nome, elenco -> Portafoglio.Emittente in
             let valore = elenco.reduce(0) { $0 + $1.valore }
             let canali = Set(elenco.map(\.canale))
-            return Portafoglio.Emittente(nome: nome, valore: valore, quota: totale > 0 ? valore / totale : 0,
+            return Portafoglio.Emittente(nome: nome, valore: valore, quota: finanziarie > 0 ? valore / finanziarie : 0,
                                          posizioni: elenco.count, canale: canali.count == 1 ? canali.first : nil)
         }
         .sorted { $0.valore != $1.valore ? $0.valore > $1.valore : $0.nome < $1.nome }
@@ -113,7 +116,7 @@ enum MotorePortafoglio {
             let resto = emittenti.dropFirst(Portafoglio.massimoEmittenti - 1)
             let valore = resto.reduce(0) { $0 + $1.valore }
             emittenti = Array(emittenti.prefix(Portafoglio.massimoEmittenti - 1)) + [
-                Portafoglio.Emittente(nome: Portafoglio.altriEmittenti, valore: valore, quota: totale > 0 ? valore / totale : 0,
+                Portafoglio.Emittente(nome: Portafoglio.altriEmittenti, valore: valore, quota: finanziarie > 0 ? valore / finanziarie : 0,
                                       posizioni: resto.reduce(0) { $0 + $1.posizioni }, canale: nil),
             ]
         }
@@ -122,6 +125,6 @@ enum MotorePortafoglio {
         var esiti: [EsitoProposta: Int] = [:]
         for p in posizioni where p.stato == .proposta { esiti[p.esito ?? .bozza, default: 0] += 1 }
 
-        return Portafoglio(riepilogo: r, clienti: voci, scadenze: mesi, emittenti: emittenti, esiti: esiti)
+        return Portafoglio(riepilogo: r, clienti: voci, scadenze: mesi, emittenti: emittenti, attivitaFinanziarie: finanziarie, esiti: esiti)
     }
 }
