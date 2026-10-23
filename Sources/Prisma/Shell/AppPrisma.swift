@@ -80,6 +80,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .clienti: return "Le tue relazioni."
         case .impostazioni: return "Sentiti a casa."
+        case .note: return "Un'idea alla volta."
         default: return titolo
         }
     }
@@ -119,7 +120,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .eve: return "Eve arriva con il suo modulo: lettura dei documenti, estrazione dei dati e risposte in chat, tutto sul Mac."
         case .documenti: return "KID, polizze ed estratti conto letti sul Mac, con i dati da confermare."
         case .presentazioni: return "Prospetti dettagliati per il consulente e report essenziali per il cliente, in PDF."
-        case .note: return "Arriva nelle prossime fasi di sviluppo."
+        case .note: return "Appunti, dettagli e prossimi passi, collegati alle persone."
         case .ricerca: return "Clienti, posizioni, documenti, agenda e attività in un'unica ricerca (⌘K)."
         case .impostazioni: return "Profilo, backup manuale e settimanale, ripristino e impostazioni di Eve."
         }

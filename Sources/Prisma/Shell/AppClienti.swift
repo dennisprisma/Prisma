@@ -244,6 +244,36 @@ struct AppClienti: View {
                 .frame(minHeight: 260)
                 .background(RoundedRectangle(cornerRadius: 3).fill(Color.white))
                 .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Rubrica.schedaAppBordo, lineWidth: 1))
+            OcchielloSezione(titolo: "Nel taccuino", nota: "Le note dell'app Note")
+                .padding(.top, 8)
+            let note = stato.noteCliente(c.id).filter { !$0.vuota }
+            if note.isEmpty {
+                Text("Nessuna nota per \(c.nome). Gli appunti degli incontri trovano posto nel taccuino.")
+                    .font(Tipo.rubricaTema)
+                    .foregroundColor(Colori.Rubrica.secondario)
+            } else {
+                ForEach(note) { n in
+                    Button { stato.vai(a: .nota(n.id)) } label: {
+                        HStack(spacing: 8) {
+                            if n.fissata { Text("◆").font(Tipo.noteVoceData).foregroundColor(Colori.Note.fissata) }
+                            Text(n.titoloMostrato).font(Tipo.campoValore).foregroundColor(Colori.Rubrica.testo).lineLimit(1)
+                            Spacer()
+                            Text(Formati.giornoMeseBreve.string(from: n.aggiornataIl)).font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario)
+                            Text("›").font(Tipo.rubricaFreccia).foregroundColor(Colori.Rubrica.rigaFreccia)
+                        }
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(StileSemplice())
+                    .bordoBasso(Colori.Rubrica.rigaBordo)
+                }
+            }
+            Button("＋ Nuova nota per \(c.nome)") {
+                stato.filtroClienteNote = c.id
+                stato.nuovaNota(clienteId: c.id)
+                stato.apri(.note)
+            }
+            .buttonStyle(StileCuoioChiaro())
         }
     }
 

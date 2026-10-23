@@ -667,6 +667,25 @@ enum DatiDemo {
         Calendar(identifier: .gregorian).date(byAdding: .year, value: n, to: data(0)) ?? Date()
     }
 
+    /// Le note del taccuino (dal template).
+    static func note() -> [Nota] {
+        func nota(_ id: String, _ cliente: String, _ titolo: String, _ testo: String, giorni: Int, ora: Int, fissata: Bool) -> Nota {
+            Nota(id: id, clienteId: cliente, titolo: titolo, testo: testo, fissata: fissata,
+                 creataIl: data(giorni, ora), aggiornataIl: data(giorni, ora, 40))
+        }
+        return [
+            nota("nota-giulia", "giulia", "La casa è un nuovo inizio",
+                 "Giulia vuole dare un nome concreto al suo progetto casa.\n\nPunti da riprendere:\n• Tempi desiderati e grado di flessibilità.\n• Spese mensili da verificare insieme.\n• Domande sul margine da tenere disponibile.\n\nProssimo passo: costruire un riepilogo comprensibile.",
+                 giorni: -7, ora: 15, fissata: true),
+            nota("nota-marco", "marco", "Le priorità della famiglia",
+                 "Dare spazio al progetto di studi di Anna.\n\nPrima dei numeri, riprendere le aspettative. Portare una presentazione breve e chiara all'incontro di lunedì.",
+                 giorni: -8, ora: 11, fissata: true),
+            nota("nota-laura", "laura", "Più libertà nel proprio lavoro",
+                 "Laura sta immaginando un'attività indipendente.\n\nRaccogliere domande, tempi e informazioni da approfondire. Nessuna decisione già presa.",
+                 giorni: -9, ora: 9, fissata: false),
+        ]
+    }
+
     /// Oggi + `giorni`, all'ora indicata.
     private static func data(_ giorni: Int, _ ora: Int = 9, _ minuti: Int = 0) -> Date {
         let cal = Calendar(identifier: .gregorian)
