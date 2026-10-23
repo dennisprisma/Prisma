@@ -146,7 +146,13 @@ jobs:
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -qm "Anteprime di $GITHUB_SHA"
-          git push -fq "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" anteprime
+          # Due build che finiscono insieme (main appena unito e il branch) si contendono il ref: si riprova
+          for tentativo in 1 2 3; do
+            git push -fq "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" anteprime && exit 0
+            echo "Pubblicazione non riuscita (tentativo $tentativo), riprovo"
+            sleep $((tentativo * 10))
+          done
+          exit 1
 
       - name: Crea zip
         run: ditto -c -k --keepParent Prisma.app Prisma.zip
