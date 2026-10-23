@@ -192,7 +192,7 @@ enum MotoreRicerca {
             Candidato(risultato: RisultatoRicerca(destinazione: .documento(d.id), gruppo: .documenti, titolo: d.titolo,
                                                   dettaglio: "\(nome(d.clienteId)) · \(d.tipo.nome)"),
                       campi: [("Cliente", nome(d.clienteId))] + d.campi.map { ($0.chiave.nome, $0.valore) },
-                      pagine: stato.testoDocumento(d))
+                      pagine: stato.testoDocumento(d, memorizza: false))
         }
         candidati[.note] = dati.note.filter { !$0.vuota }.map { n in
             Candidato(risultato: RisultatoRicerca(destinazione: .nota(n.id), gruppo: .note, titolo: n.titoloMostrato,

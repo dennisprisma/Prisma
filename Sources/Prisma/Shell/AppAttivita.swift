@@ -12,8 +12,10 @@ struct AppAttivita: View {
         stato.attivita.filter { stato.filtroClienteAttivita == nil || $0.clienteId == stato.filtroClienteAttivita }
     }
 
+    /// L'elenco filtrato e ordinato: si calcola una volta per disegno (vedi `registro`).
     private var elenco: [Attivita] {
-        delCliente
+        let giorno = Dictionary(stato.attivita.map { ($0.id, cal.startOfDay(for: $0.scadenza)) }, uniquingKeysWith: { a, _ in a })
+        return delCliente
             .filter {
                 switch stato.filtroStatoAttivita {
                 case .aperte: return !$0.completata
@@ -24,14 +26,13 @@ struct AppAttivita: View {
             .filter { stato.filtroPrioritaAttivita == nil || $0.priorita == stato.filtroPrioritaAttivita }
             .sorted {
                 if $0.completata != $1.completata { return !$0.completata }
-                if !cal.isDate($0.scadenza, inSameDayAs: $1.scadenza) { return $0.scadenza < $1.scadenza }
+                if giorno[$0.id] != giorno[$1.id] { return $0.scadenza < $1.scadenza }
                 return $0.priorita.ordine < $1.priorita.ordine
             }
     }
 
-    private var selezionata: Attivita? {
-        let e = elenco
-        return e.first { $0.id == stato.attivitaSelezionata } ?? e.first
+    private func selezionata(_ e: [Attivita]) -> Attivita? {
+        e.first { $0.id == stato.attivitaSelezionata } ?? e.first
     }
 
     var body: some View {
@@ -149,15 +150,17 @@ struct AppAttivita: View {
     // MARK: - Registro
 
     private var registro: some View {
-        VStack(spacing: 0) {
+        let voci = elenco
+        let scelta = selezionata(voci)
+        return VStack(spacing: 0) {
             filtri
             GeometryReader { geo in
                 let dettaglio = min(max(Misure.Attivita.dettaglioMinimo, geo.size.width * (1 - Misure.Attivita.quotaElenco)),
                                     geo.size.width * 0.5)
                 HStack(spacing: 0) {
-                    carta
+                    carta(voci, scelta)
                         .frame(width: max(0, geo.size.width - dettaglio))
-                    pannelloDettaglio
+                    pannelloDettaglio(scelta)
                         .frame(width: dettaglio)
                 }
             }
@@ -194,9 +197,8 @@ struct AppAttivita: View {
         .bordoBasso(Colori.Attivita.metalloBordo)
     }
 
-    private var carta: some View {
-        let voci = elenco
-        let scelta = selezionata
+    private func carta(_ voci: [Attivita], _ scelta: Attivita?) -> some View {
+        let nomi = Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { a, _ in a })
         return VStack(spacing: 0) {
             HStack {
                 Text("ELENCO ATTIVITÀ")
@@ -218,7 +220,7 @@ struct AppAttivita: View {
                     ForEach(voci) { t in
                         RigaRegistroAttivita(
                             attivita: t,
-                            cliente: stato.cliente(t.clienteId)?.nome ?? "Cliente",
+                            cliente: nomi[t.clienteId] ?? "Cliente",
                             daAppuntamento: t.appuntamentoId != nil,
                             selezionata: t.id == scelta?.id,
                             spunta: { stato.alternaCompletata(t.id) },
@@ -262,7 +264,7 @@ struct AppAttivita: View {
 
     // MARK: - Dettaglio
 
-    private var pannelloDettaglio: some View {
+    private func pannelloDettaglio(_ selezionata: Attivita?) -> some View {
         Group {
             if let t = selezionata {
                 DettaglioAttivita(attivita: t) { modulo = t }

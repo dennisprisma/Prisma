@@ -100,6 +100,17 @@ enum ProvaCarico {
         print("INFO Tre documenti, \(pagine) pagine, in \(secondi(pdf))")
         controlla(pagine > 0 && pdf < limitePDF, "PDF impaginati in \(secondi(pdf)) (limite \(secondi(limitePDF)))")
 
+        // Agenda: il mese raggruppato in un passaggio dà gli stessi giorni del calcolo giorno per giorno
+        let giorniMese = CalendarioAgenda.settimane(meseDi: stato.appuntamenti.first?.inizio ?? Date()).flatMap { $0 }
+        var indice = GiorniAgenda()
+        let agenda = tempo { indice = stato.giorniAgenda(giorniMese) }
+        let uguali = giorniMese.allSatisfy { g in
+            indice.appuntamenti(g).map(\.id) == stato.appuntamentiDelGiorno(g).map(\.id)
+                && Set(indice.scadenze(g).map(\.id)) == Set(stato.scadenzeDelGiorno(g).map(\.id))
+        }
+        print("INFO Agenda: mese raggruppato in \(secondi(agenda))")
+        controlla(uguali, "Agenda: mese raggruppato uguale al calcolo giorno per giorno")
+
         // Memoria
         let mb = memoriaMB()
         print("INFO Memoria occupata: \(Int(mb)) MB")

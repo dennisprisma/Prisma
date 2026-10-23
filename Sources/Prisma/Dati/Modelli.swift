@@ -340,3 +340,12 @@ struct Attivita: Identifiable, Codable, Hashable {
         appuntamentoId = try c.decodeIfPresent(String.self, forKey: .appuntamentoId)
     }
 }
+
+/// Appuntamenti e scadenze di un intervallo dell'agenda, per giorno (vedi `StatoShell.giorniAgenda`).
+struct GiorniAgenda {
+    var perGiorno: [Date: [Appuntamento]] = [:]
+    var scadenzePerGiorno: [Date: [Posizione]] = [:]
+
+    func appuntamenti(_ giorno: Date) -> [Appuntamento] { perGiorno[Calendar.current.startOfDay(for: giorno)] ?? [] }
+    func scadenze(_ giorno: Date) -> [Posizione] { scadenzePerGiorno[Calendar.current.startOfDay(for: giorno)] ?? [] }
+}

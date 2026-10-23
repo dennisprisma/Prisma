@@ -74,14 +74,17 @@ struct AppAgenda: View {
 
     private var libro: some View {
         let forma = RettangoloAngoli(bassoDestra: Misure.Agenda.cuoioRaggio, bassoSinistra: Misure.Agenda.cuoioRaggio)
+        // Appuntamenti e scadenze dei giorni visibili, raggruppati una volta sola
+        let settimane = CalendarioAgenda.settimane(meseDi: giorno)
+        let indice = stato.giorniAgenda(stato.vistaAgenda == .settimana ? CalendarioAgenda.giorni(settimanaDi: giorno) : settimane.flatMap { $0 })
         return VStack(spacing: 0) {
             barraStrumenti
-            if stato.vistaAgenda == .settimana { settimana } else { mese }
+            if stato.vistaAgenda == .settimana { settimana(indice) } else { mese(settimane, indice) }
             GeometryReader { geo in
                 HStack(spacing: 0) {
-                    paginaGiorno
+                    paginaGiorno(indice)
                         .frame(width: max(0, geo.size.width - larghezzaDettaglio(geo.size.width)))
-                    dettaglio
+                    dettaglio(indice)
                         .frame(width: larghezzaDettaglio(geo.size.width))
                 }
             }
@@ -150,14 +153,14 @@ struct AppAgenda: View {
         stato.appuntamentoSelezionato = nil
     }
 
-    private var settimana: some View {
+    private func settimana(_ indice: GiorniAgenda) -> some View {
         HStack(spacing: 4) {
             ForEach(CalendarioAgenda.giorni(settimanaDi: giorno), id: \.self) { g in
                 let indice = (cal.component(.weekday, from: g) + 5) % 7
                 GiornoSettimanaAgenda(
                     nome: CalendarioAgenda.nomiGiorni[indice], giorno: g,
-                    incontri: stato.appuntamentiDelGiorno(g).count,
-                    scadenze: stato.scadenzeDelGiorno(g).count,
+                    incontri: indice.appuntamenti(g).count,
+                    scadenze: indice.scadenze(g).count,
                     selezionato: cal.isDate(g, inSameDayAs: giorno),
                     oggi: cal.isDateInToday(g)
                 ) { seleziona(g) }
@@ -170,9 +173,8 @@ struct AppAgenda: View {
         }
     }
 
-    private var mese: some View {
-        let settimane = CalendarioAgenda.settimane(meseDi: giorno)
-        return VStack(spacing: 2) {
+    private func mese(_ settimane: [[Date]], _ indice: GiorniAgenda) -> some View {
+        VStack(spacing: 2) {
             HStack(spacing: 2) {
                 ForEach(CalendarioAgenda.nomiGiorni, id: \.self) { n in
                     Text(n.uppercased())
@@ -188,8 +190,8 @@ struct AppAgenda: View {
                         CellaMeseAgenda(
                             giorno: g,
                             nelMese: cal.isDate(g, equalTo: giorno, toGranularity: .month),
-                            incontri: stato.appuntamentiDelGiorno(g).count,
-                            scadenze: stato.scadenzeDelGiorno(g).count,
+                            incontri: indice.appuntamenti(g).count,
+                            scadenze: indice.scadenze(g).count,
                             selezionato: cal.isDate(g, inSameDayAs: giorno),
                             oggi: cal.isDateInToday(g)
                         ) { seleziona(g) }
@@ -206,9 +208,9 @@ struct AppAgenda: View {
 
     // MARK: - Pagina della giornata
 
-    private var paginaGiorno: some View {
-        let eventi = stato.appuntamentiDelGiorno(giorno)
-        let scadenze = stato.scadenzeDelGiorno(giorno)
+    private func paginaGiorno(_ indice: GiorniAgenda) -> some View {
+        let eventi = indice.appuntamenti(giorno)
+        let scadenze = indice.scadenze(giorno)
         let selezionato = eventoSelezionato(eventi)
         return VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -258,7 +260,7 @@ struct AppAgenda: View {
             }
             .bordoAlto(Colori.Agenda.rigaBordo)
 
-            notaSettimana
+            notaSettimana(indice)
         }
     }
 
@@ -286,12 +288,12 @@ struct AppAgenda: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var notaSettimana: some View {
+    private func notaSettimana(_ indice: GiorniAgenda) -> some View {
         let giorni = CalendarioAgenda.giorni(settimanaDi: giorno)
-        let eventi = giorni.flatMap { stato.appuntamentiDelGiorno($0) }
+        let eventi = giorni.flatMap { indice.appuntamenti($0) }
         let daSvolgere = eventi.filter { $0.stato != .concluso }
         let minuti = daSvolgere.reduce(0) { $0 + $1.durataMinuti }
-        let scadenze = giorni.reduce(0) { $0 + stato.scadenzeDelGiorno($1).count }
+        let scadenze = giorni.reduce(0) { $0 + indice.scadenze($1).count }
         return HStack(spacing: 6) {
             Text("QUESTA SETTIMANA")
                 .font(Tipo.paginaOcchiello)
@@ -315,9 +317,9 @@ struct AppAgenda: View {
 
     // MARK: - Dettaglio
 
-    private var dettaglio: some View {
+    private func dettaglio(_ indice: GiorniAgenda) -> some View {
         Group {
-            if let e = eventoSelezionato(stato.appuntamentiDelGiorno(giorno)) {
+            if let e = eventoSelezionato(indice.appuntamenti(giorno)) {
                 DettaglioAppuntamento(
                     evento: e,
                     modifica: { modulo = e },

@@ -612,6 +612,19 @@ enum ProvaCalcoli {
         var docVuoto = Documento(clienteId: "giulia", titolo: "Prova", tipo: .kid)
         docVuoto.campi = unito
         verifica("Documenti: un campo svuotato non vale come confermato", docVuoto.confermato(.premio) == nil ? 1 : 0, 1)
+        // Testi in memoria con un tetto: si dimenticano i meno recenti, il più recente resta
+        var memoria = MemoriaTesti()
+        memoria.limite = 10
+        memoria["a"] = ["1234"]
+        memoria["b"] = ["1234"]
+        memoria["a"] = ["1234"]
+        memoria["c"] = ["1234"]
+        verifica("Documenti: in memoria restano i testi più recenti", memoria["b"] == nil && memoria["a"] != nil && memoria["c"] != nil ? 1 : 0, 1)
+        verifica("Documenti: i caratteri in memoria restano sotto il tetto", Double(memoria.caratteri), 8)
+        memoria["d"] = [String(repeating: "x", count: 50)]
+        verifica("Documenti: un testo più grande del tetto resta da solo", memoria.conta == 1 && memoria["d"] != nil ? 1 : 0, 1)
+        memoria["d"] = nil
+        verifica("Documenti: memoria vuota dopo aver tolto l'ultimo", Double(memoria.caratteri + memoria.conta), 0)
 
         // Portafoglio del consulente: le somme per cliente ed emittente tornano con il totale
         do {
