@@ -1356,7 +1356,7 @@ final class StatoShell: ObservableObject {
                         appuntamenti: appuntamentiCliente(id), attivita: attivitaCliente(id),
                         analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id),
                         incontri: incontriCliente(id), obiettivi: obiettiviCliente(id), prodotti: dati.prodotti, documenti: documentiCliente(id),
-                        confronto: confrontoEve(id), anniConfronto: orizzonteSostituzione)
+                        note: noteCliente(id).filter { !$0.vuota }, confronto: confrontoEve(id), anniConfronto: orizzonteSostituzione)
     }
 
     /// Il confronto aperto in Prospetti e report, se riguarda questo cliente.

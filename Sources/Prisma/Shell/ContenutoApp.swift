@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Contenuto di una finestra. In questa fase ogni app mostra l'intestazione e un riquadro "in arrivo".
+/// Contenuto di una finestra: l'intestazione dell'app e la sua vista.
 struct ContenutoApp: View {
     let app: AppPrisma
 

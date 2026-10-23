@@ -153,6 +153,8 @@ struct FonteEve {
     var prodotti: [Prodotto] = []
     /// Documenti del cliente con i dati estratti (KID, polizze, estratti conto).
     var documenti: [Documento] = []
+    /// Note del taccuino, le fissate prima e poi dalla più recente.
+    var note: [Nota] = []
     /// Le due posizioni del confronto scelto in Prospetti e report (altrimenti la coppia predefinita)
     /// e gli anni della simulazione.
     var confronto: (attuale: String, alternativa: String)?
