@@ -226,6 +226,14 @@ enum Istantanee {
             s.chiediEve(SpuntoEve.checkUp.domanda, spunto: .checkUp)
             s.apri(.eve)
         }),
+        ("53-ricerca", { s in
+            s.testoRicerca = "marco"
+            s.cercaOvunque()
+        }),
+        ("54-ricerca-documento", { s in
+            s.testoRicerca = "scopo investimento"
+            s.cercaOvunque()
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"

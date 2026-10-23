@@ -23,11 +23,13 @@ struct ContenutoApp: View {
                 case .obiettivi: AppObiettivi()
                 case .documenti: AppDocumenti()
                 case .presentazioni: AppProspetti()
+                case .ricerca: AppRicerca()
                 default: AppSegnaposto(app: app)
                 }
             }
-            .padding(.horizontal, Misure.IntestazioneApp.margineOrizzontale)
-            .padding(.vertical, Misure.IntestazioneApp.margineVerticale)
+            // La Ricerca va da bordo a bordo, come una tabella di iOS
+            .padding(.horizontal, app == .ricerca ? 0 : Misure.IntestazioneApp.margineOrizzontale)
+            .padding(.vertical, app == .ricerca ? 0 : Misure.IntestazioneApp.margineVerticale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(sfondo)
         }

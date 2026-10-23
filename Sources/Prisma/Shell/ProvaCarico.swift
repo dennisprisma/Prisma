@@ -15,6 +15,7 @@ enum ProvaCarico {
     static let limitePerCliente = 0.1
     static let limiteClientePiuLento = 2.0
     static let limitePDF = 8.0
+    static let limiteRicerca = 1.0
     static let limiteMemoriaMB = 1_200.0
 
     static func esegui() -> Int32 {
@@ -69,6 +70,17 @@ enum ProvaCarico {
         print("INFO Eve e motori: \(secondi(totale)) per \(stato.clienti.count) clienti, \(secondi(medio)) in media, il più lento \(peggiore.nome) (\(secondi(peggiore.tempo)))")
         controlla(medio < limitePerCliente, "In media sotto \(secondi(limitePerCliente)) per cliente (scheda e \(spunti.count) spunti di Eve)")
         controlla(peggiore.tempo < limiteClientePiuLento, "Nessun cliente oltre \(secondi(limiteClientePiuLento))")
+
+        // «Cerca ovunque» su tutto l'archivio, anche nel testo dei documenti
+        var trovati = 0
+        _ = MotoreRicerca.cerca("rossi", in: stato)
+        let cerca = tempo {
+            for q in ["rossi", "polizza", "pensione integrativa", "zzz introvabile"] {
+                trovati += MotoreRicerca.cerca(q, in: stato).reduce(0) { $0 + $1.totale }
+            }
+        }
+        print("INFO Ricerca: 4 ricerche, \(trovati) risultati, in \(secondi(cerca))")
+        controlla(trovati > 0 && cerca < limiteRicerca, "Ricerca su tutto l'archivio in \(secondi(cerca)) (limite \(secondi(limiteRicerca)))")
 
         // PDF di un report con tutto l'archivio caricato
         stato.clienteAttivoId = stato.clienti.first?.id ?? ""
