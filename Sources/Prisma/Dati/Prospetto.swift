@@ -24,6 +24,8 @@ enum SceltaProspetto: Hashable {
     case confronto(VoceConfronto, VoceConfronto)
     /// Valutazione di un investimento: prospetto (A4 verticale) o report per il cliente (A4 orizzontale).
     case valutazione(String, report: Bool)
+    /// Il portafoglio del consulente: tutti i clienti insieme (solo prospetto, per te).
+    case portafoglio
 
     var tipo: TipoProspetto {
         switch self {
@@ -37,12 +39,13 @@ enum SceltaProspetto: Hashable {
         case .posizione: return .posizione
         case .confronto: return .confronto
         case .valutazione: return .valutazione
+        case .portafoglio: return .portafoglio
         }
     }
 }
 
 enum TipoProspetto: String, CaseIterable, Identifiable {
-    case valutazione, resoconto, sostituzione, previdenza, protezione, obiettivo, liquidita, checkUp, posizione, confronto
+    case valutazione, resoconto, sostituzione, previdenza, protezione, obiettivo, liquidita, checkUp, posizione, confronto, portafoglio
 
     var id: String { rawValue }
 
@@ -58,6 +61,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
         case .posizione: return "Posizione o proposta"
         case .confronto: return "Confronto"
         case .valutazione: return "Valutazione di un investimento"
+        case .portafoglio: return "Il tuo portafoglio"
         }
     }
 
@@ -73,6 +77,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
         case .posizione: return "Contratto, costi, proiezione anno per anno nei tre scenari, fonti e pagine dei documenti."
         case .confronto: return "Ipotesi ed esiti a fronte, differenze anno per anno, peso dei costi."
         case .valutazione: return "Il cliente valuta un investimento: incassi netti anno per anno in tre scenari, penali, costi, imposte, confronto con il KID. Prospetto per te, report per il cliente."
+        case .portafoglio: return "Tutti i clienti insieme: patrimonio seguito per canale e per area, clienti dal più seguito, scadenze dei prossimi 12 mesi, concentrazione per emittente, proposte per esito. Solo per te."
         }
     }
 }
@@ -192,7 +197,7 @@ extension SceltaProspetto {
         switch self {
         case .resoconto(let r), .previdenza(let r), .protezione(let r), .liquidita(let r), .checkUp(let r): return r
         case .sostituzione(_, _, let r), .obiettivo(_, let r): return r
-        case .posizione, .confronto, .valutazione: return false
+        case .posizione, .confronto, .valutazione, .portafoglio: return false
         }
     }
 
@@ -206,7 +211,7 @@ extension SceltaProspetto {
         case .checkUp: return "checkUp·\(cliente)"
         case .sostituzione(let a, let b, _): return a.isEmpty || b.isEmpty ? nil : "sostituzione·\(a)·\(b)"
         case .obiettivo(let id, _): return id.isEmpty ? nil : "obiettivo·\(id)"
-        case .posizione, .confronto, .valutazione: return nil
+        case .posizione, .confronto, .valutazione, .portafoglio: return nil
         }
     }
 }

@@ -75,6 +75,8 @@ struct AppProspetti: View {
         ForEach([TipoProspetto.posizione, .confronto]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
+        EtichettaRail(testo: "Per te")
+        VoceNavigazione(titolo: TipoProspetto.portafoglio.nome, attiva: scelta.tipo == .portafoglio) { scegli(.portafoglio) }
         Text(scelta.tipo.descrizione)
             .font(Tipo.kpiNota)
             .foregroundColor(Colori.Analisi.kpiNota)
@@ -107,6 +109,8 @@ struct AppProspetti: View {
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
         case .confronto:
             stato.prospetto = stato.confrontoPredefinito()
+        case .portafoglio:
+            stato.prospetto = .portafoglio
         }
     }
 
@@ -139,6 +143,7 @@ struct AppProspetti: View {
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
+                    case .portafoglio: sceltaPortafoglio
                     }
                     if scelta.conCommento, let chiave = scelta.chiaveCommento(cliente: cliente) {
                         PannelloCommento(scelta: scelta).id(chiave)
@@ -161,6 +166,7 @@ struct AppProspetti: View {
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
+        case .portafoglio: return "TUTTI I CLIENTI"
         }
     }
 
@@ -193,6 +199,23 @@ struct AppProspetti: View {
             Text("Tutte le cifre vengono dalle Posizioni del cliente: aggiornale lì e il resoconto si ricompone. Ogni volta che cambi un controvalore, il valore precedente resta nello storico.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private var sceltaPortafoglio: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Prospetto per te: A4 verticale, con le cifre della vista Portafoglio di Posizioni. Da usare per la revisione periodica del tuo lavoro, non da consegnare ai clienti.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Text("Non si archivia nei Documenti di un cliente: salvalo in PDF dove preferisci.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Button("Apri il Portafoglio in Posizioni ↗") {
+                stato.portafoglio = true
+                stato.apri(.posizioni)
+            }
+            .buttonStyle(StileSemplice())
+            .font(Tipo.kpiNota)
+            .foregroundColor(Colori.Colonna.collegamento)
         }
         .padding(12)
     }
@@ -520,11 +543,14 @@ struct AppProspetti: View {
             Button("Stampa…") { if let dati = pdf(d) { StampaCarta.stampa(dati, formato: d.formato) } }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                 .fixedSize()
-            Button("Archivia nei Documenti") {
-                if let dati = pdf(d) { archiviato = stato.archiviaProspetto(dati, documento: d) }
+            // Il portafoglio riguarda tutti i clienti: non va nei documenti di uno di loro
+            if scelta.tipo != .portafoglio {
+                Button("Archivia nei Documenti") {
+                    if let dati = pdf(d) { archiviato = stato.archiviaProspetto(dati, documento: d) }
+                }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .fixedSize()
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-            .fixedSize()
             Button("Salva PDF…") { if let dati = pdf(d) { StampaCarta.salva(dati, nome: StampaCarta.nomeFile(d)) } }
                 .buttonStyle(StileBlu())
                 .fixedSize()

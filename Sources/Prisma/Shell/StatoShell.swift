@@ -808,6 +808,8 @@ final class StatoShell: ObservableObject {
             if a != b, mie.contains(where: { $0.id == a }), mie.contains(where: { $0.id == b }) { return .sostituzione(a, b, report: report) }
             let coppia = MotoreSostituzione.coppia(mie)
             return .sostituzione(coppia?.0 ?? "", coppia?.1 ?? "", report: report)
+        case .portafoglio?:
+            return .portafoglio
         case .confronto(let a, let b)?:
             let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
             if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
@@ -1481,7 +1483,7 @@ final class StatoShell: ObservableObject {
             return CommentoEve.bozza(nome: nome, apertura: t.e.sostituzione ? "ti lascio il confronto tra restare in \(t.a.nome) e passare a \(t.b.nome), con quello che costa uscire e quello che rende ciascuna strada."
                                                                             : "ti lascio il confronto tra \(t.a.nome) e \(t.b.nome), al netto di costi e imposte.",
                                      punti: punti, passo: t.prossimiPassi.first)
-        case .posizione, .confronto, .valutazione:
+        case .posizione, .confronto, .valutazione, .portafoglio:
             return nil
         }
     }
