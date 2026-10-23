@@ -89,7 +89,7 @@ struct Scrivania: View {
                 .ombraCSS(Colori.Scrivania.intestazioneOmbra, y: 1, sfocatura: 3)
             Spacer()
             Button {
-                stato.mostraAvviso("Il riepilogo delle app aperte arriva nella prossima fase.")
+                stato.pannelloAppAperte = true
             } label: {
                 HStack(spacing: 8) {
                     Text("\(stato.finestre.count) \(stato.finestre.count == 1 ? "aperta" : "aperte")")

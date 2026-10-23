@@ -52,7 +52,8 @@ enum MotoreNotifiche {
                                    data: a.inizio, canale: a.canale, destinazione: .appuntamento(a.id)))
         }
         // Appuntamenti passati senza esito
-        for a in dati.appuntamenti where a.stato == .pianificato && a.fine < inizio && a.fine > cal.date(byAdding: .day, value: -giorniAvanti, to: inizio) ?? inizio {
+        // (anche quelli di oggi, appena finiti)
+        for a in dati.appuntamenti where a.stato == .pianificato && a.fine <= oggi && a.fine > cal.date(byAdding: .day, value: -giorniAvanti, to: inizio) ?? inizio {
             elenco.append(Notifica(id: "esito-\(a.id)", gruppo: .daFare, app: .agenda,
                                    titolo: "Com'è andato «\(a.titolo)»?",
                                    dettaglio: "\(nome(a.clienteId)) · \(Formati.giornoMese.string(from: a.inizio)): segna l'esito in agenda",

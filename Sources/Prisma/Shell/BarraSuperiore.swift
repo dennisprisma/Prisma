@@ -114,7 +114,7 @@ struct BarraSuperiore: View {
             .help("Centro notifiche")
 
             Button {
-                stato.mostraAvviso("La schermata di benvenuto arriva nella prossima fase.")
+                stato.blocca()
             } label: {
                 SimboloLucchetto()
                     .stroke(Colori.Barra.testo, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
