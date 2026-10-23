@@ -38,6 +38,8 @@ final class StatoShell: ObservableObject {
     @Published var schedaCliente: SchedaCliente = .panoramica
     /// Posizione aperta nel dettaglio (usata anche dalle istantanee).
     @Published var posizioneInDettaglio: String?
+    /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
+    @Published var portafoglio = false
     /// Il pulsante dell'intestazione di Posizioni chiede di aprire il modulo (nuova posizione o proposta).
     @Published var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
@@ -585,6 +587,7 @@ final class StatoShell: ObservableObject {
 
     /// Apre una posizione nel dettaglio di Posizioni.
     func apriPosizione(_ p: Posizione) {
+        portafoglio = false
         clienteAttivoId = p.clienteId
         apri(.posizioni)
         // Dopo il cambio di cliente, che in Posizioni chiude il dettaglio aperto

@@ -280,6 +280,10 @@ enum Istantanee {
             s.riduci(.agenda)
             s.pannelloAppAperte = true
         }),
+        ("65-portafoglio", { s in
+            s.portafoglio = true
+            s.apri(.posizioni)
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"

@@ -14,8 +14,10 @@ struct AppPosizioni: View {
 
     static let opzioniCanale: [(Canale?, String)] = [(nil, "Tutti"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")]
 
+    /// Le posizioni del cliente attivo, o di tutti i clienti nella vista Portafoglio.
     private var delCliente: [Posizione] {
-        stato.posizioniCliente(stato.clienteAttivoId).filter { filtroCanale == nil || $0.canale == filtroCanale }
+        (stato.portafoglio ? stato.posizioni : stato.posizioniCliente(stato.clienteAttivoId))
+            .filter { filtroCanale == nil || $0.canale == filtroCanale }
     }
 
     private var perStato: [Posizione] {
@@ -48,6 +50,8 @@ struct AppPosizioni: View {
                 Group {
                     if let id = stato.posizioneInDettaglio, let p = stato.posizioni.first(where: { $0.id == id }) {
                         DettaglioPosizione(posizione: p, modifica: { modulo = p })
+                    } else if stato.portafoglio {
+                        portafoglio(perStato.filter { area == nil || $0.area == area })
                     } else {
                         principale
                     }
@@ -64,11 +68,14 @@ struct AppPosizioni: View {
         .onAppear { controllaRichiesta(stato.richiestaNuovaPosizione) }
         .onChange(of: stato.richiestaNuovaPosizione) { controllaRichiesta($0) }
         .onChange(of: stato.clienteAttivoId) { _ in stato.posizioneInDettaglio = nil }
+        .onChange(of: stato.portafoglio) { _ in stato.posizioneInDettaglio = nil }
     }
 
     private func controllaRichiesta(_ richiesta: StatoPosizione?) {
         guard let richiesta else { return }
         stato.richiestaNuovaPosizione = nil
+        // Una posizione nuova è sempre di un cliente: si torna al suo dossier
+        stato.portafoglio = false
         let canale = filtroCanale ?? stato.clienteAttivo?.canali.first ?? .alleanza
         var p = Posizione(clienteId: stato.clienteAttivoId, canale: canale, stato: richiesta, area: area ?? .investimento, nome: "")
         if richiesta == .proposta { p.esito = .bozza }
@@ -79,6 +86,19 @@ struct AppPosizioni: View {
 
     private var rail: some View {
         VStack(alignment: .leading, spacing: 6) {
+            SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
+                .padding(.top, 2)
+            if stato.portafoglio {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("IL TUO PORTAFOGLIO").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
+                    Text("Tutti i clienti").font(Tipo.railTitolo).foregroundColor(Colori.Analisi.railTesto)
+                    Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti") in rubrica").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                }
+                .incisione(.white)
+                .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .bordoBasso(Colori.Analisi.railFilo)
+            } else {
             VStack(alignment: .leading, spacing: 2) {
                 Text("DOSSIER DI").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
                 Button {
@@ -98,6 +118,7 @@ struct AppPosizioni: View {
             .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
             .frame(maxWidth: .infinity, alignment: .leading)
             .bordoBasso(Colori.Analisi.railFilo)
+            }
 
             EtichettaRail(testo: "Stato")
             SegmentiAnalisi(opzioni: [(FiltroStato.inEssere, "In essere"), (.proposte, "Proposte"), (.tutte, "Tutte")],
@@ -193,7 +214,7 @@ struct AppPosizioni: View {
         }
     }
 
-    private func ripartizione(_ r: RiepilogoPosizioni) -> some View {
+    func ripartizione(_ r: RiepilogoPosizioni) -> some View {
         let aree = AreaPosizione.allCases.filter { !$0.passivo && (r.perArea[$0] ?? 0) > 0 }
         return HStack(alignment: .center, spacing: 22) {
             GraficoAnello(
@@ -234,7 +255,7 @@ struct AppPosizioni: View {
         }
     }
 
-    private func canali(_ r: RiepilogoPosizioni) -> some View {
+    func canali(_ r: RiepilogoPosizioni) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             BarraCanali(quotaAlleanza: r.quota(.alleanza))
             ForEach(Canale.allCases) { c in
