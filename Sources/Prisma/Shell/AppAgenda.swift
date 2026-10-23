@@ -156,9 +156,9 @@ struct AppAgenda: View {
     private func settimana(_ indice: GiorniAgenda) -> some View {
         HStack(spacing: 4) {
             ForEach(CalendarioAgenda.giorni(settimanaDi: giorno), id: \.self) { g in
-                let indice = (cal.component(.weekday, from: g) + 5) % 7
+                let colonna = (cal.component(.weekday, from: g) + 5) % 7
                 GiornoSettimanaAgenda(
-                    nome: CalendarioAgenda.nomiGiorni[indice], giorno: g,
+                    nome: CalendarioAgenda.nomiGiorni[colonna], giorno: g,
                     incontri: indice.appuntamenti(g).count,
                     scadenze: indice.scadenze(g).count,
                     selezionato: cal.isDate(g, inSameDayAs: giorno),
