@@ -476,9 +476,26 @@ struct WidgetPortafoglio: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        let r = RiepilogoPosizioni(stato.posizioni)
         Button { stato.apri(.posizioni) } label: {
-            VStack(alignment: .leading, spacing: 10) {
+            // Su schermi bassi la riga delle proposte lascia spazio ai canali
+            ViewThatFits(in: .vertical) {
+                contenuto(conProposte: true)
+                contenuto(conProposte: false)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay(alignment: .top) {
+                Gradienti.borsaRiflesso
+                    .frame(height: 70)
+                    .allowsHitTesting(false)
+            }
+        }
+        .buttonStyle(StileSemplice())
+        .corniceWidget(Gradienti.borsa, bordo: Colori.Widget.borsaBordo)
+    }
+
+    private func contenuto(conProposte: Bool) -> some View {
+        let r = RiepilogoPosizioni(stato.posizioni)
+        return VStack(alignment: .leading, spacing: 10) {
                 Text("PORTAFOGLIO CLIENTI")
                     .font(Tipo.chip)
                     .tracking(1)
@@ -496,27 +513,20 @@ struct WidgetPortafoglio: View {
                 Rectangle().fill(Colori.Widget.borsaFilo).frame(height: 1)
                 riga("Alleanza", Colori.Widget.borsaAlleanza, r.perCanale[.alleanza] ?? 0, r.quota(.alleanza))
                 riga("Indipendente", Colori.Widget.borsaIndipendente, r.perCanale[.indipendente] ?? 0, r.quota(.indipendente))
-                Rectangle().fill(Colori.Widget.borsaFilo).frame(height: 1)
-                HStack {
-                    Text("Proposte aperte").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
-                    Spacer()
-                    Text("\(r.proposteAperte)").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
+                if conProposte {
+                    Rectangle().fill(Colori.Widget.borsaFilo).frame(height: 1)
+                    HStack {
+                        Text("Proposte aperte").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
+                        Spacer()
+                        Text("\(r.proposteAperte)").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
+                    }
+                    Text("per \(Formati.euro(r.valoreProposte)) nel primo anno")
+                        .font(Tipo.chip)
+                        .foregroundColor(Colori.Widget.borsaSecondario)
                 }
-                Text("per \(Formati.euro(r.valoreProposte)) nel primo anno")
-                    .font(Tipo.chip)
-                    .foregroundColor(Colori.Widget.borsaSecondario)
                 Spacer(minLength: 0)
             }
             .padding(Misure.Widget.margine)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .overlay(alignment: .top) {
-                Gradienti.borsaRiflesso
-                    .frame(height: 70)
-                    .allowsHitTesting(false)
-            }
-        }
-        .buttonStyle(StileSemplice())
-        .corniceWidget(Gradienti.borsa, bordo: Colori.Widget.borsaBordo)
     }
 
     private func riga(_ nome: String, _ colore: Color, _ valore: Double, _ quota: Double) -> some View {
@@ -546,7 +556,19 @@ struct WidgetEve: View {
 
     var body: some View {
         Button { stato.apri(.eve) } label: {
-            VStack(spacing: 10) {
+            // Su schermi bassi l'onda sonora lascia spazio al resto
+            ViewThatFits(in: .vertical) {
+                contenuto(conOnda: true)
+                contenuto(conOnda: false)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .buttonStyle(StileSemplice())
+        .corniceWidget(Materiale.Lino(), bordo: Colori.Colonna.eveBordo)
+    }
+
+    private func contenuto(conOnda: Bool) -> some View {
+        VStack(spacing: 10) {
                 IconaApp(app: .eve, lato: 58)
                     .shadow(color: Colori.Widget.eveAlone.opacity(0.7), radius: 14)
                     .ombraCSS(Colori.Scrivania.iconaOmbra1, y: 2, sfocatura: 2)
@@ -555,12 +577,14 @@ struct WidgetEve: View {
                     .font(Tipo.chip)
                     .tracking(1.4)
                     .foregroundColor(Colori.Colonna.eveTesto)
-                HStack(alignment: .center, spacing: 3) {
-                    ForEach(Array(Self.onda.enumerated()), id: \.offset) { _, h in
-                        Capsule().fill(Gradienti.onda).frame(width: 4, height: h)
+                if conOnda {
+                    HStack(alignment: .center, spacing: 3) {
+                        ForEach(Array(Self.onda.enumerated()), id: \.offset) { _, h in
+                            Capsule().fill(Gradienti.onda).frame(width: 4, height: h)
+                        }
                     }
+                    .frame(height: 36)
                 }
-                .frame(height: 36)
                 VStack(spacing: 3) {
                     Text("Ritrova il filo con Eve.")
                         .font(Tipo.eveTitolo)
@@ -574,9 +598,5 @@ struct WidgetEve: View {
             }
             .incisione(.black, y: -1)
             .padding(Misure.Widget.margine)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .buttonStyle(StileSemplice())
-        .corniceWidget(Materiale.Lino(), bordo: Colori.Colonna.eveBordo)
     }
 }
