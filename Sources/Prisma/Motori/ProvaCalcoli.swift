@@ -596,6 +596,36 @@ enum ProvaCalcoli {
             verifica("Check-up: sette indicatori", Double(ck.indicatori.count), 7)
         }
 
+        // Portafoglio del consulente: le somme per cliente ed emittente tornano con il totale
+        do {
+            let demo = DatiPrisma.demo()
+            let pf = MotorePortafoglio.calcola(demo.posizioni, clienti: demo.clienti)
+            verifica("Portafoglio: attività per cliente uguali al totale", pf.clienti.reduce(0) { $0 + $1.attivita }, pf.riepilogo.attivita)
+            verifica("Portafoglio: quote dei clienti al 100%", pf.clienti.reduce(0) { $0 + $1.quota }, 1)
+            verifica("Portafoglio: emittenti uguali alle attività finanziarie", pf.emittenti.reduce(0) { $0 + $1.valore }, pf.attivitaFinanziarie)
+            verifica("Portafoglio: quote degli emittenti al 100%", pf.emittenti.reduce(0) { $0 + $1.quota }, 1)
+            verifica("Portafoglio: immobili fuori dalla concentrazione",
+                     pf.attivitaFinanziarie, pf.riepilogo.attivita - (pf.riepilogo.perArea[.immobili] ?? 0))
+            verifica("Portafoglio: clienti dal più seguito", zip(pf.clienti, pf.clienti.dropFirst()).allSatisfy { $0.attivita >= $1.attivita } ? 1 : 0, 1)
+            verifica("Portafoglio: al massimo \(Portafoglio.massimoEmittenti) emittenti", pf.emittenti.count <= Portafoglio.massimoEmittenti ? 1 : 0, 1)
+            let fine = Calendar.current.date(byAdding: .month, value: 13, to: Date()) ?? Date()
+            verifica("Portafoglio: scadenze nei prossimi 12 mesi, in ordine",
+                     pf.scadenze.allSatisfy { m in m.posizioni.allSatisfy { ($0.scadenza ?? .distantFuture) < fine } }
+                     && zip(pf.scadenze, pf.scadenze.dropFirst()).allSatisfy { $0.inizio < $1.inizio } ? 1 : 0, 1)
+            var esiti = demo.posizioni
+            let base = Posizione(clienteId: "giulia", canale: .alleanza, stato: .proposta, area: .risparmio, nome: "Prova")
+            for (k, e) in [EsitoProposta.accettata, .accettata, .accettata, .rifiutata].enumerated() {
+                var x = base
+                x.id = "prova-esito-\(k)"
+                x.esito = e
+                esiti.append(x)
+            }
+            let conEsiti = MotorePortafoglio.calcola(esiti, clienti: demo.clienti)
+            let gia = MotorePortafoglio.calcola(demo.posizioni, clienti: demo.clienti).esiti
+            let si = Double((gia[.accettata] ?? 0) + 3), no = Double((gia[.rifiutata] ?? 0) + 1)
+            verifica("Portafoglio: tasso di accettazione delle proposte", conEsiti.tassoAccettazione ?? -1, si / (si + no), tolleranza: 0.0001)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

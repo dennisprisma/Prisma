@@ -477,7 +477,10 @@ struct WidgetPortafoglio: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        Button { stato.apri(.posizioni) } label: {
+        Button {
+            stato.portafoglio = true
+            stato.apri(.posizioni)
+        } label: {
             // Su schermi bassi la riga delle proposte lascia spazio ai canali
             ViewThatFits(in: .vertical) {
                 contenuto(conProposte: true)
