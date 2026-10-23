@@ -115,6 +115,15 @@ enum MotoreNotifiche {
                                    canale: daVerificare.count == 1 ? primo.canale : nil,
                                    destinazione: daVerificare.count == 1 ? .prodotto(primo.id) : .app(.prodotti)))
         }
+        // Clienti da ricontattare (nessun contatto da mesi e niente in agenda): una voce sola, apre il Portafoglio
+        let richiamare = MotorePortafoglio.calcola(dati.posizioni, clienti: dati.clienti, appuntamenti: dati.appuntamenti,
+                                                   incontri: dati.incontri, oggi: oggi).daRicontattare
+        if let primo = richiamare.first {
+            elenco.append(Notifica(id: "ricontattare-\(richiamare.map(\.id).joined(separator: ","))", gruppo: .daSistemare, app: .clienti,
+                                   titolo: richiamare.count == 1 ? "\(primo.cliente.nome) è da ricontattare" : "\(richiamare.count) clienti da ricontattare",
+                                   dettaglio: primo.motivo ?? "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda",
+                                   data: inizio, destinazione: richiamare.count == 1 ? .cliente(primo.id) : nil))
+        }
         // Backup
         let b = dati.impostazioni.backup
         if let errore = b.ultimoErrore {
@@ -171,6 +180,15 @@ extension StatoShell {
 
     func apriNotifica(_ n: Notifica) {
         pannelloNotifiche = false
-        if let d = n.destinazione { vai(a: d) } else { apri(n.app) }
+        if let d = n.destinazione {
+            vai(a: d)
+        } else if n.id.hasPrefix("ricontattare-") {
+            // Più clienti da ricontattare: l'elenco è nel Portafoglio
+            portafoglio = true
+            posizioneInDettaglio = nil
+            apri(.posizioni)
+        } else {
+            apri(n.app)
+        }
     }
 }
