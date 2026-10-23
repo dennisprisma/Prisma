@@ -69,7 +69,8 @@ struct AppPosizioni: View {
         .onAppear { controllaRichiesta(stato.richiestaNuovaPosizione) }
         .onChange(of: stato.richiestaNuovaPosizione) { controllaRichiesta($0) }
         .onChange(of: stato.clienteAttivoId) { _ in stato.posizioneInDettaglio = nil }
-        .onChange(of: stato.portafoglio) { _ in stato.posizioneInDettaglio = nil }
+        // Entrando nel portafoglio si chiude il dettaglio; uscendo no (apriPosizione lo sta aprendo)
+        .onChange(of: stato.portafoglio) { if $0 { stato.posizioneInDettaglio = nil } }
     }
 
     private func controllaRichiesta(_ richiesta: StatoPosizione?) {
@@ -296,7 +297,8 @@ struct AppPosizioni: View {
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Analisi.kpiNota)
             Spacer()
-            Text("\(stato.posizioniCliente(stato.clienteAttivoId).count) posizioni del cliente")
+            Text(stato.portafoglio ? "\(stato.posizioni.count) posizioni di \(stato.clienti.count) clienti"
+                                   : "\(stato.posizioniCliente(stato.clienteAttivoId).count) posizioni del cliente")
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Analisi.kpiNota)
         }

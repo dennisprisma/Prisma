@@ -135,7 +135,10 @@ struct AppConfronti: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 460)
             HStack {
-                Button("Apri Posizioni") { stato.apri(.posizioni) }
+                Button("Apri Posizioni") {
+                    stato.portafoglio = false
+                    stato.apri(.posizioni)
+                }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
                 Button("Apri il simulatore") { stato.apri(.simulazioni) }
                     .buttonStyle(StileBlu())

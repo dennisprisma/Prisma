@@ -298,7 +298,10 @@ struct WidgetCliente: View {
             Spacer(minLength: 0)
             HStack(spacing: 10) {
                 Button("Apri la scheda") { stato.apri(.clienti) }
-                Button("Posizioni") { stato.apri(.posizioni) }
+                Button("Posizioni") {
+                    stato.portafoglio = false
+                    stato.apri(.posizioni)
+                }
                 Button("Chiedi a Eve") { stato.apri(.eve) }
             }
             .buttonStyle(StileCuoioChiaro())
