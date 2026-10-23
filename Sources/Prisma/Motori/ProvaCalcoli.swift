@@ -608,7 +608,7 @@ enum ProvaCalcoli {
                                                [CampoEstratto(chiave: .premio, valore: "999", pagina: 2), CampoEstratto(chiave: .sri, valore: "3", pagina: 1)])
         verifica("Documenti: il modello completa senza toccare i dati confermati",
                  unito.first { $0.chiave == .premio }?.valore == "1.000" && unito.first { $0.chiave == .premio }?.confermato == true && unito.count == 2 ? 1 : 0, 1)
-        unito[0].valore = "  "
+        if let i = unito.firstIndex(where: { $0.chiave == .premio }) { unito[i].valore = "  " }
         var docVuoto = Documento(clienteId: "giulia", titolo: "Prova", tipo: .kid)
         docVuoto.campi = unito
         verifica("Documenti: un campo svuotato non vale come confermato", docVuoto.confermato(.premio) == nil ? 1 : 0, 1)
