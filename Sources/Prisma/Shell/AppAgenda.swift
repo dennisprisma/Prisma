@@ -130,7 +130,6 @@ struct AppAgenda: View {
             }
             .labelsHidden()
             .frame(width: 190)
-            .onChange(of: stato.filtroClienteAgenda) { _ in stato.appuntamentoSelezionato = nil }
             Button("＋ Appuntamento") { nuovoAppuntamento() }
                 .buttonStyle(StileBlu())
         }

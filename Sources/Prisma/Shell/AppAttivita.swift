@@ -98,7 +98,8 @@ struct AppAttivita: View {
         let aperte = delCliente.filter { !$0.completata }
         let fatte = delCliente.filter(\.completata)
         let limite = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: Date())) ?? Date()
-        let urgenti = aperte.filter { $0.scadenza <= limite }
+        // Oggi e i sei giorni dopo (le scadenze sono a mezzanotte)
+        let urgenti = aperte.filter { $0.scadenza < limite }
         let quota = delCliente.isEmpty ? 0 : Double(fatte.count) / Double(delCliente.count)
         return HStack(spacing: 12) {
             numero(aperte.count, "Da svolgere")
@@ -191,9 +192,6 @@ struct AppAttivita: View {
         .background(Gradienti.metalloAttivita)
         .luceInterna(Color.white.opacity(0.6))
         .bordoBasso(Colori.Attivita.metalloBordo)
-        .onChange(of: stato.filtroStatoAttivita) { _ in stato.attivitaSelezionata = nil }
-        .onChange(of: stato.filtroClienteAttivita) { _ in stato.attivitaSelezionata = nil }
-        .onChange(of: stato.filtroPrioritaAttivita) { _ in stato.attivitaSelezionata = nil }
     }
 
     private var carta: some View {

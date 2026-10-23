@@ -596,6 +596,23 @@ enum ProvaCalcoli {
             verifica("Check-up: sette indicatori", Double(ck.indicatori.count), 7)
         }
 
+        // Lettura dei documenti: numeri e date in ogni formato, solo date vere
+        verifica("Documenti: «1.250,50» è 1250,50", EstrattoreDocumento.numero("1.250,50") ?? -1, 1250.5)
+        verifica("Documenti: «1,250.50» (all'inglese) è 1250,50", EstrattoreDocumento.numero("1,250.50") ?? -1, 1250.5)
+        verifica("Documenti: «1200.50» resta 1200,50", EstrattoreDocumento.numero("1200.50") ?? -1, 1200.5)
+        let gregoriano = Calendar(identifier: .gregorian)
+        verifica("Documenti: «2025-12-01» è il primo dicembre", EstrattoreDocumento.data("2025-12-01").map { Double(gregoriano.component(.month, from: $0) * 100 + gregoriano.component(.day, from: $0)) } ?? -1, 1201)
+        verifica("Documenti: «31/06/2026» non è una data", EstrattoreDocumento.data("31/06/2026") == nil ? 1 : 0, 1)
+        verifica("Documenti: «1° dicembre 2025»", EstrattoreDocumento.data("1° dicembre 2025").map { Double(gregoriano.component(.year, from: $0)) } ?? -1, 2025)
+        var unito = EstrattoreDocumento.unisci([CampoEstratto(chiave: .premio, valore: "1.000", pagina: 1, confermato: true)],
+                                               [CampoEstratto(chiave: .premio, valore: "999", pagina: 2), CampoEstratto(chiave: .sri, valore: "3", pagina: 1)])
+        verifica("Documenti: il modello completa senza toccare i dati confermati",
+                 unito.first { $0.chiave == .premio }?.valore == "1.000" && unito.first { $0.chiave == .premio }?.confermato == true && unito.count == 2 ? 1 : 0, 1)
+        unito[0].valore = "  "
+        var docVuoto = Documento(clienteId: "giulia", titolo: "Prova", tipo: .kid)
+        docVuoto.campi = unito
+        verifica("Documenti: un campo svuotato non vale come confermato", docVuoto.confermato(.premio) == nil ? 1 : 0, 1)
+
         // Portafoglio del consulente: le somme per cliente ed emittente tornano con il totale
         do {
             let demo = DatiPrisma.demo()
