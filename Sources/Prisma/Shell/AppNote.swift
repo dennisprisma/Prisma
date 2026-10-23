@@ -8,6 +8,8 @@ struct AppNote: View {
     @EnvironmentObject var stato: StatoShell
     @State private var modulo: Attivita?
     @State private var confermaEliminazione = false
+    /// Quanto è scorso il testo della nota: le righe della pagina lo seguono.
+    @State private var scorrimentoTesto: CGFloat = 0
 
     var body: some View {
         let elenco = stato.noteFiltrate
@@ -186,13 +188,14 @@ struct AppNote: View {
                         .padding(.top, 14)
                         .padding(.bottom, 10)
                     ZStack(alignment: .topLeading) {
-                        RigheNote().fill(Colori.Note.righe)
+                        RigheNote(scorrimento: scorrimentoTesto).fill(Colori.Note.righe)
                         TextEditor(text: Binding(get: { n.testo }, set: { v in stato.modificaNota(n.id) { $0.testo = v } }))
                             .font(Tipo.noteTesto)
                             .lineSpacing(Misure.Note.interlinea)
                             .foregroundColor(Colori.Note.testo)
                             .scrollContentBackground(.hidden)
                             .scrollIndicators(.never)
+                            .background(ScorrimentoEditor(scorrimento: $scorrimentoTesto).allowsHitTesting(false))
                         if n.testo.isEmpty {
                             Text("Prendi un appunto. C'è spazio per tutto quello che conta.")
                                 .font(Tipo.noteTesto)

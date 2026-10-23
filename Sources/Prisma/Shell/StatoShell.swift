@@ -129,7 +129,7 @@ final class StatoShell: ObservableObject {
     @Published var prospetto: SceltaProspetto?
     /// Valutazione aperta nel modulo di modifica.
     @Published var valutazioneInModifica: ValutazioneInvestimento?
-    private var testiDocumenti: [String: [String]] = [:]
+    private var testiDocumenti = MemoriaTesti()
 
     // Eve
     @Published var eveInCorso = false
@@ -175,6 +175,15 @@ final class StatoShell: ObservableObject {
             avviaSalvataggio()
             avviaBackupAutomatico()
             aggiornaElencoBackup()
+            // I file rimasti da un'importazione interrotta vanno nel Cestino; solo con l'archivio
+            // letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
+            if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                    guard let self, self.documentiInLettura.isEmpty else { return }
+                    let tolti = self.pulisciDocumentiOrfani(nelCestino: true)
+                    if tolti > 0 { self.mostraAvviso("\(tolti) \(tolti == 1 ? "file non più usato spostato" : "file non più usati spostati") nel Cestino") }
+                }
+            }
         } else {
             dati = DatiPrisma.demo()
         }
@@ -635,13 +644,18 @@ final class StatoShell: ObservableObject {
     }
 
     /// Testo del documento, pagina per pagina (dal file accanto al documento o dai dati di prova).
-    func testoDocumento(_ d: Documento) -> [String] {
-        if let t = testiDocumenti[d.id] { return t }
+    /// Restano in memoria solo i testi usati di recente; la ricerca (`memorizza: false`) legge
+    /// gli altri dal disco senza tenerli, così l'archivio intero non finisce in memoria.
+    func testoDocumento(_ d: Documento, memorizza: Bool = true) -> [String] {
+        if let t = testiDocumenti[d.id] {
+            if memorizza { testiDocumenti[d.id] = t }
+            return t
+        }
         var pagine = DatiDemo.testoDocumento(d.id) ?? []
         if pagine.isEmpty, let url = urlTesto(d), let t = try? String(contentsOf: url, encoding: .utf8) {
             pagine = t.components(separatedBy: LetturaDocumenti.separatorePagine)
         }
-        testiDocumenti[d.id] = pagine
+        if memorizza { testiDocumenti[d.id] = pagine }
         return pagine
     }
 
@@ -772,9 +786,12 @@ final class StatoShell: ObservableObject {
         if let t = urlTesto(d) { try? FileManager.default.removeItem(at: t) }
     }
 
-    /// Elimina dalla cartella Documenti i file che nessun documento dell'archivio usa più.
-    func pulisciDocumentiOrfani() {
-        guard persistente else { return }
+    /// Elimina dalla cartella Documenti i file che nessun documento dell'archivio usa più
+    /// (con `nelCestino` li sposta nel Cestino del Mac, da dove si possono ancora riprendere).
+    /// Restituisce quanti file ha tolto.
+    @discardableResult
+    func pulisciDocumentiOrfani(nelCestino: Bool = false) -> Int {
+        guard persistente, !solaLettura else { return 0 }
         let fm = FileManager.default
         let radice = Archivio.cartellaDocumenti.standardizedFileURL
         var usati = Set<String>()
@@ -782,10 +799,26 @@ final class StatoShell: ObservableObject {
             if let u = urlDocumento(d) { usati.insert(u.resolvingSymlinksInPath().path) }
             if let t = urlTesto(d) { usati.insert(t.resolvingSymlinksInPath().path) }
         }
-        guard let elenco = fm.enumerator(at: radice, includingPropertiesForKeys: [.isRegularFileKey]) else { return }
-        for case let u as URL in elenco where (try? u.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
-            if !usati.contains(u.resolvingSymlinksInPath().path) { try? fm.removeItem(at: u) }
+        guard let elenco = fm.enumerator(at: radice, includingPropertiesForKeys: [.isRegularFileKey]) else { return 0 }
+        var tolti = 0
+        var cartelle: [URL] = []
+        for case let u as URL in elenco {
+            guard (try? u.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+                cartelle.append(u)
+                continue
+            }
+            guard !usati.contains(u.resolvingSymlinksInPath().path) else { continue }
+            if nelCestino {
+                if (try? fm.trashItem(at: u, resultingItemURL: nil)) != nil { tolti += 1 }
+            } else if (try? fm.removeItem(at: u)) != nil {
+                tolti += 1
+            }
         }
+        // Le cartelle dei clienti rimaste vuote (le più interne prima)
+        for c in cartelle.reversed() where ((try? fm.contentsOfDirectory(atPath: c.path)) ?? ["?"]).filter({ $0 != ".DS_Store" }).isEmpty {
+            try? fm.removeItem(at: c)
+        }
+        return tolti
     }
 
     func eliminaDocumento(_ id: String) {
@@ -1681,6 +1714,26 @@ final class StatoShell: ObservableObject {
             .sorted { $0.inizio < $1.inizio }
     }
 
+    /// Appuntamenti (filtrati per cliente) e scadenze dei giorni indicati, raggruppati per giorno
+    /// in un solo passaggio: la settimana o il mese dell'agenda non rileggono l'archivio per ogni casella.
+    func giorniAgenda(_ giorni: [Date]) -> GiorniAgenda {
+        let cal = Calendar.current
+        var indice = GiorniAgenda()
+        guard let primo = giorni.min(), let ultimo = giorni.max() else { return indice }
+        let inizio = cal.startOfDay(for: primo)
+        let fine = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: ultimo)) ?? inizio
+        let filtro = filtroClienteAgenda
+        for a in appuntamenti where a.inizio >= inizio && a.inizio < fine && (filtro == nil || a.clienteId == filtro) {
+            indice.perGiorno[cal.startOfDay(for: a.inizio), default: []].append(a)
+        }
+        for k in indice.perGiorno.keys { indice.perGiorno[k]?.sort { $0.inizio < $1.inizio } }
+        for p in dati.posizioni where p.stato == .inEssere && (filtro == nil || p.clienteId == filtro) {
+            guard let s = p.scadenza, s >= inizio, s < fine else { continue }
+            indice.scadenzePerGiorno[cal.startOfDay(for: s), default: []].append(p)
+        }
+        return indice
+    }
+
     func appuntamento(_ id: String?) -> Appuntamento? {
         guard let id else { return nil }
         return appuntamenti.first { $0.id == id }
@@ -1907,7 +1960,7 @@ final class StatoShell: ObservableObject {
                     d.impostazioni.nomeUtente = nome.0
                     d.impostazioni.inizialiUtente = nome.1
                     self.dati = d
-                    self.testiDocumenti = [:]
+                    self.testiDocumenti = MemoriaTesti()
                     self.documentoSelezionato = nil
                     self.azzeraNote()
                     self.solaLettura = false

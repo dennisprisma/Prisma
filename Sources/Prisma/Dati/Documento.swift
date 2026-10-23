@@ -152,3 +152,39 @@ struct CampoEstratto: Identifiable, Codable, Hashable {
 
     var id: String { chiave.rawValue }
 }
+
+/// I testi dei documenti tenuti in memoria, con un tetto di caratteri: oltre il tetto si
+/// dimenticano i meno recenti (si rileggono dal disco quando servono di nuovo).
+struct MemoriaTesti {
+    /// Circa 8–16 MB di testo: abbastanza per i documenti aperti, poco per un Mac da 8 GB.
+    static let limiteCaratteri = 4_000_000
+
+    private var testi: [String: [String]] = [:]
+    /// Dal meno recente al più recente.
+    private var ordine: [String] = []
+    private(set) var caratteri = 0
+    var limite = MemoriaTesti.limiteCaratteri
+
+    var conta: Int { testi.count }
+
+    subscript(id: String) -> [String]? {
+        get { testi[id] }
+        set {
+            if let vecchio = testi.removeValue(forKey: id) {
+                caratteri -= MemoriaTesti.misura(vecchio)
+                ordine.removeAll { $0 == id }
+            }
+            guard let nuovo = newValue else { return }
+            testi[id] = nuovo
+            ordine.append(id)
+            caratteri += MemoriaTesti.misura(nuovo)
+            // Il più recente resta sempre, anche se da solo supera il tetto
+            while caratteri > limite, ordine.count > 1 {
+                let via = ordine.removeFirst()
+                caratteri -= testi.removeValue(forKey: via).map(MemoriaTesti.misura) ?? 0
+            }
+        }
+    }
+
+    private static func misura(_ pagine: [String]) -> Int { pagine.reduce(0) { $0 + $1.utf16.count } }
+}

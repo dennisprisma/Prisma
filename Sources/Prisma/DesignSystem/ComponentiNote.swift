@@ -180,13 +180,16 @@ struct CuoioNote: View {
     }
 }
 
-/// Le righe orizzontali della pagina, ogni `Misure.Note.riga` punti.
+/// Le righe orizzontali della pagina, ogni `Misure.Note.riga` punti. `scorrimento` è quanto il
+/// testo è salito nell'editor: le righe salgono con lui e restano sotto le parole.
 struct RigheNote: Shape {
     var inizio: CGFloat = Misure.Note.primaRiga
+    var scorrimento: CGFloat = 0
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        var y = rect.minY + inizio
+        var y = rect.minY + inizio - scorrimento
+        if y < rect.minY { y += ceil((rect.minY - y) / Misure.Note.riga) * Misure.Note.riga }
         while y < rect.maxY {
             p.addRect(CGRect(x: rect.minX, y: y, width: rect.width, height: 1))
             y += Misure.Note.riga
@@ -203,5 +206,71 @@ struct MargineNote: View {
             Rectangle().fill(Colori.Note.margine2).frame(width: 1)
         }
         .frame(maxHeight: .infinity)
+    }
+}
+
+/// Legge di quanto è scorso il testo dell'editor che ha accanto (il TextEditor di SwiftUI non lo
+/// dice): cerca la vista di testo AppKit che sta sotto di sé e ne segue lo scorrimento.
+struct ScorrimentoEditor: NSViewRepresentable {
+    @Binding var scorrimento: CGFloat
+
+    func makeCoordinator() -> Osservatore { Osservatore() }
+
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView()
+        context.coordinator.aggiorna = { y in if abs(scorrimento - y) > 0.5 { scorrimento = y } }
+        DispatchQueue.main.async { context.coordinator.aggancia(da: v) }
+        return v
+    }
+
+    func updateNSView(_ v: NSView, context: Context) {
+        context.coordinator.aggiorna = { y in if abs(scorrimento - y) > 0.5 { scorrimento = y } }
+        if context.coordinator.clip == nil { DispatchQueue.main.async { context.coordinator.aggancia(da: v) } }
+    }
+
+    static func dismantleNSView(_ v: NSView, coordinator: Osservatore) { coordinator.stacca() }
+
+    final class Osservatore {
+        var aggiorna: (CGFloat) -> Void = { _ in }
+        weak var clip: NSClipView?
+        private var token: NSObjectProtocol?
+
+        /// La vista di testo il cui riquadro contiene il centro del segnaposto, salendo di qualche livello.
+        func aggancia(da segno: NSView) {
+            guard clip == nil, let finestra = segno.window else { return }
+            let centro = segno.convert(NSPoint(x: segno.bounds.midX, y: segno.bounds.midY), to: nil)
+            var livello: NSView? = segno.superview
+            for _ in 0..<6 {
+                guard let l = livello else { break }
+                if let s = Self.cerca(in: l, centro: centro), s.window === finestra {
+                    let c = s.contentView
+                    c.postsBoundsChangedNotifications = true
+                    clip = c
+                    token = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification, object: c, queue: .main) { [weak self] _ in
+                        guard let self, let c = self.clip else { return }
+                        self.aggiorna(c.bounds.origin.y)
+                    }
+                    aggiorna(c.bounds.origin.y)
+                    return
+                }
+                livello = l.superview
+            }
+        }
+
+        private static func cerca(in vista: NSView, centro: NSPoint) -> NSScrollView? {
+            for v in vista.subviews {
+                if let s = v as? NSScrollView, s.documentView is NSTextView,
+                   s.convert(s.bounds, to: nil).contains(centro) { return s }
+                if let s = cerca(in: v, centro: centro) { return s }
+            }
+            return nil
+        }
+
+        func stacca() {
+            if let token { NotificationCenter.default.removeObserver(token) }
+            token = nil
+        }
+
+        deinit { stacca() }
     }
 }
