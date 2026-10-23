@@ -492,9 +492,10 @@ enum ProvaCalcoli {
         }
 
         verifica("IRPEF: aliquota marginale con 32.000 € (33% dal 2026)", RegoleFiscali.aliquotaMarginale(reddito: 32_000), 33)
-        // 30.000 € di reddito, 5.164,57 dedotti: 2.000 al 33% e 3.164,57 al 23%
-        verifica("IRPEF: risparmio di una deduzione a cavallo di due scaglioni", RegoleFiscali.risparmioDeduzione(reddito: 30_000, deduzione: 5_164.57),
-                 2_000 * 0.33 + 3_164.57 * 0.23, tolleranza: 0.01)
+        // 30.000 € di reddito, 5.300 dedotti: 2.000 al 33% e 3.300 al 23%
+        verifica("IRPEF: risparmio di una deduzione a cavallo di due scaglioni", RegoleFiscali.risparmioDeduzione(reddito: 30_000, deduzione: 5_300),
+                 2_000 * 0.33 + 3_300 * 0.23, tolleranza: 0.01)
+        verifica("Previdenza: limite di deducibilità 2026", RegoleFiscali.limiteDeducibilita, 5_300)
         // Fondo pensione: 4% lordo, 1,5% di costi, 20% sul risultato netto: (1,04 × 0,985 − 1) × 0,8 = 1,952%
         verifica("Previdenza: rendimento netto dopo costi e imposta del fondo", RegoleFiscali.rendimentoNettoPrevidenza(lordo: 4, costo: 1.5), 1.952, tolleranza: 0.000_1)
         verifica("IRPEF: aliquota marginale con 60.000 €", RegoleFiscali.aliquotaMarginale(reddito: 60_000), 43)
@@ -526,8 +527,8 @@ enum ProvaCalcoli {
         var cli = DatiDemo.clienti()[0]
         cli.profilo.redditoLordoAnnuo = 40_000
         let ded = MotorePrevidenza.calcola([conVersamenti], cliente: cli, analisi: ipotesi)
-        verifica("Previdenza: deducibile fino al limite (7.200 € versati)", ded.deducibiliOggi, 5_164.57)
-        verifica("Previdenza: risparmio IRPEF al 33% (40.000 € di reddito)", ded.risparmioOggi, 5_164.57 * 0.33, tolleranza: 0.01)
+        verifica("Previdenza: deducibile fino al limite (7.200 € versati)", ded.deducibiliOggi, 5_300)
+        verifica("Previdenza: risparmio IRPEF al 33% (40.000 € di reddito)", ded.risparmioOggi, 5_300 * 0.33, tolleranza: 0.01)
 
         // 23. Protezione della famiglia: fabbisogno, divario, detrazione dei premi (conti a mano)
         var ip = IpotesiProtezione()

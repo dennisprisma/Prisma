@@ -29,7 +29,8 @@ enum RegoleFiscali {
     /// Imposta annua sui rendimenti dentro i fondi pensione (12,5% sulla parte in titoli di Stato).
     static let previdenzaRendimenti = 20.0
     /// Limite annuo di deducibilità dei contributi alla previdenza complementare.
-    static let limiteDeducibilita = 5_164.57
+    /// Dal 2026 è di 5.300 € (prima 5.164,57 €).
+    static let limiteDeducibilita = 5_300.0
     /// Scaglioni IRPEF dal 2026 (legge di bilancio 2026: secondo scaglione dal 35% al 33%):
     /// (fino a, aliquota). L'ultimo vale oltre.
     static let scaglioniIrpef: [(Double, Double)] = [(28_000, 23), (50_000, 33), (.infinity, 43)]
