@@ -68,14 +68,21 @@ struct FondoRicerca: View {
     var body: some View {
         ZStack {
             Gradienti.fondoRicerca
-            Canvas { ctx, size in
-                var x: CGFloat = 0
-                while x < size.width {
-                    ctx.fill(Path(CGRect(x: x, y: 0, width: 2, height: size.height)), with: .color(Colori.Ricerca.righe))
-                    x += Misure.Ricerca.righeFondo
-                }
-            }
+            RigheRicerca().fill(Colori.Ricerca.righe)
         }
+    }
+}
+
+/// Le righe verticali del fondo (una forma, non un Canvas: niente Metal).
+struct RigheRicerca: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        var x = rect.minX
+        while x < rect.maxX {
+            p.addRect(CGRect(x: x, y: rect.minY, width: 2, height: rect.height))
+            x += Misure.Ricerca.righeFondo
+        }
+        return p
     }
 }
 
