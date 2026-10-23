@@ -349,6 +349,11 @@ enum ProvaEve {
         let sera = cal.date(bySettingHour: 23, minute: 0, second: 0, of: giorno) ?? giorno
         controlla(diOggi.allSatisfy { a in MotoreNotifiche.calcola(avvisi, oggi: sera).contains { $0.id == "esito-\(a.id)" } },
                   "Notifiche: gli appuntamenti di oggi già finiti chiedono l'esito")
+        // Un cliente senza contatti da un anno e niente in agenda: da ricontattare
+        avvisi.dati.appuntamenti.removeAll { $0.clienteId == "laura" }
+        avvisi.dati.incontri.removeAll { $0.clienteId == "laura" }
+        controlla(MotoreNotifiche.calcola(avvisi, oggi: mattina).contains { $0.id.hasPrefix("ricontattare-") && $0.titolo.contains("Laura Moretti") },
+                  "Notifiche: il cliente da ricontattare")
         controlla(avvisi.notificheNuove > 0, "La campanella conta le notifiche nuove")
         avvisi.alternaNotifiche()
         controlla(avvisi.pannelloNotifiche && avvisi.notificheNuove == 0, "Aperto il centro notifiche, la campanella si azzera")
