@@ -287,6 +287,13 @@ enum Istantanee {
         ("66-prospetto-portafoglio", { s in
             s.apriProspetto(.portafoglio)
         }),
+        ("67-eve-portafoglio", { s in
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.evePortafoglio = true
+            s.chiediEvePortafoglio(SpuntoPortafoglio.quadro.domanda, spunto: .quadro)
+            s.chiediEvePortafoglio(SpuntoPortafoglio.settimana.domanda, spunto: .settimana)
+            s.apri(.eve)
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"

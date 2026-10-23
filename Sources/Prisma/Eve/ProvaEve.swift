@@ -405,6 +405,35 @@ enum ProvaEve {
         }
         controlla(MotoreNotifiche.calcola(avvisi, oggi: mattina).first?.id == "backup-errore", "Notifiche: il backup non riuscito resta in cima anche con molte attività scadute")
 
+        // Eve sul portafoglio: le stesse cifre del Portafoglio, una conversazione a parte
+        let pf = StatoShell(persistente: false)
+        pf.dati.impostazioni.eve.motore = .sintesi
+        let quadro = EvePortafoglio.risposta(.quadro, domanda: "", dati: pf.dati)
+        let calcolato = EvePortafoglio.portafoglio(pf.dati, oggi: Date())
+        controlla(quadro.testo.contains(Formati.euro(calcolato.riepilogo.attivita)), "Eve · portafoglio: il patrimonio seguito come nel Portafoglio")
+        controlla(SpuntoPortafoglio.da("chi devo chiamare questa settimana?") == .ricontattare && SpuntoPortafoglio.da("cosa scade a dicembre?") == .scadenze
+                  && SpuntoPortafoglio.da("Come vanno le PROPOSTE") == .proposte && SpuntoPortafoglio.da("ciao") == .quadro,
+                  "Eve · portafoglio: argomenti delle domande scritte a mano")
+        if let primo = calcolato.scadenze.first {
+            let m = Calendar.current.component(.month, from: primo.inizio)
+            let r = EvePortafoglio.risposta(.scadenze, domanda: "cosa scade a \(EvePortafoglio.mesi[m - 1])?", dati: pf.dati)
+            let altri = calcolato.scadenze.filter { Calendar.current.component(.month, from: $0.inizio) != m }.flatMap(\.posizioni)
+            controlla(primo.posizioni.allSatisfy { r.testo.contains($0.nome) } && altri.allSatisfy { a in !primo.posizioni.contains { $0.nome == a.nome } ? !r.testo.contains(a.nome) : true },
+                      "Eve · portafoglio: le scadenze del mese chiesto, solo quelle")
+        }
+        pf.dati.appuntamenti.removeAll { $0.clienteId == "laura" }
+        pf.dati.incontri.removeAll { $0.clienteId == "laura" }
+        controlla(EvePortafoglio.risposta(.ricontattare, domanda: "", dati: pf.dati).testo.contains("Laura Moretti"), "Eve · portafoglio: chi ricontattare")
+        pf.clienteAttivoId = "giulia"
+        let primaGiulia = pf.conversazione("giulia").count
+        pf.chiediEvePortafoglio("Chi devo ricontattare?")
+        controlla(pf.conversazione(EvePortafoglio.chiave).count == 2 && pf.conversazione("giulia").count == primaGiulia,
+                  "Eve · portafoglio: domanda e risposta nella conversazione del portafoglio, non in quella del cliente")
+        pf.evePortafoglio = true
+        pf.nuovaConversazione()
+        controlla(pf.conversazione(EvePortafoglio.chiave).isEmpty, "Eve · portafoglio: nuova conversazione")
+        controlla(EvePortafoglio.scheda(pf.dati).count <= ContestoEve.limite, "Eve · portafoglio: scheda entro il limite del modello")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")
