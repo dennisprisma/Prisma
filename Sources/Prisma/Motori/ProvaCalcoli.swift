@@ -638,6 +638,23 @@ enum ProvaCalcoli {
             verifica("Portafoglio: Laura da ricontattare, per prima (scadenza in arrivo)", ric.daRicontattare.first?.cliente.id == "laura" && ric.daRicontattare.first?.motivo != nil ? 1 : 0, 1)
             verifica("Portafoglio: chi ha un appuntamento in agenda non è da ricontattare",
                      ric.daRicontattare.contains { r in conContatti.appuntamenti.contains { $0.clienteId == r.cliente.id && $0.stato == .pianificato && $0.inizio >= Calendar.current.startOfDay(for: Date()) } } ? 0 : 1, 1)
+            var attivata = base
+            attivata.id = "prova-attivata"
+            attivata.stato = .inEssere
+            attivata.esito = .accettata
+            let conAttivata = MotorePortafoglio.calcola(demo.posizioni + [attivata], clienti: demo.clienti)
+            verifica("Portafoglio: una proposta attivata conta come accettata",
+                     Double(conAttivata.esiti[.accettata] ?? 0), Double((gia[.accettata] ?? 0) + 1))
+            var chiusa = Posizione(clienteId: "ex", canale: .alleanza, stato: .chiusa, area: .risparmio, nome: "Vecchia")
+            chiusa.id = "prova-chiusa"
+            let ex = Cliente(id: "ex", nome: "Ex Cliente", iniziali: "EC", tinta: demo.clienti[0].tinta, tema: "", email: "", telefono: "",
+                             preferito: false, nota: "", creatoIl: Date())
+            let conEx = MotorePortafoglio.calcola(demo.posizioni + [chiusa], clienti: demo.clienti + [ex], appuntamenti: demo.appuntamenti, incontri: demo.incontri)
+            verifica("Portafoglio: chi ha solo posizioni chiuse non è un cliente seguito né da ricontattare",
+                     conEx.clienti.contains { $0.id == "ex" } || conEx.daRicontattare.contains { $0.id == "ex" } ? 0 : 1, 1)
+            let finePf = MotorePortafoglio.finestra(Date())
+            verifica("Portafoglio: la finestra delle scadenze è di 12 mesi da oggi",
+                     Double(Calendar.current.dateComponents([.month], from: Calendar.current.startOfDay(for: Date()), to: finePf).month ?? 0), 12)
             verifica("Portafoglio: tasso di accettazione delle proposte", conEsiti.tassoAccettazione ?? -1, si / (si + no), tolleranza: 0.0001)
         }
 

@@ -101,7 +101,11 @@ struct CollegatiRail: View {
         EtichettaRail(testo: "Collegati")
         VStack(spacing: 0) {
             ForEach(app) { a in
-                VoceNavigazione(titolo: a.titolo, attiva: false) { stato.apri(a) }
+                VoceNavigazione(titolo: a.titolo, attiva: false) {
+                    // Dalle app del cliente, Posizioni apre il suo dossier (non il portafoglio)
+                    if a == .posizioni { stato.portafoglio = false }
+                    stato.apri(a)
+                }
             }
         }
     }

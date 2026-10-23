@@ -4,7 +4,10 @@ import SwiftUI
 /// cosa scade mese per mese, quanto dipendi da un emittente e come vanno le proposte.
 extension AppPosizioni {
     func portafoglio(_ posizioni: [Posizione]) -> some View {
-        let p = MotorePortafoglio.calcola(posizioni, clienti: stato.clienti, appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
+        var p = MotorePortafoglio.calcola(posizioni, clienti: stato.clienti, appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
+        // Chi richiamare non dipende dai filtri di canale e area
+        p.daRicontattare = MotorePortafoglio.daRicontattare(stato.posizioni, clienti: stato.clienti,
+                                                            appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
         let r = p.riepilogo
         return ScrollView {
             VStack(alignment: .leading, spacing: 18) {

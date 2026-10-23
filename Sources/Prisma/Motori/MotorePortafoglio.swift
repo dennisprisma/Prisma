@@ -83,7 +83,8 @@ enum MotorePortafoglio {
         let totale = r.attivita
 
         // Per cliente, dal più seguito
-        let perCliente = Dictionary(grouping: posizioni, by: \.clienteId)
+        // Le posizioni chiuse non fanno di qualcuno un cliente seguito
+        let perCliente = Dictionary(grouping: posizioni.filter { $0.stato != .chiusa }, by: \.clienteId)
         let voci = clienti.compactMap { c -> Portafoglio.VoceCliente? in
             guard let sue = perCliente[c.id], !sue.isEmpty else { return nil }
             let rc = RiepilogoPosizioni(sue)
@@ -97,11 +98,11 @@ enum MotorePortafoglio {
 
         // Scadenze dei prossimi 12 mesi, mese per mese (solo i mesi con qualcosa)
         let cal = Calendar.current
-        let inizioMese = cal.date(from: cal.dateComponents([.year, .month], from: oggi)) ?? oggi
         let oggiInizio = cal.startOfDay(for: oggi)
-        let fine = cal.date(byAdding: .month, value: Portafoglio.mesiScadenze, to: inizioMese) ?? oggi
+        let fine = finestra(oggi, cal: cal)
+        // I debiti che finiscono non sono capitali da reinvestire
         let inScadenza = posizioni.filter { p in
-            guard p.stato == .inEssere, let s = p.scadenza else { return false }
+            guard p.stato == .inEssere, !p.area.passivo, let s = p.scadenza else { return false }
             return s >= oggiInizio && s < fine
         }
         let perMese = Dictionary(grouping: inScadenza) { p in
@@ -139,32 +140,51 @@ enum MotorePortafoglio {
 
         // Proposte per esito
         var esiti: [EsitoProposta: Int] = [:]
-        for p in posizioni where p.stato == .proposta { esiti[p.esito ?? .bozza, default: 0] += 1 }
+        // Una proposta attivata diventa «in essere» ma resta accettata
+        for p in posizioni where p.stato == .proposta || p.esito == .accettata { esiti[p.esito ?? .bozza, default: 0] += 1 }
 
-        // Da ricontattare: nessun incontro o appuntamento negli ultimi mesi e nessuno in agenda
+        return Portafoglio(riepilogo: r, clienti: voci, scadenze: mesi, emittenti: emittenti, attivitaFinanziarie: finanziarie, esiti: esiti,
+                           daRicontattare: daRicontattare(posizioni, clienti: clienti, appuntamenti: appuntamenti, incontri: incontri, oggi: oggi))
+    }
+
+    /// Fine della finestra delle scadenze: dodici mesi da oggi.
+    static func finestra(_ oggi: Date, cal: Calendar = .current) -> Date {
+        cal.date(byAdding: .month, value: Portafoglio.mesiScadenze, to: cal.startOfDay(for: oggi)) ?? oggi
+    }
+
+    /// I clienti da ricontattare: con una posizione in essere o una proposta aperta, nessun incontro
+    /// o appuntamento negli ultimi mesi e nessuno in agenda. Prima chi ha un motivo (la scadenza più
+    /// vicina o una proposta aperta), poi chi manca da più tempo.
+    static func daRicontattare(_ posizioni: [Posizione], clienti: [Cliente], appuntamenti: [Appuntamento],
+                               incontri: [Incontro], oggi: Date = Date()) -> [Portafoglio.DaRicontattare] {
+        let cal = Calendar.current
+        let oggiInizio = cal.startOfDay(for: oggi)
+        let fine = finestra(oggi, cal: cal)
         let limite = cal.date(byAdding: .month, value: -Portafoglio.mesiSenzaContatto, to: oggi) ?? oggi
+        let perCliente = Dictionary(grouping: posizioni, by: \.clienteId)
+        let appuntamentiPer = Dictionary(grouping: appuntamenti, by: \.clienteId)
+        let incontriPer = Dictionary(grouping: incontri, by: \.clienteId)
         var richiamare: [Portafoglio.DaRicontattare] = []
-        for c in clienti where perCliente[c.id] != nil {
-            let suoi = appuntamenti.filter { $0.clienteId == c.id }
+        for c in clienti {
+            let sue = perCliente[c.id] ?? []
+            let inEssere = sue.filter { $0.stato == .inEssere }
+            let aperte = sue.filter { $0.stato == .proposta && $0.esito != .accettata && $0.esito != .rifiutata }
+            guard !inEssere.isEmpty || !aperte.isEmpty else { continue }
+            let suoi = appuntamentiPer[c.id] ?? []
             guard !suoi.contains(where: { $0.inizio >= oggiInizio && $0.stato == .pianificato }) else { continue }
-            let passati = suoi.filter { $0.inizio < oggi }.map(\.inizio) + incontri.filter { $0.clienteId == c.id && $0.data < oggi }.map(\.data)
+            let passati = suoi.filter { $0.inizio < oggi }.map(\.inizio) + (incontriPer[c.id] ?? []).filter { $0.data < oggi }.map(\.data)
             let ultimo = passati.max()
             guard ultimo.map({ $0 < limite }) ?? true else { continue }
             let mesiFa = ultimo.flatMap { cal.dateComponents([.month], from: $0, to: oggi).month }
-            let sue = perCliente[c.id] ?? []
-            let scade = sue.filter { p in p.stato == .inEssere && (p.scadenza.map { $0 >= oggiInizio && $0 < fine } ?? false) }
-            let aperte = sue.filter { $0.stato == .proposta && $0.esito != .accettata && $0.esito != .rifiutata }
-            let motivo = scade.first.map { "\($0.nome) scade il \(Formati.dataEstesa.string(from: $0.scadenza ?? oggi))" }
+            let prossima = inEssere.filter { p in !p.area.passivo && (p.scadenza.map { $0 >= oggiInizio && $0 < fine } ?? false) }
+                .min { ($0.scadenza ?? .distantFuture) < ($1.scadenza ?? .distantFuture) }
+            let motivo = prossima.map { "\($0.nome) scade il \(Formati.dataEstesa.string(from: $0.scadenza ?? oggi))" }
                 ?? aperte.first.map { "proposta aperta: \($0.nome)" }
             richiamare.append(Portafoglio.DaRicontattare(cliente: c, ultimoContatto: ultimo, mesi: mesiFa, motivo: motivo))
         }
-        // Prima chi ha un motivo, poi chi manca da più tempo
-        richiamare.sort { a, b in
+        return richiamare.sorted { a, b in
             if (a.motivo != nil) != (b.motivo != nil) { return a.motivo != nil }
             return (a.ultimoContatto ?? .distantPast) < (b.ultimoContatto ?? .distantPast)
         }
-
-        return Portafoglio(riepilogo: r, clienti: voci, scadenze: mesi, emittenti: emittenti, attivitaFinanziarie: finanziarie, esiti: esiti,
-                           daRicontattare: richiamare)
     }
 }
