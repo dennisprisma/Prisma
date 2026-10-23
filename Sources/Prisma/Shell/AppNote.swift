@@ -9,19 +9,20 @@ struct AppNote: View {
     @State private var modulo: Attivita?
     @State private var confermaEliminazione = false
 
-    private var elenco: [Nota] { stato.noteFiltrate }
-    private var scelta: Nota? {
-        if let n = stato.nota(stato.notaSelezionata), elenco.contains(where: { $0.id == n.id }) { return n }
-        return elenco.first
-    }
-
     var body: some View {
-        let elenco = elenco
+        let elenco = stato.noteFiltrate
+        // La nota scelta resta aperta anche se la ricerca la nasconde dall'elenco: non se ne apre un'altra sotto le dita
+        let scelta = stato.nota(stato.notaSelezionata) ?? elenco.first
         HStack(spacing: 0) {
-            indice(elenco)
+            indice(elenco, scelta: scelta?.id)
                 .frame(width: Misure.Note.indice)
             Group {
-                if let n = scelta { pagina(n) } else { vuoto }
+                if let n = scelta {
+                    pagina(n)
+                        .id(n.id)
+                        // La prima nota mostrata diventa la scelta: la ricerca non la cambia più sotto le dita
+                        .onAppear { if stato.notaSelezionata == nil { stato.notaSelezionata = n.id } }
+                } else { vuoto }
             }
             .frame(minWidth: Misure.Note.minimaPagina, maxWidth: .infinity, maxHeight: .infinity)
             .background(ZStack { Gradienti.paginaNote; Materiale.Trama(nome: "Grana") })
@@ -36,15 +37,21 @@ struct AppNote: View {
                 .environmentObject(stato)
         }
         .confirmationDialog("Eliminare questa nota?", isPresented: $confermaEliminazione) {
-            Button("Elimina la nota", role: .destructive) { if let n = scelta { stato.eliminaNota(n.id) } }
+            Button("Elimina la nota", role: .destructive) {
+                if let n = stato.nota(stato.notaSelezionata) ?? stato.noteFiltrate.first { stato.eliminaNota(n.id) }
+            }
         } message: {
             Text("La nota sparisce dal taccuino. Resta solo nei backup fatti prima di oggi.")
+        }
+        // Cambiato il filtro dei clienti, si riparte dalla prima nota dell'elenco
+        .onChange(of: stato.filtroClienteNote) { filtro in
+            if let n = stato.nota(stato.notaSelezionata), filtro != nil, n.clienteId != filtro { stato.scegliNota(nil) }
         }
     }
 
     // MARK: - Indice
 
-    private func indice(_ elenco: [Nota]) -> some View {
+    private func indice(_ elenco: [Nota], scelta: String?) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text("NOTE").font(Tipo.noteEtichetta).tracking(2)
@@ -101,7 +108,7 @@ struct AppNote: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(elenco) { n in voce(n, selezionata: n.id == scelta?.id) }
+                        ForEach(elenco) { n in voce(n, selezionata: n.id == scelta) }
                     }
                 }
             }

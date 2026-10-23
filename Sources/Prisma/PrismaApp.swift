@@ -40,6 +40,8 @@ struct PrismaApp: App {
         .defaultSize(width: 1440, height: 900)
         .commands {
             CommandMenu("Vai") {
+                // Con la schermata di benvenuto davanti, niente si apre dietro di lei
+                Group {
                 Button("Cerca ovunque") { stato.cercaOvunque() }
                     .keyboardShortcut("k", modifiers: .command)
                 Button("Spazi di lavoro…") { stato.pannelloSpazi = true }
@@ -58,6 +60,8 @@ struct PrismaApp: App {
                 ForEach(Array(AppPrisma.allCases.dropFirst(9))) { app in
                     Button(app.titolo) { stato.apri(app) }
                 }
+                }
+                .disabled(stato.bloccato)
             }
             CommandGroup(replacing: .newItem) {}
         }

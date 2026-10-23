@@ -16,6 +16,8 @@ struct Nota: Identifiable, Codable, Hashable {
 
     /// Limite del titolo (come nel template).
     static let limiteTitolo = 180
+    /// Caratteri di ogni nota passati a Eve nella scheda del cliente.
+    static let limiteEve = 300
 
     var titoloMostrato: String {
         let t = titolo.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -26,6 +28,11 @@ struct Nota: Identifiable, Codable, Hashable {
     var anteprima: String {
         let compatto = testo.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         return compatto.isEmpty ? "Una pagina pronta per le tue idee." : String(compatto.prefix(95))
+    }
+
+    /// Il testo su una riga, fino a `n` caratteri (per Eve).
+    func estratto(_ n: Int) -> String {
+        String(testo.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").prefix(n))
     }
 
     var vuota: Bool {

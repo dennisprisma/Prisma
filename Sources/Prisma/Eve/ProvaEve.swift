@@ -374,6 +374,32 @@ enum ProvaEve {
             controlla(traccia.testo.contains("Dal tuo taccuino") && traccia.testo.contains("La casa è un nuovo inizio"), "Traccia dell'incontro: le note del taccuino")
         }
 
+        // Note: cambiare il cliente di una nota non apre un'altra nota; i clienti eliminati non lasciano filtri orfani
+        let cambio = StatoShell(persistente: false)
+        cambio.filtroClienteNote = "giulia"
+        if let nuova = cambio.nuovaNota() {
+            cambio.modificaNota(nuova.id) { $0.clienteId = "marco" }
+            controlla(cambio.filtroClienteNote == "marco" && cambio.notaSelezionata == nuova.id && cambio.noteFiltrate.contains { $0.id == nuova.id },
+                      "Note: cambiato il cliente, la nota resta aperta e il filtro la segue")
+            cambio.modificaNota(nuova.id) { $0.testo = "Appunto" }
+            cambio.modificaNota(nuova.id) { $0.testo = "" }
+            cambio.scegliNota("nota-marco")
+            controlla(cambio.nota(nuova.id) != nil, "Note: una nota svuotata per riscriverla non sparisce")
+        }
+        cambio.filtroClienteNote = "laura"
+        cambio.eliminaCliente("laura")
+        controlla(cambio.filtroClienteNote == nil, "Note: eliminato il cliente, il filtro torna a tutti")
+        if let f = cambio.fonteEve("giulia") {
+            controlla(ContestoEve.scheda(f).contains("Prossimo passo"), "Scheda di Eve: il testo delle note oltre la prima riga")
+        }
+        avvisi.dati.impostazioni.backup.ultimoErrore = "Disco esterno non collegato"
+        for k in 0..<12 {
+            var t = Attivita.nuova(clienteId: "giulia", scadenza: cal.date(byAdding: .day, value: -10 - k, to: giorno) ?? giorno)
+            t.titolo = "Vecchia \(k)"
+            avvisi.dati.attivita.append(t)
+        }
+        controlla(MotoreNotifiche.calcola(avvisi, oggi: mattina).first?.id == "backup-errore", "Notifiche: il backup non riuscito resta in cima anche con molte attività scadute")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")
