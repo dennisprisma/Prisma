@@ -40,17 +40,17 @@ struct FinestraSpazio: Codable, Hashable {
 
 extension SpazioLavoro {
     /// Le disposizioni pronte: due app affiancate, la principale più larga e in primo piano.
-    /// Non di più: le app hanno bisogno di spazio e le finestre una misura minima. Posizioni non
-    /// si affianca: su uno schermo da 13″ rende solo a schermo pieno. Eve sta bene nella colonna stretta.
+    /// Non di più: le app hanno bisogno di spazio e le finestre una misura minima. Posizioni e
+    /// Prospetti non si affiancano: su uno schermo da 13″ rendono solo a schermo pieno. Eve sta bene
+    /// nella colonna stretta.
     static let predefiniti: [SpazioLavoro] = [
         SpazioLavoro(id: "pronto-incontro", nome: "Incontro con il cliente",
                      finestre: [.destra(.eve), .sinistra(.clienti)], predefinito: true),
         SpazioLavoro(id: "pronto-analisi", nome: "Analisi 360 con Eve",
                      finestre: [.destra(.eve), .sinistra(.analisi360)], predefinito: true),
+        // Attività ha bisogno di un po' più della colonna stretta
         SpazioLavoro(id: "pronto-giornata", nome: "La giornata",
-                     finestre: [.destra(.attivita), .sinistra(.agenda)], predefinito: true),
-        SpazioLavoro(id: "pronto-prospetti", nome: "Prospetti con Eve",
-                     finestre: [.destra(.eve), .sinistra(.presentazioni)], predefinito: true),
+                     finestre: [.destra(.attivita, quota: 0.48), .sinistra(.agenda, quota: 0.52)], predefinito: true),
     ]
 
     /// Le app, dalla principale (l'ultima, in primo piano) alle altre.

@@ -248,11 +248,6 @@ enum Istantanee {
             s.area = ShellView.area(per: dimensione, dockNascosto: false)
             s.apriSpazio(SpazioLavoro.predefiniti[2])
         }),
-        ("59-spazio-prospetti", { s in
-            s.area = ShellView.area(per: dimensione, dockNascosto: false)
-            s.clienteAttivoId = "marco"
-            s.apriSpazio(SpazioLavoro.predefiniti[3])
-        }),
         ("56-spazi", { s in
             s.area = ShellView.area(per: dimensione, dockNascosto: false)
             s.dati.spazi = [SpazioLavoro(nome: "Revisione annuale", finestre: [.destra(.documenti), .sinistra(.posizioni)])]
