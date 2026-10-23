@@ -284,6 +284,9 @@ enum Istantanee {
             s.portafoglio = true
             s.apri(.posizioni)
         }),
+        ("66-prospetto-portafoglio", { s in
+            s.apriProspetto(.portafoglio)
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"

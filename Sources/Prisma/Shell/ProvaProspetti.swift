@@ -21,6 +21,7 @@ enum ProvaProspetti {
             ("copertura-marco-infortuni", "marco", .posizione("pos-marco-infortuni-famiglia")),
         ]
         var tutti = casi
+        tutti.append(("portafoglio", "", .portafoglio))
         let voci = ElementoConfronto.elenco(dati, cliente: "marco")
         let coppia = ElementoConfronto.coppia(voci, a: nil, b: nil, posizioni: dati.posizioni.filter { $0.clienteId == "marco" })
         if let a = coppia.0, let b = coppia.1 {
@@ -80,6 +81,12 @@ enum ProvaProspetti {
                 }
             case .confronto:
                 verifica("\(nome): differenza B − A presente", testo.contains("B − A"))
+            case .portafoglio:
+                let pf = MotorePortafoglio.calcola(dati.posizioni, clienti: dati.clienti)
+                let totale = spazi(Formati.euro(pf.riepilogo.attivita))
+                verifica("\(nome): patrimonio seguito \(totale) nel PDF", testo.contains(totale))
+                verifica("\(nome): tutti i clienti e i due canali nel PDF",
+                         dati.clienti.allSatisfy { testo.contains($0.nome) } && Canale.allCases.allSatisfy { testo.contains($0.nomeBreve) })
             case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp:
                 break
             }

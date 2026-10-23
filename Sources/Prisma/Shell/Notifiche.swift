@@ -45,7 +45,8 @@ enum MotoreNotifiche {
         var elenco: [Notifica] = []
 
         // Appuntamenti di oggi, ancora da fare
-        for a in dati.appuntamenti where a.stato == .pianificato && a.inizio >= inizio && a.inizio < domani && a.fine > oggi {
+        // (anche uno iniziato ieri sera e ancora in corso)
+        for a in dati.appuntamenti where a.stato == .pianificato && a.inizio < domani && a.fine > oggi && a.fine > inizio {
             elenco.append(Notifica(id: "appuntamento-\(a.id)", gruppo: .oggi, app: .agenda,
                                    titolo: "Alle \(Formati.ora.string(from: a.inizio)) · \(a.titolo)",
                                    dettaglio: [nome(a.clienteId), a.luogo].filter { !$0.isEmpty }.joined(separator: " · "),
