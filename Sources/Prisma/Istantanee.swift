@@ -234,6 +234,17 @@ enum Istantanee {
             s.testoRicerca = "scopo investimento"
             s.cercaOvunque()
         }),
+        ("55-spazio-incontro", { s in
+            s.area = ShellView.area(per: dimensione, dockNascosto: false)
+            s.clienteAttivoId = "marco"
+            if let incontro = SpazioLavoro.predefiniti.first { s.apriSpazio(incontro) }
+        }),
+        ("56-spazi", { s in
+            s.area = ShellView.area(per: dimensione, dockNascosto: false)
+            s.dati.spazi = [SpazioLavoro(nome: "Revisione annuale", finestre: [.destraAlto(.presentazioni), .destraBasso(.documenti), .sinistra(.posizioni)])]
+            s.apri(.agenda)
+            s.pannelloSpazi = true
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"

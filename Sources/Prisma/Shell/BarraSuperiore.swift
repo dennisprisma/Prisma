@@ -57,7 +57,7 @@ struct BarraSuperiore: View {
             Rectangle().fill(Colori.Barra.separatore).frame(width: 1, height: 14)
                 .padding(.leading, Misure.Barra.spazioApp)
             Button {
-                stato.mostraAvviso("Gli spazi di lavoro arrivano nella prossima fase.")
+                stato.pannelloSpazi.toggle()
             } label: {
                 Text(stato.appAttiva?.titolo ?? "Scrivania")
                     .font(Tipo.barraApp)

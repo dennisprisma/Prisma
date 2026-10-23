@@ -22,6 +22,8 @@ struct DatiPrisma: Codable, Equatable {
     var conversazioni: [String: [MessaggioEve]] = [:]
     /// Commenti del consulente nei report per i clienti.
     var commenti: [CommentoReport] = []
+    /// Spazi di lavoro salvati dal consulente (quelli pronti di Prisma non si salvano).
+    var spazi: [SpazioLavoro] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -40,7 +42,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 14: reddito lordo annuo nel profilo del cliente (previdenza e deducibilità).
     /// 15: commenti del consulente nei report (scritti con Eve).
     /// 16: quota in gestione separata delle polizze multiramo; impostazioni di backup con l'ultimo errore.
-    static let versioneAttuale = 16
+    /// 17: spazi di lavoro salvati.
+    static let versioneAttuale = 17
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
@@ -79,7 +82,7 @@ struct DatiPrisma: Codable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, clienteAttivoId, impostazioni
+        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, spazi, clienteAttivoId, impostazioni
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -99,6 +102,7 @@ struct DatiPrisma: Codable, Equatable {
         valutazioni = (try? c.decodeIfPresent([ValutazioneInvestimento].self, forKey: .valutazioni)) ?? []
         conversazioni = (try? c.decodeIfPresent([String: [MessaggioEve]].self, forKey: .conversazioni)) ?? [:]
         commenti = (try? c.decodeIfPresent([CommentoReport].self, forKey: .commenti)) ?? []
+        spazi = (try? c.decodeIfPresent([SpazioLavoro].self, forKey: .spazi)) ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }

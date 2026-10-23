@@ -86,6 +86,9 @@ final class StatoShell: ObservableObject {
     @Published var filtroAreaProdotti: AreaPosizione?
     @Published var obiettivoSelezionato: String?
 
+    /// Il pannello degli spazi di lavoro è aperto.
+    @Published var pannelloSpazi = false
+
     // Ricerca (⌘K)
     @Published var testoRicerca = ""
     /// Cresce a ogni ⌘K: la Ricerca rimette il cursore nel campo.
@@ -238,6 +241,78 @@ final class StatoShell: ObservableObject {
         anima {
             for i in finestre.indices { finestre[i].ridotta = true }
         }
+    }
+
+    // MARK: - Spazi di lavoro
+
+    /// Gli spazi pronti e quelli salvati dal consulente.
+    var spaziDiLavoro: [SpazioLavoro] { SpazioLavoro.predefiniti + dati.spazi }
+
+    /// L'area che avranno le finestre: con una finestra aperta il dock si nasconde e lo spazio cresce.
+    private var areaConFinestre: CGRect {
+        guard finestreVisibili.isEmpty else { return area }
+        var a = area
+        a.size.height += Misure.Dock.riservato - Misure.Dock.riservatoNascosto
+        return a
+    }
+
+    /// Cornice di una finestra dello spazio nell'area, con un piccolo stacco tra finestre affiancate.
+    private func cornice(da f: FinestraSpazio, in area: CGRect) -> CGRect {
+        let r = CGRect(x: f.x * area.width, y: f.y * area.height, width: f.larghezza * area.width, height: f.altezza * area.height)
+            .insetBy(dx: Misure.Spazi.stacco / 2, dy: Misure.Spazi.stacco / 2)
+        return limita(CGRect(origin: r.origin, size: CGSize(width: max(r.width, Misure.Finestra.minima.width),
+                                                           height: max(r.height, Misure.Finestra.minima.height))), in: area)
+    }
+
+    /// Apre lo spazio: le sue app, disposte come salvate, al posto delle finestre aperte.
+    func apriSpazio(_ s: SpazioLavoro) {
+        let area = areaConFinestre
+        pannelloSpazi = false
+        anima {
+            finestre = s.finestre.map { f in
+                Finestra(app: f.app, cornice: cornice(da: f, in: area), ingrandita: f.ingrandita)
+            }
+        }
+        if s.finestre.contains(where: { $0.app == .impostazioni }) { aggiornaElencoBackup() }
+    }
+
+    /// Salva le finestre aperte come nuovo spazio (dalla più in fondo a quella in primo piano).
+    @discardableResult
+    func salvaSpazio(nome: String) -> SpazioLavoro? {
+        let n = nome.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !n.isEmpty, !finestreVisibili.isEmpty, area.width > 0, area.height > 0 else { return nil }
+        let elenco = finestreVisibili.map { f -> FinestraSpazio in
+            guard !f.ingrandita else { return .intera(f.app) }
+            let c = cornice(di: f)
+            return FinestraSpazio(app: f.app, x: c.minX / area.width, y: c.minY / area.height,
+                                  larghezza: c.width / area.width, altezza: c.height / area.height)
+        }
+        let spazio = SpazioLavoro(nome: String(n.prefix(Misure.Spazi.nomeMassimo)), finestre: elenco)
+        dati.spazi.append(spazio)
+        mostraAvviso("Spazio «\(spazio.nome)» salvato.")
+        return spazio
+    }
+
+    func eliminaSpazio(_ id: String) {
+        dati.spazi.removeAll { $0.id == id }
+    }
+
+    /// ◫ nella barra del titolo: la finestra a sinistra e quella sotto di lei a destra.
+    func affianca(_ app: AppPrisma) {
+        let visibili = finestreVisibili
+        guard let altra = visibili.last(where: { $0.app != app }) else {
+            mostraAvviso("Apri un'altra app dal dock per affiancarla a questa.")
+            return
+        }
+        guard let i = finestre.firstIndex(where: { $0.app == app }),
+              let j = finestre.firstIndex(where: { $0.app == altra.app }) else { return }
+        anima {
+            finestre[i].ingrandita = false
+            finestre[i].cornice = cornice(da: .sinistra(app), in: area)
+            finestre[j].ingrandita = false
+            finestre[j].cornice = cornice(da: .destra(altra.app), in: area)
+        }
+        primoPiano(app)
     }
 
     func sposta(_ app: AppPrisma, origine: CGPoint) {

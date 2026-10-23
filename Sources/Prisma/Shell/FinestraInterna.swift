@@ -43,7 +43,7 @@ struct FinestraInterna: View {
                 Spacer()
                 HStack(spacing: 13) {
                     Button {
-                        stato.mostraAvviso("Affiancare due app arriva nella prossima fase.")
+                        stato.affianca(finestra.app)
                     } label: {
                         Text("◫")
                             .font(Tipo.finestraAffianca)
@@ -55,7 +55,7 @@ struct FinestraInterna: View {
                             .overlay(RoundedRectangle(cornerRadius: Misure.Finestra.raggioAffianca).strokeBorder(Colori.Finestra.affiancaBordo, lineWidth: 1))
                     }
                     .buttonStyle(StileSemplice())
-                    .help("Affianca un'altra app")
+                    .help("Affianca questa app, a sinistra, a quella sotto")
                     if let c = stato.clienteAttivo {
                         Text(c.nome)
                             .font(Tipo.finestraContesto)
