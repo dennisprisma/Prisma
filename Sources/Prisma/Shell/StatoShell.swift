@@ -1678,6 +1678,23 @@ final class StatoShell: ObservableObject {
         apri(.agenda)
     }
 
+    /// La bozza dell'appuntamento per richiamare un cliente: una telefonata il prossimo giorno
+    /// lavorativo, con il motivo e l'ultimo contatto nelle note. Si completa nel modulo dell'agenda.
+    func bozzaRicontatto(_ d: Portafoglio.DaRicontattare, oggi: Date = Date()) -> Appuntamento {
+        let cal = Calendar.current
+        var giorno = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: oggi)) ?? oggi
+        while cal.isDateInWeekend(giorno) { giorno = cal.date(byAdding: .day, value: 1, to: giorno) ?? giorno }
+        var a = Appuntamento.nuovo(clienteId: d.cliente.id, giorno: giorno)
+        a.titolo = d.motivo.map { "Ci risentiamo: \($0)" } ?? "Ci risentiamo"
+        a.tipo = .telefonata
+        a.luogo = "Telefonata"
+        a.durataMinuti = 20
+        a.note = [d.motivo.map { "Motivo: \($0)." },
+                  d.ultimoContatto.map { "Ultimo contatto il \(Formati.dataEstesa.string(from: $0))." } ?? "Nessun incontro registrato in Prisma."]
+            .compactMap { $0 }.joined(separator: " ")
+        return a
+    }
+
     func salvaAppuntamento(_ a: Appuntamento) {
         var x = a
         x.titolo = x.titolo.trimmingCharacters(in: .whitespacesAndNewlines)

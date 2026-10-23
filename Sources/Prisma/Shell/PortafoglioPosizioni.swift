@@ -210,6 +210,10 @@ extension AppPosizioni {
                         Spacer()
                         Text(r.ultimoContatto.map { Formati.dataBreve.string(from: $0) } ?? "—")
                             .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
+                        Button("Fissa") { moduloAppuntamento = stato.bozzaRicontatto(r) }
+                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)))
+                            .fixedSize()
+                            .help("Fissa una telefonata in agenda: il cliente esce dall'elenco")
                     }
                     .padding(.vertical, 5)
                     .contentShape(Rectangle())
