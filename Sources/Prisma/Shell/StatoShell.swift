@@ -92,6 +92,11 @@ final class StatoShell: ObservableObject {
     @Published var filtroClienteNote: String?
     @Published var ricercaNote = ""
 
+    // Centro notifiche
+    @Published var pannelloNotifiche = false
+    /// Le notifiche già viste in questa sessione (la campanella conta le altre).
+    @Published var notificheViste: Set<String> = []
+
     /// Il pannello degli spazi di lavoro è aperto.
     @Published var pannelloSpazi = false
 

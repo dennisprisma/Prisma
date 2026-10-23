@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 // App Note (.os-app-notes del template): il blocco giallo di iOS con la rilegatura in cuoio
 // cucito, l'indice delle note a sinistra e la pagina a righe con il margine rosso.
@@ -107,7 +108,14 @@ extension Misure {
         static let carta = EdgeInsets(top: 15, leading: 45, bottom: 12, trailing: 29)
         static let margine: CGFloat = 32
         static let riga: CGFloat = 30
-        static let interlinea: CGFloat = 10
+        /// Altezza di una riga di testo in Noteworthy 16: con l'interlinea ogni riga è alta `riga`.
+        static let altezzaTesto: CGFloat = {
+            let f = NSFont(name: "Noteworthy-Light", size: 16) ?? .systemFont(ofSize: 16)
+            return ceil(f.ascender - f.descender + f.leading)
+        }()
+        static let interlinea: CGFloat = max(0, riga - altezzaTesto)
+        /// La prima riga della pagina, appena sotto la prima riga di testo.
+        static let primaRiga: CGFloat = altezzaTesto + 2
         static let azioni = EdgeInsets(top: 12, leading: 26, bottom: 13, trailing: 20)
         static let avatar: CGFloat = 27
         static let minimaPagina: CGFloat = 340
@@ -174,11 +182,11 @@ struct CuoioNote: View {
 
 /// Le righe orizzontali della pagina, ogni `Misure.Note.riga` punti.
 struct RigheNote: Shape {
-    var inizio: CGFloat = 0
+    var inizio: CGFloat = Misure.Note.primaRiga
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        var y = rect.minY + inizio + Misure.Note.riga - 1
+        var y = rect.minY + inizio
         while y < rect.maxY {
             p.addRect(CGRect(x: rect.minX, y: y, width: rect.width, height: 1))
             y += Misure.Note.riga

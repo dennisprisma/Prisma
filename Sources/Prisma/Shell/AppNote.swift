@@ -185,6 +185,7 @@ struct AppNote: View {
                             .lineSpacing(Misure.Note.interlinea)
                             .foregroundColor(Colori.Note.testo)
                             .scrollContentBackground(.hidden)
+                            .scrollIndicators(.never)
                         if n.testo.isEmpty {
                             Text("Prendi un appunto. C'è spazio per tutto quello che conta.")
                                 .font(Tipo.noteTesto)

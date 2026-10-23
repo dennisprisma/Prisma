@@ -263,6 +263,12 @@ enum Istantanee {
             s.schedaCliente = .note
             s.apri(.clienti)
         }),
+        ("62-notifiche", { s in
+            if let i = s.dati.posizioni.firstIndex(where: { $0.stato == .inEssere && $0.canale == .alleanza }) {
+                s.dati.posizioni[i].scadenza = Calendar.current.date(byAdding: .day, value: 12, to: Calendar.current.startOfDay(for: Date()))
+            }
+            s.alternaNotifiche()
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"
