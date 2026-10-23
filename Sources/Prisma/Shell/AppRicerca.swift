@@ -21,7 +21,7 @@ struct AppRicerca: View {
                     VStack(alignment: .leading, spacing: Misure.Ricerca.spazioSezioni) {
                         if stato.testoRicerca.trimmingCharacters(in: .whitespaces).isEmpty {
                             vuoto("Cerca in tutto Prisma",
-                                  "Clienti, posizioni, documenti (anche il testo delle pagine), appuntamenti, attività, obiettivi, incontri e prodotti. Tutto resta sul Mac.")
+                                  "Clienti, posizioni, documenti (anche il testo delle pagine), note, appuntamenti, attività, obiettivi, incontri e prodotti. Tutto resta sul Mac.")
                         } else if sezioni.isEmpty {
                             vuoto("Nessun risultato", "Prova con meno parole o con una parte del nome.")
                         } else {

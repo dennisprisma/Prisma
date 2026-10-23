@@ -86,6 +86,12 @@ final class StatoShell: ObservableObject {
     @Published var filtroAreaProdotti: AreaPosizione?
     @Published var obiettivoSelezionato: String?
 
+    // Note
+    @Published var notaSelezionata: String?
+    /// nil = tutti i clienti.
+    @Published var filtroClienteNote: String?
+    @Published var ricercaNote = ""
+
     /// Il pannello degli spazi di lavoro è aperto.
     @Published var pannelloSpazi = false
 
@@ -384,6 +390,7 @@ final class StatoShell: ObservableObject {
         dati.analisi[id] = nil
         dati.conversazioni[id] = nil
         dati.commenti.removeAll { $0.clienteId == id }
+        dati.note.removeAll { $0.clienteId == id }
         dati.incontri.removeAll { $0.clienteId == id }
         dati.obiettivi.removeAll { $0.clienteId == id }
         dati.valutazioni.removeAll { $0.clienteId == id }
@@ -392,6 +399,87 @@ final class StatoShell: ObservableObject {
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
+    }
+
+    // MARK: - Note
+
+    func nota(_ id: String?) -> Nota? {
+        guard let id else { return nil }
+        return dati.note.first { $0.id == id }
+    }
+
+    func noteCliente(_ id: String) -> [Nota] {
+        dati.note.filter { $0.clienteId == id }.sorted(by: Nota.ordina)
+    }
+
+    /// L'elenco dell'app Note: filtro per cliente e ricerca (ogni parola, senza badare ad accenti).
+    var noteFiltrate: [Nota] {
+        let parole = MotoreRicerca.parole(ricercaNote)
+        return dati.note
+            .filter { filtroClienteNote == nil || $0.clienteId == filtroClienteNote }
+            .filter { n in parole.allSatisfy { MotoreRicerca.contiene(n.titolo, $0) || MotoreRicerca.contiene(n.testo, $0) } }
+            .sorted(by: Nota.ordina)
+    }
+
+    /// Apre una pagina nuova per il cliente (quello del filtro, o il cliente attivo).
+    @discardableResult
+    func nuovaNota(clienteId: String? = nil) -> Nota? {
+        guard let cliente = clienteId ?? filtroClienteNote ?? clienti.first(where: { $0.id == clienteAttivoId })?.id ?? clienti.first?.id else {
+            mostraAvviso("Aggiungi prima un cliente: ogni nota appartiene a una persona.")
+            return nil
+        }
+        togliNoteVuote()
+        let n = Nota(clienteId: cliente, titolo: "", testo: "")
+        dati.note.append(n)
+        ricercaNote = ""
+        if filtroClienteNote != nil && filtroClienteNote != cliente { filtroClienteNote = cliente }
+        notaSelezionata = n.id
+        return n
+    }
+
+    /// Scegli una nota: le pagine nuove lasciate vuote non restano nel taccuino.
+    func scegliNota(_ id: String?) {
+        guard id != notaSelezionata else { return }
+        togliNoteVuote(tranne: id)
+        notaSelezionata = id
+    }
+
+    private func togliNoteVuote(tranne id: String? = nil) {
+        dati.note.removeAll { $0.vuota && $0.id != id }
+    }
+
+    /// Modifica una nota; la data di aggiornamento cambia solo se cambia qualcosa.
+    func modificaNota(_ id: String, _ cambia: (inout Nota) -> Void) {
+        guard let i = dati.note.firstIndex(where: { $0.id == id }) else { return }
+        var n = dati.note[i]
+        cambia(&n)
+        n.titolo = String(n.titolo.prefix(Nota.limiteTitolo))
+        guard n != dati.note[i] else { return }
+        if n.titolo != dati.note[i].titolo || n.testo != dati.note[i].testo || n.clienteId != dati.note[i].clienteId {
+            n.aggiornataIl = Date()
+        }
+        dati.note[i] = n
+    }
+
+    func eliminaNota(_ id: String) {
+        dati.note.removeAll { $0.id == id }
+        if notaSelezionata == id { notaSelezionata = nil }
+    }
+
+    /// Dall'appunto alla prossima azione: la bozza di un'attività per il cliente della nota
+    /// (si completa e si salva nel modulo delle attività).
+    func bozzaAttivitaDaNota(_ id: String) -> Attivita? {
+        guard let n = nota(id) else { return nil }
+        var a = Attivita.nuova(clienteId: n.clienteId)
+        a.titolo = n.titolo.trimmingCharacters(in: .whitespacesAndNewlines)
+        a.note = "Dalla nota «\(n.titoloMostrato)»."
+        return a
+    }
+
+    /// Il testo da esportare: titolo, cliente, data e testo.
+    func testoEsportato(_ n: Nota) -> String {
+        [n.titoloMostrato, "\(cliente(n.clienteId)?.nome ?? "") · aggiornata il \(Formati.dataEstesa.string(from: n.aggiornataIl))", "", n.testo]
+            .joined(separator: "\n")
     }
 
     func alternaPreferito(_ id: String) {

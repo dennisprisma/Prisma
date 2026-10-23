@@ -4,7 +4,7 @@ import Foundation
 /// delle pagine), appuntamenti, attività, obiettivi, incontri e prodotti. Tutto avviene sul Mac,
 /// sui dati dell'archivio locale.
 enum GruppoRicerca: String, CaseIterable, Identifiable {
-    case app, clienti, posizioni, documenti, appuntamenti, attivita, obiettivi, incontri, prodotti
+    case app, clienti, posizioni, documenti, note, appuntamenti, attivita, obiettivi, incontri, prodotti
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum GruppoRicerca: String, CaseIterable, Identifiable {
         case .clienti: return "Clienti"
         case .posizioni: return "Posizioni"
         case .documenti: return "Documenti"
+        case .note: return "Note"
         case .appuntamenti: return "Appuntamenti"
         case .attivita: return "Attività"
         case .obiettivi: return "Obiettivi"
@@ -29,6 +30,7 @@ enum GruppoRicerca: String, CaseIterable, Identifiable {
         case .clienti: return .clienti
         case .posizioni: return .posizioni
         case .documenti: return .documenti
+        case .note: return .note
         case .appuntamenti: return .agenda
         case .attivita: return .attivita
         case .obiettivi: return .obiettivi
@@ -44,6 +46,7 @@ enum DestinazioneRicerca: Hashable {
     case cliente(String)
     case posizione(String)
     case documento(String)
+    case nota(String)
     case appuntamento(String)
     case attivita(String)
     case obiettivo(String)
@@ -191,6 +194,11 @@ enum MotoreRicerca {
                       campi: [("Cliente", nome(d.clienteId))] + d.campi.map { ($0.chiave.nome, $0.valore) },
                       pagine: stato.testoDocumento(d))
         }
+        candidati[.note] = dati.note.filter { !$0.vuota }.map { n in
+            Candidato(risultato: RisultatoRicerca(destinazione: .nota(n.id), gruppo: .note, titolo: n.titoloMostrato,
+                                                  dettaglio: "\(nome(n.clienteId)) · \(Formati.dataEstesa.string(from: n.aggiornataIl))"),
+                      campi: [("Cliente", nome(n.clienteId)), ("Testo", n.testo)])
+        }
         candidati[.appuntamenti] = dati.appuntamenti.map { a in
             Candidato(risultato: RisultatoRicerca(destinazione: .appuntamento(a.id), gruppo: .appuntamenti, titolo: a.titolo,
                                                   dettaglio: "\(nome(a.clienteId)) · \(Formati.dataOra.string(from: a.inizio))", canale: a.canale),
@@ -251,6 +259,12 @@ extension StatoShell {
             clienteAttivoId = d.clienteId
             documentoSelezionato = d.id
             apri(.documenti)
+        case .nota(let id):
+            guard let n = nota(id) else { return }
+            ricercaNote = ""
+            if filtroClienteNote != nil { filtroClienteNote = n.clienteId }
+            scegliNota(n.id)
+            apri(.note)
         case .appuntamento(let id):
             guard let a = appuntamenti.first(where: { $0.id == id }) else { return }
             filtroClienteAgenda = nil

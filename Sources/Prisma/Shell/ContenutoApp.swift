@@ -24,6 +24,7 @@ struct ContenutoApp: View {
                 case .documenti: AppDocumenti()
                 case .presentazioni: AppProspetti()
                 case .ricerca: AppRicerca()
+                case .note: AppNote()
                 default: AppSegnaposto(app: app)
                 }
             }
@@ -41,6 +42,11 @@ extension ContenutoApp {
         switch app {
         case .impostazioni: FondoRighe()
         case .clienti: Colori.Rubrica.fondoApp
+        case .note:
+            ZStack {
+                Gradienti.fondoNote
+                Materiale.Trama(nome: "Grana")
+            }
         case .agenda: Colori.Agenda.fondoApp
         case .incontri:
             ZStack {
@@ -66,6 +72,7 @@ extension ContenutoApp {
         switch app {
         case .clienti: AzioneNuovoCliente()
         case .posizioni: AzioniPosizioni()
+        case .note: AzioneNuovaNota()
         default: EmptyView()
         }
     }

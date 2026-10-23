@@ -22,6 +22,8 @@ struct DatiPrisma: Codable, Equatable {
     var conversazioni: [String: [MessaggioEve]] = [:]
     /// Commenti del consulente nei report per i clienti.
     var commenti: [CommentoReport] = []
+    /// Note del taccuino, legate ai clienti.
+    var note: [Nota] = []
     /// Spazi di lavoro salvati dal consulente (quelli pronti di Prisma non si salvano).
     var spazi: [SpazioLavoro] = []
     var clienteAttivoId: String
@@ -43,12 +45,14 @@ struct DatiPrisma: Codable, Equatable {
     /// 15: commenti del consulente nei report (scritti con Eve).
     /// 16: quota in gestione separata delle polizze multiramo; impostazioni di backup con l'ultimo errore.
     /// 17: spazi di lavoro salvati.
-    static let versioneAttuale = 17
+    /// 18: note del taccuino.
+    static let versioneAttuale = 18
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
          prodotti: [Prodotto] = [], obiettivi: [Obiettivo] = [], documenti: [Documento] = [],
-         valutazioni: [ValutazioneInvestimento] = [], clienteAttivoId: String, impostazioni: Impostazioni) {
+         valutazioni: [ValutazioneInvestimento] = [], note: [Nota] = [], clienteAttivoId: String, impostazioni: Impostazioni) {
+        self.note = note
         self.incontri = incontri
         self.prodotti = prodotti
         self.obiettivi = obiettivi
@@ -76,13 +80,14 @@ struct DatiPrisma: Codable, Equatable {
             obiettivi: DatiDemo.obiettivi(),
             documenti: DatiDemo.documenti(),
             valutazioni: DatiDemo.valutazioni(),
+            note: DatiDemo.note(),
             clienteAttivoId: "giulia",
             impostazioni: Impostazioni()
         )
     }
 
     private enum CodingKeys: String, CodingKey {
-        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, spazi, clienteAttivoId, impostazioni
+        case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, note, spazi, clienteAttivoId, impostazioni
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -103,6 +108,7 @@ struct DatiPrisma: Codable, Equatable {
         conversazioni = (try? c.decodeIfPresent([String: [MessaggioEve]].self, forKey: .conversazioni)) ?? [:]
         commenti = (try? c.decodeIfPresent([CommentoReport].self, forKey: .commenti)) ?? []
         spazi = (try? c.decodeIfPresent([SpazioLavoro].self, forKey: .spazi)) ?? []
+        note = (try? c.decodeIfPresent([Nota].self, forKey: .note)) ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }

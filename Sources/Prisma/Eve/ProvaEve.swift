@@ -287,6 +287,42 @@ enum ProvaEve {
                       "◫ affianca Eve (a sinistra) e Agenda (a destra)")
         }
 
+        // Note: il taccuino legato ai clienti
+        let taccuino = StatoShell(persistente: false)
+        controlla(taccuino.noteFiltrate.count == 3 && taccuino.noteFiltrate.prefix(2).allSatisfy(\.fissata), "Note di prova: tre, le fissate in cima")
+        taccuino.ricercaNote = "ANNA aspettative"
+        controlla(taccuino.noteFiltrate.map(\.id) == ["nota-marco"], "Ricerca nelle note: ogni parola, senza badare alle maiuscole")
+        taccuino.ricercaNote = ""
+        taccuino.filtroClienteNote = "laura"
+        controlla(taccuino.noteFiltrate.map(\.id) == ["nota-laura"], "Note filtrate per cliente")
+        let pagina = taccuino.nuovaNota()
+        controlla(pagina?.clienteId == "laura" && taccuino.notaSelezionata == pagina?.id, "Nuova nota per il cliente del filtro, già aperta")
+        taccuino.scegliNota("nota-laura")
+        controlla(!taccuino.dati.note.contains { $0.id == pagina?.id }, "Una pagina nuova lasciata vuota non resta nel taccuino")
+        let primaModifica = taccuino.nota("nota-laura")?.aggiornataIl
+        taccuino.modificaNota("nota-laura") { $0.fissata = true }
+        controlla(taccuino.nota("nota-laura")?.aggiornataIl == primaModifica && taccuino.nota("nota-laura")?.fissata == true, "Fissare una nota non cambia la data di aggiornamento")
+        taccuino.modificaNota("nota-laura") { $0.testo += "\nRichiamare a novembre." }
+        controlla((taccuino.nota("nota-laura")?.aggiornataIl ?? .distantPast) > (primaModifica ?? .distantFuture), "Scrivere aggiorna la data della nota")
+        if let bozza = taccuino.bozzaAttivitaDaNota("nota-laura") {
+            let attivitaPrima = taccuino.attivita.count
+            taccuino.salvaAttivita(bozza)
+            controlla(taccuino.attivita.count == attivitaPrima + 1 && bozza.clienteId == "laura" && bozza.titolo == "Più libertà nel proprio lavoro",
+                      "Dalla nota all'attività, per lo stesso cliente")
+        } else {
+            controlla(false, "Bozza di attività dalla nota")
+        }
+        controlla(MotoreRicerca.cerca("novembre", in: taccuino).first { $0.gruppo == .note }?.risultati.first?.destinazione == .nota("nota-laura"),
+                  "Cerca ovunque trova le note anche nel testo")
+        taccuino.filtroClienteNote = "giulia"
+        taccuino.vai(a: .nota("nota-laura"))
+        controlla(taccuino.appAttiva == .note && taccuino.notaSelezionata == "nota-laura" && taccuino.noteFiltrate.contains { $0.id == "nota-laura" },
+                  "Il risultato della ricerca apre la nota in Note, anche con un altro filtro")
+        let rilette = try? Archivio.decodifica(Archivio.codificatore.encode(taccuino.dati))
+        controlla(rilette?.note == taccuino.dati.note, "Le note restano nell'archivio")
+        taccuino.eliminaCliente("laura")
+        controlla(!taccuino.dati.note.contains { $0.clienteId == "laura" }, "Eliminando un cliente spariscono anche le sue note")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")

@@ -254,6 +254,15 @@ enum Istantanee {
             s.apri(.agenda)
             s.pannelloSpazi = true
         }),
+        ("60-note", { s in
+            s.scegliNota("nota-giulia")
+            s.apri(.note)
+        }),
+        ("61-clienti-note", { s in
+            s.clienteAttivoId = "marco"
+            s.schedaCliente = .note
+            s.apri(.clienti)
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"
