@@ -61,6 +61,12 @@ struct ShellView: View {
                         .transition(.opacity)
                 }
 
+                if stato.pannelloNotifiche {
+                    PannelloNotifiche()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(.opacity.combined(with: .offset(x: 12)))
+                }
+
                 BarraSuperiore()
 
                 if let testo = stato.avviso {

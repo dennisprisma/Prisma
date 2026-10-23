@@ -323,6 +323,41 @@ enum ProvaEve {
         taccuino.eliminaCliente("laura")
         controlla(!taccuino.dati.note.contains { $0.clienteId == "laura" }, "Eliminando un cliente spariscono anche le sue note")
 
+        // Centro notifiche: ricavato dai dati, ogni notifica porta dove si risolve
+        let avvisi = StatoShell(persistente: false)
+        let cal = Calendar.current
+        let mattina = cal.date(bySettingHour: 8, minute: 0, second: 0, of: Date()) ?? Date()
+        let giorno = cal.startOfDay(for: mattina)
+        if let i = avvisi.dati.posizioni.firstIndex(where: { $0.stato == .inEssere }) {
+            avvisi.dati.posizioni[i].scadenza = cal.date(byAdding: .day, value: 10, to: giorno)
+        }
+        if let i = avvisi.dati.clienti.firstIndex(where: { $0.id == "sofia" }) {
+            avvisi.dati.clienti[i].dataNascita = cal.date(byAdding: .year, value: -40, to: giorno)
+        }
+        var vecchia = Attivita.nuova(clienteId: "giulia", scadenza: cal.date(byAdding: .day, value: -3, to: giorno) ?? giorno)
+        vecchia.titolo = "Richiamare per il preventivo"
+        avvisi.dati.attivita.append(vecchia)
+        avvisi.dati.impostazioni.backup.ultimoErrore = "Disco esterno non collegato"
+        let notifiche = MotoreNotifiche.calcola(avvisi, oggi: mattina)
+        let diOggi = avvisi.dati.appuntamenti.filter { $0.stato == .pianificato && cal.isDate($0.inizio, inSameDayAs: giorno) }
+        controlla(notifiche.filter { $0.id.hasPrefix("appuntamento-") }.count == diOggi.count, "Notifiche: gli appuntamenti di oggi (\(diOggi.count))")
+        controlla(notifiche.contains { $0.id == "attivita-\(vecchia.id)" && $0.gruppo == .daFare }, "Notifiche: l'attività scaduta è da recuperare")
+        controlla(notifiche.contains { $0.id.hasPrefix("scadenza-") && $0.titolo.contains("scade tra 10 giorni") && $0.canale != nil }, "Notifiche: la posizione in scadenza, con il canale")
+        controlla(notifiche.contains { $0.titolo == "Oggi Sofia Romano compie 40 anni" }, "Notifiche: il compleanno del cliente")
+        controlla(notifiche.contains { $0.id == "backup-errore" && $0.gruppo == .daFare }, "Notifiche: il backup non riuscito")
+        controlla(zip(notifiche, notifiche.dropFirst()).allSatisfy { $0.gruppo.rawValue <= $1.gruppo.rawValue }, "Notifiche in ordine: da recuperare, oggi, prossimi giorni, da sistemare")
+        controlla(avvisi.notificheNuove > 0, "La campanella conta le notifiche nuove")
+        avvisi.alternaNotifiche()
+        controlla(avvisi.pannelloNotifiche && avvisi.notificheNuove == 0, "Aperto il centro notifiche, la campanella si azzera")
+        if let n = notifiche.first(where: { $0.id == "attivita-\(vecchia.id)" }) {
+            avvisi.apriNotifica(n)
+            controlla(!avvisi.pannelloNotifiche && avvisi.appAttiva == .attivita && avvisi.attivitaSelezionata == vecchia.id, "La notifica apre l'attività")
+        }
+        let bisestile = cal.date(from: DateComponents(year: 1980, month: 2, day: 29)) ?? giorno
+        let dal = cal.date(from: DateComponents(year: 2027, month: 1, day: 10)) ?? giorno
+        controlla(MotoreNotifiche.prossimoCompleanno(bisestile, da: dal, cal: cal).map { [cal.component(.month, from: $0), cal.component(.day, from: $0)] } == [2, 28],
+                  "Compleanno del 29 febbraio: il 28 negli anni non bisestili")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")

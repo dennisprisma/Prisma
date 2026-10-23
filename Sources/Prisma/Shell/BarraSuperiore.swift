@@ -57,6 +57,7 @@ struct BarraSuperiore: View {
             Rectangle().fill(Colori.Barra.separatore).frame(width: 1, height: 14)
                 .padding(.leading, Misure.Barra.spazioApp)
             Button {
+                stato.pannelloNotifiche = false
                 stato.pannelloSpazi.toggle()
             } label: {
                 Text(stato.appAttiva?.titolo ?? "Scrivania")
@@ -98,14 +99,14 @@ struct BarraSuperiore: View {
             .help("Cerca in Prisma")
 
             Button {
-                stato.mostraAvviso("Il centro notifiche arriva nella prossima fase.")
+                stato.alternaNotifiche()
             } label: {
                 SimboloCampanella()
                     .stroke(Colori.Barra.testo, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
                     .frame(width: Misure.Barra.icona, height: Misure.Barra.icona)
                     .incisione(Colori.Barra.incisione)
                     .overlay(alignment: .topTrailing) {
-                        let n = stato.attivitaAperte.count
+                        let n = stato.notificheNuove
                         if n > 0 { Badge(numero: n, grande: false).offset(x: 6, y: -5) }
                     }
             }

@@ -240,6 +240,7 @@ struct AppClienti: View {
                 .font(Tipo.campoValore)
                 .foregroundColor(Colori.Rubrica.testo)
                 .scrollContentBackground(.hidden)
+                .scrollIndicators(.never)
                 .padding(10)
                 .frame(minHeight: 260)
                 .background(RoundedRectangle(cornerRadius: 3).fill(Color.white))

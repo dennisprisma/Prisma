@@ -16,6 +16,7 @@ enum ProvaCarico {
     static let limiteClientePiuLento = 2.0
     static let limitePDF = 8.0
     static let limiteRicerca = 1.0
+    static let limiteNotifiche = 0.1
     static let limiteMemoriaMB = 1_200.0
 
     static func esegui() -> Int32 {
@@ -81,6 +82,12 @@ enum ProvaCarico {
         }
         print("INFO Ricerca: 4 ricerche, \(trovati) risultati, in \(secondi(cerca))")
         controlla(trovati > 0 && cerca < limiteRicerca, "Ricerca su tutto l'archivio in \(secondi(cerca)) (limite \(secondi(limiteRicerca)))")
+
+        // Centro notifiche su tutto l'archivio (si ricalcola a ogni disegno della barra)
+        var quante = 0
+        let avvisi = tempo { quante = MotoreNotifiche.calcola(stato).count }
+        print("INFO Notifiche: \(quante) in \(secondi(avvisi))")
+        controlla(avvisi < limiteNotifiche, "Notifiche calcolate in \(secondi(avvisi)) (limite \(secondi(limiteNotifiche)))")
 
         // PDF di un report con tutto l'archivio caricato
         stato.clienteAttivoId = stato.clienti.first?.id ?? ""
