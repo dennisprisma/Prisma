@@ -456,7 +456,7 @@ final class StatoShell: ObservableObject {
         n.titolo = String(n.titolo.prefix(Nota.limiteTitolo))
         guard n != dati.note[i] else { return }
         if n.titolo != dati.note[i].titolo || n.testo != dati.note[i].testo || n.clienteId != dati.note[i].clienteId {
-            n.aggiornataIl = Date()
+            n.aggiornataIl = Nota.adesso
         }
         dati.note[i] = n
     }

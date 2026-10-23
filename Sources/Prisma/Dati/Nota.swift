@@ -8,8 +8,11 @@ struct Nota: Identifiable, Codable, Hashable {
     var testo: String
     /// In evidenza: resta in cima all'elenco.
     var fissata = false
-    var creataIl = Date()
-    var aggiornataIl = Date()
+    var creataIl = Nota.adesso
+    var aggiornataIl = Nota.adesso
+
+    /// L'archivio salva le date al secondo: le note nascono già così, e si rileggono identiche.
+    static var adesso: Date { Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down)) }
 
     /// Limite del titolo (come nel template).
     static let limiteTitolo = 180
