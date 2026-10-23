@@ -88,12 +88,18 @@ final class StatoShell: ObservableObject {
 
     // Note
     @Published var notaSelezionata: String?
+    /// La pagina nuova appena aperta: se resta vuota non entra nel taccuino.
+    private var bozzaNota: String?
     /// nil = tutti i clienti.
     @Published var filtroClienteNote: String?
     @Published var ricercaNote = ""
 
     // Centro notifiche
     @Published var pannelloNotifiche = false
+    /// Le notifiche, ricalcolate poco dopo ogni modifica dei dati e una volta al minuto
+    /// (non a ogni disegno della barra in alto).
+    @Published private(set) var notifiche: [Notifica] = []
+    private var timerNotifiche: Timer?
     /// Le notifiche già viste in questa sessione (la campanella conta le altre).
     @Published var notificheViste: Set<String> = []
 
@@ -159,12 +165,15 @@ final class StatoShell: ObservableObject {
             if let a = caricati.avviso {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
             }
+            // Una pagina nuova rimasta vuota alla chiusura non torna come «Bozza»
+            if dati.note.contains(where: \.vuota) { dati.note.removeAll(where: \.vuota) }
             avviaSalvataggio()
             avviaBackupAutomatico()
             aggiornaElencoBackup()
         } else {
             dati = DatiPrisma.demo()
         }
+        avviaNotifiche()
     }
 
     // MARK: - Lettura
@@ -416,6 +425,7 @@ final class StatoShell: ObservableObject {
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
+        azzeraNote()
     }
 
     // MARK: - Note
@@ -441,13 +451,15 @@ final class StatoShell: ObservableObject {
     /// Apre una pagina nuova per il cliente (quello del filtro, o il cliente attivo).
     @discardableResult
     func nuovaNota(clienteId: String? = nil) -> Nota? {
-        guard let cliente = clienteId ?? filtroClienteNote ?? clienti.first(where: { $0.id == clienteAttivoId })?.id ?? clienti.first?.id else {
+        let filtro = filtroClienteNote.flatMap { cliente($0)?.id }
+        guard let cliente = clienteId ?? filtro ?? clienti.first(where: { $0.id == clienteAttivoId })?.id ?? clienti.first?.id else {
             mostraAvviso("Aggiungi prima un cliente: ogni nota appartiene a una persona.")
             return nil
         }
         togliNoteVuote()
         let n = Nota(clienteId: cliente, titolo: "", testo: "")
         dati.note.append(n)
+        bozzaNota = n.id
         ricercaNote = ""
         if filtroClienteNote != nil && filtroClienteNote != cliente { filtroClienteNote = cliente }
         notaSelezionata = n.id
@@ -461,8 +473,18 @@ final class StatoShell: ObservableObject {
         notaSelezionata = id
     }
 
+    /// Toglie la pagina nuova lasciata vuota (una nota esistente svuotata per riscriverla resta).
     private func togliNoteVuote(tranne id: String? = nil) {
-        dati.note.removeAll { $0.vuota && $0.id != id }
+        guard let b = bozzaNota, b != id else { return }
+        dati.note.removeAll { $0.id == b && $0.vuota }
+        bozzaNota = nil
+    }
+
+    /// Dopo un cliente eliminato o un archivio ripristinato, filtro e selezione delle note ripartono.
+    private func azzeraNote() {
+        if let f = filtroClienteNote, cliente(f) == nil { filtroClienteNote = nil }
+        if nota(notaSelezionata) == nil { notaSelezionata = nil }
+        bozzaNota = nil
     }
 
     /// Modifica una nota; la data di aggiornamento cambia solo se cambia qualcosa.
@@ -472,6 +494,9 @@ final class StatoShell: ObservableObject {
         cambia(&n)
         n.titolo = String(n.titolo.prefix(Nota.limiteTitolo))
         guard n != dati.note[i] else { return }
+        // Cambiato il cliente, il filtro lo segue: la nota resta sotto gli occhi (non se ne apre un'altra)
+        if n.clienteId != dati.note[i].clienteId, filtroClienteNote != nil { filtroClienteNote = n.clienteId }
+        if !n.vuota, n.id == bozzaNota { bozzaNota = nil }
         if n.titolo != dati.note[i].titolo || n.testo != dati.note[i].testo || n.clienteId != dati.note[i].clienteId {
             n.aggiornataIl = Nota.adesso
         }
@@ -1668,6 +1693,26 @@ final class StatoShell: ObservableObject {
         attivita.filter { $0.appuntamentoId == appuntamentoId }.sorted { $0.scadenza < $1.scadenza }
     }
 
+    // MARK: - Notifiche
+
+    private func avviaNotifiche() {
+        ricalcolaNotifiche()
+        $dati
+            .dropFirst()
+            .debounce(for: .milliseconds(400), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in self?.ricalcolaNotifiche() }
+            .store(in: &abbonamenti)
+        // Gli appuntamenti finiscono e i giorni cambiano anche senza toccare i dati
+        timerNotifiche = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async { self?.ricalcolaNotifiche() }
+        }
+    }
+
+    func ricalcolaNotifiche() {
+        let nuove = MotoreNotifiche.calcola(self)
+        if nuove != notifiche { notifiche = nuove }
+    }
+
     // MARK: - Salvataggio
 
     /// Salva l'archivio 0,8 s dopo l'ultima modifica e alla chiusura dell'app.
@@ -1786,6 +1831,7 @@ final class StatoShell: ObservableObject {
                     d.impostazioni.nomeUtente = nome.0
                     d.impostazioni.inizialiUtente = nome.1
                     self.dati = d
+                    self.azzeraNote()
                     self.solaLettura = false
                     self.salvataggioSospeso = false
                     self.salvaOra()
@@ -1876,6 +1922,7 @@ final class StatoShell: ObservableObject {
                     var demo = DatiPrisma.demo()
                     demo.impostazioni = self.dati.impostazioni
                     self.dati = demo
+                    self.azzeraNote()
                     // I file dei clienti veri restano nel backup appena fatto, non nell'archivio
                     self.pulisciDocumentiOrfani()
                     self.aggiornaElencoBackup()

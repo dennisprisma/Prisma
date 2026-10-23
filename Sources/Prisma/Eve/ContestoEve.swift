@@ -95,7 +95,7 @@ enum ContestoEve {
         if !f.note.isEmpty {
             righe.append("NOTE DEL TACCUINO:")
             righe.append(contentsOf: f.note.prefix(3).map { n in
-                "- \(n.titoloMostrato) (\(Formati.giornoMese.string(from: n.aggiornataIl))): \(n.anteprima.prefix(220))"
+                "- \(n.titoloMostrato) (\(Formati.giornoMese.string(from: n.aggiornataIl))): \(n.estratto(Nota.limiteEve))"
             })
         }
 

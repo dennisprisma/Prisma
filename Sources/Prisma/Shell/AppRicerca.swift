@@ -8,8 +8,8 @@ struct AppRicerca: View {
     @FocusState private var fuoco: Bool
     @State private var selezione = 0
     @State private var tasti: Any?
-
-    private var sezioni: [SezioneRicerca] { MotoreRicerca.cerca(stato.testoRicerca, in: stato) }
+    /// I risultati si calcolano quando cambia il testo (o si torna alla Ricerca), non a ogni disegno.
+    @State private var sezioni: [SezioneRicerca] = []
 
     var body: some View {
         let sezioni = sezioni
@@ -40,17 +40,39 @@ struct AppRicerca: View {
         .background(FondoRicerca())
         .onAppear {
             fuoco = true
+            cerca()
             installaTasti()
-            FrecceRicerca.condivise.attiva = stato.appAttiva == .ricerca
+            aggiornaFrecce()
         }
         .onDisappear {
             if let t = tasti { NSEvent.removeMonitor(t) }
             tasti = nil
             FrecceRicerca.condivise.attiva = false
         }
-        .onChange(of: stato.appAttiva) { app in FrecceRicerca.condivise.attiva = app == .ricerca }
+        .onChange(of: stato.appAttiva) { app in
+            if app == .ricerca { cerca() }
+            aggiornaFrecce()
+        }
+        .onChange(of: fuoco) { _ in aggiornaFrecce() }
+        .onChange(of: stato.pannelloSpazi) { _ in aggiornaFrecce() }
+        .onChange(of: stato.pannelloAppAperte) { _ in aggiornaFrecce() }
+        .onChange(of: stato.pannelloNotifiche) { _ in aggiornaFrecce() }
+        .onChange(of: stato.bloccato) { _ in aggiornaFrecce() }
         .onChange(of: stato.richiestaFuocoRicerca) { _ in fuoco = true }
-        .onChange(of: stato.testoRicerca) { _ in selezione = 0 }
+        .onChange(of: stato.testoRicerca) { _ in
+            selezione = 0
+            cerca()
+        }
+    }
+
+    private func cerca() {
+        sezioni = MotoreRicerca.cerca(stato.testoRicerca, in: stato)
+    }
+
+    /// Le frecce scelgono i risultati solo con la Ricerca davanti, il cursore nel campo e nessun pannello aperto.
+    private func aggiornaFrecce() {
+        FrecceRicerca.condivise.attiva = stato.appAttiva == .ricerca && fuoco && !stato.pannelloSpazi
+            && !stato.pannelloAppAperte && !stato.pannelloNotifiche && !stato.bloccato
     }
 
     private func barra(_ elenco: [RisultatoRicerca]) -> some View {
@@ -139,7 +161,7 @@ struct AppRicerca: View {
         guard tasti == nil, !ProcessInfo.processInfo.arguments.contains("--istantanee") else { return }
         let frecce = FrecceRicerca.condivise
         frecce.sposta = { passo in
-            let totale = MotoreRicerca.cerca(stato.testoRicerca, in: stato).reduce(0) { $0 + $1.risultati.count }
+            let totale = sezioni.reduce(0) { $0 + $1.risultati.count }
             selezione = min(max(selezione + passo, 0), max(0, totale - 1))
         }
         tasti = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { evento in

@@ -76,12 +76,22 @@ enum MotoreNotifiche {
                                    dettaglio: "\(nome(p.clienteId)) · \(Formati.dataEstesa.string(from: s))",
                                    data: s, canale: p.canale, destinazione: .posizione(p.id)))
         }
+        // Posizioni scadute ma ancora in essere: capitale da reinvestire o stato da aggiornare
+        let indietro = cal.date(byAdding: .day, value: -3 * giorniAvanti, to: inizio) ?? inizio
+        for p in dati.posizioni where p.stato == .inEssere {
+            guard let s = p.scadenza, s < inizio, s >= indietro else { continue }
+            elenco.append(Notifica(id: "scaduta-\(p.id)-\(Int(s.timeIntervalSince1970))", gruppo: .daFare, app: .posizioni,
+                                   titolo: "\(p.nome) è scaduta il \(Formati.giornoMese.string(from: s))",
+                                   dettaglio: "\(nome(p.clienteId)) · reinvestimento o stato da aggiornare",
+                                   data: s, canale: p.canale, destinazione: .posizione(p.id)))
+        }
         // Compleanni dei clienti
         for c in dati.clienti {
             guard let nascita = c.dataNascita, let prossimo = prossimoCompleanno(nascita, da: inizio, cal: cal) else { continue }
             let giorni = cal.dateComponents([.day], from: inizio, to: prossimo).day ?? 99
             guard giorni <= giorniCompleanno else { continue }
-            let anni = cal.dateComponents([.year], from: nascita, to: prossimo).year ?? 0
+            // Gli anni che compie (anche chi è nato il 29 febbraio e festeggia il 28)
+            let anni = cal.component(.year, from: prossimo) - cal.component(.year, from: nascita)
             elenco.append(Notifica(id: "compleanno-\(c.id)-\(cal.component(.year, from: prossimo))", gruppo: giorni == 0 ? .oggi : .prossimi, app: .clienti,
                                    titolo: giorni == 0 ? "Oggi \(c.nome) compie \(anni) anni" : "\(c.nome) compie \(anni) anni",
                                    dettaglio: giorni == 0 ? "Un pensiero fa piacere" : Formati.dataLunga.string(from: prossimo),
@@ -117,9 +127,14 @@ enum MotoreNotifiche {
                                    data: b.ultimo ?? inizio, destinazione: .app(.impostazioni)))
         }
 
-        // In ogni gruppo prima le più vicine (le scadute dalla più vecchia), al massimo alcune
+        // In ogni gruppo prima le più vicine; tra le cose da recuperare il backup in cima, poi le più recenti
         return Notifica.Gruppo.allCases.flatMap { g in
-            elenco.filter { $0.gruppo == g }.sorted { $0.data < $1.data }.prefix(massimoPerGruppo)
+            elenco.filter { $0.gruppo == g }.sorted { a, b in
+                guard g == .daFare else { return a.data < b.data }
+                if a.app == .impostazioni, b.app != .impostazioni { return true }
+                if b.app == .impostazioni, a.app != .impostazioni { return false }
+                return a.data > b.data
+            }.prefix(massimoPerGruppo)
         }
     }
 
@@ -139,8 +154,6 @@ enum MotoreNotifiche {
 }
 
 extension StatoShell {
-    var notifiche: [Notifica] { MotoreNotifiche.calcola(self) }
-
     /// Le notifiche non ancora viste (il numero sulla campanella).
     var notificheNuove: Int {
         notifiche.filter { $0.gruppo != .daSistemare && !notificheViste.contains($0.id) }.count
@@ -149,6 +162,7 @@ extension StatoShell {
     func alternaNotifiche() {
         pannelloNotifiche.toggle()
         if pannelloNotifiche {
+            ricalcolaNotifiche()
             pannelloSpazi = false
             notificheViste.formUnion(notifiche.map(\.id))
         }

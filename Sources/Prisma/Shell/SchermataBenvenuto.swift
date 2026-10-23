@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Schermata di benvenuto (il lucchetto in alto): copre le finestre con lo sfondo, l'ora e il
 /// marchio, per esempio quando ci si allontana dalla scrivania con un cliente in studio.
@@ -31,6 +32,8 @@ struct SchermataBenvenuto: View {
             }
         }
         .contentShape(Rectangle())
+        // Il cursore lascia il campo sotto la schermata: niente si scrive nelle finestre coperte
+        .onAppear { NSApp.keyWindow?.makeFirstResponder(nil) }
     }
 
     private var orologio: some View {
