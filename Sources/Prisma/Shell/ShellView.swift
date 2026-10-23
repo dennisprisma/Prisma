@@ -69,6 +69,18 @@ struct ShellView: View {
 
                 BarraSuperiore()
 
+                if stato.pannelloAppAperte {
+                    PannelloAppAperte()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(.opacity)
+                }
+
+                if stato.bloccato {
+                    SchermataBenvenuto()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(.opacity)
+                }
+
                 if let testo = stato.avviso {
                     VistaAvviso(testo: testo)
                         .frame(width: geo.size.width, height: geo.size.height - Misure.Avvisi.distanzaBasso, alignment: .bottom)

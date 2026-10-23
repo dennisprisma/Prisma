@@ -346,6 +346,9 @@ enum ProvaEve {
         controlla(notifiche.contains { $0.titolo == "Oggi Sofia Romano compie 40 anni" }, "Notifiche: il compleanno del cliente")
         controlla(notifiche.contains { $0.id == "backup-errore" && $0.gruppo == .daFare }, "Notifiche: il backup non riuscito")
         controlla(zip(notifiche, notifiche.dropFirst()).allSatisfy { $0.gruppo.rawValue <= $1.gruppo.rawValue }, "Notifiche in ordine: da recuperare, oggi, prossimi giorni, da sistemare")
+        let sera = cal.date(bySettingHour: 23, minute: 0, second: 0, of: giorno) ?? giorno
+        controlla(diOggi.allSatisfy { a in MotoreNotifiche.calcola(avvisi, oggi: sera).contains { $0.id == "esito-\(a.id)" } },
+                  "Notifiche: gli appuntamenti di oggi già finiti chiedono l'esito")
         controlla(avvisi.notificheNuove > 0, "La campanella conta le notifiche nuove")
         avvisi.alternaNotifiche()
         controlla(avvisi.pannelloNotifiche && avvisi.notificheNuove == 0, "Aperto il centro notifiche, la campanella si azzera")
@@ -357,6 +360,11 @@ enum ProvaEve {
         let dal = cal.date(from: DateComponents(year: 2027, month: 1, day: 10)) ?? giorno
         controlla(MotoreNotifiche.prossimoCompleanno(bisestile, da: dal, cal: cal).map { [cal.component(.month, from: $0), cal.component(.day, from: $0)] } == [2, 28],
                   "Compleanno del 29 febbraio: il 28 negli anni non bisestili")
+
+        // Schermata di benvenuto: copre tutto e chiude i pannelli
+        avvisi.pannelloSpazi = true
+        avvisi.blocca()
+        controlla(avvisi.bloccato && !avvisi.pannelloSpazi && !avvisi.pannelloNotifiche, "Il lucchetto mostra la schermata di benvenuto e chiude i pannelli")
 
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {

@@ -269,6 +269,17 @@ enum Istantanee {
             }
             s.alternaNotifiche()
         }),
+        ("63-benvenuto", { s in
+            s.apri(.clienti)
+            s.blocca()
+        }),
+        ("64-app-aperte", { s in
+            s.apri(.agenda)
+            s.apri(.note)
+            s.apri(.clienti)
+            s.riduci(.agenda)
+            s.pannelloAppAperte = true
+        }),
         ("51-scrivania-schermo-basso", { _ in }),
         ("52-eve-schermo-basso", { s in
             s.clienteAttivoId = "giulia"

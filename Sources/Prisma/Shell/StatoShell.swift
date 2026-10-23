@@ -97,6 +97,10 @@ final class StatoShell: ObservableObject {
     /// Le notifiche già viste in questa sessione (la campanella conta le altre).
     @Published var notificheViste: Set<String> = []
 
+    /// La schermata di benvenuto copre le finestre (il lucchetto in alto).
+    @Published var bloccato = false
+    @Published var pannelloAppAperte = false
+
     /// Il pannello degli spazi di lavoro è aperto.
     @Published var pannelloSpazi = false
 
@@ -248,6 +252,14 @@ final class StatoShell: ObservableObject {
     }
 
     /// Riduce tutte le finestre e mostra la scrivania.
+    /// Mostra la schermata di benvenuto sopra tutto (chiude i pannelli aperti).
+    func blocca() {
+        pannelloNotifiche = false
+        pannelloSpazi = false
+        pannelloAppAperte = false
+        anima { bloccato = true }
+    }
+
     func mostraScrivania() {
         anima {
             for i in finestre.indices { finestre[i].ridotta = true }

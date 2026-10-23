@@ -43,6 +43,9 @@ struct PrismaApp: App {
                 Button("Cerca ovunque") { stato.cercaOvunque() }
                     .keyboardShortcut("k", modifiers: .command)
                 Button("Spazi di lavoro…") { stato.pannelloSpazi = true }
+                Button("Le tue app aperte…") { stato.pannelloAppAperte = true }
+                Button("Schermata di benvenuto") { stato.blocca() }
+                    .keyboardShortcut("l", modifiers: [.command, .option])
                 Divider()
                 Button("Scrivania") { stato.mostraScrivania() }
                     .keyboardShortcut("0", modifiers: .option)
