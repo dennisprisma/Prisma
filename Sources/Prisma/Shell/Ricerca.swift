@@ -125,7 +125,8 @@ enum MotoreRicerca {
         for (etichetta, valore) in c.campi where !valore.isEmpty {
             let trovate = mancanti.filter { contiene(valore, $0) }
             guard !trovate.isEmpty else { continue }
-            if estratto == nil { estratto = "\(etichetta): \(riga(valore, attorno: trovate[0]))" }
+            // Il valore già scritto nel dettaglio (il nome del cliente) non si ripete
+            if estratto == nil, !contiene(r.dettaglio, valore) { estratto = "\(etichetta): \(riga(valore, attorno: trovate[0]))" }
             mancanti.removeAll { trovate.contains($0) }
             if mancanti.isEmpty { break }
         }
@@ -216,7 +217,7 @@ enum MotoreRicerca {
             Candidato(risultato: RisultatoRicerca(destinazione: .prodotto(p.id), gruppo: .prodotti, titolo: p.nome,
                                                   dettaglio: [p.emittente, p.tipologia].filter { !$0.isEmpty }.joined(separator: " · "), canale: p.canale),
                       campi: [("Emittente", p.emittente), ("Tipologia", p.tipologia), ("Canale", p.canale.nomeBreve),
-                              ("Garanzie", p.garanzie), ("Note", p.note)])
+                              ("Garanzie", p.garanzie), ("Liquidabilità", p.liquidabilita), ("Fonte", p.fonte), ("Note", p.note)])
         }
 
         return GruppoRicerca.allCases.compactMap { g in

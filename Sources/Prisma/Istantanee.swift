@@ -231,7 +231,7 @@ enum Istantanee {
             s.cercaOvunque()
         }),
         ("54-ricerca-documento", { s in
-            s.testoRicerca = "riscatto"
+            s.testoRicerca = "scopo investimento"
             s.cercaOvunque()
         }),
         ("51-scrivania-schermo-basso", { _ in }),

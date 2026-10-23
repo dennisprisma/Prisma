@@ -206,6 +206,8 @@ enum ProvaEve {
         }
         controlla(MotoreRicerca.cerca("   ", in: ricerca).isEmpty, "Ricerca vuota: nessun risultato")
         controlla(primi("GIULIA rossi", .clienti).first?.destinazione == .cliente("giulia"), "Ricerca: «GIULIA rossi» trova Giulia Rossi")
+        controlla(primi("marco", .posizioni).allSatisfy { $0.estratto == nil }, "Ricerca: il nome del cliente non si ripete sotto le sue posizioni")
+        controlla(!primi("riscatto", .prodotti).isEmpty, "Ricerca: «riscatto» trova i prodotti dalla liquidabilità")
         controlla(primi("giulia bianchi", .clienti).isEmpty, "Ricerca: tutte le parole devono esserci")
         controlla(primi("attivita", .app).contains { $0.destinazione == .app(.attivita) }, "Ricerca: «attivita» trova l'app Attività (senza accento)")
         if let p = ricerca.dati.posizioni.first(where: { !$0.numeroContratto.isEmpty }) {
