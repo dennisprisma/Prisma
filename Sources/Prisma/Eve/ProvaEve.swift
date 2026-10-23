@@ -254,7 +254,7 @@ enum ProvaEve {
         }
         if let incontro = SpazioLavoro.predefiniti.first {
             apriSpazio(incontro)
-            controlla(spazi.finestreVisibili.map(\.app) == [.posizioni, .eve, .clienti], "Spazio «\(incontro.nome)»: Posizioni, Eve e Clienti in primo piano")
+            controlla(spazi.finestreVisibili.map(\.app) == [.eve, .clienti], "Spazio «\(incontro.nome)»: Eve e Clienti in primo piano")
             controlla(!sovrapposte(spazi) && dentro(spazi), "Spazio «\(incontro.nome)»: finestre affiancate, dentro lo schermo")
             controlla(spazi.finestreVisibili.allSatisfy { spazi.cornice(di: $0).width >= Misure.Finestra.minima.width && spazi.cornice(di: $0).height >= Misure.Finestra.minima.height },
                       "Spazio «\(incontro.nome)»: nessuna finestra sotto la misura minima")

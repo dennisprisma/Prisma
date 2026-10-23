@@ -12,8 +12,11 @@ struct FinestraInterna: View {
     var body: some View {
         VStack(spacing: 0) {
             barraTitolo
+            // In una finestra più piccola del suo contenuto l'app parte dall'alto e si taglia in basso:
+            // la barra del titolo resta sempre al suo posto
             ContenutoApp(app: finestra.app)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
+                .clipped()
                 .background(Colori.Finestra.contenuto)
         }
         .background(Colori.Finestra.sfondo)
