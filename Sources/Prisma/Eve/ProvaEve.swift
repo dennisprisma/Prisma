@@ -236,8 +236,15 @@ enum ProvaEve {
 
         // Spazi di lavoro: le app al loro posto, affiancate senza sovrapporsi, salvate nell'archivio
         let spazi = StatoShell(persistente: false)
-        // Come una finestra di Prisma da 1440×900 con il dock nascosto
-        spazi.area = CGRect(x: 8, y: 33, width: 1424, height: 858)
+        // Come una finestra di Prisma da 1440×900: dalla scrivania (dock visibile) le finestre aperte
+        // nascondono il dock e l'area cresce, come fa la vista
+        let conDock = CGRect(x: 8, y: 33, width: 1424, height: 786)
+        let senzaDock = CGRect(x: 8, y: 33, width: 1424, height: 858)
+        func apriSpazio(_ s: SpazioLavoro) {
+            spazi.area = spazi.finestreVisibili.isEmpty ? conDock : senzaDock
+            spazi.apriSpazio(s)
+            spazi.area = senzaDock
+        }
         func sovrapposte(_ s: StatoShell) -> Bool {
             let c = s.finestreVisibili.map { s.cornice(di: $0) }
             return c.indices.contains { i in c.indices.contains { j in i < j && c[i].insetBy(dx: 1, dy: 1).intersects(c[j]) } }
@@ -246,14 +253,14 @@ enum ProvaEve {
             s.finestreVisibili.allSatisfy { CGRect(origin: .zero, size: s.area.size).contains(s.cornice(di: $0)) }
         }
         if let incontro = SpazioLavoro.predefiniti.first {
-            spazi.apriSpazio(incontro)
+            apriSpazio(incontro)
             controlla(spazi.finestreVisibili.map(\.app) == [.posizioni, .eve, .clienti], "Spazio «\(incontro.nome)»: Posizioni, Eve e Clienti in primo piano")
             controlla(!sovrapposte(spazi) && dentro(spazi), "Spazio «\(incontro.nome)»: finestre affiancate, dentro lo schermo")
             controlla(spazi.finestreVisibili.allSatisfy { spazi.cornice(di: $0).width >= Misure.Finestra.minima.width && spazi.cornice(di: $0).height >= Misure.Finestra.minima.height },
                       "Spazio «\(incontro.nome)»: nessuna finestra sotto la misura minima")
         }
         for p in SpazioLavoro.predefiniti {
-            spazi.apriSpazio(p)
+            apriSpazio(p)
             if sovrapposte(spazi) || !dentro(spazi) { controlla(false, "Spazio pronto «\(p.nome)» disposto bene") }
         }
         let prima = spazi.finestreVisibili.map { spazi.cornice(di: $0) }
@@ -262,7 +269,7 @@ enum ProvaEve {
         controlla(spazi.salvaSpazio(nome: "   ") == nil, "Uno spazio senza nome non si salva")
         if let salvato {
             spazi.mostraScrivania()
-            spazi.apriSpazio(salvato)
+            apriSpazio(salvato)
             let dopo = spazi.finestreVisibili.map { spazi.cornice(di: $0) }
             controlla(dopo.count == prima.count && zip(prima, dopo).allSatisfy { abs($0.minX - $1.minX) < 1 && abs($0.width - $1.width) < 1 && abs($0.height - $1.height) < 1 },
                       "Lo spazio salvato si riapre com'era")
