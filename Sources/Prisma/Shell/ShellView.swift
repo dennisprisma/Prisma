@@ -43,8 +43,9 @@ struct ShellView: View {
                         .allowsHitTesting(false)
                 }
             }
-            .onAppear { stato.area = area }
-            .onChange(of: geo.size) { _ in stato.area = area }
+            .onAppear { aggiornaArea(geo.size) }
+            // La dimensione nuova, non l'area calcolata nel disegno precedente
+            .onChange(of: geo.size) { aggiornaArea($0) }
         }
         .frame(minWidth: 1100, minHeight: 720)
         .ignoresSafeArea()
@@ -57,6 +58,11 @@ struct ShellView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
             stato.schermoIntero = false
         }
+    }
+
+    private func aggiornaArea(_ dimensione: CGSize) {
+        let nuova = ShellView.area(per: dimensione)
+        if stato.area != nuova { stato.area = nuova }
     }
 
     private func livelloFinestre(area: CGRect) -> some View {

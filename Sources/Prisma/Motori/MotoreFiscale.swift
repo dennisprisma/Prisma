@@ -336,3 +336,31 @@ enum MotoreFiscale {
         }
     }
 }
+
+/// Le semplificazioni dei calcoli di Prisma, dichiarate nelle note di metodo dei prospetti:
+/// non sono errori ma scelte di modello, che il consulente deve conoscere.
+enum Semplificazioni {
+    static let comuni = [
+        "Scenari prudente e favorevole: 2 punti di rendimento in meno e in più per tutti i prodotti; nelle gestioni separate di Ramo I il capitale non scende.",
+        "Minusvalenze non compensate tra posizioni diverse; il bollo maturato delle polizze è stimato sul valore di oggi per gli anni trascorsi.",
+    ]
+    static let previdenza = [
+        "Prestazione mostrata tutta in capitale: alla pensione di norma al massimo il 50% si può ritirare in capitale, il resto diventa rendita.",
+        "Rendita mensile stimata dividendo il netto per gli anni di integrazione, senza coefficienti di conversione né rendimento durante l'erogazione.",
+        "Non considerati: TFR conferito al fondo, contributi del datore di lavoro (contano nel limite di deducibilità), quote maturate prima del 2007, 12,5% sulla parte in titoli di Stato dei rendimenti del fondo.",
+        "Risparmio IRPEF calcolato sul reddito lordo indicato, scaglione per scaglione, senza detrazioni e addizionali.",
+    ]
+    static let protezione = [
+        "Detrazione del 19% calcolata sui premi della famiglia insieme, non per singolo contribuente; i premi infortuni contati per intero (è detraibile solo la parte caso morte e invalidità permanente oltre il 5%).",
+        "Non applicati i limiti alla detrazione per i redditi oltre 75.000 € e la riduzione oltre 120.000 €; i premi vanno pagati con mezzi tracciabili.",
+    ]
+    static let liquidita = [
+        "Rendimenti dei salvadanai indicativi, con un'unica aliquota del 26% (i titoli di Stato sono al 12,5%) e senza bollo.",
+    ]
+    static let obiettivo = [
+        "Nuovi versamenti ipotizzati al rendimento dell'obiettivo con imposta del 26% sul guadagno, senza bollo né costi del prodotto.",
+    ]
+    static let resoconto: [(String, String)] = [
+        ("Semplificazioni", "rendimento dei versamenti con i versamenti distribuiti in modo uniforme mese per mese; minusvalenze non compensate tra posizioni; bollo maturato delle polizze stimato sul valore di oggi."),
+    ]
+}

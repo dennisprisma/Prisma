@@ -161,5 +161,5 @@ struct TestiResoconto {
         ("Imposte e netto", "polizze vita, fondi ed ETF: 26% sul guadagno al netto della penale, 12,5% sulla parte in titoli di Stato; nelle polizze il bollo maturato si paga al riscatto. Conti e depositi: interessi già tassati all'accredito."),
         ("Previdenza", "si tassano solo i contributi dedotti: 15% fino al 15° anno di partecipazione, poi 0,30 punti in meno ogni anno fino al 9%, per pensionamento, riscatti agevolati e spese sanitarie; 23% per anticipazioni casa e ulteriori esigenze e per i riscatti per altre cause."),
         ("Quote", "per area e per canale calcolate sulle attività in essere, debiti esclusi."),
-    ]
+    ] + Semplificazioni.resoconto
 }
