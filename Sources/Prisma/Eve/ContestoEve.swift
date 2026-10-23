@@ -91,6 +91,14 @@ enum ContestoEve {
             })
         }
 
+        // Note del taccuino (scritte dal consulente)
+        if !f.note.isEmpty {
+            righe.append("NOTE DEL TACCUINO:")
+            righe.append(contentsOf: f.note.prefix(3).map { n in
+                "- \(n.titoloMostrato) (\(Formati.giornoMese.string(from: n.aggiornataIl))): \(n.anteprima.prefix(220))"
+            })
+        }
+
         // Ultimo incontro concluso
         if let u = f.incontri.filter({ $0.stato == .concluso }).max(by: { $0.data < $1.data }) {
             var r = "ULTIMO INCONTRO (\(Formati.dataEstesa.string(from: u.data))): \(u.titolo)."

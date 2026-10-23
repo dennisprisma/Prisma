@@ -366,6 +366,14 @@ enum ProvaEve {
         avvisi.blocca()
         controlla(avvisi.bloccato && !avvisi.pannelloSpazi && !avvisi.pannelloNotifiche, "Il lucchetto mostra la schermata di benvenuto e chiude i pannelli")
 
+        // Eve legge il taccuino: le note del cliente nella scheda e nella traccia dell'incontro
+        let conNote = StatoShell(persistente: false)
+        if let f = conNote.fonteEve("giulia") {
+            controlla(ContestoEve.scheda(f).contains("La casa è un nuovo inizio"), "Scheda di Eve: le note del taccuino")
+            let traccia = MotoriEve.sintesi.componi(RichiestaEve(domanda: "", spunto: .incontro, fonte: f, storia: []))
+            controlla(traccia.testo.contains("Dal tuo taccuino") && traccia.testo.contains("La casa è un nuovo inizio"), "Traccia dell'incontro: le note del taccuino")
+        }
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")
