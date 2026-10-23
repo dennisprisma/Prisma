@@ -623,6 +623,21 @@ enum ProvaCalcoli {
             let conEsiti = MotorePortafoglio.calcola(esiti, clienti: demo.clienti)
             let gia = MotorePortafoglio.calcola(demo.posizioni, clienti: demo.clienti).esiti
             let si = Double((gia[.accettata] ?? 0) + 3), no = Double((gia[.rifiutata] ?? 0) + 1)
+            // Da ricontattare: un cliente senza contatti da un anno, con una posizione che scade, viene per primo
+            var conContatti = demo
+            conContatti.appuntamenti.removeAll { $0.clienteId == "laura" }
+            conContatti.incontri.removeAll { $0.clienteId == "laura" }
+            var vecchio = Appuntamento(id: "prova-vecchio", clienteId: "laura", titolo: "Vecchio incontro", inizio: Calendar.current.date(byAdding: .month, value: -12, to: Date()) ?? Date(),
+                                       durataMinuti: 60, luogo: "", note: "", stato: .concluso)
+            vecchio.tipo = .altro
+            conContatti.appuntamenti.append(vecchio)
+            if let i = conContatti.posizioni.firstIndex(where: { $0.clienteId == "laura" && $0.stato == .inEssere }) {
+                conContatti.posizioni[i].scadenza = Calendar.current.date(byAdding: .day, value: 40, to: Date())
+            }
+            let ric = MotorePortafoglio.calcola(conContatti.posizioni, clienti: conContatti.clienti, appuntamenti: conContatti.appuntamenti, incontri: conContatti.incontri)
+            verifica("Portafoglio: Laura da ricontattare, per prima (scadenza in arrivo)", ric.daRicontattare.first?.cliente.id == "laura" && ric.daRicontattare.first?.motivo != nil ? 1 : 0, 1)
+            verifica("Portafoglio: chi ha un appuntamento in agenda non è da ricontattare",
+                     ric.daRicontattare.contains { r in conContatti.appuntamenti.contains { $0.clienteId == r.cliente.id && $0.stato == .pianificato && $0.inizio >= Calendar.current.startOfDay(for: Date()) } } ? 0 : 1, 1)
             verifica("Portafoglio: tasso di accettazione delle proposte", conEsiti.tassoAccettazione ?? -1, si / (si + no), tolleranza: 0.0001)
         }
 

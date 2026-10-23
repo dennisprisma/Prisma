@@ -30,6 +30,18 @@ struct Portafoglio {
         var id: Date { inizio }
     }
 
+    /// Un cliente da ricontattare: nessun contatto da tempo e niente in agenda.
+    struct DaRicontattare: Identifiable {
+        let cliente: Cliente
+        /// L'ultimo incontro o appuntamento passato (nil se non ce ne sono).
+        let ultimoContatto: Date?
+        let mesi: Int?
+        /// Scadenze nei prossimi mesi o proposte aperte: un motivo in più per chiamare.
+        let motivo: String?
+
+        var id: String { cliente.id }
+    }
+
     struct Emittente: Identifiable {
         let nome: String
         let valore: Double
@@ -48,6 +60,7 @@ struct Portafoglio {
     /// Attività in essere senza immobili né debiti: la base della concentrazione per emittente.
     let attivitaFinanziarie: Double
     let esiti: [EsitoProposta: Int]
+    var daRicontattare: [DaRicontattare] = []
 
     /// Proposte accettate sul totale di quelle decise (accettate più rifiutate); nil se nessuna è decisa.
     var tassoAccettazione: Double? {
@@ -59,10 +72,13 @@ struct Portafoglio {
     static let massimoEmittenti = 6
     static let altriEmittenti = "Altri emittenti"
     static let senzaEmittente = "Emittente non indicato"
+    /// Dopo quanti mesi senza contatti un cliente va richiamato.
+    static let mesiSenzaContatto = 6
 }
 
 enum MotorePortafoglio {
-    static func calcola(_ posizioni: [Posizione], clienti: [Cliente], oggi: Date = Date()) -> Portafoglio {
+    static func calcola(_ posizioni: [Posizione], clienti: [Cliente], appuntamenti: [Appuntamento] = [],
+                        incontri: [Incontro] = [], oggi: Date = Date()) -> Portafoglio {
         let r = RiepilogoPosizioni(posizioni)
         let totale = r.attivita
 
@@ -125,6 +141,30 @@ enum MotorePortafoglio {
         var esiti: [EsitoProposta: Int] = [:]
         for p in posizioni where p.stato == .proposta { esiti[p.esito ?? .bozza, default: 0] += 1 }
 
-        return Portafoglio(riepilogo: r, clienti: voci, scadenze: mesi, emittenti: emittenti, attivitaFinanziarie: finanziarie, esiti: esiti)
+        // Da ricontattare: nessun incontro o appuntamento negli ultimi mesi e nessuno in agenda
+        let limite = cal.date(byAdding: .month, value: -Portafoglio.mesiSenzaContatto, to: oggi) ?? oggi
+        var richiamare: [Portafoglio.DaRicontattare] = []
+        for c in clienti where perCliente[c.id] != nil {
+            let suoi = appuntamenti.filter { $0.clienteId == c.id }
+            guard !suoi.contains(where: { $0.inizio >= oggiInizio && $0.stato == .pianificato }) else { continue }
+            let passati = suoi.filter { $0.inizio < oggi }.map(\.inizio) + incontri.filter { $0.clienteId == c.id && $0.data < oggi }.map(\.data)
+            let ultimo = passati.max()
+            guard ultimo.map({ $0 < limite }) ?? true else { continue }
+            let mesiFa = ultimo.flatMap { cal.dateComponents([.month], from: $0, to: oggi).month }
+            let sue = perCliente[c.id] ?? []
+            let scade = sue.filter { p in p.stato == .inEssere && (p.scadenza.map { $0 >= oggiInizio && $0 < fine } ?? false) }
+            let aperte = sue.filter { $0.stato == .proposta && $0.esito != .accettata && $0.esito != .rifiutata }
+            let motivo = scade.first.map { "\($0.nome) scade il \(Formati.dataEstesa.string(from: $0.scadenza ?? oggi))" }
+                ?? aperte.first.map { "proposta aperta: \($0.nome)" }
+            richiamare.append(Portafoglio.DaRicontattare(cliente: c, ultimoContatto: ultimo, mesi: mesiFa, motivo: motivo))
+        }
+        // Prima chi ha un motivo, poi chi manca da più tempo
+        richiamare.sort { a, b in
+            if (a.motivo != nil) != (b.motivo != nil) { return a.motivo != nil }
+            return (a.ultimoContatto ?? .distantPast) < (b.ultimoContatto ?? .distantPast)
+        }
+
+        return Portafoglio(riepilogo: r, clienti: voci, scadenze: mesi, emittenti: emittenti, attivitaFinanziarie: finanziarie, esiti: esiti,
+                           daRicontattare: richiamare)
     }
 }

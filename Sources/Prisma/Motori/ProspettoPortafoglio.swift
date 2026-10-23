@@ -6,7 +6,7 @@ extension CompositoreProspetti {
     static let titoloPortafoglio = "Il tuo portafoglio"
 
     static func portafoglio(_ dati: DatiPrisma, data: Date = Date()) -> ContenutoProspetto {
-        let p = MotorePortafoglio.calcola(dati.posizioni, clienti: dati.clienti, oggi: data)
+        let p = MotorePortafoglio.calcola(dati.posizioni, clienti: dati.clienti, appuntamenti: dati.appuntamenti, incontri: dati.incontri, oggi: data)
         let r = p.riepilogo
         func euro(_ v: Double) -> String { Formati.euro(v) }
         func quota(_ q: Double) -> String { Formati.percentuale((q * 100).rounded()) }
@@ -81,11 +81,23 @@ extension CompositoreProspetti {
                 [.f(e.nome), e.canale.map { CellaProspetto.c($0) } ?? .n("entrambi"), .t("\(e.posizioni)"), .t(euro(e.valore)), .t(quota(e.quota))]
             })))
 
+        sezione("Da ricontattare")
+        if p.daRicontattare.isEmpty {
+            b.append(.testo("Tutti i clienti hanno un contatto negli ultimi \(Portafoglio.mesiSenzaContatto) mesi o un appuntamento in agenda."))
+        } else {
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Cliente", peso: 1.6), ColonnaProspetto(titolo: "Ultimo contatto", peso: 1.1),
+                          ColonnaProspetto(titolo: "Motivo per chiamare", peso: 3)],
+                righe: p.daRicontattare.map { r in
+                    [.f(r.cliente.nome), .t(r.ultimoContatto.map { Formati.dataBreve.string(from: $0) } ?? "mai"), r.motivo.map { .t($0) } ?? .n("contatto periodico")]
+                })))
+        }
+
         sezione("Proposte per esito")
         b.append(.voci(EsitoProposta.allCases.map { CampoVoce(etichetta: $0.nome, valore: "\(p.esiti[$0] ?? 0)") }
                        + [CampoVoce(etichetta: "Tasso di accettazione", valore: p.tassoAccettazione.map { "\(quota($0)) delle proposte decise" } ?? "nessuna proposta decisa")]))
 
-        b.append(.nota("Metodo: valori delle posizioni in essere come registrati in Posizioni (controvalore o, se manca, versato). Le quote per canale e per cliente sono sulle attività in essere, debiti esclusi; la concentrazione per emittente esclude anche gli immobili. Le scadenze comprendono le posizioni in essere che scadono entro \(Portafoglio.mesiScadenze) mesi: il valore è quello di oggi, prima delle imposte. Il tasso di accettazione conta solo le proposte già decise (accettate o rifiutate). Documento ad uso del consulente, non da consegnare ai clienti."))
+        b.append(.nota("Metodo: valori delle posizioni in essere come registrati in Posizioni (controvalore o, se manca, versato). Le quote per canale e per cliente sono sulle attività in essere, debiti esclusi; la concentrazione per emittente esclude anche gli immobili. Le scadenze comprendono le posizioni in essere che scadono entro \(Portafoglio.mesiScadenze) mesi: il valore è quello di oggi, prima delle imposte. Il tasso di accettazione conta solo le proposte già decise (accettate o rifiutate). Da ricontattare: clienti con posizioni, senza incontri o appuntamenti negli ultimi \(Portafoglio.mesiSenzaContatto) mesi e senza appuntamenti in agenda. Documento ad uso del consulente, non da consegnare ai clienti."))
 
         return ContenutoProspetto(occhiello: "Prospetto di dettaglio · Portafoglio del consulente", titolo: titoloPortafoglio,
                                   sottotitolo: "Tutti i clienti · \(dati.impostazioni.nomeUtente) · situazione al \(Formati.dataEstesa.string(from: data))",

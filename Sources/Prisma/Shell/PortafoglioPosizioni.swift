@@ -4,7 +4,7 @@ import SwiftUI
 /// cosa scade mese per mese, quanto dipendi da un emittente e come vanno le proposte.
 extension AppPosizioni {
     func portafoglio(_ posizioni: [Posizione]) -> some View {
-        let p = MotorePortafoglio.calcola(posizioni, clienti: stato.clienti)
+        let p = MotorePortafoglio.calcola(posizioni, clienti: stato.clienti, appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
         let r = p.riepilogo
         return ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -50,6 +50,10 @@ extension AppPosizioni {
                     VStack(alignment: .leading, spacing: 18) {
                         PannelloAnalisi(titolo: "Concentrazione per emittente", nota: "Quota delle attività finanziarie in essere (immobili esclusi)") { EmptyView() } contenuto: {
                             emittenti(p.emittenti)
+                        }
+                        PannelloAnalisi(titolo: "Da ricontattare",
+                                        nota: "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda") { EmptyView() } contenuto: {
+                            ricontattare(p.daRicontattare)
                         }
                         PannelloAnalisi(titolo: "Proposte", nota: "Per esito") { EmptyView() } contenuto: {
                             esiti(p)
@@ -180,6 +184,35 @@ extension AppPosizioni {
                     }
                     BarraQuotaPortafoglio(quota: e.quota, colore: Colori.Analisi.canale(e.canale))
                 }
+            }
+        }
+    }
+
+    private func ricontattare(_ elenco: [Portafoglio.DaRicontattare]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if elenco.isEmpty {
+                Text("Tutti i clienti hanno un contatto recente o un appuntamento in agenda.")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+            }
+            ForEach(elenco) { r in
+                Button { stato.apriCliente(r.cliente.id) } label: {
+                    HStack(spacing: 8) {
+                        AvatarCliente(iniziali: r.cliente.iniziali, tinta: r.cliente.tinta.colori, lato: Misure.Portafoglio.avatar)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(r.cliente.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
+                            Text(r.motivo ?? (r.ultimoContatto == nil ? "mai incontrato in Prisma" : "ultimo contatto \(r.mesi ?? 0) mesi fa"))
+                                .font(Tipo.chip).foregroundColor(r.motivo != nil ? Colori.Analisi.attenzioneTesto : Colori.Analisi.kpiNota)
+                        }
+                        .lineLimit(1)
+                        Spacer()
+                        Text(r.ultimoContatto.map { Formati.dataBreve.string(from: $0) } ?? "—")
+                            .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
+                    }
+                    .padding(.vertical, 5)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(StileSemplice())
+                .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
     }
