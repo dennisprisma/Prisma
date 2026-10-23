@@ -55,6 +55,12 @@ struct ShellView: View {
                     .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
                     .clipped()
 
+                if stato.pannelloSpazi {
+                    PannelloSpazi()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(.opacity)
+                }
+
                 BarraSuperiore()
 
                 if let testo = stato.avviso {

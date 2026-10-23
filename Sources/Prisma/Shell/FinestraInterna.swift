@@ -12,8 +12,12 @@ struct FinestraInterna: View {
     var body: some View {
         VStack(spacing: 0) {
             barraTitolo
+            // In una finestra più piccola del suo contenuto l'app parte dall'angolo in alto a sinistra
+            // e si taglia in basso e a destra:
+            // la barra del titolo resta sempre al suo posto
             ContenutoApp(app: finestra.app)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+                .clipped()
                 .background(Colori.Finestra.contenuto)
         }
         .background(Colori.Finestra.sfondo)
@@ -43,7 +47,7 @@ struct FinestraInterna: View {
                 Spacer()
                 HStack(spacing: 13) {
                     Button {
-                        stato.mostraAvviso("Affiancare due app arriva nella prossima fase.")
+                        stato.affianca(finestra.app)
                     } label: {
                         Text("◫")
                             .font(Tipo.finestraAffianca)
@@ -55,7 +59,7 @@ struct FinestraInterna: View {
                             .overlay(RoundedRectangle(cornerRadius: Misure.Finestra.raggioAffianca).strokeBorder(Colori.Finestra.affiancaBordo, lineWidth: 1))
                     }
                     .buttonStyle(StileSemplice())
-                    .help("Affianca un'altra app")
+                    .help("Affianca questa app, a sinistra, a quella sotto")
                     if let c = stato.clienteAttivo {
                         Text(c.nome)
                             .font(Tipo.finestraContesto)

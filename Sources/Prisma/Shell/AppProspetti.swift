@@ -512,17 +512,22 @@ struct AppProspetti: View {
             if scelta.spuntoEve != nil {
                 Button("✦ Chiedi a Eve") { stato.chiediEveDelDocumento(scelta) }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .fixedSize()
                     .disabled(stato.eveInCorso)
                     .help("Eve spiega le cifre di questo documento, per te")
             }
+            // I pulsanti non vanno a capo: in una finestra stretta si accorcia il titolo
             Button("Stampa…") { if let dati = pdf(d) { StampaCarta.stampa(dati, formato: d.formato) } }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .fixedSize()
             Button("Archivia nei Documenti") {
                 if let dati = pdf(d) { archiviato = stato.archiviaProspetto(dati, documento: d) }
             }
             .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            .fixedSize()
             Button("Salva PDF…") { if let dati = pdf(d) { StampaCarta.salva(dati, nome: StampaCarta.nomeFile(d)) } }
                 .buttonStyle(StileBlu())
+                .fixedSize()
         }
         .padding(EdgeInsets(top: 9, leading: 14, bottom: 9, trailing: 14))
         .background(Gradienti.kpi)

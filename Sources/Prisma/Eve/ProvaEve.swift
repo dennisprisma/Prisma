@@ -234,6 +234,59 @@ enum ProvaEve {
         ricerca.cercaOvunque()
         controlla(ricerca.appAttiva == .ricerca && ricerca.richiestaFuocoRicerca == 1, "⌘K apre la Ricerca con il cursore nel campo")
 
+        // Spazi di lavoro: le app al loro posto, affiancate senza sovrapporsi, salvate nell'archivio
+        let spazi = StatoShell(persistente: false)
+        // Come una finestra di Prisma da 1440×900: dalla scrivania (dock visibile) le finestre aperte
+        // nascondono il dock e l'area cresce, come fa la vista
+        let conDock = CGRect(x: 8, y: 33, width: 1424, height: 786)
+        let senzaDock = CGRect(x: 8, y: 33, width: 1424, height: 858)
+        func apriSpazio(_ s: SpazioLavoro) {
+            spazi.area = spazi.finestreVisibili.isEmpty ? conDock : senzaDock
+            spazi.apriSpazio(s)
+            spazi.area = senzaDock
+        }
+        func sovrapposte(_ s: StatoShell) -> Bool {
+            let c = s.finestreVisibili.map { s.cornice(di: $0) }
+            return c.indices.contains { i in c.indices.contains { j in i < j && c[i].insetBy(dx: 1, dy: 1).intersects(c[j]) } }
+        }
+        func dentro(_ s: StatoShell) -> Bool {
+            s.finestreVisibili.allSatisfy { CGRect(origin: .zero, size: s.area.size).contains(s.cornice(di: $0)) }
+        }
+        if let incontro = SpazioLavoro.predefiniti.first {
+            apriSpazio(incontro)
+            controlla(spazi.finestreVisibili.map(\.app) == [.eve, .clienti], "Spazio «\(incontro.nome)»: Eve e Clienti in primo piano")
+            controlla(!sovrapposte(spazi) && dentro(spazi), "Spazio «\(incontro.nome)»: finestre affiancate, dentro lo schermo")
+            controlla(spazi.finestreVisibili.allSatisfy { spazi.cornice(di: $0).width >= Misure.Finestra.minima.width && spazi.cornice(di: $0).height >= Misure.Finestra.minima.height },
+                      "Spazio «\(incontro.nome)»: nessuna finestra sotto la misura minima")
+        }
+        for p in SpazioLavoro.predefiniti {
+            apriSpazio(p)
+            if sovrapposte(spazi) || !dentro(spazi) { controlla(false, "Spazio pronto «\(p.nome)» disposto bene") }
+        }
+        let prima = spazi.finestreVisibili.map { spazi.cornice(di: $0) }
+        let salvato = spazi.salvaSpazio(nome: "  Revisione annuale ")
+        controlla(salvato?.nome == "Revisione annuale" && spazi.dati.spazi.count == 1, "Spazio salvato con il suo nome")
+        controlla(spazi.salvaSpazio(nome: "   ") == nil, "Uno spazio senza nome non si salva")
+        if let salvato {
+            spazi.mostraScrivania()
+            apriSpazio(salvato)
+            let dopo = spazi.finestreVisibili.map { spazi.cornice(di: $0) }
+            controlla(dopo.count == prima.count && zip(prima, dopo).allSatisfy { abs($0.minX - $1.minX) < 1 && abs($0.width - $1.width) < 1 && abs($0.height - $1.height) < 1 },
+                      "Lo spazio salvato si riapre com'era")
+            let riletto = try? Archivio.decodifica(Archivio.codificatore.encode(spazi.dati))
+            controlla(riletto?.spazi == spazi.dati.spazi && riletto?.spazi.first?.predefinito == false, "Gli spazi salvati restano nell'archivio")
+            spazi.eliminaSpazio(salvato.id)
+            controlla(spazi.dati.spazi.isEmpty, "Spazio eliminato")
+        }
+        spazi.mostraScrivania()
+        spazi.apri(.agenda)
+        spazi.apri(.eve)
+        spazi.affianca(.eve)
+        if let eve = spazi.finestreVisibili.first(where: { $0.app == .eve }), let agenda = spazi.finestreVisibili.first(where: { $0.app == .agenda }) {
+            controlla(spazi.cornice(di: eve).maxX <= spazi.cornice(di: agenda).minX + 1 && spazi.appAttiva == .eve && !sovrapposte(spazi),
+                      "◫ affianca Eve (a sinistra) e Agenda (a destra)")
+        }
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")

@@ -56,7 +56,7 @@ struct Scrivania: View {
     private var pulsantiRapidi: some View {
         HStack(spacing: Misure.Scrivania.spazioPulsanti) {
             Button {
-                stato.mostraAvviso("Gli spazi di lavoro arrivano nella prossima fase.")
+                stato.pannelloSpazi = true
             } label: {
                 Label("Spazi di lavoro", systemImage: "rectangle.split.2x1")
             }
