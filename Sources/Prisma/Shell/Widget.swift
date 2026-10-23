@@ -199,11 +199,22 @@ struct WidgetCliente: View {
     @State var sceltaCliente = false
 
     var body: some View {
+        // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri:
+        // prima toglie la nota e la barra dei canali, poi la seconda riga di numeri.
+        ViewThatFits(in: .vertical) {
+            contenuto(dettaglio: 2)
+            contenuto(dettaglio: 1)
+            contenuto(dettaglio: 0)
+        }
+        .corniceWidget(fondoPelle, bordo: Colori.Colonna.pelleBordo)
+    }
+
+    private func contenuto(dettaglio: Int) -> some View {
         let id = stato.clienteAttivoId
         let r = RiepilogoPosizioni(stato.posizioniCliente(id))
         let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == id }
         let aperte = stato.attivitaAperte.filter { $0.clienteId == id }.count
-        VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: dettaglio == 0 ? 10 : 14) {
             HStack(spacing: 14) {
                 if let c = stato.clienteAttivo {
                     AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: Misure.Widget.avatarCliente)
@@ -246,12 +257,14 @@ struct WidgetCliente: View {
                     dato("Prossimo incontro", prossimo.map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—")
                     dato("Da fare", "\(aperte) attività")
                 }
-                HStack(alignment: .top, spacing: 0) {
-                    dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
-                    dato("Premi annui", Formati.euro(r.premiAnnui))
-                    dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
+                if dettaglio >= 1 {
+                    HStack(alignment: .top, spacing: 0) {
+                        dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
+                        dato("Premi annui", Formati.euro(r.premiAnnui))
+                        dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
+                    }
                 }
-                if r.attivita > 0 {
+                if dettaglio >= 2, r.attivita > 0 {
                     VStack(alignment: .leading, spacing: 5) {
                         BarraCanali(quotaAlleanza: r.quota(.alleanza))
                         HStack {
@@ -263,7 +276,7 @@ struct WidgetCliente: View {
                         .foregroundColor(Colori.Widget.cartoncinoEtichetta)
                     }
                 }
-                if let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
+                if dettaglio >= 2, let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
                     Text(nota)
                         .font(Tipo.widgetTesto)
                         .foregroundColor(Colori.Widget.cartoncinoTesto)
@@ -289,8 +302,7 @@ struct WidgetCliente: View {
             }
             .buttonStyle(StileCuoioChiaro())
         }
-        .padding(EdgeInsets(top: 20, leading: 22, bottom: 18, trailing: 22))
-        .corniceWidget(fondoPelle, bordo: Colori.Colonna.pelleBordo)
+        .padding(dettaglio == 0 ? EdgeInsets(top: 14, leading: 22, bottom: 14, trailing: 22) : EdgeInsets(top: 20, leading: 22, bottom: 18, trailing: 22))
     }
 
     /// Pelle con la cucitura impunturata lungo il bordo.
