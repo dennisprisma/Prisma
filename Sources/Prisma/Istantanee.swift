@@ -253,8 +253,8 @@ enum Istantanee {
         for scena in scene {
             let stato = StatoShell(persistente: false)
             let misura = scena.nome.hasSuffix("-schermo-basso") ? dimensioneBassa : dimensione
-            stato.area = ShellView.area(per: misura)
             scena.prepara(stato)
+            stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
             let vista = ShellView()
                 .environmentObject(stato)
                 .environment(\.modoIstantanea, true)

@@ -173,6 +173,11 @@ enum Misure {
         static let ingrandimento: CGFloat = 1.13
         /// Area riservata al dock sotto le finestre (--os-bottom).
         static let riservato: CGFloat = 76
+        /// Con il dock nascosto (finestre aperte): il margine che resta in basso e la striscia che lo richiama.
+        static let riservatoNascosto: CGFloat = 4
+        static let strisciaRichiamo: CGFloat = 6
+        /// Quanto scende il dock per nascondersi.
+        static let corsaNascosto: CGFloat = 100
     }
 
     enum Finestra {
