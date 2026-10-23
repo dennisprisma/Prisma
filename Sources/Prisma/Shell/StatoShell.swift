@@ -86,6 +86,11 @@ final class StatoShell: ObservableObject {
     @Published var filtroAreaProdotti: AreaPosizione?
     @Published var obiettivoSelezionato: String?
 
+    // Ricerca (⌘K)
+    @Published var testoRicerca = ""
+    /// Cresce a ogni ⌘K: la Ricerca rimette il cursore nel campo.
+    @Published var richiestaFuocoRicerca = 0
+
     // Documenti
     @Published var documentoSelezionato: String?
     @Published var documentiInLettura: Set<String> = []

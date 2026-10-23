@@ -40,6 +40,9 @@ struct PrismaApp: App {
         .defaultSize(width: 1440, height: 900)
         .commands {
             CommandMenu("Vai") {
+                Button("Cerca ovunque") { stato.cercaOvunque() }
+                    .keyboardShortcut("k", modifiers: .command)
+                Divider()
                 Button("Scrivania") { stato.mostraScrivania() }
                     .keyboardShortcut("0", modifiers: .option)
                 Divider()

@@ -86,7 +86,7 @@ struct BarraSuperiore: View {
     private var comandiDestra: some View {
         HStack(spacing: Misure.Barra.spazioDestra) {
             Button {
-                stato.mostraAvviso("La ricerca in tutto Prisma arriva nella prossima fase.")
+                stato.cercaOvunque()
             } label: {
                 HStack(spacing: Misure.Barra.spazioCerca) {
                     Text("Cerca").font(Tipo.barraOra).foregroundColor(Colori.Barra.testoSecondario)

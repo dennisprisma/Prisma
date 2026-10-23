@@ -61,7 +61,7 @@ struct Scrivania: View {
                 Label("Spazi di lavoro", systemImage: "rectangle.split.2x1")
             }
             Button {
-                stato.mostraAvviso("La ricerca in tutto Prisma arriva nella prossima fase.")
+                stato.cercaOvunque()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")

@@ -199,6 +199,39 @@ enum ProvaEve {
         stato.chiediEve(SpuntoEve.prossimiPassi.domanda, spunto: .prossimiPassi)
         controlla(stato.conversazione("marco").count == primaChat + 2, "Conversazione: domanda e risposta salvate")
 
+        // «Cerca ovunque»: maiuscole e accenti non contano, ogni parola deve esserci
+        let ricerca = StatoShell(persistente: false)
+        func primi(_ testo: String, _ g: GruppoRicerca) -> [RisultatoRicerca] {
+            MotoreRicerca.cerca(testo, in: ricerca).first { $0.gruppo == g }?.risultati ?? []
+        }
+        controlla(MotoreRicerca.cerca("   ", in: ricerca).isEmpty, "Ricerca vuota: nessun risultato")
+        controlla(primi("GIULIA rossi", .clienti).first?.destinazione == .cliente("giulia"), "Ricerca: «GIULIA rossi» trova Giulia Rossi")
+        controlla(primi("giulia bianchi", .clienti).isEmpty, "Ricerca: tutte le parole devono esserci")
+        controlla(primi("attivita", .app).contains { $0.destinazione == .app(.attivita) }, "Ricerca: «attivita» trova l'app Attività (senza accento)")
+        if let p = ricerca.dati.posizioni.first(where: { !$0.numeroContratto.isEmpty }) {
+            let r = primi(p.numeroContratto, .posizioni).first { $0.destinazione == .posizione(p.id) }
+            controlla(r != nil && r?.canale == p.canale, "Ricerca: il numero di contratto trova «\(p.nome)», con il canale")
+        }
+        if let d = ricerca.documento("doc-marco-polizza"), let parola = ricerca.testoDocumento(d).first?
+            .split(whereSeparator: { !$0.isLetter }).map(String.init)
+            .first(where: { parola in parola.count >= 8 && !MotoreRicerca.contiene(d.titolo, parola) && !d.campi.contains { MotoreRicerca.contiene($0.valore, parola) } }) {
+            let r = primi(parola, .documenti).first { $0.destinazione == .documento(d.id) }
+            controlla(r?.estratto?.hasPrefix("pag.") == true, "Ricerca nel testo della polizza di Marco («\(parola)»), con la riga trovata")
+            ricerca.clienteAttivoId = "giulia"
+            ricerca.vai(a: .documento(d.id))
+            controlla(ricerca.clienteAttivoId == d.clienteId && ricerca.documentoSelezionato == d.id && ricerca.appAttiva == .documenti,
+                      "Ricerca: il documento si apre in Documenti, sul suo cliente")
+        } else {
+            controlla(false, "La polizza di prova di Marco ha del testo")
+        }
+        if let a = ricerca.attivita.first(where: { $0.completata }) {
+            ricerca.filtroStatoAttivita = .aperte
+            ricerca.vai(a: .attivita(a.id))
+            controlla(ricerca.attivitaSelezionata == a.id && ricerca.filtroStatoAttivita != .aperte, "Ricerca: un'attività completata resta visibile quando si apre")
+        }
+        ricerca.cercaOvunque()
+        controlla(ricerca.appAttiva == .ricerca && ricerca.richiestaFuocoRicerca == 1, "⌘K apre la Ricerca con il cursore nel campo")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")
