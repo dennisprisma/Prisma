@@ -250,7 +250,9 @@ struct Appuntamento: Identifiable, Codable, Hashable {
             let adesso = Date()
             let minuti = cal.component(.minute, from: adesso)
             let prossima = cal.date(byAdding: .minute, value: minuti < 30 ? 30 - minuti : 60 - minuti, to: adesso) ?? adesso
-            inizio = max(inizio, alMinuto(prossima))
+            // Dopo le 23:30 non si scivola al giorno dopo
+            let ultimo = cal.date(bySettingHour: 23, minute: 30, second: 0, of: giorno) ?? giorno
+            inizio = min(max(inizio, alMinuto(prossima)), ultimo)
         }
         return Appuntamento(id: "event-\(UUID().uuidString.prefix(8).lowercased())", clienteId: clienteId, titolo: "",
                             inizio: inizio, durataMinuti: 45, luogo: "In studio", note: "", stato: .pianificato)

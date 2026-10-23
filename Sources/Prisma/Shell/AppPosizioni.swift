@@ -11,6 +11,8 @@ struct AppPosizioni: View {
     @State var area: AreaPosizione?
     @State var sceltaCliente = false
     @State var modulo: Posizione?
+    /// L'appuntamento da fissare per un cliente da ricontattare (dal Portafoglio).
+    @State var moduloAppuntamento: Appuntamento?
 
     static let opzioniCanale: [(Canale?, String)] = [(nil, "Tutti"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")]
 
@@ -65,6 +67,13 @@ struct AppPosizioni: View {
         .overlay(Rectangle().strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
         .sheet(item: $modulo) { p in
             ModuloPosizione(bozza: p, nuova: !stato.posizioni.contains { $0.id == p.id }) { stato.salvaPosizione($0) }
+        }
+        .sheet(item: $moduloAppuntamento) { a in
+            ModuloAppuntamento(bozza: a, nuovo: true, salva: { nuovo in
+                stato.salvaAppuntamento(nuovo)
+                stato.mostraAvviso("Appuntamento fissato con \(stato.cliente(nuovo.clienteId)?.nome ?? "il cliente"): \(Formati.dataOra.string(from: nuovo.inizio)).")
+            }, elimina: {})
+            .environmentObject(stato)
         }
         .onAppear { controllaRichiesta(stato.richiestaNuovaPosizione) }
         .onChange(of: stato.richiestaNuovaPosizione) { controllaRichiesta($0) }

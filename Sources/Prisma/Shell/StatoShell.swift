@@ -487,6 +487,9 @@ final class StatoShell: ObservableObject {
 
     /// Dopo un cliente eliminato o un archivio ripristinato, filtro e selezione delle note ripartono.
     private func azzeraNote() {
+        // Anche agenda e attività: un filtro su un cliente che non c'è più mostrerebbe pagine vuote
+        if let f = filtroClienteAgenda, cliente(f) == nil { filtroClienteAgenda = nil }
+        if let f = filtroClienteAttivita, cliente(f) == nil { filtroClienteAttivita = nil }
         if let f = filtroClienteNote, cliente(f) == nil { filtroClienteNote = nil }
         if nota(notaSelezionata) == nil { notaSelezionata = nil }
         bozzaNota = nil
@@ -650,8 +653,16 @@ final class StatoShell: ObservableObject {
     /// Copia i file nella cartella Documenti del cliente e li legge.
     func importaDocumenti(_ urls: [URL]) {
         guard persistente else { return }
-        let fm = FileManager.default
+        guard !solaLettura else {
+            mostraAvviso("Archivio in sola lettura: aggiorna Prisma per importare documenti.")
+            return
+        }
         let cliente = clienteAttivoId
+        guard self.cliente(cliente) != nil else {
+            mostraAvviso("Scegli prima un cliente: ogni documento va nella sua cartella.")
+            return
+        }
+        let fm = FileManager.default
         let cartella = Archivio.cartellaDocumenti.appendingPathComponent(cliente, isDirectory: true)
         try? fm.createDirectory(at: cartella, withIntermediateDirectories: true)
         var ultimo: String?
@@ -675,11 +686,14 @@ final class StatoShell: ObservableObject {
         if let ultimo { documentoSelezionato = ultimo }
     }
 
+    private static let codaLettura = DispatchQueue(label: "prisma.lettura-documenti", qos: .userInitiated)
+
     /// Legge il testo (PDFKit, poi Vision per le scansioni) e cerca i dati; il modello Apple completa.
     func leggiDocumento(_ id: String) {
-        guard let d = documento(id), let url = urlDocumento(d), let testo = urlTesto(d) else { return }
+        guard !solaLettura, let d = documento(id), let url = urlDocumento(d), let testo = urlTesto(d) else { return }
         documentiInLettura.insert(id)
-        DispatchQueue.global(qos: .userInitiated).async {
+        // Un documento alla volta: tante scansioni insieme pesano sulla memoria di un Mac da 8 GB
+        Self.codaLettura.async {
             let esito = LetturaDocumenti.leggi(url)
             DispatchQueue.main.async {
                 // Il documento può essere stato eliminato durante la lettura: niente testo orfano
@@ -703,7 +717,8 @@ final class StatoShell: ObservableObject {
                     x.pagineOCR = esito.pagineOCR
                     x.lettura = esito.pagine.joined().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .illeggibile : .letto
                     if x.tipo == .altro { x.tipo = EstrattoreDocumento.tipoProbabile(esito.pagine) }
-                    x.campi = campi
+                    // Rileggendo, i dati già confermati (e corretti a mano) restano
+                    x.campi = EstrattoreDocumento.unisci(x.campi.filter(\.confermato), campi)
                 }
                 self.completaConModello(id, pagine: esito.pagine, trovati: campi)
             }
@@ -725,8 +740,8 @@ final class StatoShell: ObservableObject {
                     modello += EstrattoreDocumento.daRisposta(r, pagina: n + 1)
                 }
             }
-            let uniti = EstrattoreDocumento.unisci(trovati, modello)
-            self.aggiornaDocumento(id) { $0.campi = uniti }
+            // Contro lo stato di adesso: conferme e correzioni fatte durante la lettura restano
+            self.aggiornaDocumento(id) { $0.campi = EstrattoreDocumento.unisci($0.campi, modello) }
             self.documentiInLettura.remove(id)
         }
     }
@@ -751,7 +766,8 @@ final class StatoShell: ObservableObject {
     }
 
     private func rimuoviFile(_ d: Documento) {
-        guard persistente else { return }
+        // In sola lettura (archivio di una versione più nuova) i file restano: l'archivio vero li usa ancora
+        guard persistente, !solaLettura else { return }
         if let u = urlDocumento(d) { try? FileManager.default.removeItem(at: u) }
         if let t = urlTesto(d) { try? FileManager.default.removeItem(at: t) }
     }
@@ -1678,6 +1694,23 @@ final class StatoShell: ObservableObject {
         apri(.agenda)
     }
 
+    /// La bozza dell'appuntamento per richiamare un cliente: una telefonata il prossimo giorno
+    /// lavorativo, con il motivo e l'ultimo contatto nelle note. Si completa nel modulo dell'agenda.
+    func bozzaRicontatto(_ d: Portafoglio.DaRicontattare, oggi: Date = Date()) -> Appuntamento {
+        let cal = Calendar.current
+        var giorno = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: oggi)) ?? oggi
+        while cal.isDateInWeekend(giorno) { giorno = cal.date(byAdding: .day, value: 1, to: giorno) ?? giorno }
+        var a = Appuntamento.nuovo(clienteId: d.cliente.id, giorno: giorno)
+        a.titolo = d.motivo.map { "Ci risentiamo: \($0)" } ?? "Ci risentiamo"
+        a.tipo = .telefonata
+        a.luogo = "Telefonata"
+        a.durataMinuti = 20
+        a.note = [d.motivo.map { "Motivo: \($0)." },
+                  d.ultimoContatto.map { "Ultimo contatto il \(Formati.dataEstesa.string(from: $0))." } ?? "Nessun incontro registrato in Prisma."]
+            .compactMap { $0 }.joined(separator: " ")
+        return a
+    }
+
     func salvaAppuntamento(_ a: Appuntamento) {
         var x = a
         x.titolo = x.titolo.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1874,6 +1907,8 @@ final class StatoShell: ObservableObject {
                     d.impostazioni.nomeUtente = nome.0
                     d.impostazioni.inizialiUtente = nome.1
                     self.dati = d
+                    self.testiDocumenti = [:]
+                    self.documentoSelezionato = nil
                     self.azzeraNote()
                     self.solaLettura = false
                     self.salvataggioSospeso = false

@@ -91,7 +91,7 @@ struct Documento: Identifiable, Codable, Hashable {
 
     /// Valore confermato di un campo (i dati non confermati non entrano nel dossier).
     func confermato(_ chiave: CampoDocumento) -> String? {
-        campi.first { $0.chiave == chiave && $0.confermato }?.valore
+        campi.first { $0.chiave == chiave && $0.confermato && !$0.valore.trimmingCharacters(in: .whitespaces).isEmpty }?.valore
     }
 }
 

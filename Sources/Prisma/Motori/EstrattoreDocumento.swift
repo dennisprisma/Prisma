@@ -139,6 +139,9 @@ enum EstrattoreDocumento {
                 valore = valore.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "€", with: "")
                     .replacingOccurrences(of: "EUR", with: "").trimmingCharacters(in: .whitespaces)
                 guard numero(valore) != nil else { return nil }
+            case .decorrenza, .scadenza:
+                // Una data che non esiste non entra nella tabella (e poi nel dossier)
+                guard data(valore) != nil else { return nil }
             default:
                 break
             }
@@ -164,6 +167,10 @@ enum EstrattoreDocumento {
         if !compatto.contains(","), let r = compatto.range(of: #"^-?\d+\.\d{1,2}$"#, options: .regularExpression), r == compatto.startIndex..<compatto.endIndex {
             return Double(compatto).flatMap { $0.isFinite ? $0 : nil }
         }
+        // Con punto e virgola insieme, l'ultimo dei due separa i decimali: "1.250,50" ma anche "1,250.50"
+        if let p = compatto.lastIndex(of: "."), let v = compatto.lastIndex(of: ","), p > v {
+            return Double(compatto.replacingOccurrences(of: ",", with: "")).flatMap { $0.isFinite ? $0 : nil }
+        }
         let pulito = s.replacingOccurrences(of: "€", with: "").replacingOccurrences(of: "%", with: "")
             .replacingOccurrences(of: " ", with: "").replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
         // "nan", "inf", "1e999" non sono cifre di un documento
@@ -176,11 +183,22 @@ enum EstrattoreDocumento {
         let parole = s.lowercased().replacingOccurrences(of: "°", with: "").split(separator: " ").map(String.init)
         if parole.count == 3, let g = Int(parole[0]), let a = Int(parole[2]),
            let m = mesi.components(separatedBy: "|").firstIndex(of: parole[1]) {
-            return Calendar(identifier: .gregorian).date(from: DateComponents(year: a, month: m + 1, day: g))
+            return dataValida(anno: a, mese: m + 1, giorno: g)
         }
         let parti = s.split(whereSeparator: { "/.-".contains($0) }).compactMap { Int($0) }
         guard parti.count == 3 else { return nil }
-        return Calendar(identifier: .gregorian).date(from: DateComponents(year: parti[2], month: parti[1], day: parti[0]))
+        // "2025-12-01" (anno prima) oppure "01/12/2025"
+        if parti[0] > 31 { return dataValida(anno: parti[0], mese: parti[1], giorno: parti[2]) }
+        return dataValida(anno: parti[2], mese: parti[1], giorno: parti[0])
+    }
+
+    /// Solo date vere: "31/06" non diventa il primo luglio, l'anno resta in un intervallo sensato.
+    private static func dataValida(anno: Int, mese: Int, giorno: Int) -> Date? {
+        guard (1900...2200).contains(anno), (1...12).contains(mese), (1...31).contains(giorno) else { return nil }
+        let cal = Calendar(identifier: .gregorian)
+        guard let d = cal.date(from: DateComponents(year: anno, month: mese, day: giorno)),
+              cal.component(.day, from: d) == giorno, cal.component(.month, from: d) == mese else { return nil }
+        return d
     }
 
     /// Tipo di documento suggerito dal testo.
