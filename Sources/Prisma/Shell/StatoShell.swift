@@ -108,7 +108,9 @@ final class StatoShell: ObservableObject {
     @Published private(set) var backupInCorso = false
 
     /// Area disponibile per le finestre (sotto la barra, sopra il dock), aggiornata dalla vista.
-    var area: CGRect = CGRect(x: 0, y: 0, width: 1200, height: 700)
+    /// Area delle finestre interne (sotto la barra, sopra il dock). Pubblicata: quando cambia la
+    /// dimensione della finestra di Prisma le finestre interne si ridisegnano subito, senza finire sotto il dock.
+    @Published var area: CGRect = CGRect(x: 0, y: 0, width: 1200, height: 700)
 
     /// false nelle istantanee: niente disco, niente animazioni.
     let persistente: Bool

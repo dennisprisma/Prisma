@@ -130,6 +130,6 @@ enum MotoreLiquidita {
 
         return EsitoLiquidita(scadenze: scadenze, liquidita: liquidita, riservaNecessaria: riserva, mesiRiserva: analisi.mesiRiserva,
                               fabbisognoMensile: analisi.fabbisognoMensile, salvadanai: salvadanai, proposte: proposte,
-                              realeFermo: fermo, realeDestinato: destinato, erosioneAnnua: erosione, note: note)
+                              realeFermo: fermo, realeDestinato: destinato, erosioneAnnua: erosione, note: note + Semplificazioni.liquidita)
     }
 }

@@ -11,7 +11,9 @@ enum ProvaCarico {
     static let copie = 40
     // Limiti oltre i quali la prova fallisce (larghi: il server di build è più lento del Mac)
     static let limiteArchivio = 3.0
-    static let limitePerCliente = 0.5
+    /// Tempo medio per cliente, e tetto per il cliente più lento (il server ha picchi isolati).
+    static let limitePerCliente = 0.1
+    static let limiteClientePiuLento = 2.0
     static let limitePDF = 8.0
     static let limiteMemoriaMB = 1_200.0
 
@@ -49,6 +51,10 @@ enum ProvaCarico {
         stato.dati.impostazioni.eve.motore = .sintesi
         let spunti: [SpuntoEve] = [.riepilogo, .checkUp, .proposte, .pensione, .resoconto]
         var peggiore = (nome: "", tempo: 0.0)
+        // Un giro di riscaldamento: formattatori ed espressioni regolari si preparano la prima volta
+        if let primo = stato.clienti.first, let f = stato.fonteEve(primo.id) {
+            for s in spunti { _ = MotoriEve.sintesi.componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: f, storia: [])) }
+        }
         let totale = tempo {
             for c in stato.clienti {
                 let t = tempo {
@@ -61,7 +67,8 @@ enum ProvaCarico {
         }
         let medio = totale / Double(max(1, stato.clienti.count))
         print("INFO Eve e motori: \(secondi(totale)) per \(stato.clienti.count) clienti, \(secondi(medio)) in media, il più lento \(peggiore.nome) (\(secondi(peggiore.tempo)))")
-        controlla(peggiore.tempo < limitePerCliente, "Ogni cliente sotto \(secondi(limitePerCliente)) (scheda e \(spunti.count) spunti di Eve)")
+        controlla(medio < limitePerCliente, "In media sotto \(secondi(limitePerCliente)) per cliente (scheda e \(spunti.count) spunti di Eve)")
+        controlla(peggiore.tempo < limiteClientePiuLento, "Nessun cliente oltre \(secondi(limiteClientePiuLento))")
 
         // PDF di un report con tutto l'archivio caricato
         stato.clienteAttivoId = stato.clienti.first?.id ?? ""

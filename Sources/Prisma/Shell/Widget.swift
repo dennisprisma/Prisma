@@ -199,11 +199,22 @@ struct WidgetCliente: View {
     @State var sceltaCliente = false
 
     var body: some View {
+        // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri:
+        // prima toglie la nota e la barra dei canali, poi la seconda riga di numeri.
+        ViewThatFits(in: .vertical) {
+            contenuto(dettaglio: 2)
+            contenuto(dettaglio: 1)
+            contenuto(dettaglio: 0)
+        }
+        .corniceWidget(fondoPelle, bordo: Colori.Colonna.pelleBordo)
+    }
+
+    private func contenuto(dettaglio: Int) -> some View {
         let id = stato.clienteAttivoId
         let r = RiepilogoPosizioni(stato.posizioniCliente(id))
         let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == id }
         let aperte = stato.attivitaAperte.filter { $0.clienteId == id }.count
-        VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: dettaglio == 0 ? 10 : 14) {
             HStack(spacing: 14) {
                 if let c = stato.clienteAttivo {
                     AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: Misure.Widget.avatarCliente)
@@ -246,12 +257,14 @@ struct WidgetCliente: View {
                     dato("Prossimo incontro", prossimo.map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—")
                     dato("Da fare", "\(aperte) attività")
                 }
-                HStack(alignment: .top, spacing: 0) {
-                    dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
-                    dato("Premi annui", Formati.euro(r.premiAnnui))
-                    dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
+                if dettaglio >= 1 {
+                    HStack(alignment: .top, spacing: 0) {
+                        dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
+                        dato("Premi annui", Formati.euro(r.premiAnnui))
+                        dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
+                    }
                 }
-                if r.attivita > 0 {
+                if dettaglio >= 2, r.attivita > 0 {
                     VStack(alignment: .leading, spacing: 5) {
                         BarraCanali(quotaAlleanza: r.quota(.alleanza))
                         HStack {
@@ -263,7 +276,7 @@ struct WidgetCliente: View {
                         .foregroundColor(Colori.Widget.cartoncinoEtichetta)
                     }
                 }
-                if let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
+                if dettaglio >= 2, let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
                     Text(nota)
                         .font(Tipo.widgetTesto)
                         .foregroundColor(Colori.Widget.cartoncinoTesto)
@@ -289,8 +302,7 @@ struct WidgetCliente: View {
             }
             .buttonStyle(StileCuoioChiaro())
         }
-        .padding(EdgeInsets(top: 20, leading: 22, bottom: 18, trailing: 22))
-        .corniceWidget(fondoPelle, bordo: Colori.Colonna.pelleBordo)
+        .padding(dettaglio == 0 ? EdgeInsets(top: 14, leading: 22, bottom: 14, trailing: 22) : EdgeInsets(top: 20, leading: 22, bottom: 18, trailing: 22))
     }
 
     /// Pelle con la cucitura impunturata lungo il bordo.
@@ -464,9 +476,26 @@ struct WidgetPortafoglio: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        let r = RiepilogoPosizioni(stato.posizioni)
         Button { stato.apri(.posizioni) } label: {
-            VStack(alignment: .leading, spacing: 10) {
+            // Su schermi bassi la riga delle proposte lascia spazio ai canali
+            ViewThatFits(in: .vertical) {
+                contenuto(conProposte: true)
+                contenuto(conProposte: false)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay(alignment: .top) {
+                Gradienti.borsaRiflesso
+                    .frame(height: 70)
+                    .allowsHitTesting(false)
+            }
+        }
+        .buttonStyle(StileSemplice())
+        .corniceWidget(Gradienti.borsa, bordo: Colori.Widget.borsaBordo)
+    }
+
+    private func contenuto(conProposte: Bool) -> some View {
+        let r = RiepilogoPosizioni(stato.posizioni)
+        return VStack(alignment: .leading, spacing: 10) {
                 Text("PORTAFOGLIO CLIENTI")
                     .font(Tipo.chip)
                     .tracking(1)
@@ -484,27 +513,20 @@ struct WidgetPortafoglio: View {
                 Rectangle().fill(Colori.Widget.borsaFilo).frame(height: 1)
                 riga("Alleanza", Colori.Widget.borsaAlleanza, r.perCanale[.alleanza] ?? 0, r.quota(.alleanza))
                 riga("Indipendente", Colori.Widget.borsaIndipendente, r.perCanale[.indipendente] ?? 0, r.quota(.indipendente))
-                Rectangle().fill(Colori.Widget.borsaFilo).frame(height: 1)
-                HStack {
-                    Text("Proposte aperte").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
-                    Spacer()
-                    Text("\(r.proposteAperte)").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
+                if conProposte {
+                    Rectangle().fill(Colori.Widget.borsaFilo).frame(height: 1)
+                    HStack {
+                        Text("Proposte aperte").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
+                        Spacer()
+                        Text("\(r.proposteAperte)").font(Tipo.borsaRiga).foregroundColor(Colori.Widget.borsaTesto)
+                    }
+                    Text("per \(Formati.euro(r.valoreProposte)) nel primo anno")
+                        .font(Tipo.chip)
+                        .foregroundColor(Colori.Widget.borsaSecondario)
                 }
-                Text("per \(Formati.euro(r.valoreProposte)) nel primo anno")
-                    .font(Tipo.chip)
-                    .foregroundColor(Colori.Widget.borsaSecondario)
                 Spacer(minLength: 0)
             }
             .padding(Misure.Widget.margine)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .overlay(alignment: .top) {
-                Gradienti.borsaRiflesso
-                    .frame(height: 70)
-                    .allowsHitTesting(false)
-            }
-        }
-        .buttonStyle(StileSemplice())
-        .corniceWidget(Gradienti.borsa, bordo: Colori.Widget.borsaBordo)
     }
 
     private func riga(_ nome: String, _ colore: Color, _ valore: Double, _ quota: Double) -> some View {
@@ -534,7 +556,19 @@ struct WidgetEve: View {
 
     var body: some View {
         Button { stato.apri(.eve) } label: {
-            VStack(spacing: 10) {
+            // Su schermi bassi l'onda sonora lascia spazio al resto
+            ViewThatFits(in: .vertical) {
+                contenuto(conOnda: true)
+                contenuto(conOnda: false)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .buttonStyle(StileSemplice())
+        .corniceWidget(Materiale.Lino(), bordo: Colori.Colonna.eveBordo)
+    }
+
+    private func contenuto(conOnda: Bool) -> some View {
+        VStack(spacing: 10) {
                 IconaApp(app: .eve, lato: 58)
                     .shadow(color: Colori.Widget.eveAlone.opacity(0.7), radius: 14)
                     .ombraCSS(Colori.Scrivania.iconaOmbra1, y: 2, sfocatura: 2)
@@ -543,12 +577,14 @@ struct WidgetEve: View {
                     .font(Tipo.chip)
                     .tracking(1.4)
                     .foregroundColor(Colori.Colonna.eveTesto)
-                HStack(alignment: .center, spacing: 3) {
-                    ForEach(Array(Self.onda.enumerated()), id: \.offset) { _, h in
-                        Capsule().fill(Gradienti.onda).frame(width: 4, height: h)
+                if conOnda {
+                    HStack(alignment: .center, spacing: 3) {
+                        ForEach(Array(Self.onda.enumerated()), id: \.offset) { _, h in
+                            Capsule().fill(Gradienti.onda).frame(width: 4, height: h)
+                        }
                     }
+                    .frame(height: 36)
                 }
-                .frame(height: 36)
                 VStack(spacing: 3) {
                     Text("Ritrova il filo con Eve.")
                         .font(Tipo.eveTitolo)
@@ -562,9 +598,5 @@ struct WidgetEve: View {
             }
             .incisione(.black, y: -1)
             .padding(Misure.Widget.margine)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .buttonStyle(StileSemplice())
-        .corniceWidget(Materiale.Lino(), bordo: Colori.Colonna.eveBordo)
     }
 }

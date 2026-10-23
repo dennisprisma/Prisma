@@ -111,7 +111,7 @@ private struct PaginaFiscoPrevidenza: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             SezioneProspetto(titolo: "I versamenti: deducibilità e risparmio IRPEF",
-                             testo: Text(verbatim: "I contributi alla previdenza complementare si deducono dal reddito complessivo fino a \(CifreDoc.euroCentesimi(RegoleFiscali.limiteDeducibilita)) l'anno (compresi quelli del datore di lavoro, escluso il TFR). Il risparmio è il deducibile per l'aliquota IRPEF marginale" + (e.reddito.map { ": reddito lordo \(CifreDoc.euro($0)), aliquota \(CifreDoc.condizione(e.aliquotaMarginale ?? 0))." } ?? ".")))
+                             testo: Text(verbatim: "I contributi alla previdenza complementare si deducono dal reddito complessivo fino a \(CifreDoc.euroCentesimi(RegoleFiscali.limiteDeducibilita)) l'anno (compresi quelli del datore di lavoro, escluso il TFR). Il risparmio è l'IRPEF in meno sul reddito ridotto dei contributi, scaglione per scaglione" + (e.reddito.map { ": reddito lordo \(CifreDoc.euro($0)), aliquota marginale \(CifreDoc.condizione(e.aliquotaMarginale ?? 0))." } ?? ".")))
             TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Voce", peso: 3, destra: false), ColonnaDoc(titolo: "Oggi", peso: 1.2),
                                                        ColonnaDoc(titolo: "Con le proposte", peso: 1.2)],
                        righe: righeDeducibilita, fontTesta: T.pTabellaTesta, altezzaTesta: 12, margine: 4)
@@ -152,7 +152,7 @@ private struct PaginaFiscoPrevidenza: View {
                  senzaReddito ? "—" : CifreDoc.euro(e.costoNettoMensile)),
             riga("Spazio di deducibilità non usato", CifreDoc.euroCentesimi(max(0, RegoleFiscali.limiteDeducibilita - e.contributiInEssere)),
                  CifreDoc.euroCentesimi(e.spazioResiduo)),
-            riga("Risparmio in più usando tutto lo spazio", senzaReddito ? "—" : CifreDoc.euroCentesimi(max(0, RegoleFiscali.limiteDeducibilita - e.contributiInEssere) * (e.aliquotaMarginale ?? 0) / 100),
+            riga("Risparmio in più usando tutto lo spazio", senzaReddito ? "—" : CifreDoc.euroCentesimi(max(0, (e.reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: RegoleFiscali.limiteDeducibilita) } ?? 0) - e.risparmioOggi)),
                  senzaReddito ? "—" : CifreDoc.euroCentesimi(e.risparmioPossibile)),
         ]
     }

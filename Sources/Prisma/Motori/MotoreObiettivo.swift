@@ -184,6 +184,6 @@ enum MotoreObiettivo {
         return EsitoObiettivo(obiettivo: o, mesi: mesi, importoScadenza: importoScadenza, disponibileOggi: o.accantonato + collegate.reduce(0) { $0 + $1.valore },
                               contributi: contributi, accantonatoScadenza: accantonatoScadenza,
                               versamentoNecessario: versamento, unaTantum: unaTantum, rinvio: rinvio, strade: strade, scenari: scenari,
-                              serieAttuale: attuale, serieConVersamento: conVersamento, serieObiettivo: obiettivo, note: note)
+                              serieAttuale: attuale, serieConVersamento: conVersamento, serieObiettivo: obiettivo, note: note + Semplificazioni.obiettivo + Semplificazioni.comuni)
     }
 }

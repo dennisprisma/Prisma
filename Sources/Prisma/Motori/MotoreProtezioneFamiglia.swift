@@ -157,6 +157,6 @@ enum MotoreProtezioneFamiglia {
             anniSuggeriti: anniSuggeriti, tutele: tutele, coperture: coperture, proposte: proposte,
             reddito: cliente?.profilo.redditoLordoAnnuo,
             detraibili: detraibili(coperture), detraibiliConProposte: detraibili(coperture + proposte),
-            avvisi: avvisi, note: note)
+            avvisi: avvisi, note: note + Semplificazioni.protezione)
     }
 }

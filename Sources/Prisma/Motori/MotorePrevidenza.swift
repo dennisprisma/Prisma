@@ -153,6 +153,6 @@ enum MotorePrevidenza {
             anniIntegrazione: analisi.anniIntegrazione, piani: piani, versamentoMancante: mancante, rendimentoReale: analisi.rendimentoReale,
             reddito: reddito, aliquotaMarginale: reddito.map { RegoleFiscali.aliquotaMarginale(reddito: $0) },
             serieInEssere: serie(piani.filter { !$0.proposta }), serieConProposte: serie(piani),
-            scenari: scenari, note: note)
+            scenari: scenari, note: note + Semplificazioni.previdenza + Semplificazioni.comuni)
     }
 }

@@ -217,7 +217,7 @@ enum MotoreSostituzione {
             anni: anni, sostituzione: sostituzione, trasferimento: trasferimento, uscita: uscita, riscattoPrevidenza: riscatto,
             valoreOggi: valoreOggi, penaleUscita: penale, bolloUscita: bollo, impostaUscita: imposta,
             reinvestito: reinvestito, ingressoCambio: ingressoB, versamento: versamento, frequenza: frequenza,
-            serie: serie, scenari: scenari, pareggio: pareggio, note: note)
+            serie: serie, scenari: scenari, pareggio: pareggio, note: note + Semplificazioni.comuni)
     }
 
     private static func investitoCambio(_ reinvestito: Double, _ ingresso: Double) -> Double { reinvestito - ingresso }

@@ -7,21 +7,28 @@ struct ShellView: View {
 
     @EnvironmentObject var stato: StatoShell
     @Environment(\.modoIstantanea) var modoIstantanea
+    /// Il puntatore è sul dock (o sul bordo in basso) mentre è nascosto: si mostra sopra le finestre.
+    @State private var dockRichiamato = false
 
-    /// Area delle finestre interne: sotto la barra superiore, sopra il dock.
-    static func area(per dimensione: CGSize) -> CGRect {
-        CGRect(
+    /// Area delle finestre interne: sotto la barra superiore, sopra il dock. Con il dock nascosto
+    /// (almeno una finestra aperta) le finestre arrivano fino in fondo.
+    static func area(per dimensione: CGSize, dockNascosto: Bool = false) -> CGRect {
+        let dock = dockNascosto ? Misure.Dock.riservatoNascosto : Misure.Dock.riservato
+        return CGRect(
             x: Misure.Finestra.margineLato,
             y: Misure.Barra.altezza + Misure.Finestra.margineAlto,
             width: max(0, dimensione.width - 2 * Misure.Finestra.margineLato),
             height: max(0, dimensione.height - Misure.Barra.altezza - Misure.Finestra.margineAlto
-                - Misure.Dock.riservato - Misure.Finestra.margineBasso)
+                - dock - Misure.Finestra.margineBasso)
         )
     }
 
+    /// Con una finestra aperta il dock si nasconde, come in macOS: torna portando il puntatore in basso.
+    private var dockNascosto: Bool { !stato.finestreVisibili.isEmpty }
+
     var body: some View {
         GeometryReader { geo in
-            let area = ShellView.area(per: geo.size)
+            let area = ShellView.area(per: geo.size, dockNascosto: dockNascosto)
             ZStack(alignment: .topLeading) {
                 Materiale.SfondoScrivania()
 
@@ -31,8 +38,22 @@ struct ShellView: View {
 
                 livelloFinestre(area: area)
 
+                if dockNascosto && !dockRichiamato {
+                    // Striscia invisibile sul bordo in basso: richiama il dock
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .frame(width: geo.size.width, height: Misure.Dock.strisciaRichiamo)
+                        .offset(y: geo.size.height - Misure.Dock.strisciaRichiamo)
+                        .onHover { if $0 { withAnimation(Animazioni.passaggio) { dockRichiamato = true } } }
+                }
+
                 Dock()
+                    .onHover { sopra in
+                        if !sopra { withAnimation(Animazioni.passaggio) { dockRichiamato = false } }
+                    }
+                    .offset(y: dockNascosto && !dockRichiamato ? Misure.Dock.corsaNascosto : 0)
                     .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
+                    .clipped()
 
                 BarraSuperiore()
 
@@ -43,8 +64,13 @@ struct ShellView: View {
                         .allowsHitTesting(false)
                 }
             }
-            .onAppear { stato.area = area }
-            .onChange(of: geo.size) { _ in stato.area = area }
+            .onAppear { aggiornaArea(geo.size) }
+            // La dimensione nuova, non l'area calcolata nel disegno precedente
+            .onChange(of: geo.size) { aggiornaArea($0) }
+            .onChange(of: dockNascosto) { nascosto in
+                aggiornaArea(geo.size)
+                if !nascosto { dockRichiamato = false }
+            }
         }
         .frame(minWidth: 1100, minHeight: 720)
         .ignoresSafeArea()
@@ -57,6 +83,11 @@ struct ShellView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
             stato.schermoIntero = false
         }
+    }
+
+    private func aggiornaArea(_ dimensione: CGSize) {
+        let nuova = ShellView.area(per: dimensione, dockNascosto: dockNascosto)
+        if stato.area != nuova { stato.area = nuova }
     }
 
     private func livelloFinestre(area: CGRect) -> some View {

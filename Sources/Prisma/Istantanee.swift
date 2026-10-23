@@ -7,6 +7,9 @@ import SwiftUI
 @MainActor
 enum Istantanee {
     static let dimensione = CGSize(width: 1440, height: 900)
+    /// Schermo più basso (MacBook con il dock di macOS e la barra dei menu): le scene che finiscono
+    /// con "-schermo-basso" si disegnano a questa misura.
+    static let dimensioneBassa = CGSize(width: 1280, height: 760)
 
     static let scene: [(nome: String, prepara: (StatoShell) -> Void)] = [
         ("1-scrivania", { _ in }),
@@ -223,6 +226,11 @@ enum Istantanee {
             s.chiediEve(SpuntoEve.checkUp.domanda, spunto: .checkUp)
             s.apri(.eve)
         }),
+        ("51-scrivania-schermo-basso", { _ in }),
+        ("52-eve-schermo-basso", { s in
+            s.clienteAttivoId = "giulia"
+            s.apri(.eve)
+        }),
         ("18-analisi360-protezione", { s in
             s.clienteAttivoId = "marco"
             s.areaAnalisi = .protezione
@@ -244,17 +252,18 @@ enum Istantanee {
         }
         for scena in scene {
             let stato = StatoShell(persistente: false)
-            stato.area = ShellView.area(per: dimensione)
+            let misura = scena.nome.hasSuffix("-schermo-basso") ? dimensioneBassa : dimensione
             scena.prepara(stato)
+            stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
             let vista = ShellView()
                 .environmentObject(stato)
                 .environment(\.modoIstantanea, true)
-                .frame(width: dimensione.width, height: dimensione.height)
+                .frame(width: misura.width, height: misura.height)
             let png: Data?
             switch metodo {
             case "renderer": png = conRenderer(vista)
-            case "livello": png = conFinestra(vista, livello: true)
-            default: png = conFinestra(vista, livello: false)
+            case "livello": png = conFinestra(vista, livello: true, misura: misura)
+            default: png = conFinestra(vista, livello: false, misura: misura)
             }
             guard let png else {
                 print("ERRORE: istantanea \(scena.nome) non disegnata (metodo \(metodo))")
@@ -278,9 +287,9 @@ enum Istantanee {
         return pngVerificato(NSBitmapImageRep(cgImage: cg))
     }
 
-    private static func conFinestra<V: View>(_ vista: V, livello: Bool) -> Data? {
+    private static func conFinestra<V: View>(_ vista: V, livello: Bool, misura: CGSize) -> Data? {
         let host = NSHostingView(rootView: vista)
-        host.frame = NSRect(origin: .zero, size: dimensione)
+        host.frame = NSRect(origin: .zero, size: misura)
         let finestra = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         finestra.contentView = host
         finestra.setFrameOrigin(NSPoint(x: -20000, y: -20000))
@@ -293,7 +302,7 @@ enum Istantanee {
             let scala: CGFloat = 2
             guard let strato = host.layer,
                   let rep = NSBitmapImageRep(bitmapDataPlanes: nil,
-                                             pixelsWide: Int(dimensione.width * scala), pixelsHigh: Int(dimensione.height * scala),
+                                             pixelsWide: Int(misura.width * scala), pixelsHigh: Int(misura.height * scala),
                                              bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
                                              colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
                   let contesto = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
@@ -302,7 +311,7 @@ enum Istantanee {
             if !host.isFlipped {
                 strato.render(in: cg)
             } else {
-                cg.translateBy(x: 0, y: dimensione.height)
+                cg.translateBy(x: 0, y: misura.height)
                 cg.scaleBy(x: 1, y: -1)
                 strato.render(in: cg)
             }
