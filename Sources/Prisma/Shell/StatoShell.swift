@@ -105,6 +105,9 @@ final class StatoShell: ObservableObject {
     /// Le notifiche già viste in questa sessione (la campanella conta le altre).
     @Published var notificheViste: Set<String> = []
 
+    /// Eve parla del portafoglio (tutti i clienti) invece che del cliente attivo.
+    @Published var evePortafoglio = false
+
     /// La schermata di benvenuto copre le finestre (il lucchetto in alto).
     @Published var bloccato = false
     @Published var pannelloAppAperte = false
@@ -1375,8 +1378,43 @@ final class StatoShell: ObservableObject {
     }
 
     func nuovaConversazione() {
-        dati.conversazioni[clienteAttivoId] = nil
-        conversazioniTemporanee[clienteAttivoId] = nil
+        let id = evePortafoglio ? EvePortafoglio.chiave : clienteAttivoId
+        dati.conversazioni[id] = nil
+        conversazioniTemporanee[id] = nil
+    }
+
+    /// Una domanda a Eve sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
+    /// il modello Apple, se c'è, riscrive la risposta senza cambiarle (altrimenti resta la sintesi).
+    func chiediEvePortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil) {
+        let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !testo.isEmpty, !eveInCorso else { return }
+        let id = EvePortafoglio.chiave
+        aggiungiMessaggio(MessaggioEve(autore: .utente, testo: testo), cliente: id)
+        domandaEve = ""
+        let argomento = spunto ?? SpuntoPortafoglio.da(testo)
+        let bozza = EvePortafoglio.risposta(argomento, domanda: testo, dati: dati)
+        guard !(motoreEve is MotoreSintesi) else {
+            aggiungiMessaggio(MessaggioEve(autore: .eve, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriEve.sintesi.nome), cliente: id)
+            return
+        }
+        let scheda = EvePortafoglio.scheda(dati)
+        let istruzioni = (IstruzioniEve.testo("chat") ?? "") + "\nQui parli del portafoglio del consulente (tutti i clienti), non di un singolo cliente."
+        let richiesta = "SCHEDA DEL PORTAFOGLIO (calcolata da Prisma)\n\(scheda)\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n\(bozza.testo)\n\nDOMANDA DEL CONSULENTE: \(testo)"
+        eveInCorso = true
+        Task { @MainActor in
+            var risposta = bozza.testo
+            var motore = MotoriEve.sintesi.nome
+            if let t = try? await MotoriEve.generaConApple(istruzioni: istruzioni, richiesta: richiesta) {
+                let pulito = t.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                // Ogni cifra della risposta deve venire dalla scheda o dalla bozza
+                if !pulito.isEmpty, CommentoEve.numeriConservati(bozza: scheda + "\n" + bozza.testo, testo: pulito) {
+                    risposta = pulito
+                    motore = "Modello Apple"
+                }
+            }
+            self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: risposta, titolo: bozza.titolo, motore: motore), cliente: id)
+            self.eveInCorso = false
+        }
     }
 
     /// Ciò che Eve sa del cliente: dati del dossier e risultati dei motori di Prisma.

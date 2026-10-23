@@ -8,7 +8,11 @@ struct AppEve: View {
     @EnvironmentObject var stato: StatoShell
 
     private var cliente: Cliente? { stato.clienteAttivo }
-    private var messaggi: [MessaggioEve] { stato.conversazione(stato.clienteAttivoId) }
+    private var messaggi: [MessaggioEve] { stato.conversazione(stato.evePortafoglio ? EvePortafoglio.chiave : stato.clienteAttivoId) }
+
+    private func invia(_ testo: String) {
+        if stato.evePortafoglio { stato.chiediEvePortafoglio(testo) } else { stato.chiediEve(testo) }
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -34,12 +38,19 @@ struct AppEve: View {
             }
             .incisione(Colori.Eve.testataIncisione, y: -1)
             Spacer()
-            Text("Cliente").font(Tipo.eveAvvisoNota).foregroundColor(Colori.Eve.testataTesto)
-            Picker("", selection: $stato.clienteAttivoId) {
-                ForEach(stato.clienti) { c in Text(c.nome).tag(c.id) }
+            SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.evePortafoglio)
+                .frame(width: 170)
+                .help("Eve parla di un cliente o di tutto il tuo portafoglio")
+            if stato.evePortafoglio {
+                Text("Tutti i clienti").font(Tipo.eveAvviso).foregroundColor(Colori.Eve.testataTitolo)
+                    .frame(width: 200, alignment: .leading)
+            } else {
+                Picker("", selection: $stato.clienteAttivoId) {
+                    ForEach(stato.clienti) { c in Text(c.nome).tag(c.id) }
+                }
+                .labelsHidden()
+                .frame(width: 200)
             }
-            .labelsHidden()
-            .frame(width: 200)
         }
         .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
         .background(
@@ -256,7 +267,7 @@ struct AppEve: View {
                 VStack(spacing: 12) {
                     if messaggi.isEmpty { benvenuto }
                     ForEach(messaggi) { m in
-                        NuvolaEve(messaggio: m, nomeUtente: stato.nomeUtente,
+                        NuvolaEve(messaggio: m, nomeUtente: stato.nomeUtente, azioniCliente: !stato.evePortafoglio,
                                   creaAttivita: { stato.attivitaDaEve(m) }, aggiungiNota: { stato.notaDaEve(m) },
                                   attivitaProposta: { stato.attivitaDaProposta($0, messaggio: m.id) },
                                   posizioneProposta: { stato.posizioneDaProposta($0, messaggio: m.id) })
@@ -291,7 +302,9 @@ struct AppEve: View {
                 .font(Tipo.eveBenvenuto)
                 .foregroundColor(Colori.Strumenti.titolo)
                 .multilineTextAlignment(.center)
-            Text("Posso riassumere il percorso di \(cliente?.nome ?? "un cliente"), fare il check-up, spiegare pensione, protezione, liquidità e obiettivi, preparare un incontro. Leggo il dossier e gli stessi calcoli dei prospetti: i dati restano sul Mac.")
+            Text(stato.evePortafoglio
+                 ? "Parliamo di tutti i tuoi clienti: chi ricontattare, cosa scade, la settimana, gli emittenti, le proposte. Leggo gli stessi calcoli del Portafoglio: i dati restano sul Mac."
+                 : "Posso riassumere il percorso di \(cliente?.nome ?? "un cliente"), fare il check-up, spiegare pensione, protezione, liquidità e obiettivi, preparare un incontro. Leggo il dossier e gli stessi calcoli dei prospetti: i dati restano sul Mac.")
                 .font(Tipo.eveMessaggio)
                 .foregroundColor(Colori.Eve.nuvolaEveTesto)
                 .multilineTextAlignment(.center)
@@ -308,6 +321,13 @@ struct AppEve: View {
         VStack(alignment: .leading, spacing: 7) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
+                    if stato.evePortafoglio {
+                        ForEach(SpuntoPortafoglio.allCases) { s in
+                            Button { stato.chiediEvePortafoglio(s.domanda, spunto: s) } label: { spunto(s.simbolo, s.domanda) }
+                                .buttonStyle(StileSemplice())
+                                .disabled(stato.eveInCorso)
+                        }
+                    } else {
                     ForEach(SpuntoEve.allCases) { s in
                         Button { stato.chiediEve(s.domanda, spunto: s) } label: {
                             HStack(spacing: 5) {
@@ -324,6 +344,7 @@ struct AppEve: View {
                         .buttonStyle(StileSemplice())
                         .disabled(stato.eveInCorso)
                     }
+                    }
                 }
             }
             HStack(alignment: .bottom, spacing: 8) {
@@ -331,11 +352,11 @@ struct AppEve: View {
                     .textFieldStyle(.plain)
                     .font(Tipo.eveCampo)
                     .lineLimit(1...4)
-                    .onSubmit { stato.chiediEve(stato.domandaEve) }
+                    .onSubmit { invia(stato.domandaEve) }
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Eve.campo))
                     .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Eve.campoBordo, lineWidth: 1))
-                Button { stato.chiediEve(stato.domandaEve) } label: {
+                Button { invia(stato.domandaEve) } label: {
                     Text("↑").font(Tipo.eveTitoloRisposta).frame(width: 18)
                 }
                 .buttonStyle(StileBlu())
@@ -344,7 +365,8 @@ struct AppEve: View {
                 .help("Invia (⌘↩)")
             }
             Text(stato.dati.impostazioni.eve.conservaConversazioni
-                 ? "Invio per mandare · la conversazione resta nel dossier del cliente, sul Mac"
+                 ? (stato.evePortafoglio ? "Invio per mandare · la conversazione del portafoglio resta sul Mac"
+                                         : "Invio per mandare · la conversazione resta nel dossier del cliente, sul Mac")
                  : "Invio per mandare · conversazione non conservata")
                 .font(Tipo.eveTappaNota)
                 .foregroundColor(Colori.Eve.autore)
@@ -356,11 +378,29 @@ struct AppEve: View {
     }
 }
 
+extension AppEve {
+    /// Una capsula degli spunti.
+    func spunto(_ simbolo: String, _ domanda: String) -> some View {
+        HStack(spacing: 5) {
+            Text(simbolo).foregroundColor(Colori.Analisi.navBasso)
+            Text(domanda)
+        }
+        .font(Tipo.eveSpunto)
+        .foregroundColor(Colori.Eve.azioneTesto)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Gradienti.azioneEve))
+        .overlay(Capsule().strokeBorder(Colori.Eve.azioneBordo, lineWidth: 1))
+    }
+}
+
 // MARK: - Nuvola di un messaggio
 
 struct NuvolaEve: View {
     let messaggio: MessaggioEve
     let nomeUtente: String
+    /// «Crea attività» e «Nota del cliente» solo nelle conversazioni di un cliente.
+    var azioniCliente = true
     let creaAttivita: () -> Void
     let aggiungiNota: () -> Void
     var attivitaProposta: (PropostaEve) -> Void = { _ in }
@@ -407,8 +447,10 @@ struct NuvolaEve: View {
                 }
                 if !mio {
                     HStack(spacing: 6) {
-                        azione("✓ Crea attività", creaAttivita)
-                        azione("＋ Nota del cliente", aggiungiNota)
+                        if azioniCliente {
+                            azione("✓ Crea attività", creaAttivita)
+                            azione("＋ Nota del cliente", aggiungiNota)
+                        }
                         azione("Copia") {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString((messaggio.titolo.map { $0 + "\n\n" } ?? "") + messaggio.testo, forType: .string)
