@@ -283,7 +283,8 @@ final class StatoShell: ObservableObject {
         guard !n.isEmpty, !finestreVisibili.isEmpty, area.width > 0, area.height > 0 else { return nil }
         let elenco = finestreVisibili.map { f -> FinestraSpazio in
             guard !f.ingrandita else { return .intera(f.app) }
-            let c = cornice(di: f)
+            // Lo stacco tra finestre affiancate si toglie qui e si rimette alla riapertura
+            let c = cornice(di: f).insetBy(dx: -Misure.Spazi.stacco / 2, dy: -Misure.Spazi.stacco / 2)
             return FinestraSpazio(app: f.app, x: c.minX / area.width, y: c.minY / area.height,
                                   larghezza: c.width / area.width, altezza: c.height / area.height)
         }
