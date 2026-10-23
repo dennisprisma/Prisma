@@ -98,7 +98,7 @@ extension AppPosizioni {
                         numero(v.capitaleAssicurato > 0 ? Formati.euro(v.capitaleAssicurato) : "—", Misure.Portafoglio.colonnaImporto + 20)
                         numero(v.proposteAperte > 0 ? "\(v.proposteAperte) · \(Formati.euroBreve(v.valoreProposte))" : "—", Misure.Portafoglio.colonnaProposte)
                         HStack(spacing: 6) {
-                            BarraQuota(quota: v.quota, colore: Colori.Analisi.canale(v.canali.count == 1 ? v.canali.first : nil))
+                            BarraQuotaPortafoglio(quota: v.quota, colore: Colori.Analisi.canale(v.canali.count == 1 ? v.canali.first : nil))
                             Text(Formati.percentuale((v.quota * 100).rounded()))
                                 .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).frame(width: 34, alignment: .trailing)
                         }
@@ -178,7 +178,7 @@ extension AppPosizioni {
                         Text(Formati.percentuale((e.quota * 100).rounded()))
                             .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).frame(width: 34, alignment: .trailing)
                     }
-                    BarraQuota(quota: e.quota, colore: Colori.Analisi.canale(e.canale))
+                    BarraQuotaPortafoglio(quota: e.quota, colore: Colori.Analisi.canale(e.canale))
                 }
             }
         }

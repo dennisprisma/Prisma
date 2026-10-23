@@ -25,7 +25,7 @@ extension Misure {
 }
 
 /// Barra orizzontale della quota (0…1), del colore del canale.
-struct BarraQuota: View {
+struct BarraQuotaPortafoglio: View {
     let quota: Double
     let colore: Color
 
