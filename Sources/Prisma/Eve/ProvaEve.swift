@@ -31,6 +31,26 @@ enum ProvaEve {
                 }
             }
         }
+        // Una posizione nominata nella domanda: Eve risponde con il suo andamento
+        if let f = stato.fonteEve("giulia"),
+           let p = f.posizioni.first(where: { $0.stato == .inEssere && $0.area.proiettabile && MotoreAndamento.calcola($0) != nil }) {
+            let r = MotoriEve.sintesi.componi(RichiestaEve(domanda: "Come sta andando \(p.nome.lowercased())?", spunto: nil, fonte: f, storia: []))
+            controlla(r.titolo == "Andamento di \(p.nome)", "Domanda su «\(p.nome)»: risponde con l'andamento (\(r.titolo ?? "nessun titolo"))")
+            controlla(ContestoEve.riga(p).contains("andamento dal"), "La scheda per il modello riporta l'andamento di \(p.nome)")
+            let resoconto = MotoriEve.sintesi.componi(RichiestaEve(domanda: "", spunto: .resoconto, fonte: f, storia: []))
+            controlla(resoconto.testo.contains("rispetto all'atteso"), "Il resoconto di Eve confronta l'andamento con l'atteso")
+            // Un valore passato aggiunto a mano entra nello storico; toglierlo lo fa sparire
+            let prima = p.storicoValori.count
+            let quando = Calendar.current.date(byAdding: .month, value: -30, to: Date()) ?? Date()
+            stato.aggiungiRilevazione(Rilevazione(data: quando, controvalore: 1_000, versato: 1_000), a: p.id)
+            controlla(stato.posizioni.first { $0.id == p.id }?.storicoValori.count == prima + 1, "Valore passato aggiunto allo storico")
+            stato.aggiungiRilevazione(Rilevazione(data: quando, controvalore: 1_100, versato: 1_000), a: p.id)
+            controlla(stato.posizioni.first { $0.id == p.id }?.storicoValori.count == prima + 1, "Un valore dello stesso giorno sostituisce il precedente")
+            stato.eliminaRilevazione(quando, da: p.id)
+            controlla(stato.posizioni.first { $0.id == p.id }?.storicoValori.count == prima, "Valore passato tolto dallo storico")
+        } else {
+            controlla(false, "Giulia ha una posizione con l'andamento")
+        }
         // Una domanda scritta a mano uguale a uno spunto viene riconosciuta
         controlla(SpuntoEve.da("  fammi un riepilogo del cliente ") == .riepilogo, "Riconoscimento degli spunti scritti a mano")
         // La sintesi di Giulia riporta il patrimonio netto calcolato dal motore

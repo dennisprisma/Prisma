@@ -8,6 +8,7 @@ struct DettaglioPosizione: View {
     let modifica: () -> Void
     @State var confermaEliminazione = false
     @State var mostraMetodo = false
+    @State var moduloRilevazione = false
 
     private var orizzonteCliente: Int? { stato.cliente(posizione.clienteId)?.profilo.orizzonteAnni }
 
@@ -29,6 +30,9 @@ struct DettaglioPosizione: View {
                             }
                             .frame(width: 320, alignment: .leading)
                         }
+                    }
+                    if posizione.area.proiettabile, posizione.stato == .inEssere, let a = MotoreAndamento.calcola(posizione) {
+                        andamento(a)
                     }
                     if posizione.area.proiettabile {
                         proiezione
@@ -56,6 +60,9 @@ struct DettaglioPosizione: View {
             }
         } message: {
             Text("La posizione verrà tolta dal dossier del cliente. Se serve, potrai recuperarla da un backup.")
+        }
+        .sheet(isPresented: $moduloRilevazione) {
+            ModuloRilevazione(posizione: posizione) { stato.aggiungiRilevazione($0, a: posizione.id) }
         }
     }
 
@@ -207,11 +214,28 @@ struct DettaglioPosizione: View {
     /// I valori rilevati nel tempo: si arricchisce da solo a ogni aggiornamento del controvalore.
     private var storico: some View {
         let punti = Array(posizione.storicoValori.reversed())
-        return PannelloAnalisi(titolo: "Storico dei valori") { EmptyView() } contenuto: {
+        // In cima c'è il valore attuale: si cambia con «Modifica», non si toglie da qui
+        let attuale = posizione.controvalore != nil
+        return PannelloAnalisi(titolo: "Storico dei valori") {
+            Button("＋ Valore passato") { moduloRilevazione = true }
+                .buttonStyle(StileSemplice())
+                .font(Tipo.colonnaCollegamento)
+                .foregroundColor(Colori.Colonna.collegamento)
+                .disabled(stato.solaLettura)
+        } contenuto: {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(punti.prefix(8).enumerated()), id: \.offset) { _, r in
-                    RigaDato(Formati.dataBreve.string(from: r.data),
-                             Formati.euro(r.controvalore) + (r.versato.map { " · versato \(Formati.euro($0))" } ?? ""), larghezza: 118)
+                ForEach(Array(punti.prefix(8).enumerated()), id: \.offset) { i, r in
+                    HStack(spacing: 4) {
+                        RigaDato(Formati.dataBreve.string(from: r.data),
+                                 Formati.euro(r.controvalore) + (r.versato.map { " · versato \(Formati.euro($0))" } ?? ""), larghezza: 118)
+                        if !(i == 0 && attuale) && !stato.solaLettura {
+                            Button("✕") { stato.eliminaRilevazione(r.data, da: posizione.id) }
+                                .buttonStyle(StileSemplice())
+                                .font(Tipo.kpiNota)
+                                .foregroundColor(Colori.Analisi.kpiNota)
+                                .help("Togli questo valore dallo storico")
+                        }
+                    }
                 }
                 if let v = MotoreResoconto.voce(posizione).variazione12, let q = MotoreResoconto.voce(posizione).variazione12Percento {
                     RigaDato("Ultimi 12 mesi", "\(CifreDoc.euroSegno(v)) (\(CifreDoc.variazione(q))), tolti i versamenti", larghezza: 118)
@@ -223,6 +247,85 @@ struct DettaglioPosizione: View {
                     .padding(.top, 8)
             }
         }
+    }
+
+    // MARK: - Andamento
+
+    /// Com'è andata davvero: il valore rilevato, il versato e dove sarebbe all'atteso netto.
+    private func andamento(_ a: AndamentoPosizione) -> some View {
+        let annuo = a.rendimentoAnnuo != nil
+        return PannelloAnalisi(
+            titolo: "Andamento dal \(Formati.dataBreve.string(from: a.dal))",
+            nota: "Rendimento al netto dei costi, tolti i versamenti: i periodi tra un valore e l'altro pesano allo stesso modo."
+        ) {
+            if let g = a.giudizio {
+                Pillola(testo: g.etichetta, tono: g == .sopra ? .ok : g == .sotto ? .errore : .neutro)
+            }
+        } contenuto: {
+            VStack(alignment: .leading, spacing: 14) {
+                GraficoAndamento(punti: a.punti)
+                HStack(spacing: 16) {
+                    legenda(Colori.Analisi.linea, "Valore rilevato")
+                    if a.attesoAnnuo != nil { legenda(Colori.Analisi.lineaAtteso, "All'atteso netto") }
+                    if a.punti.contains(where: { $0.versato != nil }) { legenda(Colori.Analisi.lineaTratteggiata, "Versato", tratteggio: true) }
+                }
+                FasciaKPI {
+                    KPI(titolo: annuo ? "Rendimento annuo" : "Rendimento nel periodo",
+                        valore: CifreDoc.variazione(a.rendimentoAnnuo ?? a.rendimentoPeriodo)) {
+                        Text(annuo ? "\(CifreDoc.variazione(a.rendimentoPeriodo)) in tutto" : "meno di un anno di storico")
+                    }
+                    KPI(titolo: "Atteso netto", valore: a.attesoConfrontabile.map { CifreDoc.percento($0) } ?? "—") {
+                        if let s = a.scarto { Text(MotoreAndamento.punti(s)) } else { Text("manca il rendimento atteso") }
+                    }
+                    KPI(titolo: a.guadagno >= 0 ? "Guadagno" : "Perdita", valore: CifreDoc.euro(abs(a.guadagno))) {
+                        Text("tolti \(Formati.euro(a.versamenti)) di versamenti")
+                    }
+                    KPI(titolo: "Valori rilevati", valore: "\(a.punti.count)", ultimo: true) {
+                        Text(String(format: "%.1f anni", a.anni).replacingOccurrences(of: ".", with: ","))
+                    }
+                }
+                periodiTabella(a)
+                Text(MotoreAndamento.sintesi(a, nome: posizione.nome))
+                    .font(Tipo.kpiNota)
+                    .foregroundColor(Colori.Analisi.kpiNota)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func periodiTabella(_ a: AndamentoPosizione) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                testa("Periodo", nil)
+                testa("Valore iniziale", 110)
+                testa("Versamenti", 100)
+                testa("Valore finale", 110)
+                testa("Guadagno", 100)
+                testa("Rendimento", 90)
+            }
+            .background(Gradienti.testaTabella)
+            .bordoBasso(Colori.Analisi.tabellaTestaBordo)
+            // Dal più recente, al massimo otto periodi
+            ForEach(Array(a.periodi.reversed().prefix(8).enumerated()), id: \.offset) { i, q in
+                HStack(spacing: 0) {
+                    Text("\(Formati.dataBreve.string(from: q.dal)) – \(Formati.dataBreve.string(from: q.al))")
+                        .font(Tipo.tabellaCellaForte)
+                        .foregroundColor(Colori.Analisi.tabellaTesto)
+                        .padding(Misure.Analisi.cellaMargine)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    cellaNumero(Formati.euro(q.valoreIniziale), 110)
+                    cellaNumero((q.stimati ? "≈ " : "") + CifreDoc.euroSegno(q.versamenti), 100)
+                    cellaNumero(Formati.euro(q.valoreFinale), 110)
+                    cellaNumero(CifreDoc.euroSegno(q.guadagno), 100,
+                                colore: q.guadagno < 0 ? Colori.Analisi.erroreTesto : Colori.Analisi.tabellaTesto)
+                    cellaNumero(q.rendimento.map { CifreDoc.variazione($0) } ?? "—", 90,
+                                colore: (q.rendimento ?? 0) < 0 ? Colori.Analisi.erroreTesto : Colori.Analisi.tabellaTesto)
+                }
+                .background(i % 2 == 1 ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale)
+                .bordoBasso(Colori.Analisi.tabellaRiga)
+            }
+        }
+        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
     }
 
     // MARK: - Proiezione

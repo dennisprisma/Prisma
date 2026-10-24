@@ -584,6 +584,25 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    /// Aggiunge allo storico un valore passato; uno dello stesso giorno viene sostituito.
+    func aggiungiRilevazione(_ r: Rilevazione, a id: String) {
+        guard let i = dati.posizioni.firstIndex(where: { $0.id == id }) else { return }
+        let cal = Calendar.current
+        // A mezzogiorno e a secondi interi, come il resto dell'archivio
+        let giorno = cal.date(bySettingHour: 12, minute: 0, second: 0, of: r.data) ?? r.data
+        var elenco = dati.posizioni[i].rilevazioni ?? []
+        elenco.removeAll { cal.isDate($0.data, inSameDayAs: giorno) }
+        elenco.append(Rilevazione(data: Date(timeIntervalSinceReferenceDate: giorno.timeIntervalSinceReferenceDate.rounded(.down)),
+                                  controvalore: r.controvalore, versato: r.versato))
+        dati.posizioni[i].rilevazioni = elenco.sorted { $0.data < $1.data }
+    }
+
+    /// Toglie dallo storico il valore passato di quel giorno (il valore attuale resta).
+    func eliminaRilevazione(_ data: Date, da id: String) {
+        guard let i = dati.posizioni.firstIndex(where: { $0.id == id }) else { return }
+        dati.posizioni[i].rilevazioni?.removeAll { Calendar.current.isDate($0.data, inSameDayAs: data) }
+    }
+
     func eliminaPosizione(_ id: String) {
         dati.posizioni.removeAll { $0.id == id }
         // I commenti dei confronti che la usavano
