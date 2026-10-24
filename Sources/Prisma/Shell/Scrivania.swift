@@ -64,6 +64,7 @@ struct Scrivania: View {
             } label: {
                 Label("Spazi di lavoro", systemImage: "rectangle.split.2x1")
             }
+            .disabled(stato.inModoCliente)
             Button {
                 stato.cercaOvunque()
             } label: {

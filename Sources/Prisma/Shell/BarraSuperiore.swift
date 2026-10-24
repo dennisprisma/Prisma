@@ -58,7 +58,7 @@ struct BarraSuperiore: View {
                 .padding(.leading, Misure.Barra.spazioApp)
             Button {
                 stato.pannelloNotifiche = false
-                stato.pannelloSpazi.toggle()
+                if !stato.inModoCliente { stato.pannelloSpazi.toggle() }
             } label: {
                 Text(stato.appAttiva?.titolo ?? "Scrivania")
                     .font(Tipo.barraApp)

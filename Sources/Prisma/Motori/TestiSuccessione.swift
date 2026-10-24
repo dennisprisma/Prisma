@@ -66,7 +66,7 @@ struct TestiSuccessione {
     var prossimiPassi: [String] {
         var passi: [String] = []
         for v in s.daSistemare.prefix(3) {
-            passi.append(v.posizione.beneficiari.isEmpty ? "Indicare i beneficiari di \(v.posizione.nome)." : "Rivedere i beneficiari di \(v.posizione.nome).")
+            passi.append(v.posizione.senzaBeneficiari ? "Indicare i beneficiari di \(v.posizione.nome)." : "Rivedere i beneficiari di \(v.posizione.nome).")
         }
         if let cv = s.conviventeEscluso { passi.append("Tutelare \(cv): beneficiario di una polizza o testamento, con il notaio.") }
         if s.eredi.contains(where: \.minorenne) { passi.append("Valutare chi gestirebbe i beni dei figli minorenni (tutore, polizza con capitale rateizzato).") }
@@ -78,8 +78,8 @@ struct TestiSuccessione {
         [
             "Fuori dall'asse ereditario, ai beneficiari: polizze vita (valore), coperture caso morte (capitale assicurato), previdenza complementare (valore). Le coperture infortuni non sono contate.",
             "Nell'asse: fondi e titoli, conti, immobili (al valore indicato in Posizioni), meno i debiti.",
-            "Eredi senza testamento dai familiari registrati: coniuge e figli (al coniuge metà con un figlio, un terzo con più figli); senza figli, coniuge due terzi e il resto a genitori e fratelli; senza coniuge né figli, genitori e fratelli. Il convivente non eredita.",
-            "Imposta di successione per erede: coniuge, figli e genitori \(CifreDoc.condizione(MotoreSuccessione.aliquotaLineaRetta)) oltre \(CifreDoc.euro(MotoreSuccessione.franchigiaLineaRetta)); fratelli e sorelle \(CifreDoc.condizione(MotoreSuccessione.aliquotaFratelli)) oltre \(CifreDoc.euro(MotoreSuccessione.franchigiaFratelli)); altri \(CifreDoc.condizione(MotoreSuccessione.aliquotaAltri)). Ipotecaria e catastale \(CifreDoc.condizione(MotoreSuccessione.ipocatastale)) sugli immobili, \(CifreDoc.euro(MotoreSuccessione.ipocatastaleFissa)) fissi per la prima casa.",
+            "Eredi senza testamento dai familiari registrati: coniuge e figli (al coniuge metà con un figlio, un terzo con più figli); senza figli, coniuge due terzi e il resto a genitori e fratelli (ai genitori almeno un quarto dell'eredità); senza coniuge né figli, genitori e fratelli. Il convivente non eredita.",
+            "Imposta di successione per erede: coniuge, figli e genitori \(CifreDoc.condizione(MotoreSuccessione.aliquotaLineaRetta)) oltre \(CifreDoc.euro(MotoreSuccessione.franchigiaLineaRetta)); fratelli e sorelle \(CifreDoc.condizione(MotoreSuccessione.aliquotaFratelli)) oltre \(CifreDoc.euro(MotoreSuccessione.franchigiaFratelli)); altri \(CifreDoc.condizione(MotoreSuccessione.aliquotaAltri)). Ipotecaria e catastale \(CifreDoc.condizione(MotoreSuccessione.ipocatastale)) sugli immobili, \(CifreDoc.euro(MotoreSuccessione.ipocatastaleFissa)) fissi per una sola abitazione con l'agevolazione prima casa. I contratti di capitalizzazione restano nell'asse.",
             "Gli immobili si tassano sul valore catastale, di solito più basso di quello indicato: la stima delle imposte è prudente.",
         ]
     }

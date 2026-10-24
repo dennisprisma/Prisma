@@ -565,6 +565,11 @@ enum ProvaEve {
         controlla(!schermo.aperta(.ricerca) && !schermo.aperta(.impostazioni) && !schermo.portafoglio, "Modalità cliente: Ricerca, Impostazioni e portafoglio non si aprono")
         schermo.apri(.posizioni)
         controlla(schermo.aperta(.posizioni), "Modalità cliente: il dossier del cliente si apre")
+        schermo.clienteAttivoId = "giulia"
+        controlla(schermo.clienteAttivoId == "marco", "Modalità cliente: il cliente attivo non cambia (nemmeno da Prodotti)")
+        controlla(schermo.posizioniDelProdotto("prodotto-multiramo").allSatisfy { $0.clienteId == "marco" }, "Modalità cliente: «Dove è usata» solo per il cliente mostrato")
+        schermo.apriSpazio(SpazioLavoro(nome: "Prova", finestre: [.sinistra(.note), .destra(.posizioni)]))
+        controlla(!schermo.aperta(.note) && schermo.aperta(.posizioni), "Modalità cliente: uno spazio di lavoro non riapre Note")
         schermo.alternaModoCliente()
         controlla(!schermo.inModoCliente && schermo.clienti.count == schermo.dati.clienti.count, "Uscendo dalla modalità cliente tornano tutti")
         schermo.entraModoCliente()
@@ -573,6 +578,13 @@ enum ProvaEve {
         schermo.clienteAttivoId = "nessuno"
         schermo.entraModoCliente()
         controlla(!schermo.inModoCliente, "Senza un cliente attivo la modalità cliente non parte")
+        let cache = StatoShell(persistente: false)
+        let primo = cache.analisiDossier("marco")
+        controlla(cache.analisiDossier("marco").costi.euroAnno == primo.costi.euroAnno && cache.cacheDossier != nil, "Analisi del dossier: riusate finché i dati non cambiano")
+        if let i = cache.dati.posizioni.firstIndex(where: { $0.clienteId == "marco" && $0.area == .investimento }) {
+            cache.dati.posizioni[i].costoAnnuo = 3
+            controlla(cache.analisiDossier("marco").costi.euroAnno != primo.costi.euroAnno, "Analisi del dossier: ricalcolate quando cambia una posizione")
+        }
 
         // Eve legge il taccuino: le note del cliente nella scheda e nella traccia dell'incontro
         let conNote = StatoShell(persistente: false)

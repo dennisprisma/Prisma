@@ -33,20 +33,23 @@ private struct ElencoDestino: View {
             Text(verbatim: tempo.uppercased()).font(T.occhiello).tracking(1.2).foregroundColor(C.occhiello)
             Text(verbatim: titolo).font(T.titoloRiquadro).foregroundColor(C.titolo)
             Text(verbatim: CifreDoc.euro(totale)).font(T.numeroGrande).foregroundColor(colore)
-            ForEach(voci.prefix(5)) { v in
+            ForEach(voci.prefix(Misure.Documento.puntiReport)) { v in
                 Rectangle().fill(C.filetto).frame(height: 0.6)
                 HStack(spacing: 6) {
                     EtichettaCanale(canale: v.posizione.canale, compatta: true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(verbatim: v.posizione.nome).font(T.piccolo).foregroundColor(C.titolo).lineLimit(1)
                         if v.destino == .beneficiari {
-                            Text(verbatim: v.posizione.beneficiari.isEmpty ? "beneficiari da indicare" : "a \(v.posizione.beneficiari)")
-                                .font(T.minimo).foregroundColor(v.posizione.beneficiari.isEmpty ? C.negativo : C.tenue).lineLimit(1)
+                            Text(verbatim: v.posizione.senzaBeneficiari ? "beneficiari da indicare" : "a \(v.posizione.beneficiari)")
+                                .font(T.minimo).foregroundColor(v.posizione.senzaBeneficiari ? C.negativo : C.tenue).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 4)
                     Text(verbatim: CifreDoc.euro(v.importo)).font(T.piccolo).foregroundColor(v.importo < 0 ? C.negativo : C.titolo)
                 }
+            }
+            if voci.count > Misure.Documento.puntiReport {
+                Text(verbatim: "…e altre \(voci.count - Misure.Documento.puntiReport)").font(T.minimo).foregroundColor(C.tenue)
             }
         }
         .padding(16)
@@ -86,7 +89,7 @@ private struct SlideEredi: View {
                         sottotitolo: s.eredi.isEmpty ? "Senza testamento l'eredità andrebbe ai parenti più vicini, o allo Stato. Un testamento o i beneficiari di una polizza decidono al posto della legge."
                                                      : "È quello che prevede il codice civile quando non c'è un testamento. Le imposte dipendono dal grado di parentela.")
             HStack(alignment: .top, spacing: 12) {
-                ForEach(s.eredi) { e in
+                ForEach(s.eredi.prefix(Misure.Documento.schedeReport)) { e in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(verbatim: (e.relazione.nome + (e.minorenne ? " · minorenne" : "")).uppercased()).font(T.occhiello).tracking(1.2).foregroundColor(C.occhiello)
                         Text(verbatim: e.nome).font(T.titoloRiquadro).foregroundColor(C.titolo)
@@ -97,6 +100,10 @@ private struct SlideEredi: View {
                     .padding(14)
                     .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
                     .riquadroDoc()
+                }
+                if s.eredi.count > Misure.Documento.schedeReport {
+                    Text(verbatim: "…e altri \(s.eredi.count - Misure.Documento.schedeReport) eredi, con le stesse regole.").font(T.piccolo).foregroundColor(C.tenue)
+                        .padding(14).frame(maxWidth: 160, alignment: .leading).riquadroDoc()
                 }
                 if s.eredi.isEmpty {
                     Text(verbatim: "Nessun familiare registrato erediterebbe.").font(T.corpo).foregroundColor(C.tenue)
@@ -130,7 +137,10 @@ private struct SlideSistemare: View {
                     if let cv = s.conviventeEscluso {
                         punto("\(cv), convivente", "Senza testamento non eredita: lo tutelano una polizza con lui come beneficiario o un testamento, nei limiti della legittima.")
                     }
-                    ForEach(s.daSistemare) { v in punto(v.posizione.nome, v.avviso ?? "") }
+                    ForEach(s.daSistemare.prefix(Misure.Documento.puntiReport)) { v in punto(v.posizione.nome, v.avviso ?? "") }
+                    if s.daSistemare.count > Misure.Documento.puntiReport {
+                        punto("Altre \(s.daSistemare.count - Misure.Documento.puntiReport) posizioni", "con la stessa situazione: le vediamo insieme.")
+                    }
                     if s.daSistemare.isEmpty && s.conviventeEscluso == nil {
                         punto("Beneficiari", "Tutte le polizze hanno i beneficiari indicati: ricordati di rivederli a ogni cambiamento di famiglia.")
                     }

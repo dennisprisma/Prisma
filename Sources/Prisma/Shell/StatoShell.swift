@@ -40,6 +40,8 @@ final class StatoShell: ObservableObject {
     @Published var posizioneInDettaglio: String?
     /// Il pannello del dossier Posizioni a cui scorrere ("resistenza", "costi"); si consuma appena raggiunto.
     @Published var ancoraPosizioni: String?
+    /// Le analisi del dossier dell'ultimo cliente mostrato (vedi `analisiDossier`): non pubblicate, è solo una cache.
+    var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
     // Il portafoglio parla di tutti i clienti: in modalità cliente resta chiuso
     @Published var portafoglio = false { didSet { if portafoglio && modoCliente != nil { portafoglio = false } } }
@@ -210,9 +212,10 @@ final class StatoShell: ObservableObject {
     var nomeUtente: String { dati.impostazioni.nomeUtente }
     var inizialiUtente: String { dati.impostazioni.inizialiUtente }
 
+    /// In modalità cliente il cliente attivo resta quello mostrato: nessun percorso porta a un altro dossier.
     var clienteAttivoId: String {
-        get { dati.clienteAttivoId }
-        set { dati.clienteAttivoId = newValue }
+        get { modoCliente ?? dati.clienteAttivoId }
+        set { if modoCliente == nil { dati.clienteAttivoId = newValue } }
     }
 
     var clienteAttivo: Cliente? { clienti.first { $0.id == clienteAttivoId } }
@@ -333,7 +336,8 @@ final class StatoShell: ObservableObject {
         let area = areaConFinestre
         pannelloSpazi = false
         anima {
-            finestre = s.finestre.map { f in
+            // In modalità cliente le app che leggono tutti i clienti restano chiuse
+            finestre = s.finestre.filter { appConsentita($0.app) }.map { f in
                 Finestra(app: f.app, cornice: cornice(da: f, in: area), ingrandita: f.ingrandita)
             }
         }
@@ -454,6 +458,7 @@ final class StatoShell: ObservableObject {
         dati.valutazioni.removeAll { $0.clienteId == id }
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
+        if modoCliente == id { modoCliente = nil }
         if dati.clienteAttivoId == id {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
@@ -1225,7 +1230,7 @@ final class StatoShell: ObservableObject {
 
     /// Posizioni e proposte (di tutti i clienti) nate da una scheda.
     func posizioniDelProdotto(_ id: String) -> [Posizione] {
-        dati.posizioni.filter { $0.prodottoId == id }
+        posizioni.filter { $0.prodottoId == id }
     }
 
     /// Crea una proposta per il cliente attivo con le condizioni della scheda e la apre in Posizioni.

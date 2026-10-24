@@ -1011,6 +1011,36 @@ enum ProvaCalcoli {
             verifica("Successione: al fratello il 6% oltre 100.000", sr.impostaSuccessione, (400_000 - 100_000) * 0.06)
             verifica("Successione: ipotecaria e catastale 3% sulla seconda casa", sr.ipocatastali, 3_000)
             verifica("Successione: frazioni leggibili", MotoreSuccessione.frazione(2.0 / 3) == "due terzi" ? 1 : 0, 1)
+            // Coniuge senza figli con un genitore e tre fratelli: al genitore almeno un quarto (art. 582 c.c.)
+            var sposato = ricco
+            sposato.statoCivile = .coniugato
+            sposato.famiglia = [Familiare(nome: "Moglie", relazione: .coniuge), Familiare(nome: "Padre", relazione: .genitore),
+                                Familiare(nome: "F1", relazione: .fratelloSorella), Familiare(nome: "F2", relazione: .fratelloSorella),
+                                Familiare(nome: "F3", relazione: .fratelloSorella)]
+            let quote = MotoreSuccessione.legittimi(sposato)
+            verifica("Successione: al genitore un quarto", quote.first { $0.relazione == .genitore }?.quota ?? -1, 0.25, tolleranza: 0.0001)
+            verifica("Successione: le quote fanno l'intero", quote.map(\.quota).reduce(0, +), 1, tolleranza: 0.0001)
+            // Stato civile non indicato: il coniuge registrato eredita
+            var senzaStato = sposato
+            senzaStato.statoCivile = nil
+            senzaStato.famiglia = [Familiare(nome: "Moglie", relazione: .coniuge), Familiare(nome: "A", relazione: .figlio), Familiare(nome: "B", relazione: .figlia)]
+            verifica("Successione: stato civile mancante, al coniuge un terzo", MotoreSuccessione.legittimi(senzaStato).first { $0.relazione == .coniuge }?.quota ?? -1, 1.0 / 3, tolleranza: 0.0001)
+            // Capitalizzazione nell'asse; TCM scaduta non conta; una sola prima casa
+            var capitalizzazione = Posizione(clienteId: "r", canale: .alleanza, stato: .inEssere, area: .risparmio, nome: "Contratto di capitalizzazione")
+            capitalizzazione.tipologia = "Contratto di capitalizzazione"
+            capitalizzazione.controvalore = 50_000
+            verifica("Successione: la capitalizzazione resta nell'asse", MotoreSuccessione.classifica(capitalizzazione).1 == .asse ? 1 : 0, 1)
+            var tcm = Posizione(clienteId: "r", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "TCM")
+            tcm.capitaleAssicurato = 100_000
+            tcm.scadenza = Calendar.current.date(byAdding: .day, value: -10, to: Date())
+            verifica("Successione: una TCM scaduta non paga", MotoreSuccessione.classifica(tcm).0, 0)
+            tcm.scadenza = nil
+            verifica("Successione: TCM senza rischio indicato, dal nome", MotoreSuccessione.classifica(tcm).0, 100_000)
+            var casaA = Posizione(clienteId: "r", canale: .indipendente, stato: .inEssere, area: .immobili, nome: "Abitazione Milano")
+            casaA.controvalore = 400_000
+            var casaB = Posizione(clienteId: "r", canale: .indipendente, stato: .inEssere, area: .immobili, nome: "Abitazione al mare")
+            casaB.controvalore = 300_000
+            verifica("Successione: prima casa per una sola abitazione", MotoreSuccessione.calcola(cliente: sposato, posizioni: [casaA, casaB]).ipocatastali, 400 + 9_000)
         }
 
         if errori == 0 {

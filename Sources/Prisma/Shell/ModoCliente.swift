@@ -20,6 +20,8 @@ extension StatoShell {
         }
         modoCliente = c.id
         Self.appRiservate.forEach(chiudi)
+        // Il prospetto del portafoglio parla di tutti i clienti
+        if case .portafoglio? = prospetto { prospetto = nil }
         pannelloNotifiche = false
         pannelloSpazi = false
         pannelloAppAperte = false

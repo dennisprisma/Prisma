@@ -78,7 +78,7 @@ struct PannelloSuccessione: View {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(v.posizione.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
-                            Text(v.avviso ?? (v.destino == .beneficiari && !v.posizione.beneficiari.isEmpty ? "Beneficiari: \(v.posizione.beneficiari)" : v.motivo))
+                            Text(v.avviso ?? (v.destino == .beneficiari && !v.posizione.senzaBeneficiari ? "Beneficiari: \(v.posizione.beneficiari)" : v.motivo))
                                 .font(Tipo.chip).foregroundColor(v.avviso == nil ? Colori.Analisi.kpiNota : Colori.Analisi.attenzioneTesto).lineLimit(1)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
