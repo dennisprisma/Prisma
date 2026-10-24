@@ -194,10 +194,20 @@ enum ProvaEve {
             ("Cosa facciamo con la liquidità sul conto?", .liquidita),
             ("È coperto in caso di invalidità?", .protezione),
             ("Cosa succede al suo patrimonio netto se i mercati crollano?", .resistenza),
-            ("Quanto può perdere in una crisi?", .resistenza)
+            ("Quanto può perdere in una crisi?", .resistenza),
+            ("Quali costi paga sulle sue polizze?", .costi),
+            ("Quanto gli costano di commissioni?", .costi)
         ]
         for (domanda, atteso) in argomenti {
             controlla(SpuntoEve.argomento(domanda) == atteso, "Argomento di «\(domanda)» → \(atteso.rawValue)")
+        }
+        // Peso dei costi: le stesse cifre del pannello in Posizioni
+        if let f = stato.fonteEve("marco") {
+            let a = MotoreCosti.calcola(f.posizioni, prodotti: f.prodotti, cliente: f.cliente.id)
+            let r = MotoriEve.sintesi.componi(RichiestaEve(domanda: "", spunto: .costi, fonte: f, storia: []))
+            controlla(!a.voci.isEmpty && r.titolo == "I costi di Marco Bianchi" && MotoreCosti.sintesi(a).allSatisfy { r.testo.contains($0) },
+                      "Costi di Marco: Eve riporta le cifre del motore")
+            controlla(ContestoEve.scheda(f).contains("COSTI (calcolati da Prisma)"), "La scheda per il modello riporta i costi")
         }
         // Prova di resistenza: le stesse cifre del pannello in Posizioni
         if let f = stato.fonteEve("marco") {

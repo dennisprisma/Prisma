@@ -60,7 +60,7 @@ struct PropostaEve: Codable, Equatable, Identifiable {
 /// Gli spunti pronti sotto la conversazione. Quelli di analisi leggono gli stessi motori dei
 /// prospetti e dei report: i numeri di Eve e quelli dei documenti coincidono.
 enum SpuntoEve: String, CaseIterable, Identifiable {
-    case riepilogo, checkUp, proposte, incontro, prossimiPassi, resoconto, resistenza, pensione, protezione, liquidita, obiettivi, cambiare, documenti, scadenze
+    case riepilogo, checkUp, proposte, incontro, prossimiPassi, resoconto, costi, resistenza, pensione, protezione, liquidita, obiettivi, cambiare, documenti, scadenze
 
     var id: String { rawValue }
 
@@ -72,6 +72,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         case .incontro: return "Prepara il prossimo incontro"
         case .prossimiPassi: return "Elenca i prossimi passi"
         case .resoconto: return "Come stanno andando le posizioni?"
+        case .costi: return "Quanto pesano i costi?"
         case .resistenza: return "Cosa succede se i mercati crollano?"
         case .pensione: return "Spiegami il piano pensione"
         case .protezione: return "Dove è scoperta la protezione?"
@@ -91,6 +92,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         case .incontro: return "◷"
         case .prossimiPassi: return "✓"
         case .resoconto: return "↗"
+        case .costi: return "%"
         case .resistenza: return "↘"
         case .pensione: return "☂"
         case .protezione: return "◈"
@@ -114,6 +116,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         // Ogni chiave è l'inizio di una parola ("pension" sì in «pensione», no in «sospensione»);
         // con \b in fondo vale solo la parola intera («passi» sì, «passività» no).
         let parole: [(SpuntoEve, [String])] = [
+            (.costi, [#"cost[oi]\b"#, #"costano\b"#, "commission", "caricament"]),
             (.resistenza, ["croll", #"crisi\b"#, "stress", "resisten", "ribass", #"perder[eà]\b"#]),
             (.riepilogo, [#"patrimonio netto\b"#]),
             (.proposte, [#"proporre\b"#, "proposte da fare", "cosa gli propongo", "cosa le propongo", "opportunità"]),
@@ -123,7 +126,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
             (.liquidita, ["liquidit", "conto corrente", "in scadenza", "salvadana"]),
             (.obiettivi, ["obiettiv", "traguard"]),
             (.protezione, ["protezion", "copertur", #"tcm\b"#, "caso morte", "invalidit"]),
-            (.resoconto, ["rendiment", "andament", "guadagn", #"tasse\b"#, #"impost[ae]\b"#, #"costi\b"#, #"netto\b"#, "resoconto"]),
+            (.resoconto, ["rendiment", "andament", "guadagn", #"tasse\b"#, #"impost[ae]\b"#, #"netto\b"#, "resoconto"]),
             (.checkUp, ["check", "semaforo"]),
             (.scadenze, ["scadenz", #"scad[eo]\b"#]),
             (.incontro, [#"incontr[oi]\b"#, "appuntament"]),

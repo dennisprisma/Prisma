@@ -153,6 +153,13 @@ struct AppPosizioni: View {
                     }
                 }
             }
+            if !stato.portafoglio {
+                EtichettaRail(testo: "Analisi")
+                VStack(spacing: 0) {
+                    VoceNavigazione(titolo: "Prova di resistenza", attiva: false) { stato.ancoraPosizioni = "resistenza" }
+                    VoceNavigazione(titolo: "Peso dei costi", attiva: false) { stato.ancoraPosizioni = "costi" }
+                }
+            }
             EtichettaRail(testo: "Collegati")
             VStack(spacing: 0) {
                 ForEach([AppPrisma.analisi360, .simulazioni, .confronti, .prodotti]) { app in
@@ -183,48 +190,65 @@ struct AppPosizioni: View {
 
     private var principale: some View {
         let r = RiepilogoPosizioni(delCliente)
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                FasciaKPI {
-                    KPI(titolo: "Patrimonio netto", valore: Formati.euro(r.patrimonioNetto)) {
-                        Chip(testo: "Attività \(Formati.euroBreve(r.attivita))")
-                        Chip(testo: "Debiti \(Formati.euroBreve(r.debiti))")
+        return ScrollViewReader { lettore in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    FasciaKPI {
+                        KPI(titolo: "Patrimonio netto", valore: Formati.euro(r.patrimonioNetto)) {
+                            Chip(testo: "Attività \(Formati.euroBreve(r.attivita))")
+                            Chip(testo: "Debiti \(Formati.euroBreve(r.debiti))")
+                        }
+                        KPI(titolo: "Premi e versamenti", valore: Formati.euro(r.premiAnnui)) {
+                            Text("all'anno")
+                            Chip(testo: "\(r.contrattiConPremi) \(r.contrattiConPremi == 1 ? "contratto" : "contratti")")
+                        }
+                        KPI(titolo: "Capitale assicurato", valore: Formati.euro(r.capitaleAssicurato)) {
+                            Chip(testo: "\(r.coperture) \(r.coperture == 1 ? "copertura" : "coperture")")
+                        }
+                        KPI(titolo: "Proposte aperte", valore: "\(r.proposteAperte)", ultimo: true) {
+                            Text("per \(Formati.euro(r.valoreProposte))")
+                        }
                     }
-                    KPI(titolo: "Premi e versamenti", valore: Formati.euro(r.premiAnnui)) {
-                        Text("all'anno")
-                        Chip(testo: "\(r.contrattiConPremi) \(r.contrattiConPremi == 1 ? "contratto" : "contratti")")
-                    }
-                    KPI(titolo: "Capitale assicurato", valore: Formati.euro(r.capitaleAssicurato)) {
-                        Chip(testo: "\(r.coperture) \(r.coperture == 1 ? "copertura" : "coperture")")
-                    }
-                    KPI(titolo: "Proposte aperte", valore: "\(r.proposteAperte)", ultimo: true) {
-                        Text("per \(Formati.euro(r.valoreProposte))")
-                    }
-                }
 
-                HStack(alignment: .top, spacing: 24) {
-                    PannelloAnalisi(titolo: "Ripartizione per area", nota: "Posizioni in essere, debiti a parte") { EmptyView() } contenuto: {
-                        ripartizione(r)
+                    HStack(alignment: .top, spacing: 24) {
+                        PannelloAnalisi(titolo: "Ripartizione per area", nota: "Posizioni in essere, debiti a parte") { EmptyView() } contenuto: {
+                            ripartizione(r)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        PannelloAnalisi(titolo: "Per canale", nota: "Attività in essere") { EmptyView() } contenuto: {
+                            canali(r)
+                        }
+                        .frame(width: 330, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    PannelloAnalisi(titolo: "Per canale", nota: "Attività in essere") { EmptyView() } contenuto: {
-                        canali(r)
+
+                    let prova = MotoreResistenza.calcola(delCliente, profilo: stato.clienteAttivo?.profilo)
+                    if !prova.vuota {
+                        PannelloResistenza(prova: prova).id("resistenza")
                     }
-                    .frame(width: 330, alignment: .leading)
-                }
+                    let costi = MotoreCosti.calcola(delCliente, prodotti: stato.dati.prodotti, cliente: stato.clienteAttivoId)
+                    if !costi.vuota {
+                        PannelloCosti(analisi: costi).id("costi")
+                    }
 
-                let prova = MotoreResistenza.calcola(delCliente, profilo: stato.clienteAttivo?.profilo)
-                if !prova.vuota {
-                    PannelloResistenza(prova: prova)
+                    PannelloAnalisi(titolo: titoloTabella, nota: "Tocca una riga per il dettaglio e la proiezione") {
+                        if let area { Chip(testo: area.nome) }
+                    } contenuto: {
+                        TabellaPosizioni(posizioni: elenco) { stato.posizioneInDettaglio = $0.id }
+                    }
                 }
-
-                PannelloAnalisi(titolo: titoloTabella, nota: "Tocca una riga per il dettaglio e la proiezione") {
-                    if let area { Chip(testo: area.nome) }
-                } contenuto: {
-                    TabellaPosizioni(posizioni: elenco) { stato.posizioneInDettaglio = $0.id }
-                }
+                .padding(EdgeInsets(top: 10, leading: 12, bottom: 16, trailing: 12))
             }
-            .padding(EdgeInsets(top: 10, leading: 12, bottom: 16, trailing: 12))
+            .onAppear { scorri(lettore) }
+            .onChange(of: stato.ancoraPosizioni) { _ in scorri(lettore) }
+        }
+    }
+
+    /// Porta in vista il pannello chiesto (dalla colonna o da un'istantanea), poi dimentica l'ancora.
+    private func scorri(_ lettore: ScrollViewProxy) {
+        guard let ancora = stato.ancoraPosizioni else { return }
+        DispatchQueue.main.async {
+            withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }
+            stato.ancoraPosizioni = nil
         }
     }
 

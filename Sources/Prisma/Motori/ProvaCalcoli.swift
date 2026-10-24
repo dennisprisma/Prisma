@@ -941,6 +941,45 @@ enum ProvaCalcoli {
             }
         }
 
+        // Peso dei costi: quanto tolgono nel tempo e l'alternativa a parità di rischio
+        do {
+            func pos(_ nome: String, _ area: AreaPosizione, _ valore: Double, _ modifica: (inout Posizione) -> Void = { _ in }) -> Posizione {
+                var p = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: area, nome: nome)
+                p.controvalore = valore
+                p.totaleVersato = valore
+                modifica(&p)
+                return p
+            }
+            let fondo = pos("Fondo caro", .investimento, 100_000) { $0.tipologia = "Fondo comune"; $0.sri = 4; $0.rendimentoAtteso = 5; $0.costoAnnuo = 2; $0.aliquotaFiscale = 26 }
+            let b = RegoleFiscali.bollo * fondo.quotaBollo
+            let netto: (Double, Int) -> Double = { c, anni in
+                let f = 100_000 * pow(1.05 * (1 - (c + b) / 100), Double(anni))
+                return f - max(0, f - 100_000) * 0.26
+            }
+            let scade = pos("Polizza a 5 anni", .risparmio, 50_000) {
+                $0.tipologia = "Polizza rivalutabile (Ramo I)"; $0.costoAnnuo = 1.2; $0.costoIngresso = 3; $0.premio = 1_000; $0.frequenza = .annuale
+                $0.scadenza = Calendar.current.date(byAdding: .year, value: 5, to: Date())
+            }
+            let senza = pos("Senza KID", .investimento, 20_000)
+            let catalogo = DatiDemo.prodotti()
+            let a = MotoreCosti.calcola([fondo, scade, senza], prodotti: catalogo, cliente: "prova")
+            let vf = a.voci.first { $0.posizione.id == fondo.id }
+            verifica("Costi: quest'anno il 2% del valore", vf?.euroAnno ?? -1, 2_000)
+            verifica("Costi: in 10 anni tolgono il netto senza costi meno quello con", vf?.perso10 ?? -1, netto(0, 10) - netto(2, 10), tolleranza: 1)
+            verifica("Costi: in 20 anni di più che in 10", (vf?.perso20 ?? 0) > (vf?.perso10 ?? 0) ? 1 : 0, 1)
+            let vs = a.voci.first { $0.posizione.id == scade.id }
+            verifica("Costi: con la scadenza a 5 anni il calcolo si ferma lì", Double(vs?.anni20 ?? -1), 5)
+            verifica("Costi: ingresso sui versamenti dell'anno", vs?.euroAnno ?? -1, 50_000 * 0.012 + 1_000 * 0.03)
+            verifica("Costi: le posizioni senza costi indicati a parte", a.senzaDati.map(\.id) == [senza.id] ? 1 : 0, 1)
+            verifica("Costi: alternativa a parità di rischio (ETF, SRI 4, 0,2%)", vf?.alternativa?.prodotto.id == "prodotto-etf-globale" ? 1 : 0, 1)
+            verifica("Costi: l'alternativa lascia di più, uscita compresa", (vf?.alternativa?.guadagno ?? 0) >= MotoreCosti.guadagnoMinimo ? 1 : 0, 1)
+            verifica("Costi: la gestione separata non si confronta con un fondo", vs?.alternativa == nil ? 1 : 0, 1)
+            var diverso = fondo
+            diverso.sri = 5
+            verifica("Costi: con un altro SRI nessuna alternativa", MotoreCosti.alternativa(diverso, prodotti: catalogo, cliente: "prova") == nil ? 1 : 0, 1)
+            verifica("Costi: costo medio pesato sul valore", a.costoMedio ?? -1, (2 * 100_000 + 1.2 * 50_000) / 150_000.0, tolleranza: 0.0001)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

@@ -64,6 +64,11 @@ enum ContestoEve {
             righe.append("POSIZIONI IN ESSERE:")
             righe.append(contentsOf: inEssere.prefix(12).map { "- " + riga($0) })
         }
+        let costi = MotoreCosti.calcola(f.posizioni, prodotti: f.prodotti, cliente: c.id)
+        if let m = costi.costoMedio {
+            let alternativa = costi.conAlternativa.first.flatMap { v in v.alternativa.map { "; alternativa a parità di rischio per \(v.posizione.nome): \($0.prodotto.nome), +\(Formati.euro($0.guadagno)) in \($0.anni) anni" } } ?? ""
+            righe.append("COSTI (calcolati da Prisma): \(Formati.euro(costi.euroAnno)) quest'anno, media \(CifreDoc.percento(m, decimali: 2)) l'anno; tolgono \(Formati.euro(costi.perso10)) in 10 anni e \(Formati.euro(costi.perso20)) in 20\(alternativa).")
+        }
         let prova = MotoreResistenza.calcola(f.posizioni, profilo: c.profilo)
         if !prova.vuota {
             // Una riga sola: la scheda ha un limite di spazio
