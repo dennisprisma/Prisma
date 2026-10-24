@@ -121,7 +121,8 @@ struct MotoreSintesi: MotoreEve {
         if !f.analisiSalvata { punti.append("verificare con il cliente le ipotesi dell'Analisi 360 (ora sono ricavate dalle posizioni)") }
         // Una revisione periodica: i punti del riesame annuale
         if e.tipo == .revisione {
-            for p in MotoreRiesame.calcola(f).punti.prefix(6) where !punti.contains(where: { $0.contains(p.titolo) }) {
+            // Le scadenze sono già nella traccia: dal riesame il resto
+            for p in MotoreRiesame.calcola(f).punti.filter({ $0.tema != .scadenze }).prefix(6) where !punti.contains(where: { $0.contains(p.titolo) }) {
                 punti.append("\(p.titolo.prefix(1).lowercased() + p.titolo.dropFirst()): \(p.dettaglio)")
             }
         }

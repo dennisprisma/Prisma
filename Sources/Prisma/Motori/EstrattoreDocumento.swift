@@ -16,7 +16,13 @@ enum EstrattoreDocumento {
         let campo: CampoDocumento
         let schema: String
         var ultimoPercento = false
+        /// Tra tutte le occorrenze della pagina, la data più recente non futura (estratti con il saldo
+        /// iniziale e finale, intestazioni con la data del rendiconto precedente).
+        var dataPiuRecente = false
     }
+
+    /// Le somme di un periodo ("premi versati nel periodo", "contributi versati nell'anno") non sono il versato totale.
+    private static let nonDiPeriodo = #"(?!\s+(?:nel|nell'|nella|dal|del periodo|dell'anno|in corso|durante))"#
 
     private static let schemaNumero = #"(-?\d+\.\d{1,2}(?=\s*%)|-?\d{1,3}(?:\.\d{3})*(?:,\d+)?|-?\d+(?:,\d+)?)"#
     private static let schemaImporto = #"(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)(?![/\d]|[.,]\d|\s*%)"#
@@ -58,10 +64,10 @@ enum EstrattoreDocumento {
         Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)(?:€|eur(?:o)?)\s*\#(schemaImporto)"#),
         Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)\#(schemaImportoMigliaia)"#),
         // Estratti conto: la data a cui si riferisce il valore e il versato fino ad allora
-        Regola(campo: .dataValore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|situazione|saldo|posizione|rendiconto|estratto conto)\s+(?:al|alla data del)\s+\#(schemaData)"#),
-        Regola(campo: .dataValore, schema: #"(?:data di riferimento|data di valorizzazione|data di valutazione|valori aggiornati al|aggiornat[oa] al)[^\d\n]{0,20}?\#(schemaData)"#),
-        Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(fraEtichettaEValore)(?:€|eur(?:o)?)\s*\#(schemaImporto)"#),
-        Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(fraEtichettaEValore)\#(schemaImportoMigliaia)"#),
+        Regola(campo: .dataValore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|situazione|saldo|posizione|rendiconto|estratto conto)\s+(?:al|alla data del)\s+\#(schemaData)"#, dataPiuRecente: true),
+        Regola(campo: .dataValore, schema: #"(?:data di riferimento|data di valorizzazione|data di valutazione|valori aggiornati al|aggiornat[oa] al)[^\d\n]{0,20}?\#(schemaData)"#, dataPiuRecente: true),
+        Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(nonDiPeriodo)\#(fraEtichettaEValore)(?:€|eur(?:o)?)\s*\#(schemaImporto)"#),
+        Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(nonDiPeriodo)\#(fraEtichettaEValore)\#(schemaImportoMigliaia)"#),
     ]
 
     /// Applica le regole pagina per pagina; per ogni campo tiene la prima occorrenza.
@@ -73,7 +79,16 @@ enum EstrattoreDocumento {
             for r in regole where trovati[r.campo] == nil {
                 guard let regex = try? NSRegularExpression(pattern: r.schema, options: [.caseInsensitive]) else { continue }
                 let intervallo = NSRange(testo.startIndex..., in: testo)
-                guard let m = regex.firstMatch(in: testo, range: intervallo), m.numberOfRanges > 1,
+                var scelta = regex.firstMatch(in: testo, range: intervallo)
+                if r.dataPiuRecente {
+                    // Fino a fine giornata: una data futura è una proiezione, non il valore di oggi
+                    let limite = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+                    scelta = regex.matches(in: testo, range: intervallo).compactMap { m -> (NSTextCheckingResult, Date)? in
+                        guard m.numberOfRanges > 1, let rv = Range(m.range(at: 1), in: testo), let d = data(String(testo[rv])), d < limite else { return nil }
+                        return (m, d)
+                    }.max { $0.1 < $1.1 }?.0
+                }
+                guard let m = scelta, m.numberOfRanges > 1,
                       let rv = Range(m.range(at: 1), in: testo), let rt = Range(m.range, in: testo) else { continue }
                 let grezzo = r.ultimoPercento ? (ultimaPercentuale(String(testo[rv])) ?? "") : String(testo[rv])
                 let valore = pulisci(grezzo, campo: r.campo)

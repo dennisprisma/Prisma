@@ -410,6 +410,32 @@ enum ProvaCalcoli {
             verifica("Andamento: sei mesi non si annualizzano", a.rendimentoAnnuo == nil ? 1 : 0, 1)
             verifica("Andamento: atteso netto su sei mesi", a.attesoConfrontabile ?? 0, (sqrt(1.05) - 1) * 100)
         }
+        // Riscatto parziale: escono metà del valore e metà del versato, il rendimento resta zero
+        var riscatto = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Riscatto")
+        riscatto.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-unAnno), controvalore: 20_000, versato: 10_000)]
+        riscatto.controvalore = 10_000
+        riscatto.totaleVersato = 5_000
+        riscatto.dataValore = oggi
+        verifica("Andamento: un riscatto parziale non è una perdita", MotoreAndamento.calcola(riscatto)?.rendimentoPeriodo ?? -99, 0, tolleranza: 0.05)
+        // Tre settimane di storico: l'andamento c'è, il giudizio no
+        var breve = riscatto
+        breve.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-21 * 86_400), controvalore: 10_000, versato: 5_000)]
+        breve.controvalore = 9_800
+        breve.rendimentoAtteso = 3.5
+        verifica("Andamento: tre settimane non bastano per un giudizio", MotoreAndamento.calcola(breve).map { $0.giudizio == nil ? 1 : 0 } ?? 0, 1)
+        // Posizione senza data del valore: il nuovo valore è di oggi e lo storico resta in ordine
+        var senzaData = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Senza data")
+        senzaData.decorrenza = cal.date(byAdding: .year, value: -6, to: oggi)
+        senzaData.creataIl = cal.date(byAdding: .month, value: -10, to: oggi) ?? oggi
+        senzaData.controvalore = 10_000
+        senzaData.totaleVersato = 10_000
+        let primaSenzaData = senzaData
+        senzaData.controvalore = 12_000
+        senzaData.registraValorePrecedente(primaSenzaData)
+        let ordinato = senzaData.storicoValori
+        verifica("Storico: senza data del valore resta in ordine, l'ultimo è quello nuovo",
+                 zip(ordinato, ordinato.dropFirst()).allSatisfy { $0.data < $1.data } && ordinato.last?.controvalore == 12_000 ? 1 : 0, 1)
+        verifica("Storico: 10.000 → 12.000 è un guadagno", MotoreAndamento.calcola(senzaData)?.guadagno ?? 0, 2_000)
         storica.rilevazioni = nil
         verifica("Andamento: con un solo valore non c'è", MotoreAndamento.calcola(storica) == nil ? 1 : 0, 1)
         var copertura = storica
@@ -703,6 +729,30 @@ enum ProvaCalcoli {
         verifica("Estratto: «Controvalore complessivo» senza simbolo", EstrattoreDocumento.numero(letto(.controvalore, in: varianti)) ?? 0, 12_345.67)
         let nonVersato = EstrattoreDocumento.conRegole(["Premi versati nel 2025: 12 rate"])
         verifica("Estratto: «12 rate» non è un versato", letto(.totaleVersato, in: nonVersato).isEmpty ? 1 : 0, 1)
+        // Revisione: versato di un periodo, saldo iniziale e finale, proiezioni future
+        let giorni: (Int) -> String = { Formati.dataBreve.string(from: Calendar.current.date(byAdding: .day, value: $0, to: Date()) ?? Date()) }
+        let periodo = EstrattoreDocumento.conRegole(["Premi versati nel periodo: € 1.200,00\nTotale premi versati: € 14.500,00\nContributi versati nell'anno € 2.400,00"])
+        verifica("Estratto: il versato totale, non quello del periodo", EstrattoreDocumento.numero(letto(.totaleVersato, in: periodo)) ?? 0, 14_500)
+        let saldi = EstrattoreDocumento.conRegole(["Rendiconto al \(giorni(-200))\nSaldo al \(giorni(-120)): € 10.000,00\nSaldo al \(giorni(-30)): € 10.400,00\nValore di riscatto al \(giorni(400)): € 11.000,00"])
+        verifica("Estratto: la data più recente non futura", letto(.dataValore, in: saldi) == giorni(-30) ? 1 : 0, 1)
+        var futuro = Documento(clienteId: "giulia", titolo: "Polizza", tipo: .polizza)
+        futuro.campi = [CampoEstratto(chiave: .controvalore, valore: "11.000,00", pagina: 1, confermato: true),
+                        CampoEstratto(chiave: .dataValore, valore: giorni(400), pagina: 1, confermato: true)]
+        verifica("Estratto: un valore futuro è una proiezione, non si registra", ValoriDaDocumento.valore(futuro) == nil ? 1 : 0, 1)
+        // Due posizioni con lo stesso nome: nessuna scelta a caso; numero diverso: esclusa
+        var gemella1 = Posizione(clienteId: "c", canale: .alleanza, stato: .inEssere, area: .risparmio, nome: "Piano")
+        gemella1.id = "g1"
+        var gemella2 = gemella1
+        gemella2.id = "g2"
+        var docNome = Documento(clienteId: "c", titolo: "Estratto conto Piano", tipo: .estrattoConto)
+        verifica("Estratto: due posizioni con lo stesso nome, nessuna riconosciuta", ValoriDaDocumento.posizioneProbabile(docNome, tra: [gemella1, gemella2]) == nil ? 1 : 0, 1)
+        gemella1.numeroContratto = "111"
+        docNome.campi = [CampoEstratto(chiave: .numeroContratto, valore: "222", pagina: 1)]
+        verifica("Estratto: il nome non vince su un numero di contratto diverso", ValoriDaDocumento.posizioneProbabile(docNome, tra: [gemella1, gemella2])?.id == "g2" ? 1 : 0, 1)
+        var spirito = gemella1
+        spirito.nome = "PIR"
+        verifica("Estratto: il nome si cerca a parole intere («PIR» non è in «spirito»)",
+                 ValoriDaDocumento.posizioneProbabile(Documento(clienteId: "c", titolo: "Lo spirito del risparmio", tipo: .estrattoConto), tra: [spirito]) == nil ? 1 : 0, 1)
         // Dal documento alla posizione
         var docEstratto = Documento(clienteId: "giulia", titolo: "Estratto conto", tipo: .estrattoConto)
         docEstratto.campi = estratto.map { var c = $0; c.confermato = true; return c }
@@ -718,6 +768,12 @@ enum ProvaCalcoli {
             verifica("Estratto: ora risulta registrato", ValoriDaDocumento.registrato(v, in: piano) ? 1 : 0, 1)
             ValoriDaDocumento.applica(v, a: &piano)
             verifica("Estratto: registrarlo di nuovo non lo duplica", Double(piano.storicoValori.count), Double(prima + 1))
+            // Un estratto senza versato: al versato di prima si aggiungono i premi del periodo
+            var senzaVersato = piano
+            let dopo = ValoriDaDocumento.mezzogiorno(Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+            let premiAttesi = (piano.totaleVersato ?? 0) + piano.premioAnnuo * dopo.timeIntervalSince(piano.dataValore ?? dopo) / MotoreAndamento.anno
+            ValoriDaDocumento.applica(ValoriDaDocumento.Valore(data: dopo, valore: 7_900, versato: nil), a: &senzaVersato)
+            verifica("Estratto: senza versato si aggiungono i premi del periodo", senzaVersato.totaleVersato ?? 0, premiAttesi, tolleranza: 1)
             let recente = ValoriDaDocumento.Valore(data: ValoriDaDocumento.mezzogiorno(Date()), valore: 7_800, versato: 7_350)
             verifica("Estratto: un valore più recente diventa quello attuale", ValoriDaDocumento.applica(recente, a: &piano) == .attuale ? 1 : 0, 1)
             verifica("Estratto: valore e versato aggiornati", (piano.controvalore ?? 0) + (piano.totaleVersato ?? 0), 15_150)

@@ -16,8 +16,9 @@ struct AppDocumenti: View {
     @State var canale: Canale = .alleanza
     @State var area: AreaPosizione = .investimento
     @State var confermaEliminazione = false
-    /// La posizione scelta a mano per il valore di un estratto conto (nil = quella riconosciuta).
-    @State var posizioneValore: String?
+    /// La posizione scelta a mano per il valore di ogni estratto conto (per documento: niente scelte
+    /// rimaste da un altro documento; senza voce vale quella riconosciuta).
+    @State var posizioneValore: [String: String] = [:]
 
     private var cliente: String { stato.clienteAttivoId }
     private var elenco: [Documento] { stato.documentiCliente(cliente) }
@@ -319,7 +320,7 @@ struct AppDocumenti: View {
     private func storicoPosizione(_ d: Documento) -> some View {
         let candidate = ValoriDaDocumento.candidate(d, tra: stato.posizioni)
         let probabile = ValoriDaDocumento.posizioneProbabile(d, tra: stato.posizioni)
-        let scelta = candidate.first { $0.id == posizioneValore } ?? probabile ?? candidate.first
+        let scelta = candidate.first { $0.id == posizioneValore[d.id] } ?? probabile ?? candidate.first
         let valore = ValoriDaDocumento.valore(d)
         let fatto = valore.flatMap { v in scelta.map { ValoriDaDocumento.registrato(v, in: $0) } } ?? false
         return VStack(alignment: .leading, spacing: 8) {
@@ -329,7 +330,7 @@ struct AppDocumenti: View {
                     .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
             } else {
                 HStack(spacing: 10) {
-                    Picker("", selection: Binding(get: { scelta?.id ?? "" }, set: { posizioneValore = $0 })) {
+                    Picker("", selection: Binding(get: { scelta?.id ?? "" }, set: { posizioneValore[d.id] = $0 })) {
                         ForEach(candidate) { p in Text("\(p.nome) · \(p.canale.nomeBreve)").tag(p.id) }
                     }
                     .labelsHidden()
@@ -363,7 +364,6 @@ struct AppDocumenti: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Gradienti.kpi))
         .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
-        .onChange(of: d.id) { _ in posizioneValore = nil }
     }
 
     private func usa(_ d: Documento) -> some View {
@@ -418,8 +418,11 @@ struct AppDocumenti: View {
         // Un documento di una posizione già riconosciuta (estratto conto) ne prende canale e area
         if ValoriDaDocumento.pertinente(d), let p = ValoriDaDocumento.posizioneProbabile(d, tra: stato.posizioni) {
             canale = p.canale
-            area = p.area
-            return
+            // Il selettore delle aree non ha gli immobili (né i debiti)
+            if p.area != .immobili, !p.area.passivo {
+                area = p.area
+                return
+            }
         }
         let testo = (d.campi.map(\.valore) + [d.titolo]).joined(separator: " ").lowercased()
         canale = testo.contains("alleanza") ? .alleanza : .indipendente

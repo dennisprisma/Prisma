@@ -21,7 +21,9 @@ enum ValoriDaDocumento {
     /// Il valore confermato del documento: controvalore e data del valore, il versato se c'è.
     static func valore(_ d: Documento) -> Valore? {
         guard let v = EstrattoreDocumento.numero(d.confermato(.controvalore)), v >= 0,
-              let data = EstrattoreDocumento.data(d.confermato(.dataValore)) else { return nil }
+              let data = EstrattoreDocumento.data(d.confermato(.dataValore)),
+              // Una data futura è una proiezione (tabelle dei valori di riscatto), non un valore rilevato
+              data < (Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()) else { return nil }
         return Valore(data: mezzogiorno(data), valore: v, versato: EstrattoreDocumento.numero(d.confermato(.totaleVersato)))
     }
 
@@ -41,9 +43,17 @@ enum ValoriDaDocumento {
         if let id = d.posizioneId, let p = elenco.first(where: { $0.id == id }) { return p }
         let numero = (d.campo(.numeroContratto)?.valore).map(compatto) ?? ""
         if !numero.isEmpty, let p = elenco.first(where: { !$0.numeroContratto.isEmpty && compatto($0.numeroContratto) == numero }) { return p }
+        // Dal nome, a parole intere; mai una posizione con un altro numero di contratto, mai a caso tra due uguali
         let nome = d.campo(.nomeProdotto)?.valore ?? ""
-        let testo = piega(nome + " " + d.titolo)
-        return elenco.filter { !$0.nome.isEmpty && testo.contains(piega($0.nome)) }.max { $0.nome.count < $1.nome.count }
+        let parole = " " + piega(nome + " " + d.titolo).split { !$0.isLetter && !$0.isNumber }.joined(separator: " ") + " "
+        let trovate = elenco.filter { p in
+            let suo = piega(p.nome).split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")
+            guard !suo.isEmpty, parole.contains(" \(suo) ") else { return false }
+            return numero.isEmpty || p.numeroContratto.isEmpty || compatto(p.numeroContratto) == numero
+        }
+        guard let lunghezza = trovate.map(\.nome.count).max() else { return nil }
+        let migliori = trovate.filter { $0.nome.count == lunghezza }
+        return migliori.count == 1 ? migliori.first : nil
     }
 
     /// true se lo storico della posizione ha già questo valore in quel giorno.
@@ -55,11 +65,19 @@ enum ValoriDaDocumento {
     @discardableResult
     static func applica(_ v: Valore, a p: inout Posizione) -> Esito {
         let cal = Calendar.current
-        if p.dataValore.map({ cal.startOfDay(for: v.data) >= cal.startOfDay(for: $0) }) ?? true {
+        // Senza la data del valore, quello attuale vale dal giorno in cui la posizione è stata inserita
+        let riferimento = p.dataValore ?? (p.controvalore == nil ? nil : p.creataIl)
+        if riferimento.map({ cal.startOfDay(for: v.data) >= cal.startOfDay(for: $0) }) ?? true {
             let prima = p
             p.controvalore = v.valore
             p.dataValore = v.data
-            if let versato = v.versato { p.totaleVersato = versato }
+            if let versato = v.versato {
+                p.totaleVersato = versato
+            } else if let vecchio = p.totaleVersato, let dal = riferimento, p.premioAnnuo > 0 {
+                // Senza il versato nell'estratto: quello di prima più i premi del periodo (non un versato fermo,
+                // che farebbe passare i premi per guadagno)
+                p.totaleVersato = vecchio + p.premioAnnuo * max(0, v.data.timeIntervalSince(dal)) / MotoreAndamento.anno
+            }
             p.registraValorePrecedente(prima)
             return .attuale
         }

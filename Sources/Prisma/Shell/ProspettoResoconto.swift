@@ -12,6 +12,8 @@ enum ProspettoResoconto {
     /// Posizioni con l'andamento nella prima pagina (sotto il riepilogo) e nelle successive.
     static let andamentiPrimaPagina = 3
     static let andamentiPerPagina = 4
+    /// Valori di ogni posizione nella pagina dello storico.
+    static let valoriStorico = 6
 
     static func pagine(_ t: TestiResoconto) -> [AnyView] {
         let finanziarie = t.e.finanziarie
@@ -386,7 +388,8 @@ private struct PaginaStorico: View {
 
     private func storico(_ v: VoceResoconto) -> some View {
         let w = (larghezza - 18) / 2
-        let punti = v.posizione.storicoValori.sorted { $0.data < $1.data }
+        // Gli ultimi valori: la pagina è una sola, con il metodo e le firme
+        let punti = Array(v.posizione.storicoValori.sorted { $0.data < $1.data }.suffix(ProspettoResoconto.valoriStorico))
         // La variazione di ogni valore rispetto al precedente: la stessa della pagina dell'andamento
         let periodi = MotoreAndamento.calcola(v.posizione)?.periodi ?? []
         var righe: [RigaDoc] = []

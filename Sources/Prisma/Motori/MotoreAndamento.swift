@@ -76,7 +76,8 @@ struct AndamentoPosizione {
     }
 
     var giudizio: Giudizio? {
-        guard let s = scarto else { return nil }
+        // Poche settimane di storico sono oscillazioni di mercato, non un giudizio
+        guard let s = scarto, anni >= MotoreAndamento.anniGiudizio else { return nil }
         // Un punto all'anno di tolleranza; sui periodi brevi in proporzione (almeno mezzo punto)
         let tolleranza = rendimentoAnnuo != nil ? MotoreAndamento.tolleranza : max(0.5, MotoreAndamento.tolleranza * anni)
         if s > tolleranza { return .sopra }
@@ -91,6 +92,8 @@ enum MotoreAndamento {
     static let tolleranza = 1.0
     /// Da quanto storico si annualizza: un anno, con qualche giorno di margine sulle date degli estratti.
     static let anniMinimi = 0.95
+    /// Sotto i tre mesi di storico l'andamento si mostra ma non si giudica.
+    static let anniGiudizio = 0.25
 
     /// L'andamento dallo storico dei valori: servono almeno due valori, il primo positivo.
     /// Le coperture e i debiti non hanno un andamento da misurare.
@@ -104,7 +107,11 @@ enum MotoreAndamento {
             let anni = b.data.timeIntervalSince(a.data) / anno
             let versamenti: Double
             let stimati: Bool
-            if let va = a.versato, let vb = b.versato {
+            if let va = a.versato, let vb = b.versato, vb < va, va > 0 {
+                // Il versato scende con un riscatto parziale: è uscita la stessa quota del valore
+                versamenti = (vb - va) * a.controvalore / va
+                stimati = true
+            } else if let va = a.versato, let vb = b.versato {
                 versamenti = vb - va
                 stimati = false
             } else {
@@ -140,14 +147,17 @@ enum MotoreAndamento {
         }
 
         return AndamentoPosizione(periodi: periodi, punti: punti, rendimentoPeriodo: cumulato, rendimentoAnnuo: annuo,
-                                  attesoAnnuo: atteso, guadagno: periodi.reduce(0) { $0 + $1.guadagno },
+                                  // I periodi senza una base misurabile (valore zero) non entrano neanche nel guadagno
+                                  attesoAnnuo: atteso, guadagno: periodi.filter { $0.rendimento != nil }.reduce(0) { $0 + $1.guadagno },
                                   versamenti: periodi.reduce(0) { $0 + $1.versamenti })
     }
 
     /// Uno scarto in punti percentuali: "+1,2 punti", "−0,8 punti".
     static func punti(_ s: Double) -> String {
         let n = CifreDoc.variazione(s).replacingOccurrences(of: "%", with: "")
-        return "\(n) \(abs(s) >= 0.95 && abs(s) < 1.05 ? "punto" : "punti")"
+        // Il singolare sul numero scritto: "+1,0 punto", ma "+0,9 punti"
+        let cifra = n.trimmingCharacters(in: CharacterSet(charactersIn: "+\(CifreDoc.meno)"))
+        return "\(n) \(cifra == "1,0" ? "punto" : "punti")"
     }
 
     /// Una frase sull'andamento, per il dettaglio e per Eve.

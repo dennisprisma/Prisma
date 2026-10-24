@@ -29,19 +29,27 @@ enum CifreDoc {
     static func togli(_ v: Double) -> String { "\(meno) \(euro(abs(v)))" }
 
     /// Percentuale con il numero di decimali voluto: "3,10%", "2,5%".
-    static func percento(_ v: Double, decimali: Int = 1) -> String {
+    /// Un formattatore per numero di decimali (0–4), creato una volta sola.
+    private static let formattatori: [NumberFormatter] = (0...4).map { d in
         let f = NumberFormatter()
         f.locale = Formati.localeImporti
         f.numberStyle = .decimal
-        f.minimumFractionDigits = decimali
-        f.maximumFractionDigits = decimali
+        f.minimumFractionDigits = d
+        f.maximumFractionDigits = d
+        return f
+    }
+
+    static func percento(_ v: Double, decimali: Int = 1) -> String {
+        let f = formattatori[min(max(decimali, 0), formattatori.count - 1)]
         let s = f.string(from: NSNumber(value: abs(v))) ?? "\(abs(v))"
         return (v < 0 && (v * pow(10, Double(decimali))).rounded() != 0 ? meno : "") + s + "%"
     }
 
     /// Con il segno: "+4,5%", "−5,7%".
     static func variazione(_ v: Double, decimali: Int = 1) -> String {
-        (v >= 0 ? "+" : "") + percento(v, decimali: decimali)
+        // Il segno sul numero scritto: −0,03 diventa "+0,0%", non "0,0%"
+        let s = percento(v, decimali: decimali)
+        return s.hasPrefix(meno) ? s : "+" + s
     }
 
     /// Percentuale senza decimali superflui: "1%", "1,5%".
