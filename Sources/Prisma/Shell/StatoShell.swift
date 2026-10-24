@@ -1126,6 +1126,11 @@ final class StatoShell: ObservableObject {
         }
         p.capitaleAssicurato = EstrattoreDocumento.numero(d.confermato(.capitaleAssicurato))
         p.controvalore = EstrattoreDocumento.numero(d.confermato(.controvalore))
+        // Il valore di un estratto conto con la sua data e il versato: lo storico parte da lì
+        if let v = ValoriDaDocumento.valore(d) {
+            p.dataValore = v.data
+            p.totaleVersato = v.versato
+        }
         p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo))
         p.costoIngresso = EstrattoreDocumento.numero(d.confermato(.costoIngresso))
         p.sri = d.confermato(.sri).flatMap { Int($0.prefix(1)) }

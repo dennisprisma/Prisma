@@ -45,7 +45,7 @@ extension MotoreSintesi {
         let andamenti = e.finanziarie.compactMap { v in MotoreAndamento.calcola(v.posizione).map { (v.posizione, $0) } }
         if !andamenti.isEmpty {
             parti.append("Com'è andata rispetto all'atteso (al netto dei costi, tolti i versamenti):\n" + andamenti.map { p, a in
-                var r = "• \(p.nome): " + (a.rendimentoAnnuo.map { "\(CifreDoc.variazione($0)) l'anno" } ?? "\(CifreDoc.variazione(a.rendimentoPeriodo)) in \(Int((a.anni * 12).rounded())) mesi")
+                var r = "• \(p.nome): " + (a.rendimentoAnnuo.map { "\(CifreDoc.variazione($0)) l'anno" } ?? "\(CifreDoc.variazione(a.rendimentoPeriodo)) in \(TestiResoconto.mesi(a.anni))")
                 if let g = a.giudizio, let s = a.scarto { r += ", \(g.nome)" + (g == .inLinea ? "" : " (\(MotoreAndamento.punti(s)))") }
                 return r
             }.joined(separator: "\n"))
@@ -76,7 +76,8 @@ extension MotoreSintesi {
     static func posizioneNominata(_ domanda: String, in posizioni: [Posizione]) -> Posizione? {
         func piega(_ s: String) -> String { s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Formati.italiano) }
         let d = piega(domanda)
-        let candidate = posizioni.filter { $0.stato == .inEssere && !$0.nome.isEmpty }
+        // Solo investimenti, risparmio e previdenza: coperture e debiti non hanno un andamento
+        let candidate = posizioni.filter { $0.stato == .inEssere && $0.area.proiettabile && !$0.nome.isEmpty }
         if let p = candidate.filter({ d.contains(piega($0.nome)) }).max(by: { $0.nome.count < $1.nome.count }) { return p }
         return candidate.first { p in
             let parole = piega(p.nome).split { !$0.isLetter && !$0.isNumber }.filter { $0.count >= 4 }

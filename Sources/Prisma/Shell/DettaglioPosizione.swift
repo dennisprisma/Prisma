@@ -215,7 +215,8 @@ struct DettaglioPosizione: View {
     private var storico: some View {
         let punti = Array(posizione.storicoValori.reversed())
         // In cima c'è il valore attuale: si cambia con «Modifica», non si toglie da qui
-        let attuale = posizione.controvalore != nil
+        // Il valore attuale è nello storico solo se ha una data (del valore, della decorrenza o di oggi)
+        let attuale = posizione.controvalore != nil && (posizione.dataValore ?? posizione.decorrenza) != nil || (posizione.controvalore != nil && !(posizione.rilevazioni ?? []).isEmpty)
         return PannelloAnalisi(titolo: "Storico dei valori") {
             Button("＋ Valore passato") { moduloRilevazione = true }
                 .buttonStyle(StileSemplice())
@@ -237,7 +238,8 @@ struct DettaglioPosizione: View {
                         }
                     }
                 }
-                if let v = MotoreResoconto.voce(posizione).variazione12, let q = MotoreResoconto.voce(posizione).variazione12Percento {
+                let voce = MotoreResoconto.voce(posizione)
+                if let v = voce.variazione12, let q = voce.variazione12Percento {
                     RigaDato("Ultimi 12 mesi", "\(CifreDoc.euroSegno(v)) (\(CifreDoc.variazione(q))), tolti i versamenti", larghezza: 118)
                 }
                 Text(punti.count < 2 ? "Quando aggiorni il controvalore, il valore precedente resta qui: serve al resoconto per gli ultimi 12 mesi."

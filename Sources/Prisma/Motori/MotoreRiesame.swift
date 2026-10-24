@@ -70,7 +70,8 @@ struct Riesame {
     }
 
     /// Il riesame è dovuto: un anno (meno un mese) dall'ultimo contatto, o nessun contatto registrato.
-    var dovuto: Bool { (mesiDallUltimo ?? MotoreRiesame.mesiRiesame) >= MotoreRiesame.mesiRiesame - 1 }
+    /// Stessa soglia del calendario dei riesami (`MotoreRiesame.dovuti`): dovuto entro i prossimi mesi.
+    var dovuto: Bool { (mesiDallUltimo ?? MotoreRiesame.mesiRiesame) >= MotoreRiesame.mesiRiesame - MotoreRiesame.mesiAvanti }
 
     var sottoAtteso: [(posizione: Posizione, andamento: AndamentoPosizione)] { andamenti.filter { $0.andamento.giudizio == .sotto } }
 }
@@ -139,8 +140,10 @@ enum MotoreRiesame {
             guard p.area != .protezione, !p.area.passivo, p.area != .immobili else { return false }
             return p.dataValore.map { $0 < unAnnoFa } ?? true
         }
-        let scadenze = inEssere.filter { p in p.scadenza.map { $0 >= inizio && $0 < fineAnno } ?? false }
+        // I debiti che finiscono non liberano capitali da reinvestire
+        let scadenze = inEssere.filter { p in !p.area.passivo && (p.scadenza.map { $0 >= inizio && $0 < fineAnno } ?? false) }
             .sorted { ($0.scadenza ?? oggi) < ($1.scadenza ?? oggi) }
+        let scadute = inEssere.filter { !$0.area.passivo && $0.scaduta }
         let proposte = f.posizioni.filter { $0.stato == .proposta && $0.esito != .accettata && $0.esito != .rifiutata }
         let obiettivi = f.obiettivi.sorted { $0.scadenza < $1.scadenza }.map { (obiettivo: $0, avanzamento: AvanzamentoObiettivo($0, posizioni: f.posizioni)) }
         let checkUp = MotoreCheckUp.calcola(cliente: f.cliente, posizioni: f.posizioni, analisi: f.analisi, obiettivi: f.obiettivi)
@@ -167,6 +170,11 @@ enum MotoreRiesame {
             punti.append(.init(tema: .posizioni, titolo: inLinea.count == 1 ? "Una posizione in linea" : "\(inLinea.count) posizioni in linea",
                                dettaglio: inLinea.map(\.posizione.nome).joined(separator: ", ") + ": nessun intervento, solo da raccontare.",
                                priorita: .bassa))
+        }
+        for p in scadute {
+            punti.append(.init(tema: .scadenze, titolo: "«\(p.nome)» è già scaduta",
+                               dettaglio: "Scaduta il \(p.scadenza.map(data) ?? "—") ma ancora in essere: capitale da reinvestire o stato da aggiornare in Posizioni.",
+                               priorita: .alta, canale: p.canale))
         }
         for p in scadenze {
             guard let s = p.scadenza else { continue }

@@ -279,19 +279,29 @@ struct Posizione: Identifiable, Codable, Hashable {
 
     /// Lo storico completo: le rilevazioni passate e, in fondo, il valore attuale.
     var storicoValori: [Rilevazione] {
-        var elenco = (rilevazioni ?? []).sorted { $0.data < $1.data }
-        if let controvalore, let d = dataValore ?? decorrenza {
+        var elenco = rilevazioni ?? []
+        // Senza la data del valore: se ci sono valori passati, quello attuale è di oggi (non della decorrenza,
+        // che lo metterebbe prima dei valori passati)
+        let d = dataValore ?? (elenco.isEmpty ? decorrenza : Self.oggiArrotondato)
+        if let controvalore, let d {
             elenco.removeAll { Calendar.current.isDate($0.data, inSameDayAs: d) }
             elenco.append(Rilevazione(data: d, controvalore: controvalore, versato: totaleVersato))
         }
-        return elenco
+        return elenco.sorted { $0.data < $1.data }
     }
+
+    /// Oggi a secondi interi, come il resto dell'archivio.
+    static var oggiArrotondato: Date { Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down)) }
 
     /// Conserva il valore attuale tra le rilevazioni se quello nuovo è cambiato.
     mutating func registraValorePrecedente(_ prima: Posizione) {
+        // Un valore nuovo senza data è di oggi: senza, lo storico non saprebbe dove metterlo
+        if dataValore == nil, controvalore != nil, prima.controvalore != controvalore { dataValore = Self.oggiArrotondato }
         guard prima.stato == .inEssere, let valore = prima.controvalore, valore > 0,
               prima.controvalore != controvalore || prima.dataValore != dataValore else { return }
         let d = prima.dataValore ?? prima.creataIl
+        // Il valore di prima non può essere più recente di quello nuovo (posizioni senza data del valore)
+        if let nuovo = dataValore, Calendar.current.startOfDay(for: d) >= Calendar.current.startOfDay(for: nuovo) { return }
         var elenco = rilevazioni ?? []
         elenco.removeAll { Calendar.current.isDate($0.data, inSameDayAs: d) }
         // Date a secondi interi, come il resto dell'archivio
