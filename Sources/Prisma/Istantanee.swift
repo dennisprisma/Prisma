@@ -226,6 +226,12 @@ enum Istantanee {
             s.apri(.posizioni)
             s.ancoraPosizioni = "attenzioni"
         }),
+        ("79-posizioni-patrimonio", { s in
+            // Marco: il patrimonio nel tempo, com'è oggi e con la proposta aperta
+            s.clienteAttivoId = "marco"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "patrimonio"
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"

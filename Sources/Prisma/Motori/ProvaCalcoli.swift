@@ -1043,6 +1043,32 @@ enum ProvaCalcoli {
             verifica("Successione: prima casa per una sola abitazione", MotoreSuccessione.calcola(cliente: sposato, posizioni: [casaA, casaB]).ipocatastali, 400 + 9_000)
         }
 
+        // Patrimonio nel tempo: debiti che si estinguono, immobili fermi, proposte senza doppio conteggio
+        do {
+            func pos(_ nome: String, _ area: AreaPosizione, _ valore: Double, _ modifica: (inout Posizione) -> Void = { _ in }) -> Posizione {
+                var p = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: area, nome: nome)
+                p.controvalore = valore
+                modifica(&p)
+                return p
+            }
+            let mutuo = pos("Mutuo", .debiti, 100_000) { $0.scadenza = Calendar.current.date(byAdding: .year, value: 10, to: Date()) }
+            let casa = pos("Casa", .immobili, 300_000)
+            let conto = pos("Conto", .liquidita, 20_000)
+            let fondo = pos("Fondo", .investimento, 50_000) { $0.rendimentoAtteso = 4; $0.premio = 100; $0.frequenza = .mensile }
+            var proposta = Posizione(clienteId: "prova", canale: .alleanza, stato: .proposta, area: .risparmio, nome: "Proposta")
+            proposta.versamentoIniziale = 10_000
+            proposta.rendimentoAtteso = 2.5
+            let pn = MotorePatrimonio.calcola([mutuo, casa, conto, fondo, proposta], anni: 20)
+            verifica("Patrimonio: netto di oggi", pn.nettoOggi, 300_000 + 20_000 + 50_000 - 100_000)
+            verifica("Patrimonio: a metà durata il mutuo è dimezzato", MotorePatrimonio.andamento(mutuo, anni: 20)[5].valore, -50_000, tolleranza: 1)
+            verifica("Patrimonio: il mutuo si estingue alla scadenza", MotorePatrimonio.andamento(mutuo, anni: 20)[15].valore, 0)
+            verifica("Patrimonio: l'immobile resta al valore di oggi", MotorePatrimonio.andamento(casa, anni: 20)[20].valore, 300_000)
+            verifica("Patrimonio: con le proposte, oggi lo stesso netto (il capitale viene dal conto)", pn.valore(0, conProposte: true), pn.nettoOggi, tolleranza: 1)
+            verifica("Patrimonio: il fondo con i versamenti cresce", pn.valore(20) > pn.valore(10) && pn.valore(10) > pn.nettoOggi ? 1 : 0, 1)
+            verifica("Patrimonio: versamenti dell'anno", pn.versamentiAnnui, 1_200)
+            verifica("Patrimonio: senza proposte nessuna seconda linea", MotorePatrimonio.calcola([casa]).conProposte == nil ? 1 : 0, 1)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
