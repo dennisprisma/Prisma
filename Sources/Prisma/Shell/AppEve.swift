@@ -38,9 +38,11 @@ struct AppEve: View {
             }
             .incisione(Colori.Eve.testataIncisione, y: -1)
             Spacer()
-            SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.evePortafoglio)
-                .frame(width: 170)
-                .help("Eve parla di un cliente o di tutto il tuo portafoglio")
+            if !stato.inModoCliente {
+                SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.evePortafoglio)
+                    .frame(width: 170)
+                    .help("Eve parla di un cliente o di tutto il tuo portafoglio")
+            }
             if stato.evePortafoglio {
                 Text("Tutti i clienti").font(Tipo.eveAvviso).foregroundColor(Colori.Eve.testataTitolo)
                     .frame(width: 200, alignment: .leading)

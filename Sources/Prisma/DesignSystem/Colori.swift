@@ -59,6 +59,9 @@ enum Colori {
         static let separatore = Color(r: 153, g: 153, b: 153, a: 0.4)
         static let tasto = Color(hex: "#555")
         static let avatarBordo = Color(hex: "#82888c")
+        /// La capsula «Modalità cliente»: il blu dei pulsanti del template
+        static let modoCliente = Color(hex: "#2f6bc4")
+        static let modoClienteBordo = Color(hex: "#1d4a8f")
     }
 
     enum Scrivania {

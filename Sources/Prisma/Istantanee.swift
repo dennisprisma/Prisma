@@ -186,6 +186,12 @@ enum Istantanee {
             s.documentoSelezionato = "doc-giulia-kid"
             s.apri(.documenti)
         }),
+        ("70-modo-cliente", { s in
+            // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
+            s.clienteAttivoId = "marco"
+            s.entraModoCliente()
+            s.apri(.posizioni)
+        }),
         ("69-riesame-prospetto", { s in
             s.clienteAttivoId = "giulia"
             s.apriProspetto(.riesame)

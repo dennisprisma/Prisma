@@ -39,7 +39,10 @@ final class StatoShell: ObservableObject {
     /// Posizione aperta nel dettaglio (usata anche dalle istantanee).
     @Published var posizioneInDettaglio: String?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
-    @Published var portafoglio = false
+    // Il portafoglio parla di tutti i clienti: in modalità cliente resta chiuso
+    @Published var portafoglio = false { didSet { if portafoglio && modoCliente != nil { portafoglio = false } } }
+    /// Modalità cliente: lo schermo girato verso il cliente mostra solo il suo dossier (id del cliente).
+    @Published var modoCliente: String?
     /// Il pulsante dell'intestazione di Posizioni chiede di aprire il modulo (nuova posizione o proposta).
     @Published var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
@@ -110,7 +113,7 @@ final class StatoShell: ObservableObject {
     @Published var notificheViste: Set<String> = []
 
     /// Eve parla del portafoglio (tutti i clienti) invece che del cliente attivo.
-    @Published var evePortafoglio = false
+    @Published var evePortafoglio = false { didSet { if evePortafoglio && modoCliente != nil { evePortafoglio = false } } }
 
     /// La schermata di benvenuto copre le finestre (il lucchetto in alto).
     @Published var bloccato = false
@@ -198,9 +201,10 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Lettura
 
-    var clienti: [Cliente] { dati.clienti }
-    var appuntamenti: [Appuntamento] { dati.appuntamenti }
-    var attivita: [Attivita] { dati.attivita }
+    // In modalità cliente le app vedono solo il cliente davanti a te: gli altri non compaiono da nessuna parte
+    var clienti: [Cliente] { modoCliente.map { id in dati.clienti.filter { $0.id == id } } ?? dati.clienti }
+    var appuntamenti: [Appuntamento] { modoCliente.map { id in dati.appuntamenti.filter { $0.clienteId == id } } ?? dati.appuntamenti }
+    var attivita: [Attivita] { modoCliente.map { id in dati.attivita.filter { $0.clienteId == id } } ?? dati.attivita }
     var nomeUtente: String { dati.impostazioni.nomeUtente }
     var inizialiUtente: String { dati.impostazioni.inizialiUtente }
 
@@ -242,6 +246,10 @@ final class StatoShell: ObservableObject {
     }
 
     func apri(_ app: AppPrisma) {
+        guard appConsentita(app) else {
+            mostraAvviso("In modalità cliente \(app.titolo) non si apre: mostra i dati di altri clienti.")
+            return
+        }
         anima {
             if let i = finestre.firstIndex(where: { $0.app == app }) {
                 var f = finestre.remove(at: i)
@@ -286,6 +294,8 @@ final class StatoShell: ObservableObject {
         pannelloNotifiche = false
         pannelloSpazi = false
         pannelloAppAperte = false
+        // Dalla schermata di blocco si torna sempre a Prisma completo
+        modoCliente = nil
         anima { bloccato = true }
     }
 
@@ -573,7 +583,7 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Posizioni
 
-    var posizioni: [Posizione] { dati.posizioni }
+    var posizioni: [Posizione] { modoCliente.map { id in dati.posizioni.filter { $0.clienteId == id } } ?? dati.posizioni }
 
     func posizioniCliente(_ id: String) -> [Posizione] {
         dati.posizioni.filter { $0.clienteId == id }
@@ -643,7 +653,7 @@ final class StatoShell: ObservableObject {
     /// Posizioni in essere che scadono nel giorno indicato (lo scadenzario dell'agenda).
     func scadenzeDelGiorno(_ giorno: Date) -> [Posizione] {
         let cal = Calendar.current
-        return dati.posizioni.filter { p in
+        return posizioni.filter { p in
             guard p.stato == .inEssere, let s = p.scadenza else { return false }
             return cal.isDate(s, inSameDayAs: giorno) && (filtroClienteAgenda == nil || p.clienteId == filtroClienteAgenda)
         }
@@ -1771,7 +1781,7 @@ final class StatoShell: ObservableObject {
             indice.perGiorno[cal.startOfDay(for: a.inizio), default: []].append(a)
         }
         for k in indice.perGiorno.keys { indice.perGiorno[k]?.sort { $0.inizio < $1.inizio } }
-        for p in dati.posizioni where p.stato == .inEssere && (filtro == nil || p.clienteId == filtro) {
+        for p in posizioni where p.stato == .inEssere && (filtro == nil || p.clienteId == filtro) {
             guard let s = p.scadenza, s >= inizio, s < fine else { continue }
             indice.scadenzePerGiorno[cal.startOfDay(for: s), default: []].append(p)
         }

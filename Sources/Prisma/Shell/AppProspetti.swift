@@ -90,8 +90,10 @@ struct AppProspetti: View {
         ForEach([TipoProspetto.riesame, .posizione, .confronto]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
-        EtichettaRail(testo: "Per te")
-        VoceNavigazione(titolo: TipoProspetto.portafoglio.nome, attiva: scelta.tipo == .portafoglio) { scegli(.portafoglio) }
+        if !stato.inModoCliente {
+            EtichettaRail(testo: "Per te")
+            VoceNavigazione(titolo: TipoProspetto.portafoglio.nome, attiva: scelta.tipo == .portafoglio) { scegli(.portafoglio) }
+        }
         Text(scelta.tipo.descrizione)
             .font(Tipo.kpiNota)
             .foregroundColor(Colori.Analisi.kpiNota)

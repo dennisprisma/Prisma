@@ -11,7 +11,7 @@ struct Scrivania: View {
                 Spacer(minLength: 20)
                 pulsantiRapidi
             }
-            if stato.guidaVisibile {
+            if stato.guidaVisibile && !stato.inModoCliente {
                 StrisciaGuida()
                     .padding(.top, 12)
             }

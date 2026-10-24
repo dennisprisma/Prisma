@@ -501,6 +501,33 @@ enum ProvaEve {
         avvisi.blocca()
         controlla(avvisi.bloccato && !avvisi.pannelloSpazi && !avvisi.pannelloNotifiche, "Il lucchetto mostra la schermata di benvenuto e chiude i pannelli")
 
+        // Modalità cliente: si vede solo il cliente davanti, le app di tutti non si aprono
+        let schermo = StatoShell(persistente: false)
+        schermo.clienteAttivoId = "marco"
+        schermo.apri(.note)
+        schermo.portafoglio = true
+        schermo.evePortafoglio = true
+        schermo.entraModoCliente()
+        controlla(schermo.inModoCliente && schermo.clienti.map(\.id) == ["marco"], "Modalità cliente: in rubrica solo il cliente attivo")
+        controlla(!schermo.posizioni.isEmpty && schermo.posizioni.allSatisfy { $0.clienteId == "marco" }
+                  && schermo.appuntamenti.allSatisfy { $0.clienteId == "marco" } && schermo.attivita.allSatisfy { $0.clienteId == "marco" },
+                  "Modalità cliente: posizioni, agenda e attività solo sue")
+        controlla(!schermo.aperta(.note) && !schermo.portafoglio && !schermo.evePortafoglio, "Modalità cliente: chiusi Note e portafoglio")
+        schermo.apri(.ricerca)
+        schermo.apri(.impostazioni)
+        schermo.portafoglio = true
+        controlla(!schermo.aperta(.ricerca) && !schermo.aperta(.impostazioni) && !schermo.portafoglio, "Modalità cliente: Ricerca, Impostazioni e portafoglio non si aprono")
+        schermo.apri(.posizioni)
+        controlla(schermo.aperta(.posizioni), "Modalità cliente: il dossier del cliente si apre")
+        schermo.alternaModoCliente()
+        controlla(!schermo.inModoCliente && schermo.clienti.count == schermo.dati.clienti.count, "Uscendo dalla modalità cliente tornano tutti")
+        schermo.entraModoCliente()
+        schermo.blocca()
+        controlla(!schermo.inModoCliente, "La schermata di benvenuto chiude la modalità cliente")
+        schermo.clienteAttivoId = "nessuno"
+        schermo.entraModoCliente()
+        controlla(!schermo.inModoCliente, "Senza un cliente attivo la modalità cliente non parte")
+
         // Eve legge il taccuino: le note del cliente nella scheda e nella traccia dell'incontro
         let conNote = StatoShell(persistente: false)
         if let f = conNote.fonteEve("giulia") {

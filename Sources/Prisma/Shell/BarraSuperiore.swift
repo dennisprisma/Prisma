@@ -86,32 +86,36 @@ struct BarraSuperiore: View {
 
     private var comandiDestra: some View {
         HStack(spacing: Misure.Barra.spazioDestra) {
-            Button {
-                stato.cercaOvunque()
-            } label: {
-                HStack(spacing: Misure.Barra.spazioCerca) {
-                    Text("Cerca").font(Tipo.barraOra).foregroundColor(Colori.Barra.testoSecondario)
-                    Text("⌘ K").font(Tipo.barraTasto).foregroundColor(Colori.Barra.tasto)
-                }
-                .incisione(Colori.Barra.incisione)
-            }
-            .buttonStyle(StileSemplice())
-            .help("Cerca in Prisma")
-
-            Button {
-                stato.alternaNotifiche()
-            } label: {
-                SimboloCampanella()
-                    .stroke(Colori.Barra.testo, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-                    .frame(width: Misure.Barra.icona, height: Misure.Barra.icona)
-                    .incisione(Colori.Barra.incisione)
-                    .overlay(alignment: .topTrailing) {
-                        let n = stato.notificheNuove
-                        if n > 0 { Badge(numero: n, grande: false).offset(x: 6, y: -5) }
+            if stato.inModoCliente {
+                ContrassegnoModoCliente()
+            } else {
+                Button {
+                    stato.cercaOvunque()
+                } label: {
+                    HStack(spacing: Misure.Barra.spazioCerca) {
+                        Text("Cerca").font(Tipo.barraOra).foregroundColor(Colori.Barra.testoSecondario)
+                        Text("⌘ K").font(Tipo.barraTasto).foregroundColor(Colori.Barra.tasto)
                     }
+                    .incisione(Colori.Barra.incisione)
+                }
+                .buttonStyle(StileSemplice())
+                .help("Cerca in Prisma")
+
+                Button {
+                    stato.alternaNotifiche()
+                } label: {
+                    SimboloCampanella()
+                        .stroke(Colori.Barra.testo, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
+                        .frame(width: Misure.Barra.icona, height: Misure.Barra.icona)
+                        .incisione(Colori.Barra.incisione)
+                        .overlay(alignment: .topTrailing) {
+                            let n = stato.notificheNuove
+                            if n > 0 { Badge(numero: n, grande: false).offset(x: 6, y: -5) }
+                        }
+                }
+                .buttonStyle(StileSemplice())
+                .help("Centro notifiche")
             }
-            .buttonStyle(StileSemplice())
-            .help("Centro notifiche")
 
             Button {
                 stato.blocca()
@@ -123,6 +127,17 @@ struct BarraSuperiore: View {
             }
             .buttonStyle(StileSemplice())
             .help("Schermata di benvenuto")
+
+            Button {
+                if stato.inModoCliente { stato.esciModoCliente() } else { stato.entraModoCliente() }
+            } label: {
+                Image(systemName: stato.inModoCliente ? "person.fill.checkmark" : "person.crop.rectangle")
+                    .font(Tipo.barraOra)
+                    .foregroundColor(Colori.Barra.testo)
+                    .incisione(Colori.Barra.incisione)
+            }
+            .buttonStyle(StileSemplice())
+            .help(stato.inModoCliente ? "Esci dalla modalità cliente (⌥⌘M)" : "Modalità cliente: mostra solo il cliente attivo, per girare lo schermo (⌥⌘M)")
 
             Button {
                 stato.apri(.impostazioni)

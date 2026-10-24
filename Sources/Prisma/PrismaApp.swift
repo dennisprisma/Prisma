@@ -50,7 +50,10 @@ struct PrismaApp: App {
                 Group {
                 Button("Cerca ovunque") { stato.cercaOvunque() }
                     .keyboardShortcut("k", modifiers: .command)
+                Button(stato.inModoCliente ? "Esci dalla modalità cliente" : "Modalità cliente") { stato.alternaModoCliente() }
+                    .keyboardShortcut("m", modifiers: [.command, .option])
                 Button("Spazi di lavoro…") { stato.pannelloSpazi = true }
+                    .disabled(stato.inModoCliente)
                 Button("Le tue app aperte…") { stato.pannelloAppAperte = true }
                 Button("Schermata di benvenuto") { stato.blocca() }
                     .keyboardShortcut("l", modifiers: [.command, .option])
