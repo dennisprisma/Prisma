@@ -729,6 +729,34 @@ enum ProvaCalcoli {
         verifica("Estratto: «Controvalore complessivo» senza simbolo", EstrattoreDocumento.numero(letto(.controvalore, in: varianti)) ?? 0, 12_345.67)
         let nonVersato = EstrattoreDocumento.conRegole(["Premi versati nel 2025: 12 rate"])
         verifica("Estratto: «12 rate» non è un versato", letto(.totaleVersato, in: nonVersato).isEmpty ? 1 : 0, 1)
+        // Calendario fiscale: spazio deducibile, risparmio IRPEF, detrazione dei premi, eccedenza da comunicare
+        var contribuente = Cliente(id: "fisco", nome: "Prova Fisco", iniziali: "PF", tinta: DatiDemo.clienti()[0].tinta, tema: "", email: "", telefono: "",
+                                   preferito: false, nota: "", creatoIl: Date())
+        contribuente.profilo.redditoLordoAnnuo = 40_000
+        var pip = Posizione(clienteId: "fisco", canale: .alleanza, stato: .inEssere, area: .previdenza, nome: "PIP")
+        pip.premio = 200
+        pip.frequenza = .mensile
+        var tcm = Posizione(clienteId: "fisco", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "TCM")
+        tcm.premio = 50
+        tcm.frequenza = .mensile
+        tcm.rischio = .vita
+        let annoFisco = Calendar.current.component(.year, from: Date())
+        let primoDicembre = Calendar.current.date(from: DateComponents(year: annoFisco, month: 12, day: 1, hour: 10)) ?? Date()
+        let fa = MotoreFineAnno.calcola(cliente: contribuente, posizioni: [pip, tcm], oggi: primoDicembre)
+        verifica("Fine anno: contributi 2.400 €, spazio deducibile 2.900 €", fa.spazio, RegoleFiscali.limiteDeducibilita - 2_400)
+        verifica("Fine anno: risparmio IRPEF usando tutto lo spazio (al 33%)", fa.risparmioPossibile, (RegoleFiscali.limiteDeducibilita - 2_400) * 0.33, tolleranza: 0.01)
+        verifica("Fine anno: premi detraibili fino a 530 €", fa.detraibili, 530)
+        verifica("Fine anno: detrazione del 19%", fa.detrazione, 530 * 0.19, tolleranza: 0.001)
+        verifica("Fine anno: il 1° dicembre la deduzione è vicina",
+                 fa.scadenze.first { $0.tipo == .deduzione }.map { MotoreFineAnno.vicina($0, oggi: primoDicembre) ? 1 : 0 } ?? 0, 1)
+        verifica("Fine anno: tra i clienti con spazio deducibile",
+                 MotoreFineAnno.conSpazio(clienti: [contribuente], posizioni: [pip, tcm], oggi: primoDicembre).count == 1 ? 1 : 0, 1)
+        pip.premio = 500
+        let oltre = MotoreFineAnno.calcola(cliente: contribuente, posizioni: [pip], oggi: primoDicembre)
+        verifica("Fine anno: oltre il limite niente spazio, eccedenza da comunicare",
+                 oltre.spazio == 0 && oltre.eccedenza == 6_000 - RegoleFiscali.limiteDeducibilita && oltre.scadenze.contains { $0.tipo == .nonDedotti }
+                    && !oltre.scadenze.contains { $0.tipo == .deduzione } ? 1 : 0, 1)
+
         // Revisione: versato di un periodo, saldo iniziale e finale, proiezioni future
         let giorni: (Int) -> String = { Formati.dataBreve.string(from: Calendar.current.date(byAdding: .day, value: $0, to: Date()) ?? Date()) }
         let periodo = EstrattoreDocumento.conRegole(["Premi versati nel periodo: € 1.200,00\nTotale premi versati: € 14.500,00\nContributi versati nell'anno € 2.400,00"])

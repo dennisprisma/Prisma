@@ -42,6 +42,14 @@ enum RegoleFiscali {
     /// Premi per la non autosufficienza (LTC): limite annuo detraibile, comprensivo dei precedenti.
     static let limitePremiLTC = 1_291.14
 
+    /// Premi detraibili di un anno (art. 15 TUIR): caso morte, invalidità e infortuni fino a 530 €,
+    /// insieme alla non autosufficienza fino a 1.291,14 €.
+    static func premiDetraibili(_ coperture: [Posizione]) -> Double {
+        let vita = coperture.filter { [.vita, .invalidita, .infortuni].contains($0.rischio ?? .altro) }.reduce(0) { $0 + $1.premioAnnuo }
+        let ltc = coperture.filter { $0.rischio == .ltc }.reduce(0) { $0 + $1.premioAnnuo }
+        return min(min(vita, limitePremiVita) + ltc, limitePremiLTC)
+    }
+
     /// Aliquota IRPEF marginale di un reddito complessivo lordo annuo.
     static func aliquotaMarginale(reddito: Double) -> Double {
         scaglioniIrpef.first { reddito <= $0.0 }?.1 ?? 43

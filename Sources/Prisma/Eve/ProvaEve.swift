@@ -479,6 +479,9 @@ enum ProvaEve {
         pf.dati.incontri.removeAll { $0.clienteId == "laura" }
         controlla(EvePortafoglio.risposta(.ricontattare, domanda: "", dati: pf.dati).testo.contains("Laura Moretti"), "Eve · portafoglio: chi ricontattare")
         controlla(SpuntoPortafoglio.da("quali revisioni devo fare quest'anno?") == .riesami, "Eve · portafoglio: «revisioni» sono i riesami")
+        controlla(SpuntoPortafoglio.da("chi può ancora dedurre qualcosa?") == .fineAnno, "Eve · portafoglio: «dedurre» è la fine dell'anno")
+        let fine = EvePortafoglio.risposta(.fineAnno, domanda: "", dati: pf.dati)
+        controlla(!(fine.titolo ?? "").isEmpty && !fine.testo.isEmpty, "Eve · portafoglio: spazio deducibile entro fine anno (\(fine.titolo ?? ""))")
         let riesami = EvePortafoglio.risposta(.riesami, domanda: "", dati: pf.dati)
         controlla((riesami.titolo ?? "").hasPrefix("Riesami annuali") || (riesami.titolo ?? "").hasPrefix("Nessun riesame"), "Eve · portafoglio: i riesami da fare (\(riesami.titolo ?? ""))")
         // Fissare l'appuntamento toglie il cliente dall'elenco

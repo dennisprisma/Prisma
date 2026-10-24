@@ -113,6 +113,16 @@ extension CompositoreProspetti {
             }
         }
 
+        if !r.fineAnno.scadenze.isEmpty {
+            sezione("Calendario fiscale")
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Entro", peso: 0.9), ColonnaProspetto(titolo: "Scadenza", peso: 1.7),
+                          ColonnaProspetto(titolo: "Cosa fare", peso: 4), ColonnaProspetto(titolo: "Importo", peso: 0.9, destra: true)],
+                righe: r.fineAnno.scadenze.map { s in
+                    [.t(data(s.data)), .f(s.titolo), .t(s.dettaglio), s.importo.map { .t(CifreDoc.euro($0)) } ?? .n("—")]
+                })))
+        }
+
         sezione("Domande da fare")
         b.append(.testo(r.domande.map { "• \($0)" }.joined(separator: "\n")))
 

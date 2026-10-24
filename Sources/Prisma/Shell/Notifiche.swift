@@ -134,6 +134,17 @@ enum MotoreNotifiche {
                                                                                     : "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda"),
                                    data: inizio, destinazione: richiamare.count == 1 ? .cliente(primo.id) : nil))
         }
+        // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
+        let deducibili = MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
+            .filter { f in f.scadenze.contains { $0.tipo == .deduzione && MotoreFineAnno.vicina($0, oggi: oggi) } }
+        if let primo = deducibili.first {
+            let anno = cal.component(.year, from: oggi)
+            elenco.append(Notifica(id: "fineanno-\(anno)-\(deducibili.map(\.id).joined(separator: ","))", gruppo: .daSistemare, app: .posizioni,
+                                   titolo: deducibili.count == 1 ? "\(primo.cliente.nome) può ancora dedurre \(Formati.euro(primo.spazio))"
+                                                                 : "\(deducibili.count) clienti possono ancora dedurre",
+                                   dettaglio: "Versamenti alla previdenza entro il 31 dicembre" + (primo.risparmioPossibile >= 1 ? " · fino a \(Formati.euro(primo.risparmioPossibile)) di IRPEF in meno" : ""),
+                                   data: inizio))
+        }
         // Backup
         let b = dati.impostazioni.backup
         if let errore = b.ultimoErrore {
@@ -192,8 +203,8 @@ extension StatoShell {
         pannelloNotifiche = false
         if let d = n.destinazione {
             vai(a: d)
-        } else if n.id.hasPrefix("ricontattare-") {
-            // Più clienti da ricontattare: l'elenco è nel Portafoglio
+        } else if n.id.hasPrefix("ricontattare-") || n.id.hasPrefix("fineanno-") {
+            // Più clienti da ricontattare o con spazio deducibile: l'elenco è nel Portafoglio
             portafoglio = true
             posizioneInDettaglio = nil
             apri(.posizioni)

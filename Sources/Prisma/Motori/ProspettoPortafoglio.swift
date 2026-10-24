@@ -108,6 +108,20 @@ extension CompositoreProspetti {
                 })))
         }
 
+        sezione("Fine anno: spazio deducibile")
+        let fine = MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: data)
+        if fine.isEmpty {
+            b.append(.testo("Nessun cliente con un piano di previdenza ha spazio deducibile ancora libero."))
+        } else {
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Cliente", peso: 1.8), ColonnaProspetto(titolo: "Versa l'anno", peso: 1.1, destra: true),
+                          ColonnaProspetto(titolo: "Deducibili ancora", peso: 1.2, destra: true), ColonnaProspetto(titolo: "IRPEF in meno", peso: 1.1, destra: true)],
+                righe: fine.map { f in
+                    [.f(f.cliente.nome), .t(euro(f.contributi)), .t(euro(f.spazio)), f.reddito == nil ? .n("reddito non indicato") : .t(euro(f.risparmioPossibile))]
+                },
+                totale: [.f("Totale"), .t(""), .f(euro(fine.reduce(0) { $0 + $1.spazio })), .f(euro(fine.reduce(0) { $0 + $1.risparmioPossibile }))])))
+        }
+
         sezione("Proposte per esito")
         b.append(.voci(EsitoProposta.allCases.map { CampoVoce(etichetta: $0.nome, valore: "\(p.esiti[$0] ?? 0)") }
                        + [CampoVoce(etichetta: "Tasso di accettazione", valore: p.tassoAccettazione.map { "\(quota($0)) delle proposte decise" } ?? "nessuna proposta decisa")]))

@@ -47,6 +47,11 @@ extension AppPosizioni {
                 // Il calendario delle revisioni: non dipende dai filtri di canale e area
                 let dovuti = MotoreRiesame.dovuti(clienti: stato.clienti, posizioni: stato.posizioni,
                                                   appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
+                let fine = MotoreFineAnno.conSpazio(clienti: stato.clienti, posizioni: stato.posizioni)
+                PannelloAnalisi(titolo: "Fine anno \(Calendar.current.component(.year, from: Date()))",
+                                nota: "Spazio deducibile ancora libero sui piani di previdenza: i versamenti contano entro il 31 dicembre") { EmptyView() } contenuto: {
+                    fineAnno(fine)
+                }
                 PannelloAnalisi(titolo: "Riesami annuali",
                                 nota: "Scaduti o in arrivo nei prossimi \(MotoreRiesame.mesiAvanti) mesi, senza un incontro in agenda") { EmptyView() } contenuto: {
                     riesami(dovuti)
@@ -228,6 +233,42 @@ extension AppPosizioni {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(StileSemplice())
+                .bordoBasso(Colori.Analisi.tabellaRiga)
+            }
+        }
+    }
+
+    private func fineAnno(_ elenco: [FineAnno]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if elenco.isEmpty {
+                Text("Nessun cliente con spazio deducibile da usare: chi ha un piano di previdenza versa già fino al limite di \(Formati.euro(RegoleFiscali.limiteDeducibilita)).")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+            }
+            ForEach(elenco.prefix(Self.massimoRiesami)) { f in
+                HStack(spacing: 8) {
+                    AvatarCliente(iniziali: f.cliente.iniziali, tinta: f.cliente.tinta.colori, lato: Misure.Portafoglio.avatar)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(f.cliente.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
+                        Text("versa \(Formati.euro(f.contributi)) l'anno su \(Formati.euro(RegoleFiscali.limiteDeducibilita))"
+                             + (f.aliquota.map { " · aliquota \(Formati.percentuale($0))" } ?? " · reddito non indicato"))
+                            .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
+                    }
+                    .lineLimit(1)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text("\(Formati.euro(f.spazio)) deducibili").font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
+                        Text(f.reddito == nil ? "risparmio da stimare" : "−\(Formati.euro(f.risparmioPossibile)) di IRPEF")
+                            .font(Tipo.chip).foregroundColor(f.reddito == nil ? Colori.Analisi.kpiNota : Colori.Analisi.okTesto)
+                    }
+                    Button("Piano previdenziale") {
+                        stato.clienteAttivoId = f.cliente.id
+                        stato.apriProspetto(.previdenza(report: false))
+                    }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)))
+                    .fixedSize()
+                    .help("Apri il piano previdenziale di \(f.cliente.nome): divario, deduzioni e versamento che manca")
+                }
+                .padding(.vertical, 5)
                 .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
