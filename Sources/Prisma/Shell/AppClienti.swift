@@ -41,6 +41,10 @@ struct AppClienti: View {
                 elimina: { stato.eliminaCliente(c.id) }
             )
         }
+        .sheet(item: $stato.importazione) { i in
+            ModuloImportaClienti(importazione: i)
+                .environmentObject(stato)
+        }
         .sheet(item: $familiare) { m in
             ModuloFamiliare(modifica: m, salva: salvaFamiliare, elimina: eliminaFamiliare)
         }

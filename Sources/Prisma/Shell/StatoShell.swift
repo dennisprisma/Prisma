@@ -44,6 +44,8 @@ final class StatoShell: ObservableObject {
     @Published var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     @Published var richiestaNuovoCliente = false
+    /// Contatti letti da un file, in attesa di conferma nell'anteprima della rubrica.
+    @Published var importazione: ImportazioneClienti?
 
     // Agenda e Attività (stato delle viste, non salvato)
     /// Giornata aperta in agenda.
@@ -2077,6 +2079,44 @@ final class StatoShell: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Importa in rubrica i clienti scelti (da vCard o CSV). Prima salva un backup dello stato attuale.
+    func importaClienti(_ elenco: [ClienteImportato]) {
+        guard !elenco.isEmpty, !solaLettura else { return }
+        guard persistente else {
+            aggiungiImportati(elenco)
+            return
+        }
+        guard !backupInCorso else { return }
+        salvaOra()
+        backupInCorso = true
+        let destinazione = cartellaBackup
+        let creaCartella = cartellaBackupPredefinita
+        DispatchQueue.global(qos: .userInitiated).async {
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione dei clienti",
+                                                        creaCartella: creaCartella) }
+            DispatchQueue.main.async {
+                self.backupInCorso = false
+                switch esito {
+                case .success:
+                    self.aggiungiImportati(elenco)
+                    self.aggiornaElencoBackup()
+                    self.mostraAvviso("\(elenco.count) \(elenco.count == 1 ? "cliente importato" : "clienti importati"). Lo stato precedente è salvato in un backup."
+                                      + (self.haDatiDiProva ? " I clienti di prova si tolgono da Impostazioni → Archivio." : ""))
+                case .failure(let e):
+                    self.mostraAvviso("Importazione annullata, backup non riuscito: \(e.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// La parte senza backup (usata anche dalle prove): ogni cliente con la sua tinta, il primo in primo piano.
+    func aggiungiImportati(_ elenco: [ClienteImportato]) {
+        for x in elenco {
+            dati.clienti.append(x.cliente(tinta: prossimaTinta))
+        }
+        if let primo = elenco.first, let c = dati.clienti.last(where: { $0.nome == primo.nome }) { dati.clienteAttivoId = c.id }
     }
 
     /// La parte senza backup (usata anche dalle prove).

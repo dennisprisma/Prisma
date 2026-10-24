@@ -85,6 +85,43 @@ enum ProvaEve {
             let c = stato.contenutoProspetto(.riesame)
             controlla(c?.titolo == "Riesame annuale di \(f.cliente.nome)", "Prospetto del riesame composto")
         }
+        // Importazione dei clienti: vCard dell'app Contatti e CSV di Excel, doppioni segnati
+        let vcard = """
+        BEGIN:VCARD\r
+        VERSION:3.0\r
+        N:Bianchi;Paolo;;;\r
+        FN:Paolo Bianchi\r
+        item1.TEL;type=CELL;type=pref:+39 333 123 4567\r
+        EMAIL;type=INTERNET:paolo.bianchi@example.it\r
+        ADR;type=HOME:;;Via Roma 10;Milano;MI;20121;Italia\r
+        BDAY:1980-05-02\r
+        NOTE:Conosciuto tramite\\, Giulia\r
+        END:VCARD\r
+        BEGIN:VCARD\r
+        VERSION:3.0\r
+        N:Rossi;Giulia;;;\r
+        END:VCARD\r
+        """
+        let daContatti = ImportaClienti.segnaDoppioni(ImportaClienti.daVCard(vcard), rubrica: stato.clienti)
+        controlla(daContatti.count == 2 && daContatti[0].nome == "Paolo Bianchi" && daContatti[0].telefono == "+39 333 123 4567"
+                  && daContatti[0].email == "paolo.bianchi@example.it" && daContatti[0].indirizzo == "Via Roma 10, 20121 Milano (MI)"
+                  && daContatti[0].nota == "Conosciuto tramite, Giulia" && daContatti[0].dataNascita != nil,
+                  "Importa: vCard con telefono, email, indirizzo, nascita e nota (\(daContatti.first.map { "\($0.nome) · \($0.indirizzo)" } ?? "nessuno"))")
+        controlla(daContatti.count == 2 && daContatti[1].nome == "Giulia Rossi" && daContatti[1].doppione != nil, "Importa: Giulia Rossi è già in rubrica (dal campo N)")
+        let csv = "Cognome;Nome;Codice fiscale;Data di nascita;Cellulare;E-mail;Città\nVerdi;\"Anna Maria\";vrdnmr75a41f205x;03/01/1975;333 1;anna@example.it;Torino\n;;;;;;\nNeri;Luca;;;;;\"Roma; Lazio\"\n"
+        let foglio = ImportaClienti.daCSV(csv)
+        controlla(foglio.clienti.count == 2 && foglio.clienti[0].nome == "Anna Maria Verdi" && foglio.clienti[0].codiceFiscale == "VRDNMR75A41F205X"
+                  && foglio.clienti[0].dataNascita.map { Calendar.current.component(.year, from: $0) } == 1975 && foglio.clienti[1].indirizzo == "Roma; Lazio",
+                  "Importa: CSV con punto e virgola, virgolette, righe vuote saltate (\(foglio.clienti.map(\.nome)))")
+        controlla(ImportaClienti.Colonna.da("Codice Fiscale") == .codiceFiscale && ImportaClienti.Colonna.da("Telefono casa") == .telefono
+                  && ImportaClienti.Colonna.da("Nome e cognome") == .nominativo, "Importa: colonne riconosciute dall'intestazione")
+        let clientiPrima = stato.clienti.count
+        stato.aggiungiImportati(foglio.clienti)
+        controlla(stato.clienti.count == clientiPrima + 2 && stato.clienteAttivo?.nome == "Anna Maria Verdi", "Importa: clienti aggiunti alla rubrica")
+        // Le prove che seguono riguardano i clienti di prova
+        let importati = Set(foglio.clienti.map(\.nome))
+        stato.dati.clienti.removeAll { importati.contains($0.nome) }
+        stato.clienteAttivoId = "giulia"
         // Una domanda scritta a mano uguale a uno spunto viene riconosciuta
         controlla(SpuntoEve.da("  fammi un riepilogo del cliente ") == .riepilogo, "Riconoscimento degli spunti scritti a mano")
         // La sintesi di Giulia riporta il patrimonio netto calcolato dal motore

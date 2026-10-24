@@ -1,4 +1,6 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Contenuto di una finestra: l'intestazione dell'app e la sua vista.
 struct ContenutoApp: View {
@@ -82,8 +84,28 @@ struct AzioneNuovoCliente: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        Button("＋ Nuovo cliente") { stato.richiestaNuovoCliente = true }
-            .buttonStyle(StileAqua())
+        HStack(spacing: 8) {
+            Button("Importa…") { importa() }
+                .buttonStyle(StileAqua())
+                .disabled(stato.solaLettura)
+                .help("Importa clienti da un file vCard (app Contatti) o CSV (Excel, Numbers)")
+            Button("＋ Nuovo cliente") { stato.richiestaNuovoCliente = true }
+                .buttonStyle(StileAqua())
+        }
+    }
+
+    private func importa() {
+        let pannello = NSOpenPanel()
+        pannello.allowedContentTypes = [.vCard, .commaSeparatedText, .tabSeparatedText, .plainText]
+        pannello.allowsMultipleSelection = false
+        pannello.message = "Un file vCard (dall'app Contatti: seleziona i contatti e trascinali sulla scrivania) o un CSV esportato da Excel o Numbers. Il file resta sul Mac."
+        guard pannello.runModal() == .OK, let url = pannello.url else { return }
+        if let lettura = ImportaClienti.leggi(url, rubrica: stato.clienti) {
+            stato.apri(.clienti)
+            stato.importazione = lettura
+        } else {
+            stato.mostraAvviso("Nel file non ho trovato contatti con un nome. Per Excel salva come CSV, con i nomi delle colonne nella prima riga.")
+        }
     }
 }
 
