@@ -6,7 +6,7 @@ import Foundation
 /// da qui l'ordine del giorno dell'incontro e le domande da fare.
 struct Riesame {
     enum Tema: Int, CaseIterable {
-        case posizioni, scadenze, protezione, obiettivi, proposte, dati
+        case posizioni, scadenze, protezione, obiettivi, proposte, fisco, dati
 
         var nome: String {
             switch self {
@@ -15,6 +15,7 @@ struct Riesame {
             case .protezione: return "Check-up"
             case .obiettivi: return "Obiettivi"
             case .proposte: return "Proposte"
+            case .fisco: return "Fisco"
             case .dati: return "Dati"
             }
         }
@@ -61,6 +62,8 @@ struct Riesame {
     let obiettivi: [(obiettivo: Obiettivo, avanzamento: AvanzamentoObiettivo)]
     let checkUp: EsitoCheckUp
     let attivitaAperte: [Attivita]
+    /// Il calendario fiscale dell'anno.
+    let fineAnno: FineAnno
     let punti: [Punto]
     let domande: [String]
 
@@ -206,6 +209,11 @@ enum MotoreRiesame {
                                dettaglio: "\((p.esito ?? .bozza).nome): è ancora di interesse? Va aggiornata alle nuove cifre?",
                                priorita: .media, canale: p.canale))
         }
+        // Fisco: le scadenze dei prossimi due mesi che chiedono un'azione
+        let fisco = MotoreFineAnno.calcola(cliente: f.cliente, posizioni: f.posizioni, oggi: oggi)
+        for s in fisco.scadenze where (s.tipo == .deduzione || s.tipo == .nonDedotti) && MotoreFineAnno.vicina(s, oggi: oggi) {
+            punti.append(.init(tema: .fisco, titolo: s.titolo, dettaglio: s.dettaglio, priorita: .media))
+        }
         if !valoriDaAggiornare.isEmpty {
             punti.append(.init(tema: .dati, titolo: "Chiedere gli estratti conto",
                                dettaglio: valoriDaAggiornare.map { p in "\(p.nome) (\(p.dataValore.map { "valore al \(Formati.dataBreve.string(from: $0))" } ?? "senza data"))" }.joined(separator: ", ") + ".",
@@ -247,7 +255,7 @@ enum MotoreRiesame {
         return Riesame(cliente: f.cliente, oggi: oggi, ultimoContatto: passati.max(), prossimo: prossimo,
                        andamenti: andamenti, senzaStorico: senzaStorico, valoriDaAggiornare: valoriDaAggiornare,
                        scadenze: scadenze, proposte: proposte, obiettivi: obiettivi, checkUp: checkUp,
-                       attivitaAperte: attivita, punti: punti, domande: domande)
+                       attivitaAperte: attivita, fineAnno: fisco, punti: punti, domande: domande)
     }
 
     /// L'ordine del giorno da mettere nelle note dell'appuntamento.

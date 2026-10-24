@@ -142,12 +142,7 @@ enum MotoreProtezioneFamiglia {
         if figli.isEmpty && !partner { note.append("Nessun familiare indicato nel dossier: il fabbisogno è quello delle ipotesi dell'Analisi 360.") }
 
         // Detrazione del 19%: vita, invalidità e infortuni fino a 530 €, con la LTC fino a 1.291,14 €
-        func detraibili(_ elenco: [Posizione]) -> Double {
-            let vita = elenco.filter { [.vita, .invalidita, .infortuni].contains($0.rischio ?? .altro) }.reduce(0) { $0 + $1.premioAnnuo }
-            let ltc = elenco.filter { $0.rischio == .ltc }.reduce(0) { $0 + $1.premioAnnuo }
-            let primi = min(vita, RegoleFiscali.limitePremiVita)
-            return min(primi + ltc, RegoleFiscali.limitePremiLTC)
-        }
+        func detraibili(_ elenco: [Posizione]) -> Double { RegoleFiscali.premiDetraibili(elenco) }
         note.append("Detrazione IRPEF del 19% sui premi: caso morte, invalidità e infortuni fino a \(CifreDoc.euroCentesimi(RegoleFiscali.limitePremiVita)) l'anno, insieme alla non autosufficienza fino a \(CifreDoc.euroCentesimi(RegoleFiscali.limitePremiLTC)); spetta se il contraente ha capienza d'imposta.")
         note.append("Fabbisogno caso morte: debiti da estinguere + spese immediate + fabbisogno mensile per gli anni di sostegno − capitale già disponibile per la famiglia (ipotesi dell'Analisi 360).")
 

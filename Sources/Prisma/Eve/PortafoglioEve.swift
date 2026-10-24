@@ -4,7 +4,7 @@ import Foundation
 /// settimana, gli emittenti, le proposte). Le risposte usano gli stessi calcoli della vista
 /// Portafoglio di Posizioni; il modello Apple, se c'è, le riscrive senza cambiare i numeri.
 enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
-    case quadro, ricontattare, riesami, settimana, scadenze, concentrazione, proposte
+    case quadro, ricontattare, riesami, fineAnno, settimana, scadenze, concentrazione, proposte
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
         case .quadro: return "Fammi il quadro del portafoglio"
         case .ricontattare: return "Chi devo ricontattare?"
         case .riesami: return "Quali riesami devo fare?"
+        case .fineAnno: return "Chi può ancora dedurre entro fine anno?"
         case .settimana: return "Cosa ho questa settimana?"
         case .scadenze: return "Cosa scade nei prossimi mesi?"
         case .concentrazione: return "Quanto dipendo da un emittente?"
@@ -25,6 +26,7 @@ enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
         case .quadro: return "≡"
         case .ricontattare: return "☎"
         case .riesami: return "↻"
+        case .fineAnno: return "%"
         case .settimana: return "◷"
         case .scadenze: return "!"
         case .concentrazione: return "◔"
@@ -39,6 +41,7 @@ enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
             == t.trimmingCharacters(in: .whitespacesAndNewlines) }) { return s }
         let regole: [(SpuntoPortafoglio, [String])] = [
             (.riesami, ["riesam", "revision", "rivedere i clienti"]),
+            (.fineAnno, ["dedur", "deducib", "fine anno", "fine dell'anno", "31 dicembre", "irpef"]),
             (.ricontattare, ["ricontatt", "richiam", "chiamar", "sentire", "non vedo", "trascurat"]),
             (.settimana, ["settimana", "oggi", "domani", "agenda", "appuntament"]),
             (.scadenze, ["scaden", "scade", "scadono", "reinvest"] + EvePortafoglio.mesi),
@@ -118,6 +121,19 @@ enum EvePortafoglio {
             return RispostaEve(titolo: "Riesami annuali: \(dovuti.count)",
                                testo: (scaduti > 0 ? "\(scaduti) già scaduti.\n" : "") + righe.joined(separator: "\n")
                                    + "\n\nIn Posizioni → Portafoglio ognuno ha «Prepara» (il prospetto con l'ordine del giorno) e «Fissa» (l'incontro di un'ora).")
+
+        case .fineAnno:
+            let fine = MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
+            guard !fine.isEmpty else {
+                return RispostaEve(titolo: "Nessuno spazio deducibile da usare",
+                                   testo: "I clienti con un piano di previdenza versano già fino al limite di \(euro(RegoleFiscali.limiteDeducibilita)) l'anno, o non hanno piani in essere.")
+            }
+            let righe = fine.prefix(10).map { f in
+                "• \(f.cliente.nome): versa \(euro(f.contributi)), può dedurre ancora \(euro(f.spazio))"
+                    + (f.reddito == nil ? " (reddito non indicato)" : ", circa \(euro(f.risparmioPossibile)) di IRPEF in meno")
+            }
+            return RispostaEve(titolo: "Spazio deducibile entro il 31 dicembre",
+                               testo: righe.joined(separator: "\n") + "\n\nVale per i versamenti alla previdenza complementare fatti entro fine anno, fino a \(euro(RegoleFiscali.limiteDeducibilita)) compresi i contributi del datore di lavoro (che Prisma non conosce: chiedili al cliente).")
 
         case .settimana:
             let cal = Calendar.current
