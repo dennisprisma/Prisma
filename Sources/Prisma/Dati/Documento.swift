@@ -100,6 +100,8 @@ enum CampoDocumento: String, Codable, CaseIterable, Identifiable {
     case nomeProdotto, emittente, tipologia, sri, periodoDetenzione, costoIngresso, costoUscita, costoAnnuo
     case incidenzaCosti, rendimentoModerato, numeroContratto, contraente, assicurato, beneficiari
     case decorrenza, scadenza, premio, capitaleAssicurato, controvalore
+    // Dalla versione 19 dell'archivio: la data del valore e il versato degli estratti conto
+    case dataValore, totaleVersato
 
     var id: String { rawValue }
 
@@ -124,6 +126,8 @@ enum CampoDocumento: String, Codable, CaseIterable, Identifiable {
         case .premio: return "Premio"
         case .capitaleAssicurato: return "Capitale assicurato"
         case .controvalore: return "Controvalore"
+        case .dataValore: return "Data del valore"
+        case .totaleVersato: return "Totale versato"
         }
     }
 
@@ -132,7 +136,7 @@ enum CampoDocumento: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato: return "%"
         case .periodoDetenzione: return "anni"
-        case .premio, .capitaleAssicurato, .controvalore: return "€"
+        case .premio, .capitaleAssicurato, .controvalore, .totaleVersato: return "€"
         case .sri: return "su 7"
         default: return ""
         }

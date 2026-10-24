@@ -267,7 +267,7 @@ private struct SlideAtteso: View {
                     Text(verbatim: "dal \(CifreDoc.dataBreve(a.dal)) · \(p.canale.nomeBreve)").font(T.minimo).foregroundColor(C.tenue)
                 }
             }
-            .frame(width: 210, alignment: .leading)
+            .frame(width: 260, alignment: .leading)
             GeometryReader { geo in
                 let w = geo.size.width
                 let x: (Double) -> CGFloat = { CGFloat(($0 - basso) / max(alto - basso, 0.1)) * w }

@@ -57,6 +57,11 @@ enum EstrattoreDocumento {
         // Il controvalore vuole il simbolo della valuta o le migliaia: "pari al 95% del capitale" non è un importo
         Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)(?:€|eur(?:o)?)\s*\#(schemaImporto)"#),
         Regola(campo: .controvalore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|totale (?:del )?portafoglio)\#(fraEtichettaEValore)\#(schemaImportoMigliaia)"#),
+        // Estratti conto: la data a cui si riferisce il valore e il versato fino ad allora
+        Regola(campo: .dataValore, schema: #"(?:controvalore|valore di riscatto|valore della posizione|valore complessivo|situazione|saldo|posizione|rendiconto|estratto conto)\s+(?:al|alla data del)\s+\#(schemaData)"#),
+        Regola(campo: .dataValore, schema: #"(?:data di riferimento|data di valorizzazione|data di valutazione|valori aggiornati al|aggiornat[oa] al)[^\d\n]{0,20}?\#(schemaData)"#),
+        Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(fraEtichettaEValore)(?:€|eur(?:o)?)\s*\#(schemaImporto)"#),
+        Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(fraEtichettaEValore)\#(schemaImportoMigliaia)"#),
     ]
 
     /// Applica le regole pagina per pagina; per ogni campo tiene la prima occorrenza.
@@ -135,11 +140,11 @@ enum EstrattoreDocumento {
                 let cifre = valore.prefix { $0.isNumber }
                 guard !cifre.isEmpty else { return nil }
                 valore = String(cifre)
-            case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato, .premio, .capitaleAssicurato, .controvalore:
+            case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato, .premio, .capitaleAssicurato, .controvalore, .totaleVersato:
                 valore = valore.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "€", with: "")
                     .replacingOccurrences(of: "EUR", with: "").trimmingCharacters(in: .whitespaces)
                 guard numero(valore) != nil else { return nil }
-            case .decorrenza, .scadenza:
+            case .decorrenza, .scadenza, .dataValore:
                 // Una data che non esiste non entra nella tabella (e poi nel dossier)
                 guard data(valore) != nil else { return nil }
             default:

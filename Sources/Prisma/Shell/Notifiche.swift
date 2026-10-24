@@ -106,6 +106,15 @@ enum MotoreNotifiche {
                                    titolo: "\(mancano) \(mancano == 1 ? "dato da confermare" : "dati da confermare") in «\(d.titolo)»",
                                    dettaglio: nome(d.clienteId), data: d.importatoIl, destinazione: .documento(d.id)))
         }
+        // Estratti conto con il valore confermato ma non ancora nello storico della posizione
+        for d in dati.documenti where d.lettura == .letto && ValoriDaDocumento.pertinente(d) {
+            guard let v = ValoriDaDocumento.valore(d),
+                  let p = ValoriDaDocumento.posizioneProbabile(d, tra: dati.posizioni), !ValoriDaDocumento.registrato(v, in: p) else { continue }
+            elenco.append(Notifica(id: "valore-\(d.id)-\(Int(v.data.timeIntervalSince1970))", gruppo: .daSistemare, app: .documenti,
+                                   titolo: "Valore di «\(p.nome)» da registrare",
+                                   dettaglio: "\(nome(d.clienteId)) · \(Formati.euro(v.valore)) al \(Formati.dataEstesa.string(from: v.data)), da «\(d.titolo)»",
+                                   data: d.importatoIl, canale: p.canale, destinazione: .documento(d.id)))
+        }
         // Schede prodotto da verificare (condizioni vecchie di un anno)
         let daVerificare = dati.prodotti.filter(\.daVerificare)
         if let primo = daVerificare.first {

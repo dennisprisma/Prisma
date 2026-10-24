@@ -51,6 +51,19 @@ enum ProvaEve {
         } else {
             controlla(false, "Giulia ha una posizione con l'andamento")
         }
+        // Estratto conto di prova: confermato, compare tra le notifiche; registrato, entra nello storico e la notifica sparisce
+        if let d = stato.documento("doc-giulia-estratto"), let piano = ValoriDaDocumento.posizioneProbabile(d, tra: stato.posizioni) {
+            for c in d.campi { stato.confermaCampo(d.id, c.chiave, true) }
+            let notificaValore = { MotoreNotifiche.calcola(stato).contains { $0.id.hasPrefix("valore-\(d.id)") } }
+            controlla(notificaValore(), "Estratto confermato: notifica del valore da registrare")
+            let prima = piano.storicoValori.count
+            stato.registraValore(daDocumento: d.id, posizione: piano.id)
+            controlla(stato.posizioni.first { $0.id == piano.id }?.storicoValori.count == prima + 1, "Estratto: valore registrato nello storico di \(piano.nome)")
+            controlla(stato.documento(d.id)?.posizioneId == piano.id, "Estratto collegato alla posizione")
+            controlla(!notificaValore(), "Estratto registrato: la notifica sparisce")
+        } else {
+            controlla(false, "Estratto conto di prova e posizione riconosciuta")
+        }
         // Una domanda scritta a mano uguale a uno spunto viene riconosciuta
         controlla(SpuntoEve.da("  fammi un riepilogo del cliente ") == .riepilogo, "Riconoscimento degli spunti scritti a mano")
         // La sintesi di Giulia riporta il patrimonio netto calcolato dal motore

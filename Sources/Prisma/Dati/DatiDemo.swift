@@ -197,7 +197,7 @@ enum DatiDemo {
         return [concluso, oggi]
     }
 
-    /// Documenti di prova: un KID e una polizza con testo inventato (nessun file sul disco).
+    /// Documenti di prova: un KID, una polizza e un estratto conto con testo inventato (nessun file sul disco).
     static func documenti() -> [Documento] {
         var kid = Documento(clienteId: "giulia", titolo: "KID · Fondo pensione aperto Orizzonte", tipo: .kid)
         kid.id = "doc-giulia-kid"
@@ -219,7 +219,14 @@ enum DatiDemo {
             return x
         }
         polizza.posizioneId = "pos-marco-infortuni-famiglia"
-        return [kid, polizza]
+        var estratto = Documento(clienteId: "giulia", titolo: "Estratto conto · Piano di risparmio rivalutabile", tipo: .estrattoConto)
+        estratto.id = "doc-giulia-estratto"
+        estratto.pagine = testoDocumento("doc-giulia-estratto")?.count ?? 0
+        estratto.dimensione = 96_512
+        estratto.importatoIl = data(-1, 10, 15)
+        estratto.lettura = .letto
+        estratto.campi = EstrattoreDocumento.conRegole(testoDocumento("doc-giulia-estratto") ?? [])
+        return [kid, polizza, estratto]
     }
 
     /// Testo dei documenti di prova, pagina per pagina.
@@ -262,6 +269,22 @@ enum DatiDemo {
                 Scadenza: 01/12/2026
                 Capitale assicurato: 150.000,00
                 Premio annuo: 380,00
+                """,
+            ]
+        case "doc-giulia-estratto":
+            // Diciotto mesi fa: un valore più vecchio dello storico di prova, da aggiungere tra i valori passati
+            let quando = Formati.dataBreve.string(from: data(-548))
+            return [
+                """
+                Alleanza Assicurazioni S.p.A.
+                Estratto conto annuale della polizza
+                Prodotto: Piano di risparmio rivalutabile
+                Polizza n. AL-2022-104851
+                Contraente: Giulia Rossi
+                Situazione al \(quando)
+                Valore di riscatto al \(quando): € 4.712,40
+                Totale premi versati: € 4.500,00
+                Rendimento riconosciuto nell'anno dalla gestione separata: 2,1%
                 """,
             ]
         default:
