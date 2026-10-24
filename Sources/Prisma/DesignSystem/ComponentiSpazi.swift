@@ -57,7 +57,7 @@ extension Misure {
         static let miniatura = CGSize(width: 196, height: 112)
         static let raggioMiniatura: CGFloat = 4
         static let staccoMiniatura: CGFloat = 2
-        static let iconaMiniatura: CGFloat = 22
+        static let iconaMiniatura: CGFloat = 26
         static let margine: CGFloat = 16
         static let campoNome: CGFloat = 260
     }

@@ -46,7 +46,7 @@ extension Misure {
         static let campoRaggio: CGFloat = 16
         static let barraMargine = EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
         static let raggioCella: CGFloat = 9
-        static let icona: CGFloat = 30
+        static let icona: CGFloat = 36
         static let margineRiga = EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12)
         static let spazioSezioni: CGFloat = 16
         static let margineContenuto: CGFloat = 16

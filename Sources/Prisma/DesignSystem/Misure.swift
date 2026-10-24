@@ -68,7 +68,8 @@ enum Misure {
         static let schedaAltezza: CGFloat = 33
         static let schedaMargine: CGFloat = 15
         static let spazioSchede: CGFloat = 22
-        static let iconaApp: CGFloat = 30
+        /// Icone dei collegamenti del dossier: più grandi perché si riconoscano a colpo d'occhio.
+        static let iconaApp: CGFloat = 38
         static let modulo = CGSize(width: 620, height: 560)
     }
 
@@ -202,7 +203,7 @@ enum Misure {
         static let margineBasso: CGFloat = 5
         static let semaforo: CGFloat = 13
         static let spazioSemafori: CGFloat = 7
-        static let iconaTitolo: CGFloat = 19
+        static let iconaTitolo: CGFloat = 22
         static let affianca = CGSize(width: 27, height: 22)
         static let minima = CGSize(width: 560, height: 360)
         static let raggioAffianca: CGFloat = 3
