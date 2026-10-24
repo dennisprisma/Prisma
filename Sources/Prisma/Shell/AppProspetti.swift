@@ -83,7 +83,7 @@ struct AppProspetti: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Prospetto e report")
-        ForEach([TipoProspetto.checkUp, .valutazione, .resoconto, .resistenza, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita]) { t in
+        ForEach([TipoProspetto.checkUp, .valutazione, .resoconto, .resistenza, .costi, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
@@ -123,6 +123,8 @@ struct AppProspetti: View {
             stato.prospetto = .checkUp(report: false)
         case .resistenza:
             stato.prospetto = .resistenza(report: false)
+        case .costi:
+            stato.prospetto = .costi(report: false)
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -162,6 +164,7 @@ struct AppProspetti: View {
                     case .liquidita(let report): sceltaLiquidita(report: report)
                     case .checkUp(let report): sceltaCheckUp(report: report)
                     case .resistenza(let report): sceltaResistenza(report: report)
+                    case .costi(let report): sceltaCosti(report: report)
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -187,6 +190,7 @@ struct AppProspetti: View {
         case .liquidita: return "LIQUIDITÀ DEL CLIENTE"
         case .checkUp: return "PRIMO INCONTRO"
         case .resistenza: return "RESISTENZA DEL PATRIMONIO"
+        case .costi: return "COSTI DEL CLIENTE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
@@ -292,6 +296,19 @@ struct AppProspetti: View {
                         : "Prospetto per te: anagrafica e profilo, fotografia per area e canale, semaforo di sette aree, bisogni rilevati, prossimi passi e firme.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
             Text("Dopo il primo incontro: anagrafica e famiglia dal dossier, patrimonio dalle Posizioni, ipotesi dall'Analisi 360, bisogni dal profilo dei bisogni. Più dati si raccolgono, meno semafori restano grigi.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private func sceltaCosti(report: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SegmentiAnalisi(opzioni: [(false, "Prospetto"), (true, "Report")],
+                            selezione: Binding(get: { report }, set: { stato.prospetto = .costi(report: $0); archiviato = nil }))
+            Text(report ? "Report per il cliente: quanto paga, il peso nel tempo con e senza costi, cosa riceve in cambio e dove risparmiare, la sintesi."
+                        : "Prospetto per te: ogni posizione per canale con costi, euro dell'anno, 10 e 20 anni; il grafico; le alternative con l'uscita; metodo e firme.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            Text("Costi dalle Posizioni (e dai KID letti in Documenti); alternative dal catalogo Prodotti, con la stessa area e lo stesso indicatore di rischio. Lo stesso calcolo del pannello in Posizioni.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)

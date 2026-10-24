@@ -136,6 +136,27 @@ enum MotoreCosti {
         }.max { $0.guadagno < $1.guadagno }
     }
 
+    /// Il valore complessivo anno per anno, con e senza i costi dei prodotti (prima delle imposte finali),
+    /// per il grafico dei documenti. Una posizione che scade resta ferma al valore della scadenza.
+    static func serie(_ a: AnalisiCosti, durata: Int = orizzonti.1) -> (con: [Double], senza: [Double]) {
+        var con = [Double](repeating: 0, count: durata + 1)
+        var senza = con
+        for v in a.voci {
+            var par = ParametriProiezione(posizione: v.posizione)
+            par.anni = anni(v.posizione, durata)
+            var libero = par
+            libero.costoIngresso = 0
+            libero.costoAnnuo = max(0, par.costoAnnuo - v.annuo)
+            let pc = MotoreProiezione.calcola(par).punti.map(\.valore)
+            let ps = MotoreProiezione.calcola(libero).punti.map(\.valore)
+            for i in 0...durata {
+                con[i] += pc[min(i, pc.count - 1)]
+                senza[i] += ps[min(i, ps.count - 1)]
+            }
+        }
+        return (con, senza)
+    }
+
     /// Le righe per Eve e per le schede.
     static func sintesi(_ a: AnalisiCosti) -> [String] {
         var righe: [String] = []

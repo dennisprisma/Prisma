@@ -179,6 +179,7 @@ extension SceltaProspetto {
         case .liquidita: return .liquidita
         case .checkUp: return .checkUp
         case .resistenza: return .resistenza
+        case .costi: return .costi
         case .riesame: return .incontro
         case .posizione, .confronto, .valutazione, .portafoglio: return nil
         }

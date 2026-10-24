@@ -891,6 +891,8 @@ final class StatoShell: ObservableObject {
             return .checkUp(report: report)
         case .resistenza(let report)?:
             return .resistenza(report: report)
+        case .costi(let report)?:
+            return .costi(report: report)
         case .obiettivo(let id, let report)?:
             let elenco = obiettiviCliente(clienteAttivoId)
             return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
@@ -934,6 +936,9 @@ final class StatoShell: ObservableObject {
         if case .liquidita(let report) = scelta {
             return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
+        if case .costi(let report) = scelta {
+            return DocumentoStampabile(testiCosti(clienteAttivoId), report: report, commento: testoCommento(scelta))
+        }
         if case .resistenza(let report) = scelta {
             return DocumentoStampabile(testiResistenza(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
@@ -952,6 +957,11 @@ final class StatoShell: ObservableObject {
     /// I testi e i numeri del check-up del primo incontro di un cliente.
     func testiCheckUp(_ id: String) -> TestiCheckUp {
         TestiCheckUp(MotoreCheckUp.calcola(cliente: self.cliente(id), posizioni: posizioniCliente(id), analisi: analisi360(id), obiettivi: obiettiviCliente(id)))
+    }
+
+    /// I testi e i numeri del costo degli investimenti di un cliente (lo stesso calcolo del pannello in Posizioni).
+    func testiCosti(_ id: String) -> TestiCosti {
+        TestiCosti(MotoreCosti.calcola(posizioniCliente(id), prodotti: dati.prodotti, cliente: id), cliente: self.cliente(id))
     }
 
     /// I testi e i numeri della prova di resistenza di un cliente (lo stesso calcolo del pannello in Posizioni).
@@ -1622,6 +1632,10 @@ final class StatoShell: ObservableObject {
         case .protezione:
             let t = testiProtezione(id)
             return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro della protezione della tua famiglia: cosa è già coperto e cosa ancora no.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .costi:
+            let t = testiCosti(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro dei costi dei tuoi investimenti: quanto paghi, quanto pesa nel tempo e cosa ricevi in cambio.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .resistenza:
             let t = testiResistenza(id)
