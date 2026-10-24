@@ -689,6 +689,43 @@ enum ProvaCalcoli {
         memoria["d"] = nil
         verifica("Documenti: memoria vuota dopo aver tolto l'ultimo", Double(memoria.caratteri + memoria.conta), 0)
 
+        // Estratti conto: valore, data del valore e versato, poi nello storico della posizione
+        let estratto = EstrattoreDocumento.conRegole(DatiDemo.testoDocumento("doc-giulia-estratto") ?? [])
+        func letto(_ k: CampoDocumento, in campi: [CampoEstratto]) -> String { campi.first { $0.chiave == k }?.valore ?? "" }
+        verifica("Estratto: controvalore 4.712,40", EstrattoreDocumento.numero(letto(.controvalore, in: estratto)) ?? 0, 4_712.40)
+        verifica("Estratto: totale versato 4.500", EstrattoreDocumento.numero(letto(.totaleVersato, in: estratto)) ?? 0, 4_500)
+        verifica("Estratto: data del valore diciotto mesi fa",
+                 EstrattoreDocumento.data(letto(.dataValore, in: estratto)).map { Double(Calendar.current.dateComponents([.day], from: $0, to: Date()).day ?? 0) } ?? 0, 548, tolleranza: 1)
+        verifica("Estratto: numero di polizza", letto(.numeroContratto, in: estratto) == "AL-2022-104851" ? 1 : 0, 1)
+        let varianti = EstrattoreDocumento.conRegole(["Rendiconto annuale\nData di riferimento: 31/12/2025\nControvalore complessivo 12.345,67\nTotale dei versamenti effettuati: euro 10.000,00"])
+        verifica("Estratto: «Data di riferimento»", letto(.dataValore, in: varianti) == "31/12/2025" ? 1 : 0, 1)
+        verifica("Estratto: «Totale dei versamenti effettuati: euro»", EstrattoreDocumento.numero(letto(.totaleVersato, in: varianti)) ?? 0, 10_000)
+        verifica("Estratto: «Controvalore complessivo» senza simbolo", EstrattoreDocumento.numero(letto(.controvalore, in: varianti)) ?? 0, 12_345.67)
+        let nonVersato = EstrattoreDocumento.conRegole(["Premi versati nel 2025: 12 rate"])
+        verifica("Estratto: «12 rate» non è un versato", letto(.totaleVersato, in: nonVersato).isEmpty ? 1 : 0, 1)
+        // Dal documento alla posizione
+        var docEstratto = Documento(clienteId: "giulia", titolo: "Estratto conto", tipo: .estrattoConto)
+        docEstratto.campi = estratto.map { var c = $0; c.confermato = true; return c }
+        let posizioniGiulia = DatiDemo.posizioni()
+        let riconosciuta = ValoriDaDocumento.posizioneProbabile(docEstratto, tra: posizioniGiulia)
+        verifica("Estratto: posizione riconosciuta dal numero di polizza", riconosciuta?.id == "pos-giulia-piano-di-risparmio-rivalutabile" ? 1 : 0, 1)
+        if var piano = riconosciuta, let v = ValoriDaDocumento.valore(docEstratto) {
+            let prima = piano.storicoValori.count
+            let attuale = piano.controvalore
+            verifica("Estratto: un valore più vecchio va tra i valori passati", ValoriDaDocumento.applica(v, a: &piano) == .passato ? 1 : 0, 1)
+            verifica("Estratto: lo storico ha un valore in più", Double(piano.storicoValori.count), Double(prima + 1))
+            verifica("Estratto: il valore attuale non cambia", piano.controvalore ?? 0, attuale ?? -1)
+            verifica("Estratto: ora risulta registrato", ValoriDaDocumento.registrato(v, in: piano) ? 1 : 0, 1)
+            ValoriDaDocumento.applica(v, a: &piano)
+            verifica("Estratto: registrarlo di nuovo non lo duplica", Double(piano.storicoValori.count), Double(prima + 1))
+            let recente = ValoriDaDocumento.Valore(data: ValoriDaDocumento.mezzogiorno(Date()), valore: 7_800, versato: 7_350)
+            verifica("Estratto: un valore più recente diventa quello attuale", ValoriDaDocumento.applica(recente, a: &piano) == .attuale ? 1 : 0, 1)
+            verifica("Estratto: valore e versato aggiornati", (piano.controvalore ?? 0) + (piano.totaleVersato ?? 0), 15_150)
+            verifica("Estratto: il valore di prima resta nello storico", piano.storicoValori.contains { abs($0.controvalore - (attuale ?? 0)) < 0.5 } ? 1 : 0, 1)
+        } else {
+            verifica("Estratto: valore confermato e posizione", 0, 1)
+        }
+
         // Portafoglio del consulente: le somme per cliente ed emittente tornano con il totale
         do {
             let demo = DatiPrisma.demo()

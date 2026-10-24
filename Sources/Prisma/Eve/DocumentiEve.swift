@@ -28,7 +28,10 @@ extension MotoreSintesi {
         case .polizza:
             parti.append(contentsOf: polizza(d))
         case .estrattoConto:
-            if let c = d.campo(.controvalore) { parti.append("Controvalore \(cifra(c)) \(pagina(c)).") }
+            if let c = d.campo(.controvalore) {
+                parti.append("Controvalore \(cifra(c))\(d.campo(.dataValore).map { " al \($0.valore)" } ?? "") \(pagina(c)).")
+            }
+            if let v = d.campo(.totaleVersato) { parti.append("Versato fino ad allora \(cifra(v)) \(pagina(v)).") }
         case .altro, .prospetto, .report:
             break
         }
@@ -36,7 +39,7 @@ extension MotoreSintesi {
         // Il resto dei dati trovati, se non già detti
         let detti: Set<CampoDocumento> = [.nomeProdotto, .tipologia, .emittente, .sri, .periodoDetenzione, .costoIngresso, .costoUscita, .costoAnnuo,
                                           .incidenzaCosti, .rendimentoModerato, .contraente, .assicurato, .beneficiari, .decorrenza, .scadenza,
-                                          .premio, .capitaleAssicurato, .controvalore, .numeroContratto]
+                                          .premio, .capitaleAssicurato, .controvalore, .numeroContratto, .dataValore, .totaleVersato]
         let altri = campi.filter { !detti.contains($0.chiave) }
         if !altri.isEmpty { parti.append(altri.map { "\($0.chiave.nome): \(cifra($0)) \(pagina($0))" }.joined(separator: "; ") + ".") }
 

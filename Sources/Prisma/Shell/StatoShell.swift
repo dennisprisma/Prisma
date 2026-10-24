@@ -1132,6 +1132,17 @@ final class StatoShell: ObservableObject {
         apriPosizione(p)
     }
 
+    /// Porta nella posizione il valore confermato di un estratto conto e collega il documento.
+    func registraValore(daDocumento id: String, posizione pid: String) {
+        guard !solaLettura, let d = documento(id), let v = ValoriDaDocumento.valore(d),
+              let i = dati.posizioni.firstIndex(where: { $0.id == pid }) else { return }
+        let esito = ValoriDaDocumento.applica(v, a: &dati.posizioni[i])
+        aggiornaDocumento(id) { $0.posizioneId = pid }
+        let quando = Formati.dataEstesa.string(from: v.data)
+        mostraAvviso(esito == .attuale ? "Valore attuale di «\(dati.posizioni[i].nome)» aggiornato al \(quando)"
+                                       : "Valore del \(quando) aggiunto allo storico di «\(dati.posizioni[i].nome)»")
+    }
+
     // MARK: - Prodotti
 
     var prodotti: [Prodotto] { dati.prodotti.sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending } }

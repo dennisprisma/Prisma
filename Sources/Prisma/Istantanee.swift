@@ -186,6 +186,13 @@ enum Istantanee {
             s.documentoSelezionato = "doc-giulia-kid"
             s.apri(.documenti)
         }),
+        ("68-documenti-estratto", { s in
+            // Estratto conto confermato: il valore pronto per lo storico del piano di risparmio
+            s.clienteAttivoId = "giulia"
+            s.documentoSelezionato = "doc-giulia-estratto"
+            if let d = s.documento("doc-giulia-estratto") { for c in d.campi { s.confermaCampo(d.id, c.chiave, true) } }
+            s.apri(.documenti)
+        }),
         ("26-documenti-polizza", { s in
             s.clienteAttivoId = "marco"
             s.documentoSelezionato = "doc-marco-polizza"

@@ -46,7 +46,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 16: quota in gestione separata delle polizze multiramo; impostazioni di backup con l'ultimo errore.
     /// 17: spazi di lavoro salvati.
     /// 18: note del taccuino.
-    static let versioneAttuale = 18
+    /// 19: data del valore e totale versato tra i dati letti dai documenti (estratti conto).
+    static let versioneAttuale = 19
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],

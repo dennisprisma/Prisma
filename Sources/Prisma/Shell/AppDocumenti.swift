@@ -16,6 +16,8 @@ struct AppDocumenti: View {
     @State var canale: Canale = .alleanza
     @State var area: AreaPosizione = .investimento
     @State var confermaEliminazione = false
+    /// La posizione scelta a mano per il valore di un estratto conto (nil = quella riconosciuta).
+    @State var posizioneValore: String?
 
     private var cliente: String { stato.clienteAttivoId }
     private var elenco: [Documento] { stato.documentiCliente(cliente) }
@@ -309,7 +311,59 @@ struct AppDocumenti: View {
                 }
             }
             usa(d)
+            if ValoriDaDocumento.pertinente(d) { storicoPosizione(d) }
         }
+    }
+
+    /// Estratti conto: il valore letto entra nello storico della posizione, con un clic.
+    private func storicoPosizione(_ d: Documento) -> some View {
+        let candidate = ValoriDaDocumento.candidate(d, tra: stato.posizioni)
+        let probabile = ValoriDaDocumento.posizioneProbabile(d, tra: stato.posizioni)
+        let scelta = candidate.first { $0.id == posizioneValore } ?? probabile ?? candidate.first
+        let valore = ValoriDaDocumento.valore(d)
+        let fatto = valore.flatMap { v in scelta.map { ValoriDaDocumento.registrato(v, in: $0) } } ?? false
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("NELLO STORICO DELLA POSIZIONE").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Strumenti.occhiello)
+            if candidate.isEmpty {
+                Text("Il cliente non ha posizioni in essere a cui aggiungere il valore: creala con «Crea la posizione in essere».")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+            } else {
+                HStack(spacing: 10) {
+                    Picker("", selection: Binding(get: { scelta?.id ?? "" }, set: { posizioneValore = $0 })) {
+                        ForEach(candidate) { p in Text("\(p.nome) · \(p.canale.nomeBreve)").tag(p.id) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 280)
+                    if let v = valore {
+                        Text("\(Formati.euro(v.valore)) al \(Formati.dataEstesa.string(from: v.data))" + (v.versato.map { " · versato \(Formati.euro($0))" } ?? ""))
+                            .font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
+                    }
+                    Spacer(minLength: 0)
+                    if fatto, let p = scelta {
+                        Button("✓ Nello storico di «\(p.nome)» ↗") { stato.apriPosizione(p) }
+                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                    } else {
+                        Button("Registra il valore") { if let p = scelta { stato.registraValore(daDocumento: d.id, posizione: p.id) } }
+                            .buttonStyle(StileBlu())
+                            .disabled(valore == nil || scelta == nil || stato.solaLettura)
+                            .opacity(valore == nil ? 0.5 : 1)
+                    }
+                }
+                Text(valore == nil
+                     ? "Conferma il controvalore e la data del valore (e, se c'è, il totale versato): poi il valore entra nello storico e nell'andamento della posizione."
+                     : probabile?.id == scelta?.id && probabile != nil
+                        ? "Posizione riconosciuta \(d.posizioneId != nil ? "dal collegamento" : "dal numero di contratto o dal nome"). Un valore più recente di quello attuale lo sostituisce; uno più vecchio va tra i valori passati."
+                        : "Scegli la posizione. Un valore più recente di quello attuale lo sostituisce; uno più vecchio va tra i valori passati.")
+                    .font(Tipo.kpiNota)
+                    .foregroundColor(Colori.Analisi.kpiNota)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Gradienti.kpi))
+        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .onChange(of: d.id) { _ in posizioneValore = nil }
     }
 
     private func usa(_ d: Documento) -> some View {
