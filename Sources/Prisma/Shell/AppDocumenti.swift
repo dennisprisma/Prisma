@@ -415,6 +415,12 @@ struct AppDocumenti: View {
     }
 
     private func proponiCanaleEArea(_ d: Documento) {
+        // Un documento di una posizione già riconosciuta (estratto conto) ne prende canale e area
+        if ValoriDaDocumento.pertinente(d), let p = ValoriDaDocumento.posizioneProbabile(d, tra: stato.posizioni) {
+            canale = p.canale
+            area = p.area
+            return
+        }
         let testo = (d.campi.map(\.valore) + [d.titolo]).joined(separator: " ").lowercased()
         canale = testo.contains("alleanza") ? .alleanza : .indipendente
         if testo.contains("pension") || testo.contains("previdenz") { area = .previdenza }
