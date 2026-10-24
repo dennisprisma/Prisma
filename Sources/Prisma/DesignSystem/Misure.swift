@@ -59,6 +59,9 @@ enum Misure {
         static let colonnaPerdita: CGFloat = 110
         static let colonnaCanale: CGFloat = 90
         static let righeResistenza = 4
+        /// Peso dei costi: le colonne delle cifre e dell'alternativa.
+        static let colonnaCosto: CGFloat = 92
+        static let colonnaAlternativa: CGFloat = 230
     }
 
     enum Rubrica {

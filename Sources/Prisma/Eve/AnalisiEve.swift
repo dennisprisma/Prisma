@@ -54,6 +54,27 @@ extension MotoreSintesi {
         return RispostaEve(titolo: "Le posizioni di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
     }
 
+    /// Il peso dei costi: quanto costano le posizioni, quanto tolgono nel tempo e dove si può risparmiare.
+    func costi(_ f: FonteEve) -> RispostaEve {
+        let a = MotoreCosti.calcola(f.posizioni, prodotti: f.prodotti, cliente: f.cliente.id)
+        guard !a.vuota else {
+            return RispostaEve(titolo: "Nessun investimento in essere",
+                               testo: "\(f.cliente.nome) non ha posizioni finanziarie in essere: i costi si analizzano su investimenti, risparmio e previdenza registrati in Posizioni.")
+        }
+        var parti = MotoreCosti.sintesi(a).map { "• " + $0 }
+        let alti = a.voci.filter { $0.livello == .alto }
+        if !alti.isEmpty {
+            parti.append("Sopra il \(CifreDoc.condizione(MotoreCosti.sogliaAlto)) l'anno: \(alti.map(\.posizione.nome).joined(separator: ", ")). Vale la pena chiedersi cosa offrono in cambio (garanzie, coperture, servizio).")
+        }
+        if a.conAlternativa.isEmpty, !a.voci.isEmpty {
+            parti.append("Nel catalogo non c'è un'alternativa con lo stesso rischio che lasci almeno \(Formati.euro(MotoreCosti.guadagnoMinimo)) in più, uscita compresa: le posizioni restano dove sono.")
+        } else if !a.conAlternativa.isEmpty {
+            parti.append("Prima di proporre un cambio, apri il confronto in Prospetti → «Sostituzione o confronto»: penali, imposte e pareggio anno per anno.")
+        }
+        parti.append("Le cifre sono nel pannello «Peso dei costi» in Posizioni.")
+        return RispostaEve(titolo: "I costi di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
+    }
+
     /// La prova di resistenza: cosa perde il patrimonio in tre scenari avversi e se il profilo lo sopporta.
     func resistenza(_ f: FonteEve) -> RispostaEve {
         let r = MotoreResistenza.calcola(f.posizioni, profilo: f.cliente.profilo)

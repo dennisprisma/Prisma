@@ -38,6 +38,8 @@ final class StatoShell: ObservableObject {
     @Published var schedaCliente: SchedaCliente = .panoramica
     /// Posizione aperta nel dettaglio (usata anche dalle istantanee).
     @Published var posizioneInDettaglio: String?
+    /// Il pannello del dossier Posizioni a cui scorrere ("resistenza", "costi"); si consuma appena raggiunto.
+    @Published var ancoraPosizioni: String?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
     // Il portafoglio parla di tutti i clienti: in modalità cliente resta chiuso
     @Published var portafoglio = false { didSet { if portafoglio && modoCliente != nil { portafoglio = false } } }

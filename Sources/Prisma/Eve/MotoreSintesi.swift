@@ -30,6 +30,7 @@ struct MotoreSintesi: MotoreEve {
         case .checkUp: return checkUp(f)
         case .proposte: return proposte(f)
         case .resoconto: return resoconto(f)
+        case .costi: return costi(f)
         case .resistenza: return resistenza(f)
         case .pensione: return pensione(f)
         case .liquidita: return liquidita(f)

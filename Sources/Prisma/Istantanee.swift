@@ -201,6 +201,12 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.apriProspetto(.resistenza(report: true))
         }),
+        ("74-posizioni-costi", { s in
+            // Giulia: il dossier scorre fino al pannello dei costi
+            s.clienteAttivoId = "giulia"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "costi"
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"
