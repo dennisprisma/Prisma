@@ -75,9 +75,46 @@ struct Riesame {
     var sottoAtteso: [(posizione: Posizione, andamento: AndamentoPosizione)] { andamenti.filter { $0.andamento.giudizio == .sotto } }
 }
 
+/// Un cliente il cui riesame annuale è dovuto (o lo sarà a breve): per pianificare le revisioni dell'anno.
+struct RiesameDovuto: Identifiable {
+    let cliente: Cliente
+    let ultimoContatto: Date?
+    /// Un anno dopo l'ultimo contatto; nil se non c'è mai stato un incontro.
+    let dovutoDal: Date?
+
+    var id: String { cliente.id }
+
+    func scaduto(_ oggi: Date = Date()) -> Bool { dovutoDal.map { $0 <= oggi } ?? true }
+}
+
 enum MotoreRiesame {
     /// Ogni quanti mesi si rivede un cliente.
     static let mesiRiesame = 12
+    /// Quanto avanti guarda il calendario dei riesami.
+    static let mesiAvanti = 2
+
+    /// I riesami da fare: clienti con posizioni in essere, niente in agenda e un anno dall'ultimo contatto
+    /// entro i prossimi mesi. Prima chi non è mai stato incontrato, poi chi aspetta da più tempo.
+    static func dovuti(clienti: [Cliente], posizioni: [Posizione], appuntamenti: [Appuntamento], incontri: [Incontro],
+                       oggi: Date = Date(), mesiAvanti: Int = mesiAvanti) -> [RiesameDovuto] {
+        let cal = Calendar.current
+        let inizio = cal.startOfDay(for: oggi)
+        let orizzonte = cal.date(byAdding: .month, value: mesiAvanti, to: inizio) ?? inizio
+        let conPosizioni = Set(posizioni.filter { $0.stato == .inEssere }.map(\.clienteId))
+        let appuntamentiPer = Dictionary(grouping: appuntamenti, by: \.clienteId)
+        let incontriPer = Dictionary(grouping: incontri, by: \.clienteId)
+        let elenco = clienti.compactMap { c -> RiesameDovuto? in
+            guard conPosizioni.contains(c.id) else { return nil }
+            let suoi = appuntamentiPer[c.id] ?? []
+            guard !suoi.contains(where: { $0.stato == .pianificato && $0.inizio >= inizio }) else { return nil }
+            let ultimo = (suoi.filter { $0.inizio < oggi }.map(\.inizio) + (incontriPer[c.id] ?? []).filter { $0.data < oggi }.map(\.data)).max()
+            let dovuto = ultimo.flatMap { cal.date(byAdding: .month, value: mesiRiesame, to: $0) }
+            guard dovuto.map({ $0 < orizzonte }) ?? true else { return nil }
+            return RiesameDovuto(cliente: c, ultimoContatto: ultimo, dovutoDal: dovuto)
+        }
+        return elenco.sorted { ($0.dovutoDal ?? .distantPast, $0.cliente.nome) < ($1.dovutoDal ?? .distantPast, $1.cliente.nome) }
+    }
+
     /// Una scadenza così vicina va affrontata subito.
     static let mesiScadenzaVicina = 6
 

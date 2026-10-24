@@ -768,6 +768,23 @@ enum ProvaCalcoli {
             verifica("Portafoglio: Laura da ricontattare, per prima (scadenza in arrivo)", ric.daRicontattare.first?.cliente.id == "laura" && ric.daRicontattare.first?.motivo != nil ? 1 : 0, 1)
             verifica("Portafoglio: chi ha un appuntamento in agenda non è da ricontattare",
                      ric.daRicontattare.contains { r in conContatti.appuntamenti.contains { $0.clienteId == r.cliente.id && $0.stato == .pianificato && $0.inizio >= Calendar.current.startOfDay(for: Date()) } } ? 0 : 1, 1)
+            // Riesami annuali: un anno dall'ultimo incontro e niente in agenda
+            let oggiRiesami = Calendar.current.startOfDay(for: Date())
+            let dovuti = MotoreRiesame.dovuti(clienti: conContatti.clienti, posizioni: conContatti.posizioni,
+                                              appuntamenti: conContatti.appuntamenti, incontri: conContatti.incontri)
+            verifica("Riesami: Laura, vista un anno fa, ha il riesame scaduto", dovuti.first { $0.id == "laura" }?.scaduto() == true ? 1 : 0, 1)
+            verifica("Riesami: chi ha un incontro in agenda non è nel calendario",
+                     dovuti.contains { d in conContatti.appuntamenti.contains { $0.clienteId == d.id && $0.stato == .pianificato && $0.inizio >= oggiRiesami } } ? 0 : 1, 1)
+            verifica("Riesami: tra chi è da ricontattare, Laura ha il riesame scaduto", ric.daRicontattare.first { $0.id == "laura" }?.riesameScaduto == true ? 1 : 0, 1)
+            for (mesi, atteso, descrizione) in [(-3, false, "vista tre mesi fa non è nel calendario"), (-11, true, "vista undici mesi fa è nel calendario, non ancora scaduto")] {
+                var spostati = conContatti
+                if let i = spostati.appuntamenti.firstIndex(where: { $0.id == "prova-vecchio" }) {
+                    spostati.appuntamenti[i].inizio = Calendar.current.date(byAdding: .month, value: mesi, to: Date()) ?? Date()
+                }
+                let elenco = MotoreRiesame.dovuti(clienti: spostati.clienti, posizioni: spostati.posizioni, appuntamenti: spostati.appuntamenti, incontri: spostati.incontri)
+                let laura = elenco.first { $0.id == "laura" }
+                verifica("Riesami: Laura \(descrizione)", (laura != nil) == atteso && (laura?.scaduto() ?? false) == false ? 1 : 0, 1)
+            }
             var attivata = base
             attivata.id = "prova-attivata"
             attivata.stato = .inEssere

@@ -4,7 +4,7 @@ import Foundation
 /// settimana, gli emittenti, le proposte). Le risposte usano gli stessi calcoli della vista
 /// Portafoglio di Posizioni; il modello Apple, se c'è, le riscrive senza cambiare i numeri.
 enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
-    case quadro, ricontattare, settimana, scadenze, concentrazione, proposte
+    case quadro, ricontattare, riesami, settimana, scadenze, concentrazione, proposte
 
     var id: String { rawValue }
 
@@ -12,6 +12,7 @@ enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
         switch self {
         case .quadro: return "Fammi il quadro del portafoglio"
         case .ricontattare: return "Chi devo ricontattare?"
+        case .riesami: return "Quali riesami devo fare?"
         case .settimana: return "Cosa ho questa settimana?"
         case .scadenze: return "Cosa scade nei prossimi mesi?"
         case .concentrazione: return "Quanto dipendo da un emittente?"
@@ -23,6 +24,7 @@ enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
         switch self {
         case .quadro: return "≡"
         case .ricontattare: return "☎"
+        case .riesami: return "↻"
         case .settimana: return "◷"
         case .scadenze: return "!"
         case .concentrazione: return "◔"
@@ -36,6 +38,7 @@ enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
         if let s = allCases.first(where: { $0.domanda.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Formati.italiano)
             == t.trimmingCharacters(in: .whitespacesAndNewlines) }) { return s }
         let regole: [(SpuntoPortafoglio, [String])] = [
+            (.riesami, ["riesam", "revision", "rivedere i clienti"]),
             (.ricontattare, ["ricontatt", "richiam", "chiamar", "sentire", "non vedo", "trascurat"]),
             (.settimana, ["settimana", "oggi", "domani", "agenda", "appuntament"]),
             (.scadenze, ["scaden", "scade", "scadono", "reinvest"] + EvePortafoglio.mesi),
@@ -98,6 +101,23 @@ enum EvePortafoglio {
             }
             return RispostaEve(titolo: "Da ricontattare: \(p.daRicontattare.count)",
                                testo: righe.joined(separator: "\n") + "\n\nPrima chi ha un motivo per chiamare, poi chi manca da più tempo. Un appuntamento in agenda li toglie dall'elenco.")
+
+        case .riesami:
+            let dovuti = MotoreRiesame.dovuti(clienti: dati.clienti, posizioni: dati.posizioni, appuntamenti: dati.appuntamenti,
+                                              incontri: dati.incontri, oggi: oggi)
+            guard !dovuti.isEmpty else {
+                return RispostaEve(titolo: "Nessun riesame da fare",
+                                   testo: "Nei prossimi \(MotoreRiesame.mesiAvanti) mesi non scade nessun riesame: tutti i clienti con posizioni sono stati visti nell'ultimo anno o hanno un incontro in agenda.")
+            }
+            let righe = dovuti.prefix(10).map { d -> String in
+                let quando = d.dovutoDal.map { d.scaduto(oggi) ? "scaduto dal \(Formati.dataEstesa.string(from: $0))" : "dovuto dal \(Formati.dataEstesa.string(from: $0))" }
+                    ?? "mai incontrato in Prisma"
+                return "• \(d.cliente.nome): \(quando)"
+            }
+            let scaduti = dovuti.filter { $0.scaduto(oggi) }.count
+            return RispostaEve(titolo: "Riesami annuali: \(dovuti.count)",
+                               testo: (scaduti > 0 ? "\(scaduti) già scaduti.\n" : "") + righe.joined(separator: "\n")
+                                   + "\n\nIn Posizioni → Portafoglio ognuno ha «Prepara» (il prospetto con l'ordine del giorno) e «Fissa» (l'incontro di un'ora).")
 
         case .settimana:
             let cal = Calendar.current
@@ -165,7 +185,7 @@ enum EvePortafoglio {
 
     /// La scheda del portafoglio per il modello Apple: le cifre calcolate da Prisma.
     static func scheda(_ dati: DatiPrisma, oggi: Date = Date()) -> String {
-        [SpuntoPortafoglio.quadro, .ricontattare, .scadenze, .concentrazione, .proposte]
+        [SpuntoPortafoglio.quadro, .ricontattare, .riesami, .scadenze, .concentrazione, .proposte]
             .map { s in let r = risposta(s, domanda: "", dati: dati, oggi: oggi); return "\((r.titolo ?? "").uppercased()):\n\(r.testo)" }
             .joined(separator: "\n\n")
             .prefix(ContestoEve.limite)

@@ -93,6 +93,21 @@ extension CompositoreProspetti {
                 })))
         }
 
+        sezione("Riesami annuali dei prossimi \(MotoreRiesame.mesiAvanti) mesi")
+        let dovuti = MotoreRiesame.dovuti(clienti: dati.clienti, posizioni: dati.posizioni, appuntamenti: dati.appuntamenti, incontri: dati.incontri, oggi: data)
+        if dovuti.isEmpty {
+            b.append(.testo("Nessun riesame da fare: tutti i clienti con posizioni sono stati visti nell'ultimo anno o hanno un incontro in agenda."))
+        } else {
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Cliente", peso: 1.8), ColonnaProspetto(titolo: "Ultimo incontro", peso: 1.2),
+                          ColonnaProspetto(titolo: "Riesame", peso: 2.2)],
+                righe: dovuti.map { d in
+                    [.f(d.cliente.nome), .t(d.ultimoContatto.map { Formati.dataBreve.string(from: $0) } ?? "mai"),
+                     d.dovutoDal.map { d.scaduto(data) ? .f("scaduto dal \(Formati.dataBreve.string(from: $0))") : .t("dovuto dal \(Formati.dataBreve.string(from: $0))") }
+                        ?? .f("da fare: mai incontrato")]
+                })))
+        }
+
         sezione("Proposte per esito")
         b.append(.voci(EsitoProposta.allCases.map { CampoVoce(etichetta: $0.nome, valore: "\(p.esiti[$0] ?? 0)") }
                        + [CampoVoce(etichetta: "Tasso di accettazione", valore: p.tassoAccettazione.map { "\(quota($0)) delle proposte decise" } ?? "nessuna proposta decisa")]))

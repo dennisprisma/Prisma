@@ -130,7 +130,8 @@ enum MotoreNotifiche {
         if let primo = richiamare.first {
             elenco.append(Notifica(id: "ricontattare-\(richiamare.map(\.id).joined(separator: ","))", gruppo: .daSistemare, app: .clienti,
                                    titolo: richiamare.count == 1 ? "\(primo.cliente.nome) è da ricontattare" : "\(richiamare.count) clienti da ricontattare",
-                                   dettaglio: primo.motivo ?? "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda",
+                                   dettaglio: primo.motivo ?? (primo.riesameScaduto ? "Riesame annuale scaduto: preparalo da Prospetti e report"
+                                                                                    : "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda"),
                                    data: inizio, destinazione: richiamare.count == 1 ? .cliente(primo.id) : nil))
         }
         // Backup
