@@ -180,7 +180,7 @@ enum MotoreResistenza {
             righe.append("\(s.tipo.titolo): \(Formati.euro(s.perdita)), il \(CifreDoc.percento(s.quota * 100)) \(base)\(colpita).")
         }
         if let g = r.giudizio, let s = r.sopportabile, let p = r.propensione, let m = r.scenario(.mercati) {
-            righe.append("\(g.etichetta): con un profilo \(p.nome.lowercased()) si sopporta una perdita fino al \(CifreDoc.condizione(s)); sui mercati la stima è il \(CifreDoc.percento(m.quota * 100)).")
+            righe.append("\(g.etichetta): con una propensione \(p.nome.lowercased()) si sopporta una perdita fino al \(CifreDoc.condizione(s)); sui mercati la stima è il \(CifreDoc.percento(m.quota * 100)).")
         }
         if r.patrimonioFinanziario > 0 {
             righe.append("Capitale garantito o senza rischio di mercato: il \(CifreDoc.percento(r.quotaProtetta * 100, decimali: 0)) del patrimonio finanziario.")

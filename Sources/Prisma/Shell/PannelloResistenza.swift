@@ -44,7 +44,7 @@ struct PannelloResistenza: View {
     /// La perdita sui mercati sulla barra del patrimonio finanziario, con il segno della soglia del profilo.
     private func profilo(_ m: ProvaResistenza.Scenario) -> some View {
         let scala = max(m.quota, (prova.sopportabile ?? 0) / 100, 0.01) * 1.25
-        return VStack(alignment: .leading, spacing: 5) {
+        return VStack(alignment: .leading, spacing: 9) {
             GeometryReader { g in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Colori.Analisi.tracciaAnello)
@@ -78,7 +78,7 @@ struct PannelloResistenza: View {
         guard let s = prova.sopportabile, let p = prova.propensione else {
             return "Sui mercati la perdita stimata è il \(CifreDoc.percento(m.quota * 100)) del patrimonio finanziario. Indica la propensione al rischio nel profilo del cliente per confrontarla con quella che sopporta. " + protetto
         }
-        return "Sui mercati la perdita stimata è il \(CifreDoc.percento(m.quota * 100)) del patrimonio finanziario; un profilo \(p.nome.lowercased()) ne sopporta fino al \(CifreDoc.condizione(s)) (il segno sulla barra). " + protetto
+        return "Sui mercati la perdita stimata è il \(CifreDoc.percento(m.quota * 100)) del patrimonio finanziario; una propensione \(p.nome.lowercased()) ne sopporta fino al \(CifreDoc.condizione(s)) (il segno sulla barra). " + protetto
     }
 
     /// Le posizioni che perdono di più se i mercati crollano, con il canale ben visibile.

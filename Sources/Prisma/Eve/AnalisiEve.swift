@@ -63,7 +63,7 @@ extension MotoreSintesi {
         }
         var parti = MotoreResistenza.sintesi(r).map { "• " + $0 }
         if let m = r.scenario(.mercati), !m.voci.isEmpty {
-            parti.append("Le più esposte ai mercati:\n" + m.voci.prefix(3).map { "• \($0.posizione.nome) (\($0.posizione.canale.nomeBreve)): \(CifreDoc.togli($0.perdita)), \($0.motivo.prefix(1).lowercased() + $0.motivo.dropFirst())" }.joined(separator: "\n"))
+            parti.append("Le più esposte ai mercati:\n" + m.voci.prefix(3).map { "• \($0.posizione.nome) (\($0.posizione.canale.nomeBreve)): \(CifreDoc.togli($0.perdita)), \($0.motivo.hasPrefix("SRI") ? $0.motivo : $0.motivo.prefix(1).lowercased() + $0.motivo.dropFirst())" }.joined(separator: "\n"))
         }
         switch r.giudizio {
         case .oltre?:
