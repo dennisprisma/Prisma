@@ -736,26 +736,26 @@ enum ProvaCalcoli {
         var pip = Posizione(clienteId: "fisco", canale: .alleanza, stato: .inEssere, area: .previdenza, nome: "PIP")
         pip.premio = 200
         pip.frequenza = .mensile
-        var tcm = Posizione(clienteId: "fisco", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "TCM")
-        tcm.premio = 50
-        tcm.frequenza = .mensile
-        tcm.rischio = .vita
+        var tcmFisco = Posizione(clienteId: "fisco", canale: .alleanza, stato: .inEssere, area: .protezione, nome: "TCM")
+        tcmFisco.premio = 50
+        tcmFisco.frequenza = .mensile
+        tcmFisco.rischio = .vita
         let annoFisco = Calendar.current.component(.year, from: Date())
         let primoDicembre = Calendar.current.date(from: DateComponents(year: annoFisco, month: 12, day: 1, hour: 10)) ?? Date()
-        let fa = MotoreFineAnno.calcola(cliente: contribuente, posizioni: [pip, tcm], oggi: primoDicembre)
+        let fa = MotoreFineAnno.calcola(cliente: contribuente, posizioni: [pip, tcmFisco], oggi: primoDicembre)
         verifica("Fine anno: contributi 2.400 €, spazio deducibile 2.900 €", fa.spazio, RegoleFiscali.limiteDeducibilita - 2_400)
         verifica("Fine anno: risparmio IRPEF usando tutto lo spazio (al 33%)", fa.risparmioPossibile, (RegoleFiscali.limiteDeducibilita - 2_400) * 0.33, tolleranza: 0.01)
         verifica("Fine anno: premi detraibili fino a 530 €", fa.detraibili, 530)
         verifica("Fine anno: detrazione del 19%", fa.detrazione, 530 * 0.19, tolleranza: 0.001)
         verifica("Fine anno: il 1° dicembre la deduzione è vicina",
-                 fa.scadenze.first { $0.tipo == .deduzione }.map { MotoreFineAnno.vicina($0, oggi: primoDicembre) ? 1 : 0 } ?? 0, 1)
+                 (fa.scadenze.first(where: { $0.tipo == ScadenzaFiscale.Tipo.deduzione }).map { MotoreFineAnno.vicina($0, oggi: primoDicembre) } ?? false) ? 1 : 0, 1)
         verifica("Fine anno: tra i clienti con spazio deducibile",
-                 MotoreFineAnno.conSpazio(clienti: [contribuente], posizioni: [pip, tcm], oggi: primoDicembre).count == 1 ? 1 : 0, 1)
+                 MotoreFineAnno.conSpazio(clienti: [contribuente], posizioni: [pip, tcmFisco], oggi: primoDicembre).count == 1 ? 1 : 0, 1)
         pip.premio = 500
         let oltre = MotoreFineAnno.calcola(cliente: contribuente, posizioni: [pip], oggi: primoDicembre)
         verifica("Fine anno: oltre il limite niente spazio, eccedenza da comunicare",
-                 oltre.spazio == 0 && oltre.eccedenza == 6_000 - RegoleFiscali.limiteDeducibilita && oltre.scadenze.contains { $0.tipo == .nonDedotti }
-                    && !oltre.scadenze.contains { $0.tipo == .deduzione } ? 1 : 0, 1)
+                 oltre.spazio == 0 && oltre.eccedenza == 6_000 - RegoleFiscali.limiteDeducibilita && oltre.scadenze.contains { $0.tipo == ScadenzaFiscale.Tipo.nonDedotti }
+                    && !oltre.scadenze.contains { $0.tipo == ScadenzaFiscale.Tipo.deduzione } ? 1 : 0, 1)
 
         // Revisione: versato di un periodo, saldo iniziale e finale, proiezioni future
         let giorni: (Int) -> String = { Formati.dataBreve.string(from: Calendar.current.date(byAdding: .day, value: $0, to: Date()) ?? Date()) }
