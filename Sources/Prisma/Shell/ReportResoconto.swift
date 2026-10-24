@@ -15,6 +15,8 @@ enum ReportResoconto {
         let finanziarie = t.e.finanziarie
         if !finanziarie.isEmpty {
             slide.append(AnyView(SlideAndamento(t: t)))
+            // Rispetto all'atteso, se almeno una posizione ha uno storico
+            if !t.andamenti.isEmpty { slide.append(AnyView(SlideAtteso(t: t))) }
             slide.append(AnyView(SlideNetto(t: t)))
             let gruppi = stride(from: 0, to: finanziarie.count, by: schedePerPagina).map {
                 Array(finanziarie[$0..<min($0 + schedePerPagina, finanziarie.count)])
@@ -216,6 +218,82 @@ private struct GraficoVersatoValore: View {
             HStack(spacing: 4) { Rectangle().fill(C.titolo).frame(width: 9, height: 9); Text(verbatim: "valore di oggi, nel colore dell'area") }
         }
         .font(T.minimo).foregroundColor(C.tenue)
+    }
+}
+
+// MARK: - Rispetto all'atteso
+
+private struct SlideAtteso: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiResoconto
+    /// Righe al massimo in una pagina.
+    static let massimo = 8
+
+    var body: some View {
+        let tutte = t.andamenti
+        let voci = Array(tutte.prefix(Self.massimo))
+        let valori = voci.flatMap { x in [x.andamento.rendimentoAnnuo ?? x.andamento.rendimentoPeriodo, x.andamento.attesoConfrontabile ?? 0] }
+        let basso = min(0, valori.min() ?? 0)
+        let alto = max(1, valori.max() ?? 1)
+        return VStack(alignment: .leading, spacing: 14) {
+            TestaReport(occhiello: "Rispetto alle attese", titolo: t.titoloAtteso(tutte.map(\.andamento)), sottotitolo: TestiResoconto.sottotitoloAtteso)
+            HStack(spacing: 14) {
+                HStack(spacing: 5) { Rectangle().fill(C.titolo).frame(width: 14, height: 7); Text(verbatim: "come è andata, nel colore del canale") }
+                HStack(spacing: 5) { Rectangle().fill(C.premio).frame(width: 14, height: 4); Text(verbatim: "quello che ci aspettavamo, al netto dei costi") }
+            }
+            .font(T.minimo).foregroundColor(C.tenue)
+            VStack(spacing: 0) {
+                ForEach(Array(voci.enumerated()), id: \.offset) { _, x in
+                    riga(x.voce.posizione, x.andamento, basso: basso, alto: alto)
+                }
+            }
+            if tutte.count > voci.count {
+                Text(verbatim: "Altre \(tutte.count - voci.count) posizioni nel prospetto del resoconto.").font(T.minimo).foregroundColor(C.tenue)
+            }
+            Spacer(minLength: 0)
+            Text(verbatim: "I rendimenti passati non sono indicativi di quelli futuri. Un periodo sotto le attese è un buon motivo per rivedere insieme la posizione, non per forza per cambiarla.")
+                .font(T.minimo).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func riga(_ p: Posizione, _ a: AndamentoPosizione, basso: Double, alto: Double) -> some View {
+        let effettivo = a.rendimentoAnnuo ?? a.rendimentoPeriodo
+        let colore: Color = a.giudizio == .sotto ? C.negativo : a.giudizio == .sopra ? C.positivo : C.tenue
+        return HStack(alignment: .center, spacing: 14) {
+            HStack(spacing: 6) {
+                Rectangle().fill(C.canale(p.canale)).frame(width: 3, height: 26)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: p.nome).font(T.corpoForte).foregroundColor(C.titolo).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(verbatim: "dal \(CifreDoc.dataBreve(a.dal)) · \(p.canale.nomeBreve)").font(T.minimo).foregroundColor(C.tenue)
+                }
+            }
+            .frame(width: 210, alignment: .leading)
+            GeometryReader { geo in
+                let w = geo.size.width
+                let x: (Double) -> CGFloat = { CGFloat(($0 - basso) / max(alto - basso, 0.1)) * w }
+                ZStack(alignment: .topLeading) {
+                    Rectangle().fill(C.filetto).frame(width: 0.8, height: geo.size.height).offset(x: x(0))
+                    Rectangle().fill(C.canale(p.canale))
+                        .frame(width: max(1, abs(x(effettivo) - x(0))), height: 10)
+                        .offset(x: min(x(effettivo), x(0)), y: 6)
+                    if let atteso = a.attesoConfrontabile {
+                        Rectangle().fill(C.premio)
+                            .frame(width: max(1, abs(x(atteso) - x(0))), height: 5)
+                            .offset(x: min(x(atteso), x(0)), y: 19)
+                    }
+                }
+            }
+            .frame(height: 30)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(verbatim: TestiResoconto.rendimento(a)).font(T.corpoForte).foregroundColor(effettivo < 0 ? C.negativo : C.titolo)
+                Text(verbatim: a.attesoConfrontabile.map { "atteso \(CifreDoc.percento($0))" } ?? "atteso non indicato").font(T.minimo).foregroundColor(C.tenue)
+            }
+            .frame(width: 130, alignment: .trailing)
+            Text(verbatim: a.giudizio?.etichetta ?? "—").font(T.piccolo.bold()).foregroundColor(colore)
+                .frame(width: 130, alignment: .leading)
+        }
+        .padding(.vertical, 7)
+        .overlay(Rectangle().fill(C.filetto).frame(height: 0.6), alignment: .bottom)
     }
 }
 

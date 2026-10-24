@@ -9,6 +9,9 @@ private typealias D = Misure.Documento
 enum ProspettoResoconto {
     /// Righe di posizioni finanziarie nella prima pagina; le altre vanno in una pagina di seguito.
     static let righePrimaPagina = 9
+    /// Posizioni con l'andamento nella prima pagina (sotto il riepilogo) e nelle successive.
+    static let andamentiPrimaPagina = 3
+    static let andamentiPerPagina = 4
 
     static func pagine(_ t: TestiResoconto) -> [AnyView] {
         let finanziarie = t.e.finanziarie
@@ -23,6 +26,16 @@ enum ProspettoResoconto {
         let previdenze = t.e.previdenze
         for inizio in stride(from: 0, to: previdenze.count, by: 2) {
             pagine.append(AnyView(PaginaPrevidenza(voci: Array(previdenze[inizio..<min(inizio + 2, previdenze.count)]))))
+        }
+        // Com'è andata rispetto all'atteso: tre posizioni nella prima pagina (sotto il riepilogo), quattro nelle altre
+        let andamenti = t.andamenti
+        if !andamenti.isEmpty {
+            pagine.append(AnyView(PaginaAndamento(t: t, voci: Array(andamenti.prefix(andamentiPrimaPagina)), prima: true)))
+            var altri = Array(andamenti.dropFirst(andamentiPrimaPagina))
+            while !altri.isEmpty {
+                pagine.append(AnyView(PaginaAndamento(t: t, voci: Array(altri.prefix(andamentiPerPagina)), prima: false)))
+                altri = Array(altri.dropFirst(andamentiPerPagina))
+            }
         }
         pagine += [AnyView(PaginaTutele(t: t)), AnyView(PaginaStorico(t: t))]
         return pagine.enumerated().map { i, p in
@@ -373,15 +386,14 @@ private struct PaginaStorico: View {
 
     private func storico(_ v: VoceResoconto) -> some View {
         let w = (larghezza - 18) / 2
-        let punti = v.posizione.storicoValori
+        let punti = v.posizione.storicoValori.sorted { $0.data < $1.data }
+        // La variazione di ogni valore rispetto al precedente: la stessa della pagina dell'andamento
+        let periodi = MotoreAndamento.calcola(v.posizione)?.periodi ?? []
         var righe: [RigaDoc] = []
         for (i, r) in punti.enumerated() {
             var variazione = "—"
-            if i > 0 {
-                let prima = punti[i - 1]
-                let versamenti = max(0, (r.versato ?? 0) - (prima.versato ?? r.versato ?? 0))
-                let base = prima.controvalore + versamenti / 2
-                if base > 0 { variazione = CifreDoc.variazione((r.controvalore - prima.controvalore - versamenti) / base * 100) }
+            if let q = periodi.first(where: { $0.al == r.data }), let rendimento = q.rendimento {
+                variazione = (q.stimati ? "≈ " : "") + CifreDoc.variazione(rendimento)
             }
             let ultima = i == punti.count - 1
             let font = ultima ? T.pTabellaForte : T.pTabella
@@ -399,6 +411,107 @@ private struct PaginaStorico: View {
                        righe: righe, fontTesta: T.pTabellaTesta, altezzaTesta: 12, margine: 3)
         }
         .frame(width: w, alignment: .topLeading)
+    }
+}
+
+// MARK: - Andamento rispetto all'atteso
+
+private struct PaginaAndamento: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiResoconto
+    let voci: [(voce: VoceResoconto, andamento: AndamentoPosizione)]
+    let prima: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SezioneProspetto(titolo: prima ? "Com'è andata rispetto all'atteso" : "Com'è andata rispetto all'atteso (segue)",
+                             testo: prima ? Text(verbatim: "Per ogni posizione con almeno due valori rilevati: il rendimento tra un valore e il successivo, tolti i versamenti del periodo, concatenato su tutto lo storico e reso annuo da circa un anno. È già al netto dei costi del prodotto e si confronta con il rendimento atteso della posizione meno i costi annui; «in linea» vuol dire entro un punto all'anno.") : nil)
+            if prima { riepilogo }
+            ForEach(Array(voci.enumerated()), id: \.offset) { _, x in
+                blocco(x.voce, x.andamento)
+            }
+        }
+    }
+
+    /// Tutte le posizioni con l'andamento, in una tabella.
+    private var riepilogo: some View {
+        let tutte = t.andamenti
+        let righe = tutte.map { v, a -> RigaDoc in
+            let p = v.posizione
+            var nome = CellaDoc(p.nome, sotto: "\(p.canale.nomeBreve) · \(p.area.nome)", font: T.pTabellaForte)
+            nome.coloreSotto = C.tenue
+            let colore: Color? = a.giudizio == .sotto ? C.negativo : a.giudizio == .sopra ? C.positivo : nil
+            return RigaDoc(celle: [
+                nome,
+                CellaDoc(CifreDoc.dataBreve(a.dal), sotto: "\(a.punti.count) valori", font: T.pTabella),
+                CellaDoc(a.rendimentoAnnuo.map { CifreDoc.variazione($0) } ?? CifreDoc.variazione(a.rendimentoPeriodo),
+                         sotto: a.rendimentoAnnuo == nil ? "in \(TestiResoconto.mesi(a.anni))" : "l'anno", font: T.pTabellaForte),
+                CellaDoc(a.attesoConfrontabile.map { CifreDoc.percento($0) } ?? "—", sotto: a.attesoAnnuo == nil ? "non indicato" : "netto dei costi", font: T.pTabella),
+                CellaDoc(a.scarto.map { MotoreAndamento.punti($0) } ?? "—", colore: colore, font: T.pTabella),
+                CellaDoc(a.giudizio?.etichetta ?? "—", colore: colore, font: T.pTabellaForte),
+            ], altezza: 20, filetto: C.filetto, spessore: 0.5)
+        }
+        return TabellaDoc(larghezza: larghezza, colonne: [
+            ColonnaDoc(titolo: "Posizione", peso: 2.4, destra: false),
+            ColonnaDoc(titolo: "Dal", sottotitolo: "storico", peso: 0.9),
+            ColonnaDoc(titolo: "Rendimento", sottotitolo: "effettivo", peso: 1),
+            ColonnaDoc(titolo: "Atteso", sottotitolo: "stesso periodo", peso: 1),
+            ColonnaDoc(titolo: "Scarto", peso: 0.9),
+            ColonnaDoc(titolo: "Giudizio", peso: 1.3),
+        ], righe: righe, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 22, margine: 4)
+    }
+
+    private func blocco(_ v: VoceResoconto, _ a: AndamentoPosizione) -> some View {
+        let p = v.posizione
+        let grafico = (larghezza - 16) * 0.5
+        let colore: Color = a.giudizio == .sotto ? C.negativo : a.giudizio == .sopra ? C.positivo : C.tenue
+        var serie = [SerieDoc(nome: "Valore", colore: C.canale(p.canale), valori: a.punti.map(\.valore))]
+        if a.punti.allSatisfy({ $0.atteso != nil }) {
+            serie.append(SerieDoc(nome: "All'atteso", colore: C.tenue, valori: a.punti.map { $0.atteso ?? 0 }, tratteggio: true))
+        }
+        // Al massimo cinque date sotto il grafico
+        let passo = max(1, Int((Double(a.punti.count - 1) / 4).rounded(.up)))
+        let etichette = a.punti.enumerated().map { i, pt in
+            i % passo == 0 || i == a.punti.count - 1 ? CifreDoc.dataBreve(pt.data) : ""
+        }
+        let periodi = a.periodi.suffix(4).map { q -> RigaDoc in
+            let segno: Color? = q.guadagno < -0.5 ? C.negativo : nil
+            return RigaDoc(celle: [
+                CellaDoc("\(CifreDoc.dataBreve(q.dal)) – \(CifreDoc.dataBreve(q.al))", font: T.pTabella),
+                CellaDoc((q.stimati ? "≈ " : "") + CifreDoc.euroSegno(q.versamenti), font: T.pTabella),
+                CellaDoc(CifreDoc.euroSegno(q.guadagno), colore: segno, font: T.pTabella),
+                CellaDoc(q.rendimento.map { CifreDoc.variazione($0) } ?? "—", colore: segno, font: T.pTabellaForte),
+            ], altezza: 13, filetto: C.filetto, spessore: 0.5)
+        }
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Rectangle().fill(C.canale(p.canale)).frame(width: 3, height: 10)
+                Text(verbatim: p.nome).font(T.pSottosezione).foregroundColor(C.titolo).lineLimit(1)
+                Text(verbatim: "· dal \(CifreDoc.dataBreve(a.dal)) al \(CifreDoc.dataBreve(a.al))").font(T.pTabella).foregroundColor(C.tenue)
+                Spacer(minLength: 0)
+                if let g = a.giudizio { Text(verbatim: g.etichetta).font(T.pTabellaForte).foregroundColor(colore) }
+            }
+            HStack(alignment: .top, spacing: 16) {
+                GraficoLineeDoc(serie: serie, etichetteAsse: etichette, fontAssi: T.pAssi, fontValori: T.pAssi)
+                    .frame(width: grafico, height: 112)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        CifraProspetto("Rendimento", TestiResoconto.rendimento(a), "netto dei costi")
+                        CifraProspetto("Atteso", a.attesoConfrontabile.map { CifreDoc.percento($0) } ?? "—",
+                                       a.scarto.map { MotoreAndamento.punti($0) } ?? "non indicato", colore: a.attesoAnnuo == nil ? C.tenue : nil)
+                        CifraProspetto(a.guadagno >= 0 ? "Guadagno" : "Perdita", CifreDoc.euro(abs(a.guadagno)), "tolti i versamenti",
+                                       colore: a.guadagno < -0.5 ? C.negativo : nil)
+                    }
+                    TabellaDoc(larghezza: larghezza - 16 - grafico, colonne: [
+                        ColonnaDoc(titolo: "Periodo", peso: 1.6, destra: false), ColonnaDoc(titolo: "Versamenti"),
+                        ColonnaDoc(titolo: "Guadagno"), ColonnaDoc(titolo: "Rendimento", peso: 0.8),
+                    ], righe: periodi, fontTesta: T.pTabellaTesta, altezzaTesta: 12, margine: 3)
+                }
+                .frame(width: larghezza - 16 - grafico, alignment: .topLeading)
+            }
+        }
+        .padding(.top, 4)
+        .overlay(Rectangle().fill(C.filetto).frame(height: 0.6), alignment: .top)
     }
 }
 
