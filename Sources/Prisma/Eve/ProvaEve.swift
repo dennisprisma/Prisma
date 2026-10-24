@@ -367,8 +367,9 @@ enum ProvaEve {
         let spazi = StatoShell(persistente: false)
         // Come una finestra di Prisma da 1440×900: dalla scrivania (dock visibile) le finestre aperte
         // nascondono il dock e l'area cresce, come fa la vista
-        let conDock = CGRect(x: 8, y: 33, width: 1424, height: 786)
         let senzaDock = CGRect(x: 8, y: 33, width: 1424, height: 858)
+        // Con il dock visibile l'area è più bassa di quanto il dock riserva (non un numero fisso: il dock cambia)
+        let conDock = CGRect(x: 8, y: 33, width: 1424, height: 858 - (Misure.Dock.riservato - Misure.Dock.riservatoNascosto))
         func apriSpazio(_ s: SpazioLavoro) {
             spazi.area = spazi.finestreVisibili.isEmpty ? conDock : senzaDock
             spazi.apriSpazio(s)
