@@ -115,9 +115,9 @@ enum ProvaEve {
                   "Importa: CSV con punto e virgola, virgolette, righe vuote saltate (\(foglio.clienti.map(\.nome)))")
         controlla(ImportaClienti.Colonna.da("Codice Fiscale") == .codiceFiscale && ImportaClienti.Colonna.da("Telefono casa") == .telefono
                   && ImportaClienti.Colonna.da("Nome e cognome") == .nominativo, "Importa: colonne riconosciute dall'intestazione")
-        let prima = stato.clienti.count
+        let clientiPrima = stato.clienti.count
         stato.aggiungiImportati(foglio.clienti)
-        controlla(stato.clienti.count == prima + 2 && stato.clienteAttivo?.nome == "Anna Maria Verdi", "Importa: clienti aggiunti alla rubrica")
+        controlla(stato.clienti.count == clientiPrima + 2 && stato.clienteAttivo?.nome == "Anna Maria Verdi", "Importa: clienti aggiunti alla rubrica")
         // Le prove che seguono riguardano i clienti di prova
         let importati = Set(foglio.clienti.map(\.nome))
         stato.dati.clienti.removeAll { importati.contains($0.nome) }
