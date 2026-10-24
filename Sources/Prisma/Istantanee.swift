@@ -211,6 +211,12 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.apriProspetto(.costi(report: true))
         }),
+        ("76-posizioni-successione", { s in
+            // Giulia: convivente senza tutele e polizza agli «eredi legittimi»
+            s.clienteAttivoId = "giulia"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "successione"
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"

@@ -32,6 +32,7 @@ struct MotoreSintesi: MotoreEve {
         case .resoconto: return resoconto(f)
         case .costi: return costi(f)
         case .resistenza: return resistenza(f)
+        case .successione: return successione(f)
         case .pensione: return pensione(f)
         case .liquidita: return liquidita(f)
         case .obiettivi: return obiettivi(f)

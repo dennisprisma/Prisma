@@ -62,6 +62,9 @@ enum Misure {
         /// Peso dei costi: le colonne delle cifre e dell'alternativa.
         static let colonnaCosto: CGFloat = 92
         static let colonnaAlternativa: CGFloat = 230
+        /// Passaggio generazionale: la colonna degli eredi e quella del destino.
+        static let colonnaEredi: CGFloat = 290
+        static let colonnaDestino: CGFloat = 92
     }
 
     enum Rubrica {

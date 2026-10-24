@@ -980,6 +980,39 @@ enum ProvaCalcoli {
             verifica("Costi: costo medio pesato sul valore", a.costoMedio ?? -1, (2 * 100_000 + 1.2 * 50_000) / 150_000.0, tolleranza: 0.0001)
         }
 
+        // Passaggio generazionale: quote degli eredi, beneficiari fuori dall'asse, imposte e avvisi
+        do {
+            let demo = DatiDemo.clienti()
+            let posizioni = DatiDemo.posizioni()
+            if let marco = demo.first(where: { $0.id == "marco" }) {
+                let s = MotoreSuccessione.calcola(cliente: marco, posizioni: posizioni)
+                verifica("Successione: Marco, coniuge e due figli, al coniuge un terzo", s.eredi.first { $0.relazione == .coniuge }?.quota ?? -1, 1.0 / 3, tolleranza: 0.0001)
+                verifica("Successione: ai figli due terzi in parti uguali", s.eredi.filter { $0.relazione != .coniuge }.map(\.quota).reduce(0, +), 2.0 / 3, tolleranza: 0.0001)
+                verifica("Successione: i figli minorenni segnalati", s.avvisi.contains { $0.contains("minorenni") } ? 1 : 0, 1)
+                let tcm = s.voci.first { $0.posizione.rischio == .vita }
+                verifica("Successione: la TCM porta il capitale ai beneficiari", tcm?.destino == .beneficiari && tcm?.importo == tcm?.posizione.capitaleAssicurato ? 1 : 0, 1)
+                verifica("Successione: polizze e previdenza fuori dall'asse", s.voci.filter { $0.posizione.regime == .polizza || $0.posizione.area == .previdenza }.allSatisfy { $0.destino == .beneficiari } ? 1 : 0, 1)
+                verifica("Successione: asse netto = attività meno debiti", s.asseNetto, max(0, s.attivoAsse - s.debiti))
+                verifica("Successione: sotto il milione nessuna imposta per coniuge e figli", s.impostaSuccessione, 0)
+            }
+            if let giulia = demo.first(where: { $0.id == "giulia" }) {
+                let s = MotoreSuccessione.calcola(cliente: giulia, posizioni: posizioni)
+                verifica("Successione: Giulia, il convivente non eredita", s.conviventeEscluso == "Luca Ferri" && s.eredi.isEmpty ? 1 : 0, 1)
+                verifica("Successione: «Eredi legittimi» escluderebbe il convivente", s.daSistemare.contains { $0.avviso?.contains("Luca Ferri") == true } ? 1 : 0, 1)
+            }
+            var ricco = Cliente(id: "r", nome: "Prova", iniziali: "P", tinta: demo[0].tinta, tema: "", email: "", telefono: "", preferito: false, nota: "", creatoIl: Date())
+            ricco.statoCivile = .celibeNubile
+            ricco.famiglia = [Familiare(nome: "Fratello", relazione: .fratelloSorella)]
+            var conto = Posizione(clienteId: "r", canale: .indipendente, stato: .inEssere, area: .liquidita, nome: "Conto")
+            conto.controvalore = 300_000
+            var casa = Posizione(clienteId: "r", canale: .indipendente, stato: .inEssere, area: .immobili, nome: "Seconda casa")
+            casa.controvalore = 100_000
+            let sr = MotoreSuccessione.calcola(cliente: ricco, posizioni: [conto, casa])
+            verifica("Successione: al fratello il 6% oltre 100.000", sr.impostaSuccessione, (400_000 - 100_000) * 0.06)
+            verifica("Successione: ipotecaria e catastale 3% sulla seconda casa", sr.ipocatastali, 3_000)
+            verifica("Successione: frazioni leggibili", MotoreSuccessione.frazione(2.0 / 3) == "due terzi" ? 1 : 0, 1)
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

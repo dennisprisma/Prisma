@@ -54,6 +54,22 @@ extension MotoreSintesi {
         return RispostaEve(titolo: "Le posizioni di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
     }
 
+    /// Il passaggio generazionale: beneficiari, eredi, tempi, imposte e cosa sistemare.
+    func successione(_ f: FonteEve) -> RispostaEve {
+        let s = MotoreSuccessione.calcola(cliente: f.cliente, posizioni: f.posizioni, oggi: f.oggi)
+        guard !s.vuota else {
+            return RispostaEve(titolo: "Nessuna posizione registrata",
+                               testo: "Per \(f.cliente.nome) non ci sono posizioni in essere: il passaggio generazionale parte da polizze, conti, investimenti e immobili registrati in Posizioni.")
+        }
+        var parti = MotoreSuccessione.sintesi(s).map { "• " + $0 }
+        parti.append(contentsOf: s.avvisi)
+        if f.cliente.famiglia.isEmpty {
+            parti.append("Nel dossier non ci sono familiari: registrali in Clienti → Famiglia per sapere chi erediterebbe.")
+        }
+        parti.append("È una stima semplificata, senza testamento e con gli immobili al valore di mercato (le imposte usano il catastale, più basso): per decisioni vere serve il notaio. Le cifre sono nel pannello «Passaggio generazionale» in Posizioni.")
+        return RispostaEve(titolo: "Il passaggio generazionale di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
+    }
+
     /// Il peso dei costi: quanto costano le posizioni, quanto tolgono nel tempo e dove si può risparmiare.
     func costi(_ f: FonteEve) -> RispostaEve {
         let a = MotoreCosti.calcola(f.posizioni, prodotti: f.prodotti, cliente: f.cliente.id)
