@@ -12,7 +12,7 @@ struct GraficoAndamento: View {
             let basso: CGFloat = 18
             let w = max(1, geo.size.width - sinistra - 10)
             let h = max(1, geo.size.height - basso - 6)
-            let valori = punti.flatMap { [$0.valore, $0.versato ?? 0, $0.atteso ?? 0] }
+            let valori: [Double] = punti.flatMap { pt -> [Double] in [pt.valore, pt.versato ?? 0, pt.atteso ?? 0] }
             let massimo = max(valori.max() ?? 1, 1) * 1.08
             let inizio = punti.first?.data ?? Date()
             let durata = max(1, (punti.last?.data ?? inizio).timeIntervalSince(inizio))

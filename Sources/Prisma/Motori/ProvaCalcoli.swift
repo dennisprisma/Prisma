@@ -357,12 +357,12 @@ enum ProvaCalcoli {
         verifica("Resoconto: storico con il valore attuale in fondo", aggiornata.storicoValori.last?.controvalore ?? 0, 23_000)
 
         // Andamento effettivo: periodi tra un valore e l'altro (Dietz), concatenati, contro l'atteso netto
-        let anno = MotoreAndamento.anno
+        let unAnno = MotoreAndamento.anno
         var storica = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Fondo storico")
-        storica.decorrenza = oggi.addingTimeInterval(-2 * anno)
+        storica.decorrenza = oggi.addingTimeInterval(-2 * unAnno)
         storica.versamentoIniziale = 10_000
-        storica.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-2 * anno), controvalore: 10_000, versato: 10_000),
-                               Rilevazione(data: oggi.addingTimeInterval(-anno), controvalore: 10_500, versato: 10_000)]
+        storica.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-2 * unAnno), controvalore: 10_000, versato: 10_000),
+                               Rilevazione(data: oggi.addingTimeInterval(-unAnno), controvalore: 10_500, versato: 10_000)]
         storica.controvalore = 11_000
         storica.totaleVersato = 10_000
         storica.dataValore = oggi
@@ -380,7 +380,7 @@ enum ProvaCalcoli {
             verifica("Andamento: calcolato con tre valori", 0, 1)
         }
         // Un versamento a metà: non è guadagno
-        storica.rilevazioni?[1] = Rilevazione(data: oggi.addingTimeInterval(-anno), controvalore: 11_500, versato: 11_000)
+        storica.rilevazioni?[1] = Rilevazione(data: oggi.addingTimeInterval(-unAnno), controvalore: 11_500, versato: 11_000)
         storica.totaleVersato = 11_000
         storica.controvalore = 11_000
         if let a = MotoreAndamento.calcola(storica) {
@@ -390,7 +390,7 @@ enum ProvaCalcoli {
             verifica("Andamento: sotto l'atteso", a.giudizio == .sotto ? 1 : 0, 1)
         }
         // Senza il versato: i premi periodici del periodo come versamenti stimati
-        storica.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-anno), controvalore: 10_000, versato: nil)]
+        storica.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-unAnno), controvalore: 10_000, versato: nil)]
         storica.totaleVersato = nil
         storica.premio = 100
         storica.frequenza = .mensile
@@ -402,7 +402,7 @@ enum ProvaCalcoli {
             verifica("Andamento: un anno si annualizza", a.rendimentoAnnuo == nil ? 0 : 1, 1)
         }
         // Meno di un anno: rendimento del periodo, atteso in proporzione
-        storica.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-anno / 2), controvalore: 10_000, versato: 10_000)]
+        storica.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-unAnno / 2), controvalore: 10_000, versato: 10_000)]
         storica.totaleVersato = 10_000
         storica.premio = 0
         storica.controvalore = 10_100
@@ -414,7 +414,7 @@ enum ProvaCalcoli {
         verifica("Andamento: con un solo valore non c'è", MotoreAndamento.calcola(storica) == nil ? 1 : 0, 1)
         var copertura = storica
         copertura.area = .protezione
-        copertura.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-anno), controvalore: 10_000, versato: 10_000)]
+        copertura.rilevazioni = [Rilevazione(data: oggi.addingTimeInterval(-unAnno), controvalore: 10_000, versato: 10_000)]
         verifica("Andamento: le coperture non hanno andamento", MotoreAndamento.calcola(copertura) == nil ? 1 : 0, 1)
         let demoConStorico = DatiDemo.posizioni().filter { $0.stato == .inEssere && $0.area.proiettabile }.compactMap(MotoreAndamento.calcola)
         verifica("Andamento: le posizioni di prova hanno un andamento annuo", demoConStorico.filter { $0.rendimentoAnnuo != nil }.isEmpty ? 0 : 1, 1)
