@@ -54,6 +54,34 @@ extension MotoreSintesi {
         return RispostaEve(titolo: "Le posizioni di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
     }
 
+    /// La prova di resistenza: cosa perde il patrimonio in tre scenari avversi e se il profilo lo sopporta.
+    func resistenza(_ f: FonteEve) -> RispostaEve {
+        let r = MotoreResistenza.calcola(f.posizioni, profilo: f.cliente.profilo)
+        guard !r.vuota else {
+            return RispostaEve(titolo: "Niente da mettere alla prova",
+                               testo: "\(f.cliente.nome) non ha posizioni in essere con un valore: la prova di resistenza parte dagli investimenti, dalla liquidità e dagli immobili registrati in Posizioni.")
+        }
+        var parti = MotoreResistenza.sintesi(r).map { "• " + $0 }
+        if let m = r.scenario(.mercati), !m.voci.isEmpty {
+            parti.append("Le più esposte ai mercati:\n" + m.voci.prefix(3).map { "• \($0.posizione.nome) (\($0.posizione.canale.nomeBreve)): \(CifreDoc.togli($0.perdita)), \($0.motivo.hasPrefix("SRI") ? $0.motivo : $0.motivo.prefix(1).lowercased() + $0.motivo.dropFirst())" }.joined(separator: "\n"))
+        }
+        switch r.giudizio {
+        case .oltre?:
+            parti.append("Da discutere: in un anno di crisi la perdita supera quella che il profilo sopporta. Conviene spostare una parte su soluzioni con capitale garantito o rivedere insieme il profilo.")
+        case .alLimite?:
+            parti.append("Da tenere d'occhio: in un anno di crisi la perdita arriva al limite del profilo. Vale la pena parlarne prima, non durante.")
+        case .dentro?:
+            parti.append("In un anno di crisi la perdita resta dentro quella che il profilo sopporta.")
+        case nil:
+            if r.propensione == nil { parti.append("Manca la propensione al rischio nel profilo: senza, non posso dire se la perdita è sopportabile.") }
+        }
+        if let i = r.scenario(.inflazione), i.quota > 0.08 {
+            parti.append("Sull'inflazione: buona parte del patrimonio rende meno dei prezzi in uno scenario al \(CifreDoc.condizione(MotoreResistenza.inflazioneAlta)); la liquidità oltre la riserva è la prima da far lavorare.")
+        }
+        parti.append("Sono stime prudenti, non previsioni: le trovi nel pannello «Prova di resistenza» in Posizioni.")
+        return RispostaEve(titolo: "Prova di resistenza di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
+    }
+
     /// L'andamento di una posizione nominata nella domanda («come va la polizza Futuro Sereno?»).
     func andamento(_ p: Posizione, _ f: FonteEve) -> RispostaEve {
         guard let a = MotoreAndamento.calcola(p) else {

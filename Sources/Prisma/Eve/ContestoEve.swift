@@ -64,6 +64,13 @@ enum ContestoEve {
             righe.append("POSIZIONI IN ESSERE:")
             righe.append(contentsOf: inEssere.prefix(12).map { "- " + riga($0) })
         }
+        let prova = MotoreResistenza.calcola(f.posizioni, profilo: c.profilo)
+        if !prova.vuota {
+            // Una riga sola: la scheda ha un limite di spazio
+            let scenari = prova.scenari.filter { !$0.voci.isEmpty }.map { "\($0.tipo.titolo.lowercased()) −\(Formati.euro($0.perdita)) (\(CifreDoc.percento($0.quota * 100, decimali: 0)))" }
+            let giudizio = prova.giudizio.map { "; \($0.etichetta.lowercased()), che sopporta fino al \(CifreDoc.condizione(prova.sopportabile ?? 0))" } ?? ""
+            righe.append("PROVA DI RESISTENZA (stime prudenti di Prisma, non previsioni): " + scenari.joined(separator: ", ") + giudizio + ".")
+        }
         let proposte = f.posizioni.filter { $0.stato == .proposta }
         if !proposte.isEmpty {
             righe.append("PROPOSTE:")

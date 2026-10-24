@@ -213,6 +213,11 @@ struct AppPosizioni: View {
                     .frame(width: 330, alignment: .leading)
                 }
 
+                let prova = MotoreResistenza.calcola(delCliente, profilo: stato.clienteAttivo?.profilo)
+                if !prova.vuota {
+                    PannelloResistenza(prova: prova)
+                }
+
                 PannelloAnalisi(titolo: titoloTabella, nota: "Tocca una riga per il dettaglio e la proiezione") {
                     if let area { Chip(testo: area.nome) }
                 } contenuto: {

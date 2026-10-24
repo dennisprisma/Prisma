@@ -186,6 +186,17 @@ enum Istantanee {
             s.documentoSelezionato = "doc-giulia-kid"
             s.apri(.documenti)
         }),
+        ("71-posizioni-resistenza", { s in
+            // Marco, profilo moderato: la prova di resistenza sotto la ripartizione
+            s.clienteAttivoId = "marco"
+            s.apri(.posizioni)
+        }),
+        ("72-eve-resistenza", { s in
+            s.clienteAttivoId = "marco"
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.chiediEve(SpuntoEve.resistenza.domanda, spunto: .resistenza)
+            s.apri(.eve)
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"
