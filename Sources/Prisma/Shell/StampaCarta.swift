@@ -46,6 +46,16 @@ struct DocumentoStampabile {
         tipo = report ? .report : .prospetto
     }
 
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del passaggio generazionale.
+    init(_ t: TestiSuccessione, report: Bool, commento: String? = nil) {
+        titolo = TestiSuccessione.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportSuccessione.pagine(t, commento: commento) : ProspettoSuccessione.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del costo degli investimenti.
     init(_ t: TestiCosti, report: Bool, commento: String? = nil) {
         titolo = TestiCosti.titolo

@@ -893,6 +893,8 @@ final class StatoShell: ObservableObject {
             return .resistenza(report: report)
         case .costi(let report)?:
             return .costi(report: report)
+        case .successione(let report)?:
+            return .successione(report: report)
         case .obiettivo(let id, let report)?:
             let elenco = obiettiviCliente(clienteAttivoId)
             return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
@@ -936,6 +938,9 @@ final class StatoShell: ObservableObject {
         if case .liquidita(let report) = scelta {
             return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
+        if case .successione(let report) = scelta {
+            return DocumentoStampabile(testiSuccessione(clienteAttivoId), report: report, commento: testoCommento(scelta))
+        }
         if case .costi(let report) = scelta {
             return DocumentoStampabile(testiCosti(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
@@ -957,6 +962,14 @@ final class StatoShell: ObservableObject {
     /// I testi e i numeri del check-up del primo incontro di un cliente.
     func testiCheckUp(_ id: String) -> TestiCheckUp {
         TestiCheckUp(MotoreCheckUp.calcola(cliente: self.cliente(id), posizioni: posizioniCliente(id), analisi: analisi360(id), obiettivi: obiettiviCliente(id)))
+    }
+
+    /// I testi e i numeri del passaggio generazionale di un cliente (lo stesso calcolo del pannello in Posizioni).
+    func testiSuccessione(_ id: String) -> TestiSuccessione {
+        let c = self.cliente(id)
+        let s = c.map { MotoreSuccessione.calcola(cliente: $0, posizioni: posizioniCliente(id)) }
+            ?? Successione(voci: [], eredi: [], attivoAsse: 0, debiti: 0, fuoriAsse: 0, immobili: 0, ipocatastali: 0, primaCasa: false, conviventeEscluso: nil, avvisi: [])
+        return TestiSuccessione(s, cliente: c)
     }
 
     /// I testi e i numeri del costo degli investimenti di un cliente (lo stesso calcolo del pannello in Posizioni).
@@ -1632,6 +1645,10 @@ final class StatoShell: ObservableObject {
         case .protezione:
             let t = testiProtezione(id)
             return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro della protezione della tua famiglia: cosa è già coperto e cosa ancora no.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .successione:
+            let t = testiSuccessione(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro di come passerebbe il tuo patrimonio alla tua famiglia: cosa arriva subito, cosa con la successione e cosa conviene sistemare oggi.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .costi:
             let t = testiCosti(id)

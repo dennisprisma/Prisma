@@ -183,6 +183,7 @@ extension SceltaProspetto {
         case .checkUp: return .checkUp
         case .resistenza: return .resistenza
         case .costi: return .costi
+        case .successione: return .successione
         case .riesame: return .incontro
         case .posizione, .confronto, .valutazione, .portafoglio: return nil
         }
