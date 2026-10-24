@@ -48,7 +48,6 @@ private struct ElencoDestino: View {
                     Text(verbatim: CifreDoc.euro(v.importo)).font(T.piccolo).foregroundColor(v.importo < 0 ? C.negativo : C.titolo)
                 }
             }
-        }
             if voci.count > Misure.Documento.puntiReport {
                 Text(verbatim: "…e altre \(voci.count - Misure.Documento.puntiReport)").font(T.minimo).foregroundColor(C.tenue)
             }
