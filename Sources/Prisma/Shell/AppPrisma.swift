@@ -32,6 +32,15 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// Il nome breve sotto l'icona del dock.
+    var nomeDock: String {
+        switch self {
+        case .presentazioni: return "Prospetti"
+        case .impostazioni: return "Impostazioni"
+        default: return titolo
+        }
+    }
+
     var sottotitolo: String {
         switch self {
         case .clienti: return "Le persone, prima di tutto"

@@ -387,6 +387,9 @@ enum Colori {
         static let puntino = Color(hex: "#effaff")
         static let puntinoAlone = Color(hex: "#b9e8fb80")
         static let suggerimento = Color(hex: "#292929f2")
+        /// Il nome sotto l'icona: bianco con l'ombra scura, come le etichette della home di iOS 5.
+        static let etichetta = Color.white
+        static let etichettaOmbra = Color(hex: "#000c")
     }
 
     enum Finestra {

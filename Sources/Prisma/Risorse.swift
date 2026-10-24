@@ -74,7 +74,8 @@ struct ImmagineRisorsa: View {
 
     var body: some View {
         if let img = Risorse.immagine(percorso, scala: scala) {
-            Image(nsImage: img).resizable()
+            // Riduzione di qualità: le icone a 512 pixel restano nitide anche piccole
+            Image(nsImage: img).resizable().interpolation(.high).antialiased(true)
         } else {
             Color.clear
         }

@@ -6,7 +6,7 @@ struct Dock: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: Misure.Dock.spazio) {
-            ElementoDock(titolo: "Scrivania", attivo: stato.appAttiva == nil, inEsecuzione: false) {
+            ElementoDock(titolo: "Scrivania", etichetta: "Scrivania", attivo: stato.appAttiva == nil, inEsecuzione: false) {
                 stato.mostraScrivania()
             } icona: {
                 ImmagineRisorsa(percorso: "Icone/Prisma.png")
@@ -15,6 +15,7 @@ struct Dock: View {
             ForEach(Array(AppPrisma.allCases.enumerated()), id: \.element) { indice, app in
                 ElementoDock(
                     titolo: app.titolo,
+                    etichetta: app.nomeDock,
                     scorciatoia: indice < 9 ? "⌥ \(indice + 1)" : nil,
                     attivo: stato.appAttiva == app,
                     inEsecuzione: stato.aperta(app)
@@ -87,6 +88,8 @@ struct DivisoreDock: View {
 /// Elemento del dock con ingrandimento al passaggio, suggerimento e puntino di esecuzione.
 struct ElementoDock<Icona: View>: View {
     let titolo: String
+    /// Il nome breve sotto l'icona.
+    let etichetta: String
     var scorciatoia: String? = nil
     let attivo: Bool
     let inEsecuzione: Bool
@@ -96,6 +99,7 @@ struct ElementoDock<Icona: View>: View {
 
     var body: some View {
         Button(action: azione) {
+            VStack(spacing: 0) {
             ZStack(alignment: .bottom) {
                 icona()
                     .frame(width: Misure.Dock.icona, height: Misure.Dock.icona)
@@ -110,6 +114,15 @@ struct ElementoDock<Icona: View>: View {
                         .shadow(color: Colori.Dock.puntinoAlone, radius: 2)
                 }
             }
+            Text(etichetta)
+                .font(Tipo.dockEtichetta)
+                .foregroundColor(Colori.Dock.etichetta)
+                .shadow(color: Colori.Dock.etichettaOmbra, radius: 1, x: 0, y: 1)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                // Larga quanto l'icona: con 17 app il dock deve stare anche in uno schermo da 1280 punti
+                .frame(width: Misure.Dock.elemento, height: Misure.Dock.etichetta)
+            }
         }
         .buttonStyle(StileSemplice())
         .onHover { s in withAnimation(Animazioni.passaggio) { sopra = s } }
@@ -117,7 +130,7 @@ struct ElementoDock<Icona: View>: View {
             if sopra {
                 SuggerimentoDock(testo: titolo, scorciatoia: scorciatoia)
                     .fixedSize()
-                    .offset(y: -30)
+                    .offset(y: -32)
                     .transition(.opacity)
                     .allowsHitTesting(false)
             }
