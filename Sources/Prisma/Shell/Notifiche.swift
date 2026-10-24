@@ -139,7 +139,7 @@ enum MotoreNotifiche {
         let senzaBeneficiari = dati.clienti.filter { c in
             guard let mie = perCliente[c.id] else { return false }
             return mie.contains { p in
-                MotoreSuccessione.classifica(p).1 == .beneficiari && p.beneficiari.trimmingCharacters(in: .whitespaces).isEmpty
+                MotoreSuccessione.classifica(p).1 == .beneficiari && p.senzaBeneficiari
                     && abs(MotoreSuccessione.classifica(p).0) > 0.5
             }
         }

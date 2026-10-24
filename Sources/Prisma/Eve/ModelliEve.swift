@@ -118,10 +118,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         // Ogni chiave è l'inizio di una parola ("pension" sì in «pensione», no in «sospensione»);
         // con \b in fondo vale solo la parola intera («passi» sì, «passività» no).
         let parole: [(SpuntoEve, [String])] = [
-            (.successione, ["eredi", "eredit", "succession", "testament", "beneficiar", #"passaggio generazionale\b"#]),
-            (.costi, [#"cost[oi]\b"#, #"costano\b"#, "commission", "caricament"]),
-            (.resistenza, ["croll", #"crisi\b"#, "stress", "resisten", "ribass", #"perder[eà]\b"#]),
-            (.riepilogo, [#"patrimonio netto\b"#]),
+            (.successione, ["eredi", "succession", "testament", "beneficiar", #"passaggio generazionale\b"#]),
             (.proposte, [#"proporre\b"#, "proposte da fare", "cosa gli propongo", "cosa le propongo", "opportunità"]),
             (.pensione, ["pension", "previdenz", "anticipazion", #"tfr\b"#, "deducib"]),
             (.cambiare, [#"cambiare\b"#, "sostitu", #"restare\b"#, #"switch\b"#, "conviene"]),
@@ -129,6 +126,10 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
             (.liquidita, ["liquidit", "conto corrente", "in scadenza", "salvadana"]),
             (.obiettivi, ["obiettiv", "traguard"]),
             (.protezione, ["protezion", "copertur", #"tcm\b"#, "caso morte", "invalidit"]),
+            // Dopo pensione e protezione: «i costi della TCM», «rischia di perdere la pensione» restano lì
+            (.costi, [#"cost[oai]\b"#, #"costano\b"#, "commission", "caricament"]),
+            (.resistenza, ["croll", #"crisi\b"#, "stress", "resisten", "ribass", #"perder[eà]\b"#]),
+            (.riepilogo, [#"patrimonio netto\b"#]),
             (.resoconto, ["rendiment", "andament", "guadagn", #"tasse\b"#, #"impost[ae]\b"#, #"netto\b"#, "resoconto"]),
             (.checkUp, ["check", "semaforo"]),
             (.scadenze, ["scadenz", #"scad[eo]\b"#]),

@@ -121,14 +121,16 @@ enum MotoreCosti {
         let annuo = p.costoComplessivo ?? 0
         let sri = p.sri ?? MotoreResistenza.sriProbabile(p.area)
         let anniConfronto = anni(p, orizzonti.0)
-        let candidati = prodotti.filter { x in
-            x.id != p.prodottoId && x.nome != p.nome && x.area == p.area && (x.sri ?? MotoreResistenza.sriProbabile(x.area)) == sri
-                && (x.costoAnnuo ?? 0) <= annuo - scartoMinimo
-                // Una gestione separata si confronta solo con un'altra: il capitale garantito non si baratta
-                && p.gestioneSeparata == x.proposta(per: cliente).gestioneSeparata
+        // Solo schede complete: senza costi o rischio dichiarati il confronto sarebbe inventato
+        let candidati = prodotti.compactMap { x -> (Prodotto, Posizione)? in
+            guard x.id != p.prodottoId, x.nome != p.nome, x.area == p.area, x.sri == sri,
+                  let costo = x.costoAnnuo, costo <= annuo - scartoMinimo else { return nil }
+            let b = x.proposta(per: cliente)
+            // Una gestione separata si confronta solo con un'altra: il capitale garantito non si baratta
+            return p.gestioneSeparata == b.gestioneSeparata ? (x, b) : nil
         }
-        return candidati.compactMap { x -> CostiPosizione.Alternativa? in
-            var b = x.proposta(per: cliente)
+        return candidati.compactMap { x, proposta -> CostiPosizione.Alternativa? in
+            var b = proposta
             b.rendimentoAtteso = p.rendimentoAtteso
             let e = MotoreSostituzione.calcola(attuale: p, alternativa: b, prodotti: prodotti, anni: anniConfronto)
             guard let fine = e.finale, fine.differenza >= guadagnoMinimo else { return nil }

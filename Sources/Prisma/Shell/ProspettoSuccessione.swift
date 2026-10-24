@@ -19,11 +19,11 @@ private func gruppiSuccessione(_ voci: [Successione.Voce], _ C: PaletteDocumento
         let mie = voci.filter { $0.posizione.canale == c }
         guard !mie.isEmpty else { return nil }
         return GruppoCanale(canale: c, righe: mie.map { v in
-            let chi = v.destino == .beneficiari ? (v.posizione.beneficiari.isEmpty ? "da indicare" : v.posizione.beneficiari) : "eredi"
+            let chi = v.destino == .beneficiari ? (v.posizione.senzaBeneficiari ? "da indicare" : v.posizione.beneficiari) : "eredi"
             var nota = CellaDoc(v.avviso ?? v.motivo, colore: v.avviso == nil ? C.tenue : C.intermedio, font: T.pTabellaNota)
             nota.righe = 2
             return RigaDoc(celle: [CellaDoc(v.posizione.nome, sotto: v.posizione.area.nome, font: T.pTabellaForte),
-                                   CellaDoc(chi, colore: v.posizione.beneficiari.isEmpty && v.destino == .beneficiari ? C.negativo : nil, font: T.pTabella),
+                                   CellaDoc(chi, colore: v.posizione.senzaBeneficiari && v.destino == .beneficiari ? C.negativo : nil, font: T.pTabella),
                                    nota,
                                    CellaDoc(CifreDoc.euro(v.importo), colore: v.importo < 0 ? C.negativo : nil, font: T.pTabellaForte)], altezza: 26)
         }, nota: CifreDoc.euro(mie.reduce(0) { $0 + $1.importo }))

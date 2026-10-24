@@ -232,13 +232,15 @@ enum MotoreRiesame {
                                priorita: .bassa, canale: v.posizione.canale))
         }
         let successione = MotoreSuccessione.calcola(cliente: f.cliente, posizioni: f.posizioni, oggi: oggi)
-        let senzaBeneficiari = successione.daSistemare.filter { $0.posizione.beneficiari.trimmingCharacters(in: .whitespaces).isEmpty }
+        let senzaBeneficiari = successione.daSistemare.filter { $0.posizione.senzaBeneficiari }
         if !senzaBeneficiari.isEmpty {
             punti.append(.init(tema: .famiglia, titolo: "Indicare i beneficiari",
                                dettaglio: senzaBeneficiari.map(\.posizione.nome).joined(separator: ", ") + ": senza, il capitale va agli eredi legittimi.",
                                priorita: .alta))
         }
-        for v in successione.daSistemare where !senzaBeneficiari.contains(where: { $0.id == v.id }) {
+        // Il convivente escluso ha già il suo punto: niente doppioni per polizza
+        for v in successione.daSistemare where !senzaBeneficiari.contains(where: { $0.id == v.id })
+            && !(successione.conviventeEscluso.map { v.avviso?.contains($0) == true } ?? false) {
             punti.append(.init(tema: .famiglia, titolo: "Beneficiari di «\(v.posizione.nome)»", dettaglio: v.avviso ?? "", priorita: .alta, canale: v.posizione.canale))
         }
         if let cv = successione.conviventeEscluso {

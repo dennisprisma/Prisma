@@ -143,7 +143,10 @@ enum MotoreResistenza {
     /// la parte fuori dalla gestione separata per le multiramo.
     static func quotaARischio(_ p: Posizione) -> Double {
         if p.area == .liquidita || p.gestioneSeparata { return 0 }
-        if p.multiramo { return 1 - min(max(p.quotaGestioneSeparata ?? 50, 0), 100) / 100 }
+        // Previdenza in gestione separata (PIP di Ramo I): il valore non scende
+        if p.area == .previdenza, (p.tipologia + " " + p.garanzie).lowercased().contains("gestione separata") { return 0 }
+        // Multiramo senza la quota indicata: tutta esposta, come per il bollo (stima prudente)
+        if p.multiramo { return 1 - min(max(p.quotaGestioneSeparata ?? 0, 0), 100) / 100 }
         return 1
     }
 
@@ -161,7 +164,8 @@ enum MotoreResistenza {
     /// Il potere d'acquisto perso in tre anni d'inflazione alta, per ciò che rende meno dell'inflazione
     /// (al netto dei costi; i conti senza rendimento indicato rendono zero).
     private static func voceInflazione(_ p: Posizione) -> ProvaResistenza.Voce? {
-        let netto = (p.rendimentoAtteso ?? 0) - (p.costoComplessivo ?? 0)
+        // Senza rendimento indicato: zero per i conti, l'ipotesi predefinita per il resto
+        let netto = (p.rendimentoAtteso ?? (p.area == .liquidita ? 0 : IpotesiCalcolo.rendimentoPredefinito)) - (p.costoComplessivo ?? 0)
         guard netto < inflazioneAlta else { return nil }
         let anni = Double(anniInflazione)
         let reale = pow((1 + netto / 100) / (1 + inflazioneAlta / 100), anni)

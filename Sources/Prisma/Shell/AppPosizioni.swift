@@ -222,11 +222,13 @@ struct AppPosizioni: View {
                         .frame(width: 330, alignment: .leading)
                     }
 
-                    let prova = MotoreResistenza.calcola(delCliente, profilo: stato.clienteAttivo?.profilo)
+                    // Rischio e costi su tutte le posizioni del cliente, come nei documenti: il filtro canale non cambia il giudizio
+                let tutte = stato.posizioniCliente(stato.clienteAttivoId)
+                let prova = MotoreResistenza.calcola(tutte, profilo: stato.clienteAttivo?.profilo)
                     if !prova.vuota {
                         PannelloResistenza(prova: prova).id("resistenza")
                     }
-                    let costi = MotoreCosti.calcola(delCliente, prodotti: stato.dati.prodotti, cliente: stato.clienteAttivoId)
+                    let costi = MotoreCosti.calcola(tutte, prodotti: stato.dati.prodotti, cliente: stato.clienteAttivoId)
                     if !costi.vuota {
                         PannelloCosti(analisi: costi).id("costi")
                     }

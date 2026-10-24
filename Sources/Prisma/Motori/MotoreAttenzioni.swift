@@ -30,7 +30,7 @@ struct Attenzione: Identifiable {
     let tipo: Tipo
     let titolo: String
     let dettaglio: String
-    var id: String { "\(cliente.id)·\(tipo.rawValue)" }
+    var id: String { "\(cliente.id)·\(tipo.rawValue)·\(titolo)" }
 }
 
 enum MotoreAttenzioni {
@@ -39,7 +39,7 @@ enum MotoreAttenzioni {
         let mie = posizioni.filter { $0.clienteId == c.id && $0.stato == .inEssere }
         guard !mie.isEmpty else { return [] }
         let s = MotoreSuccessione.calcola(cliente: c, posizioni: mie)
-        let senza = s.daSistemare.filter { $0.posizione.beneficiari.trimmingCharacters(in: .whitespaces).isEmpty }
+        let senza = s.daSistemare.filter { $0.posizione.senzaBeneficiari }
         let altri = s.daSistemare.filter { v in !senza.contains { $0.id == v.id } }
         if !senza.isEmpty {
             elenco.append(.init(cliente: c, tipo: .beneficiari, titolo: senza.count == 1 ? "Beneficiari da indicare" : "Beneficiari da indicare su \(senza.count) polizze",

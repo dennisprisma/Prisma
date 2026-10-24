@@ -40,8 +40,8 @@ private struct ElencoDestino: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(verbatim: v.posizione.nome).font(T.piccolo).foregroundColor(C.titolo).lineLimit(1)
                         if v.destino == .beneficiari {
-                            Text(verbatim: v.posizione.beneficiari.isEmpty ? "beneficiari da indicare" : "a \(v.posizione.beneficiari)")
-                                .font(T.minimo).foregroundColor(v.posizione.beneficiari.isEmpty ? C.negativo : C.tenue).lineLimit(1)
+                            Text(verbatim: v.posizione.senzaBeneficiari ? "beneficiari da indicare" : "a \(v.posizione.beneficiari)")
+                                .font(T.minimo).foregroundColor(v.posizione.senzaBeneficiari ? C.negativo : C.tenue).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 4)

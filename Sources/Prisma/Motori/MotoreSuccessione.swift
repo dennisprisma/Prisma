@@ -78,18 +78,20 @@ enum MotoreSuccessione {
 
         var voci: [Successione.Voce] = []
         for p in inEssere {
-            let (importo, destino, motivo) = classifica(p)
+            let (importo, destino, motivo) = classifica(p, oggi: oggi)
             guard abs(importo) > 0.5 else { continue }
             var avviso: String?
             if destino == .beneficiari {
                 let b = p.beneficiari.trimmingCharacters(in: .whitespacesAndNewlines)
                 let minuscolo = b.lowercased()
+                // Indicazioni generiche («i figli», «il coniuge») non sono nomi da confrontare con la famiglia
+                let generico = ["eredi", "figli", "coniuge", "genitori", "fratelli"].contains { minuscolo.contains($0) }
                 if b.isEmpty {
                     avviso = "Beneficiari non indicati: senza, il capitale va agli eredi legittimi."
                 } else if minuscolo.contains("eredi"), let cv = convivente {
                     avviso = "«\(b)»: \(cv.nome), convivente, ne resterebbe escluso."
                 } else if [StatoCivile.separato, .divorziato].contains(c.statoCivile ?? .celibeNubile),
-                          !nomiFamiglia.contains(where: { minuscolo.contains($0) }), !minuscolo.contains("eredi") {
+                          !nomiFamiglia.contains(where: { minuscolo.contains($0) }), !generico {
                     avviso = "Beneficiario «\(b)» non tra i familiari registrati: verificare dopo la separazione."
                 }
             }
@@ -101,15 +103,14 @@ enum MotoreSuccessione {
         let fuori = voci.filter { $0.destino == .beneficiari }.reduce(0) { $0 + $1.importo }
         let immobiliVoci = voci.filter { $0.posizione.area == .immobili }
         let immobili = immobiliVoci.reduce(0) { $0 + $1.importo }
-        let primaCasa = immobiliVoci.contains { v in
+        // L'agevolazione prima casa vale per una sola abitazione: la più preziosa
+        let abitazione = immobiliVoci.filter { v in
             let n = (v.posizione.nome + " " + v.posizione.tipologia).lowercased()
             return n.contains("abitazione") || n.contains("prima casa")
-        } && !eredi.isEmpty
-        let ipocatastali = immobiliVoci.isEmpty ? 0
-            : (primaCasa ? ipocatastaleFissa : 0) + immobiliVoci.filter { v in
-                let n = (v.posizione.nome + " " + v.posizione.tipologia).lowercased()
-                return !(primaCasa && (n.contains("abitazione") || n.contains("prima casa")))
-            }.reduce(0) { $0 + max(400, $1.importo * ipocatastale / 100) }
+        }.max { $0.importo < $1.importo }
+        let primaCasa = abitazione != nil && !eredi.isEmpty
+        let ipocatastali = (primaCasa ? ipocatastaleFissa : 0)
+            + immobiliVoci.filter { !(primaCasa && $0.id == abitazione?.id) }.reduce(0) { $0 + max(400, $1.importo * ipocatastale / 100) }
 
         let netto = max(0, attivo - debiti)
         let calcolati = eredi.map { e -> Successione.Erede in
@@ -138,10 +139,13 @@ enum MotoreSuccessione {
     }
 
     /// Dove va una posizione: importo, destino e perché.
-    static func classifica(_ p: Posizione) -> (Double, Successione.Destino, String) {
+    static func classifica(_ p: Posizione, oggi: Date = Date()) -> (Double, Successione.Destino, String) {
         switch p.area {
         case .protezione:
-            guard p.rischio == .vita, let capitale = p.capitaleAssicurato else { return (0, .beneficiari, "") }
+            // Caso morte anche senza il rischio indicato, se il nome lo dice; una copertura scaduta non paga più
+            let testo = (p.nome + " " + p.tipologia).lowercased()
+            let casoMorte = p.rischio == .vita || (p.rischio == nil && (testo.contains("caso morte") || testo.contains("tcm") || testo.contains("temporanea")))
+            guard casoMorte, let capitale = p.capitaleAssicurato, p.scadenza.map({ $0 >= oggi }) ?? true else { return (0, .beneficiari, "") }
             return (capitale, .beneficiari, "Capitale caso morte: ai beneficiari, esente da imposta di successione.")
         case .previdenza:
             return (p.valore, .beneficiari, "Previdenza complementare: ai beneficiari o agli eredi, fuori dall'asse; tassazione agevolata.")
@@ -152,6 +156,10 @@ enum MotoreSuccessione {
         case .liquidita:
             return (p.valore, .asse, "Conto: nell'asse, bloccato fino alla dichiarazione di successione.")
         case .investimento, .risparmio:
+            // Il contratto di capitalizzazione non assicura una vita: entra nell'asse e paga l'imposta
+            if (p.nome + " " + p.tipologia).lowercased().contains("capitalizzazione") {
+                return (p.valore, .asse, "Contratto di capitalizzazione: nell'asse ereditario, non è una polizza vita.")
+            }
             if p.regime == .polizza {
                 return (p.valore, .beneficiari, "Polizza vita: ai beneficiari, fuori dall'asse ed esente da imposta di successione.")
             }
@@ -174,7 +182,8 @@ enum MotoreSuccessione {
             guard let n = f.dataNascita else { return false }
             return (Calendar.current.dateComponents([.year], from: n, to: oggi).year ?? 18) < 18
         }
-        let coniuge = c.statoCivile == .coniugato || c.statoCivile == .separato ? c.famiglia.first { $0.relazione == .coniuge } : nil
+        // Stato civile non indicato: vale il coniuge registrato in famiglia
+        let coniuge = c.statoCivile == nil || c.statoCivile == .coniugato || c.statoCivile == .separato ? c.famiglia.first { $0.relazione == .coniuge } : nil
         let figli = c.famiglia.filter { $0.relazione == .figlio || $0.relazione == .figlia }
         let genitori = c.famiglia.filter { $0.relazione == .genitore }
         let fratelli = c.famiglia.filter { $0.relazione == .fratelloSorella }
@@ -193,7 +202,14 @@ enum MotoreSuccessione {
         } else if let co = coniuge {
             let altri = genitori + fratelli
             r.append((co.nome, .coniuge, altri.isEmpty ? 1 : 2.0 / 3, minorenne(co)))
-            if !altri.isEmpty { dividi(altri, 1.0 / 3) }
+            if genitori.isEmpty || fratelli.isEmpty {
+                if !altri.isEmpty { dividi(altri, 1.0 / 3) }
+            } else {
+                // Agli ascendenti almeno un quarto dell'eredità (art. 582 c.c.), il resto del terzo ai fratelli
+                let aiGenitori = max(0.25, 1.0 / 3 * Double(genitori.count) / Double(altri.count))
+                dividi(genitori, aiGenitori)
+                dividi(fratelli, 1.0 / 3 - aiGenitori)
+            }
         } else if !genitori.isEmpty || !fratelli.isEmpty {
             // Genitori e fratelli per capi, ai genitori almeno la metà (semplificato)
             if fratelli.isEmpty { dividi(genitori, 1) }
@@ -227,4 +243,9 @@ enum MotoreSuccessione {
         let note: [(Double, String)] = [(1, "tutto"), (0.5, "metà"), (1.0 / 3, "un terzo"), (2.0 / 3, "due terzi"), (0.25, "un quarto"), (1.0 / 6, "un sesto")]
         return note.first { abs($0.0 - q) < 0.001 }?.1 ?? CifreDoc.percento(q * 100, decimali: 0)
     }
+}
+
+extension Posizione {
+    /// Beneficiari non indicati (campo vuoto o solo spazi).
+    var senzaBeneficiari: Bool { beneficiari.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 }
