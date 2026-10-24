@@ -123,10 +123,12 @@ struct Impostazioni: Codable, Equatable {
     var eve = ImpostazioniEve()
     /// PDF da consegnare ai clienti (letto con tolleranza: gli archivi di prima non l'hanno).
     var pdf = ImpostazioniPDF()
+    /// La guida «Comincia con i tuoi dati» nascosta dalla scrivania.
+    var guidaNascosta = false
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve, pdf }
+    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -137,6 +139,7 @@ struct Impostazioni: Codable, Equatable {
         backup = try c.decodeIfPresent(ImpostazioniBackup.self, forKey: .backup) ?? ImpostazioniBackup()
         eve = (try? c.decodeIfPresent(ImpostazioniEve.self, forKey: .eve)) ?? ImpostazioniEve()
         pdf = (try? c.decodeIfPresent(ImpostazioniPDF.self, forKey: .pdf)) ?? ImpostazioniPDF()
+        guidaNascosta = (try? c.decodeIfPresent(Bool.self, forKey: .guidaNascosta)) ?? false
     }
 }
 

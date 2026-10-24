@@ -85,26 +85,12 @@ struct AzioneNuovoCliente: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Button("Importa…") { importa() }
+            Button("Importa…") { stato.importaClientiDaFile() }
                 .buttonStyle(StileAqua())
                 .disabled(stato.solaLettura)
                 .help("Importa clienti da un file vCard (app Contatti) o CSV (Excel, Numbers)")
             Button("＋ Nuovo cliente") { stato.richiestaNuovoCliente = true }
                 .buttonStyle(StileAqua())
-        }
-    }
-
-    private func importa() {
-        let pannello = NSOpenPanel()
-        pannello.allowedContentTypes = [.vCard, .commaSeparatedText, .tabSeparatedText, .plainText]
-        pannello.allowsMultipleSelection = false
-        pannello.message = "Un file vCard (dall'app Contatti: seleziona i contatti e trascinali sulla scrivania) o un CSV esportato da Excel o Numbers. Il file resta sul Mac."
-        guard pannello.runModal() == .OK, let url = pannello.url else { return }
-        if let lettura = ImportaClienti.leggi(url, rubrica: stato.clienti) {
-            stato.apri(.clienti)
-            stato.importazione = lettura
-        } else {
-            stato.mostraAvviso("Nel file non ho trovato contatti con un nome. Per Excel salva come CSV, con i nomi delle colonne nella prima riga.")
         }
     }
 }
@@ -178,7 +164,7 @@ struct AzioniPosizioni: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Button("Importa…") { importa() }
+            Button("Importa…") { stato.importaPosizioniDaFile() }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                 .disabled(stato.solaLettura)
                 .help("Importa posizioni da un CSV (elenco delle polizze, portafoglio esportato da Excel)")
@@ -186,19 +172,6 @@ struct AzioniPosizioni: View {
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
             Button("＋ Posizione") { stato.richiestaNuovaPosizione = .inEssere }
                 .buttonStyle(StileBlu())
-        }
-    }
-
-    private func importa() {
-        let pannello = NSOpenPanel()
-        pannello.allowedContentTypes = [.commaSeparatedText, .tabSeparatedText, .plainText]
-        pannello.allowsMultipleSelection = false
-        pannello.message = "Un CSV con una posizione per riga e i nomi delle colonne nella prima (da Excel o Numbers: «Salva come» CSV). I clienti devono essere già in rubrica."
-        guard pannello.runModal() == .OK, let url = pannello.url else { return }
-        if let lettura = ImportaPosizioni.leggi(url, clienti: stato.clienti, posizioni: stato.posizioni) {
-            stato.importazionePosizioni = lettura
-        } else {
-            stato.mostraAvviso("Nel file non ho trovato posizioni: servono almeno il prodotto o il numero di contratto, con i nomi delle colonne nella prima riga.")
         }
     }
 }

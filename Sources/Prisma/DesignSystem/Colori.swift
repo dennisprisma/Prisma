@@ -300,6 +300,7 @@ enum Colori {
 
     /// Widget della scrivania, nello stile dei widget della Dashboard di Mac OS X (2011).
     enum Widget {
+        static let guidaSimbolo = Color(hex: "#2f6eb0")
         static let bordo = Color(hex: "#777")
         static let ombra = Color(hex: "#0004")
         static let ombraVicina = Color(hex: "#0003")

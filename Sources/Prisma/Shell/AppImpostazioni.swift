@@ -129,6 +129,11 @@ struct AppImpostazioni: View {
                         .padding(14)
                     }
             }
+            RigaImpostazione(titolo: "Guida per cominciare", sottotitolo: "Sulla scrivania, finché i passi non sono fatti") {
+                Toggle("", isOn: Binding(get: { !stato.dati.impostazioni.guidaNascosta }, set: { stato.dati.impostazioni.guidaNascosta = !$0 }))
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
             RigaImpostazione(titolo: "Schermo intero", sottotitolo: "Dedica tutto lo schermo a Prisma", ultima: true) {
                 ValoreRiga(testo: stato.schermoIntero ? "Attivo" : "Attiva") { stato.alternaSchermoIntero() }
             }
