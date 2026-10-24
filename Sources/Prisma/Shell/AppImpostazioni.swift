@@ -129,6 +129,21 @@ struct AppImpostazioni: View {
                         .padding(14)
                     }
             }
+            RigaImpostazione(titolo: "Dimensione del testo",
+                             sottotitolo: "Testi e cifre di tutte le app; prospetti e report restano come sulla carta",
+                             avvertenza: stato.dati.impostazioni.dimensioneTesto.fattore == Tipo.fattore ? nil : "Si applica riaprendo Prisma") {
+                HStack(spacing: 8) {
+                    Picker("", selection: $stato.dati.impostazioni.dimensioneTesto) {
+                        ForEach(DimensioneTesto.allCases) { d in Text(d.nome).tag(d) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 140)
+                    if stato.dati.impostazioni.dimensioneTesto.fattore != Tipo.fattore {
+                        Button("Riapri ora") { stato.riapri() }
+                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                    }
+                }
+            }
             RigaImpostazione(titolo: "Guida per cominciare", sottotitolo: "Sulla scrivania, finché i passi non sono fatti") {
                 Toggle("", isOn: Binding(get: { !stato.dati.impostazioni.guidaNascosta }, set: { stato.dati.impostazioni.guidaNascosta = !$0 }))
                     .toggleStyle(StileInterruttore())
@@ -335,6 +350,25 @@ struct AppImpostazioni: View {
         .padding(Misure.Impostazioni.informazioniMargine)
         .overlay(alignment: .leading) {
             Rectangle().fill(Colori.Impostazioni.informazioniFilo).frame(width: 1)
+        }
+    }
+}
+
+extension StatoShell {
+    /// Salva e riapre Prisma (per la dimensione del testo, che si fissa all'avvio).
+    @MainActor
+    func riapri() {
+        salvaOra()
+        let configurazione = NSWorkspace.OpenConfiguration()
+        configurazione.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configurazione) { _, errore in
+            DispatchQueue.main.async {
+                if errore == nil {
+                    NSApp.terminate(nil)
+                } else {
+                    self.mostraAvviso("Non sono riuscito a riaprire Prisma: chiudilo e riaprilo tu.")
+                }
+            }
         }
     }
 }

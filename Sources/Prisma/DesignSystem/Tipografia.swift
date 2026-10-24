@@ -7,13 +7,18 @@ import SwiftUI
 enum Tipo {
     static let lucidaDisponibile: Bool = NSFont(name: "LucidaGrande", size: 12) != nil
 
+    /// Ingrandimento dei testi dell'interfaccia (Impostazioni → Dimensione del testo). Si fissa all'avvio,
+    /// prima che si disegni qualcosa: i caratteri sono costanti. Prospetti e report hanno i loro caratteri
+    /// (Tipo.Documento, Tipo.Report, Tipo.Carta) e restano impaginati per la carta.
+    nonisolated(unsafe) static var fattore: CGFloat = 1
+
     static func sistema(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
         let nome = lucidaDisponibile ? "Lucida Grande" : "Helvetica Neue"
-        return Font.custom(nome, fixedSize: dimensione).weight(peso)
+        return Font.custom(nome, fixedSize: dimensione * fattore).weight(peso)
     }
 
     static func contenuto(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
-        Font.custom("Helvetica Neue", fixedSize: dimensione).weight(peso)
+        Font.custom("Helvetica Neue", fixedSize: dimensione * fattore).weight(peso)
     }
 
     // Barra superiore
@@ -118,7 +123,7 @@ enum Tipo {
 
     // Agenda e Attività (titoli delle pagine in Georgia, come nel template)
     static func serif(_ dimensione: CGFloat, corsivo: Bool = false) -> Font {
-        Font.custom(corsivo ? "Georgia-Italic" : "Georgia", fixedSize: dimensione)
+        Font.custom(corsivo ? "Georgia-Italic" : "Georgia", fixedSize: dimensione * fattore)
     }
     static let agendaOcchiello = contenuto(9, .semibold)
     static let agendaTitolo = contenuto(21, .medium)

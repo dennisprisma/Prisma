@@ -26,8 +26,14 @@ struct PrismaApp: App {
             exit(ProvaProspetti.esegui(cartella: cartella))
         }
         if let i = argomenti.firstIndex(of: "--istantanee"), i + 1 < argomenti.count {
-            let metodo = argomenti.firstIndex(of: "--metodo").flatMap { $0 + 1 < argomenti.count ? argomenti[$0 + 1] : nil } ?? "finestra"
-            exit(Istantanee.genera(in: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true), metodo: metodo))
+            func valore(_ opzione: String) -> String? {
+                argomenti.firstIndex(of: opzione).flatMap { $0 + 1 < argomenti.count ? argomenti[$0 + 1] : nil }
+            }
+            let metodo = valore("--metodo") ?? "finestra"
+            // --testo 1.2: le schermate con il testo ingrandito; --solo a,b: solo quelle scene
+            if let t = valore("--testo").flatMap(Double.init) { Tipo.fattore = CGFloat(t) }
+            let solo = valore("--solo").map { Set($0.split(separator: ",").map(String.init)) }
+            exit(Istantanee.genera(in: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true), metodo: metodo, solo: solo))
         }
     }
 
