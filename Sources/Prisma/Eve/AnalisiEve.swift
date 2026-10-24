@@ -41,8 +41,47 @@ extension MotoreSintesi {
             return r
         }
         parti.append(voci.joined(separator: "\n"))
+        // Rispetto all'atteso, dallo storico dei valori
+        let andamenti = e.finanziarie.compactMap { v in MotoreAndamento.calcola(v.posizione).map { (v.posizione, $0) } }
+        if !andamenti.isEmpty {
+            parti.append("Com'è andata rispetto all'atteso (al netto dei costi, tolti i versamenti):\n" + andamenti.map { p, a in
+                var r = "• \(p.nome): " + (a.rendimentoAnnuo.map { "\(CifreDoc.variazione($0)) l'anno" } ?? "\(CifreDoc.variazione(a.rendimentoPeriodo)) in \(Int((a.anni * 12).rounded())) mesi")
+                if let g = a.giudizio, let s = a.scarto { r += ", \(g.nome)" + (g == .inLinea ? "" : " (\(MotoreAndamento.punti(s)))") }
+                return r
+            }.joined(separator: "\n"))
+        }
         parti.append(documento("Resoconto"))
         return RispostaEve(titolo: "Le posizioni di \(f.cliente.nome)", testo: parti.joined(separator: "\n\n"))
+    }
+
+    /// L'andamento di una posizione nominata nella domanda («come va la polizza Futuro Sereno?»).
+    func andamento(_ p: Posizione, _ f: FonteEve) -> RispostaEve {
+        guard let a = MotoreAndamento.calcola(p) else {
+            return RispostaEve(titolo: p.nome,
+                               testo: "Di \(p.nome) c'è un solo valore registrato: per l'andamento servono almeno due valori. In Posizioni, nella scheda della posizione, puoi aggiungere i valori passati dagli estratti conto (Storico dei valori → «＋ Valore passato»).")
+        }
+        var parti = [MotoreAndamento.sintesi(a, nome: p.nome)]
+        let periodi = a.periodi.suffix(4).map { q in
+            "• \(Formati.dataBreve.string(from: q.dal)) – \(Formati.dataBreve.string(from: q.al)): \(CifreDoc.euroSegno(q.guadagno))"
+                + (q.rendimento.map { " (\(CifreDoc.variazione($0)))" } ?? "") + (q.stimati ? ", versamenti stimati" : "")
+        }
+        parti.append("Periodo per periodo:\n" + periodi.joined(separator: "\n"))
+        if a.giudizio == .sotto {
+            parti.append("Prima di parlarne con \(f.cliente.nome): controlla costi e composizione (\(p.costoComplessivo.map { "costo annuo \(CifreDoc.percento($0))" } ?? "costo annuo non indicato")), e se ha senso un confronto con un'alternativa (spunto «Conviene restare o cambiare?»).")
+        }
+        return RispostaEve(titolo: "Andamento di \(p.nome)", testo: parti.joined(separator: "\n\n"))
+    }
+
+    /// La posizione in essere nominata nella domanda: tutto il nome, o tutte le sue parole lunghe.
+    static func posizioneNominata(_ domanda: String, in posizioni: [Posizione]) -> Posizione? {
+        func piega(_ s: String) -> String { s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Formati.italiano) }
+        let d = piega(domanda)
+        let candidate = posizioni.filter { $0.stato == .inEssere && !$0.nome.isEmpty }
+        if let p = candidate.filter({ d.contains(piega($0.nome)) }).max(by: { $0.nome.count < $1.nome.count }) { return p }
+        return candidate.first { p in
+            let parole = piega(p.nome).split { !$0.isLetter && !$0.isNumber }.filter { $0.count >= 4 }
+            return parole.count >= 2 && parole.allSatisfy { d.contains($0) }
+        }
     }
 
     func pensione(_ f: FonteEve) -> RispostaEve {

@@ -15,6 +15,12 @@ struct MotoreSintesi: MotoreEve {
     /// Versione immediata (usata anche dalle istantanee e dalle prove).
     func componi(_ r: RichiestaEve) -> RispostaEve {
         let f = r.fonte
+        // Una domanda su una posizione precisa («come sta andando Futuro Sereno?»): il suo andamento
+        let argomento = SpuntoEve.argomento(r.domanda)
+        if r.spunto == nil, SpuntoEve.da(r.domanda) == nil, argomento == nil || argomento == .resoconto,
+           let p = Self.posizioneNominata(r.domanda, in: f.posizioni) {
+            return andamento(p, f)
+        }
         switch r.spunto ?? SpuntoEve.da(r.domanda) {
         case .riepilogo: return riepilogo(f)
         case .incontro: return incontro(f)

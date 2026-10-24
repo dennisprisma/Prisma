@@ -355,6 +355,8 @@ enum Formati {
     /// Data proposta quando si indica una data di nascita (1 gennaio 1980).
     static let dataPredefinitaNascita = Calendar(identifier: .gregorian).date(from: DateComponents(year: 1980, month: 1, day: 1)) ?? Date()
     static let meseAnno = formato("MMMM yyyy")
+    /// "mar 25" per gli assi dei grafici.
+    static let meseAnnoBreve = formato("MMM yy")
     /// Per i nomi dei file (nessun carattere vietato dal Finder).
     static let nomeFile = formato("yyyy-MM-dd HH.mm.ss")
 

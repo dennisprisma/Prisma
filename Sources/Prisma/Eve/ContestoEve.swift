@@ -143,6 +143,13 @@ enum ContestoEve {
         if let r = p.rendimentoAtteso { parti.append("rendimento atteso \(Formati.percentuale(r))") }
         if let k = p.costoAnnuo { parti.append("costo annuo \(Formati.percentuale(k))") }
         if let s = p.scadenza { parti.append("scadenza \(Formati.dataEstesa.string(from: s))") }
+        // Com'è andata davvero, dallo storico dei valori (calcolato da Prisma)
+        if p.stato == .inEssere, let a = MotoreAndamento.calcola(p) {
+            var andamento = "andamento dal \(Formati.dataBreve.string(from: a.dal)): "
+                + (a.rendimentoAnnuo.map { "\(CifreDoc.variazione($0)) l'anno" } ?? "\(CifreDoc.variazione(a.rendimentoPeriodo)) nel periodo")
+            if let g = a.giudizio { andamento += ", \(g.nome)" }
+            parti.append(andamento)
+        }
         return parti.joined(separator: ", ")
     }
 }

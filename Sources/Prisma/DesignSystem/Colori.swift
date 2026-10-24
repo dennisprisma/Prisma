@@ -178,6 +178,8 @@ enum Colori {
         static let tracciaAnello = Color(hex: "#e5e4df")
         static let prudente = Color(hex: "#c5ab7e")
         static let favorevole = Color(hex: "#6e9f9b")
+        /// Andamento: dove sarebbe la posizione all'atteso netto.
+        static let lineaAtteso = Color(hex: "#c5ab7e")
         static let canaleAlleanza = Color(hex: "#587cad")
         static let canaleIndipendente = Color(hex: "#bba282")
         // Barra di stato in basso
