@@ -232,7 +232,7 @@ private struct SlideAtteso: View {
     var body: some View {
         let tutte = t.andamenti
         let voci = Array(tutte.prefix(Self.massimo))
-        let valori = voci.flatMap { x in [x.andamento.rendimentoAnnuo ?? x.andamento.rendimentoPeriodo, x.andamento.attesoConfrontabile ?? 0] }
+        let valori: [Double] = voci.flatMap { x -> [Double] in [x.andamento.rendimentoAnnuo ?? x.andamento.rendimentoPeriodo, x.andamento.attesoConfrontabile ?? 0] }
         let basso = min(0, valori.min() ?? 0)
         let alto = max(1, valori.max() ?? 1)
         return VStack(alignment: .leading, spacing: 14) {
