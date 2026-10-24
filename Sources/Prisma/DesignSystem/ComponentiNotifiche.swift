@@ -42,7 +42,7 @@ extension Misure {
         static let margine: CGFloat = 20
         static let voce = EdgeInsets(top: 11, leading: 12, bottom: 11, trailing: 12)
         static let marginiVoce = EdgeInsets(top: 4, leading: 13, bottom: 4, trailing: 13)
-        static let icona: CGFloat = 26
+        static let icona: CGFloat = 32
     }
 }
 
