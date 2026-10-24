@@ -118,6 +118,34 @@ enum ProvaEve {
         let clientiPrima = stato.clienti.count
         stato.aggiungiImportati(foglio.clienti)
         controlla(stato.clienti.count == clientiPrima + 2 && stato.clienteAttivo?.nome == "Anna Maria Verdi", "Importa: clienti aggiunti alla rubrica")
+        // Importazione delle posizioni: abbinate ai clienti, canale e area proposti, doppioni e clienti mancanti esclusi
+        let polizze = "Contraente;Codice fiscale;Prodotto;N. polizza;Compagnia;Decorrenza;Scadenza;Premio;Frazionamento;Valore al;Controvalore;Premi versati\n"
+            + "Anna Maria Verdi;;Piano di accumulo rivalutabile;AL-1;Alleanza Assicurazioni;01/02/2020;01/02/2035;100,00;mensile;30/09/2026;8.150,00;7.900,00\n"
+            + "Verdi Anna Maria;;Temporanea caso morte;AL-2;Alleanza;01/02/2021;01/02/2041;25;mensile;;;\n"
+            + "Mario Assente;;Fondo azionario;X-9;Fineco;;;;;;10.000,00;\n"
+            + "Anna Maria Verdi;;Piano di accumulo rivalutabile;AL-1;Alleanza Assicurazioni;;;;;;;\n"
+            + "Luca Neri;;ETF azionario globale;;Banca X;15/03/2023;;1.000;unico;;1.200;\n"
+        let lette = ImportaPosizioni.daCSV(polizze, clienti: stato.clienti, posizioni: stato.posizioni, canale: .indipendente).posizioni
+        controlla(lette.count == 5, "Importa posizioni: 5 righe lette (\(lette.count))")
+        if lette.count == 5 {
+            let pac = lette[0].posizione
+            controlla(lette[0].cliente?.nome == "Anna Maria Verdi" && pac.canale == .alleanza && pac.area == .risparmio && pac.premio == 100
+                      && pac.frequenza == .mensile && pac.controvalore == 8_150 && pac.totaleVersato == 7_900 && pac.dataValore != nil && lette[0].problema == nil,
+                      "Importa posizioni: piano Alleanza abbinato, area risparmio, premio mensile, valore e versato")
+            controlla(lette[1].cliente?.nome == "Anna Maria Verdi" && lette[1].posizione.area == .protezione && lette[1].posizione.rischio == .vita,
+                      "Importa posizioni: cognome e nome invertiti, TCM in protezione caso morte")
+            controlla(lette[2].cliente == nil && lette[2].problema != nil, "Importa posizioni: cliente non in rubrica escluso")
+            controlla(lette[3].problema == "ripetuta nel file", "Importa posizioni: la stessa polizza due volte")
+            controlla(lette[4].posizione.canale == .indipendente && lette[4].posizione.area == .investimento && lette[4].posizione.versamentoIniziale == 1_000
+                      && lette[4].posizione.premio == 0, "Importa posizioni: premio unico come versamento iniziale, canale scelto")
+            let primaPosizioni = stato.posizioni.count
+            stato.importaPosizioni(lette.filter { $0.problema == nil && $0.cliente != nil }.map(\.posizione))
+            controlla(stato.posizioni.count == primaPosizioni + 3, "Importa posizioni: tre posizioni aggiunte")
+            let ancora = ImportaPosizioni.daCSV(polizze, clienti: stato.clienti, posizioni: stato.posizioni).posizioni
+            controlla(ancora.first?.problema == "già in Posizioni", "Importa posizioni: una seconda importazione le riconosce già presenti")
+            let nuove = Set(stato.clienti.filter { ["Anna Maria Verdi", "Luca Neri"].contains($0.nome) }.map(\.id))
+            stato.dati.posizioni.removeAll { nuove.contains($0.clienteId) }
+        }
         // Le prove che seguono riguardano i clienti di prova
         let importati = Set(foglio.clienti.map(\.nome))
         stato.dati.clienti.removeAll { importati.contains($0.nome) }

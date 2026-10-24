@@ -178,10 +178,27 @@ struct AzioniPosizioni: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            Button("Importa…") { importa() }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                .disabled(stato.solaLettura)
+                .help("Importa posizioni da un CSV (elenco delle polizze, portafoglio esportato da Excel)")
             Button("＋ Proposta") { stato.richiestaNuovaPosizione = .proposta }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
             Button("＋ Posizione") { stato.richiestaNuovaPosizione = .inEssere }
                 .buttonStyle(StileBlu())
+        }
+    }
+
+    private func importa() {
+        let pannello = NSOpenPanel()
+        pannello.allowedContentTypes = [.commaSeparatedText, .tabSeparatedText, .plainText]
+        pannello.allowsMultipleSelection = false
+        pannello.message = "Un CSV con una posizione per riga e i nomi delle colonne nella prima (da Excel o Numbers: «Salva come» CSV). I clienti devono essere già in rubrica."
+        guard pannello.runModal() == .OK, let url = pannello.url else { return }
+        if let lettura = ImportaPosizioni.leggi(url, clienti: stato.clienti, posizioni: stato.posizioni) {
+            stato.importazionePosizioni = lettura
+        } else {
+            stato.mostraAvviso("Nel file non ho trovato posizioni: servono almeno il prodotto o il numero di contratto, con i nomi delle colonne nella prima riga.")
         }
     }
 }

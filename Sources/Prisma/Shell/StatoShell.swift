@@ -46,6 +46,8 @@ final class StatoShell: ObservableObject {
     @Published var richiestaNuovoCliente = false
     /// Contatti letti da un file, in attesa di conferma nell'anteprima della rubrica.
     @Published var importazione: ImportazioneClienti?
+    /// Posizioni lette da un file, in attesa di conferma in Posizioni.
+    @Published var importazionePosizioni: ImportazionePosizioni?
 
     // Agenda e Attività (stato delle viste, non salvato)
     /// Giornata aperta in agenda.
@@ -2104,6 +2106,36 @@ final class StatoShell: ObservableObject {
                     self.aggiornaElencoBackup()
                     self.mostraAvviso("\(elenco.count) \(elenco.count == 1 ? "cliente importato" : "clienti importati"). Lo stato precedente è salvato in un backup."
                                       + (self.haDatiDiProva ? " I clienti di prova si tolgono da Impostazioni → Archivio." : ""))
+                case .failure(let e):
+                    self.mostraAvviso("Importazione annullata, backup non riuscito: \(e.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Importa in Posizioni quelle scelte (da CSV). Prima salva un backup dello stato attuale.
+    func importaPosizioni(_ elenco: [Posizione]) {
+        guard !elenco.isEmpty, !solaLettura else { return }
+        guard persistente else {
+            dati.posizioni.append(contentsOf: elenco)
+            return
+        }
+        guard !backupInCorso else { return }
+        salvaOra()
+        backupInCorso = true
+        let destinazione = cartellaBackup
+        let creaCartella = cartellaBackupPredefinita
+        DispatchQueue.global(qos: .userInitiated).async {
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione delle posizioni",
+                                                        creaCartella: creaCartella) }
+            DispatchQueue.main.async {
+                self.backupInCorso = false
+                switch esito {
+                case .success:
+                    self.dati.posizioni.append(contentsOf: elenco)
+                    self.aggiornaElencoBackup()
+                    let clienti = Set(elenco.map(\.clienteId)).count
+                    self.mostraAvviso("\(elenco.count) \(elenco.count == 1 ? "posizione importata" : "posizioni importate") per \(clienti) \(clienti == 1 ? "cliente" : "clienti"). Lo stato precedente è salvato in un backup.")
                 case .failure(let e):
                     self.mostraAvviso("Importazione annullata, backup non riuscito: \(e.localizedDescription)")
                 }
