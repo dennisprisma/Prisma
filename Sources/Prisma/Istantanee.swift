@@ -321,7 +321,7 @@ enum Istantanee {
     /// - "finestra": NSHostingView in una finestra fuori schermo + cacheDisplay (senza Metal)
     /// - "livello": come sopra, ma con CALayer.render(in:)
     /// - "renderer": ImageRenderer di SwiftUI (richiede Metal)
-    static func genera(in cartella: URL, metodo: String) -> Int32 {
+    static func genera(in cartella: URL, metodo: String, solo: Set<String>? = nil) -> Int32 {
         _ = NSApplication.shared
         do {
             try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
@@ -329,7 +329,7 @@ enum Istantanee {
             print("ERRORE: cartella delle istantanee non creata: \(error.localizedDescription)")
             return 1
         }
-        for scena in scene {
+        for scena in scene where solo?.contains(scena.nome) ?? true {
             let stato = StatoShell(persistente: false)
             let misura = scena.nome.hasSuffix("-schermo-basso") ? dimensioneBassa : dimensione
             scena.prepara(stato)
