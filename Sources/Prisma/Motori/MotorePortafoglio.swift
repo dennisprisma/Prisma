@@ -38,6 +38,8 @@ struct Portafoglio {
         let mesi: Int?
         /// Scadenze nei prossimi mesi o proposte aperte: un motivo in più per chiamare.
         let motivo: String?
+        /// Un anno senza incontri: il riesame annuale è scaduto.
+        var riesameScaduto = false
 
         var id: String { cliente.id }
     }
@@ -180,7 +182,9 @@ enum MotorePortafoglio {
                 .min { ($0.scadenza ?? .distantFuture) < ($1.scadenza ?? .distantFuture) }
             let motivo = prossima.map { "\($0.nome) scade il \(Formati.dataEstesa.string(from: $0.scadenza ?? oggi))" }
                 ?? aperte.first.map { "proposta aperta: \($0.nome)" }
-            richiamare.append(Portafoglio.DaRicontattare(cliente: c, ultimoContatto: ultimo, mesi: mesiFa, motivo: motivo))
+            let unAnno = cal.date(byAdding: .month, value: -MotoreRiesame.mesiRiesame, to: oggi) ?? oggi
+            richiamare.append(Portafoglio.DaRicontattare(cliente: c, ultimoContatto: ultimo, mesi: mesiFa, motivo: motivo,
+                                                         riesameScaduto: ultimo.map { $0 < unAnno } ?? true))
         }
         return richiamare.sorted { a, b in
             if (a.motivo != nil) != (b.motivo != nil) { return a.motivo != nil }

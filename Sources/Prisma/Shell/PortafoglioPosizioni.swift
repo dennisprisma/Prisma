@@ -44,6 +44,14 @@ extension AppPosizioni {
                     tabellaClienti(p.clienti)
                 }
 
+                // Il calendario delle revisioni: non dipende dai filtri di canale e area
+                let dovuti = MotoreRiesame.dovuti(clienti: stato.clienti, posizioni: stato.posizioni,
+                                                  appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
+                PannelloAnalisi(titolo: "Riesami annuali",
+                                nota: "Scaduti o in arrivo nei prossimi \(MotoreRiesame.mesiAvanti) mesi, senza un incontro in agenda") { EmptyView() } contenuto: {
+                    riesami(dovuti)
+                }
+
                 HStack(alignment: .top, spacing: 24) {
                     PannelloAnalisi(titolo: "Scadenze dei prossimi \(Portafoglio.mesiScadenze) mesi",
                                     nota: "Capitali da reinvestire e coperture da rinnovare") { EmptyView() } contenuto: {
@@ -203,7 +211,8 @@ extension AppPosizioni {
                         AvatarCliente(iniziali: r.cliente.iniziali, tinta: r.cliente.tinta.colori, lato: Misure.Portafoglio.avatar)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(r.cliente.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
-                            Text(r.motivo ?? (r.ultimoContatto == nil ? "mai incontrato in Prisma" : "ultimo contatto \(r.mesi ?? 0) mesi fa"))
+                            Text(r.motivo ?? (r.ultimoContatto == nil ? "mai incontrato in Prisma"
+                                              : "ultimo contatto \(r.mesi ?? 0) mesi fa" + (r.riesameScaduto ? " · riesame scaduto" : "")))
                                 .font(Tipo.chip).foregroundColor(r.motivo != nil ? Colori.Analisi.attenzioneTesto : Colori.Analisi.kpiNota)
                         }
                         .lineLimit(1)
@@ -220,6 +229,55 @@ extension AppPosizioni {
                 }
                 .buttonStyle(StileSemplice())
                 .bordoBasso(Colori.Analisi.tabellaRiga)
+            }
+        }
+    }
+
+    /// Righe al massimo nel calendario dei riesami (il conteggio dei punti legge il dossier di ogni cliente).
+    static let massimoRiesami = 10
+
+    private func riesami(_ elenco: [RiesameDovuto]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if elenco.isEmpty {
+                Text("Nessun riesame da fare nei prossimi \(MotoreRiesame.mesiAvanti) mesi: tutti i clienti sono stati visti nell'ultimo anno o hanno un incontro in agenda.")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+            }
+            ForEach(elenco.prefix(Self.massimoRiesami)) { d in
+                let r = stato.fonteEve(d.cliente.id).map(MotoreRiesame.calcola)
+                let alta = r?.punti.filter { $0.priorita == .alta }.count ?? 0
+                HStack(spacing: 8) {
+                    AvatarCliente(iniziali: d.cliente.iniziali, tinta: d.cliente.tinta.colori, lato: Misure.Portafoglio.avatar)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(d.cliente.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
+                        Text(d.dovutoDal.map { d.scaduto() ? "scaduto dal \(Formati.dataEstesa.string(from: $0))" : "dovuto dal \(Formati.dataEstesa.string(from: $0))" }
+                             ?? "mai incontrato in Prisma")
+                            .font(Tipo.chip).foregroundColor(d.scaduto() ? Colori.Analisi.attenzioneTesto : Colori.Analisi.kpiNota)
+                    }
+                    .lineLimit(1)
+                    Spacer()
+                    if let r {
+                        Text("\(r.punti.count) punti")
+                            .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
+                        if alta > 0 { Pillola(testo: "\(alta) alta", tono: .errore) }
+                    }
+                    Button("Prepara") {
+                        stato.clienteAttivoId = d.cliente.id
+                        stato.apriProspetto(.riesame)
+                    }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)))
+                    .fixedSize()
+                    .help("Apri il prospetto del riesame di \(d.cliente.nome)")
+                    Button("Fissa") { moduloAppuntamento = stato.bozzaRiesame(d.cliente.id) }
+                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)))
+                        .fixedSize()
+                        .disabled(stato.solaLettura)
+                        .help("Fissa l'incontro di riesame: un'ora, con l'ordine del giorno nelle note")
+                }
+                .padding(.vertical, 5)
+                .bordoBasso(Colori.Analisi.tabellaRiga)
+            }
+            if elenco.count > Self.massimoRiesami {
+                Text("…e altri \(elenco.count - Self.massimoRiesami) clienti.").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).padding(.top, 5)
             }
         }
     }
