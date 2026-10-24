@@ -90,7 +90,7 @@ private struct SlideEredi: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(verbatim: (e.relazione.nome + (e.minorenne ? " · minorenne" : "")).uppercased()).font(T.occhiello).tracking(1.2).foregroundColor(C.occhiello)
                         Text(verbatim: e.nome).font(T.titoloRiquadro).foregroundColor(C.titolo)
-                        Text(verbatim: MotoreSuccessione.frazione(e.quota).capitalized).font(T.piccolo).foregroundColor(C.testo)
+                        Text(verbatim: MotoreSuccessione.frazione(e.quota).prefix(1).uppercased() + MotoreSuccessione.frazione(e.quota).dropFirst()).font(T.piccolo).foregroundColor(C.testo)
                         Text(verbatim: CifreDoc.euro(e.importo)).font(T.numeroMedio).foregroundColor(C.titolo)
                         Text(verbatim: e.imposta > 0.5 ? "imposta \(CifreDoc.euro(e.imposta))" : "nessuna imposta di successione").font(T.minimo).foregroundColor(C.tenue)
                     }

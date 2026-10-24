@@ -53,11 +53,12 @@ struct TestiSuccessione {
         if !s.eredi.isEmpty {
             punti.append(("Chi eredita", s.eredi.map { "\($0.nome) \(MotoreSuccessione.frazione($0.quota))" }.joined(separator: ", ") + "."))
         }
-        punti.append(("Le imposte", s.imposte > 0.5 ? "Circa \(CifreDoc.euro(s.imposte)), di cui \(CifreDoc.euro(s.impostaSuccessione)) di successione." : "Nessuna imposta di successione, entro le franchigie."))
+        punti.append(("Le imposte", s.impostaSuccessione > 0.5 ? "Circa \(CifreDoc.euro(s.imposte)), di cui \(CifreDoc.euro(s.impostaSuccessione)) di successione."
+            : (s.ipocatastali > 0.5 ? "Nessuna imposta di successione, entro le franchigie; circa \(CifreDoc.euro(s.ipocatastali)) di ipotecaria e catastale sugli immobili." : "Nessuna imposta di successione, entro le franchigie.")))
         if let cv = s.conviventeEscluso {
             punti.append(("Chi resta scoperto", "\(cv) non erediterebbe: lo tutelano solo un testamento o una polizza con lui come beneficiario."))
         } else if let v = s.daSistemare.first {
-            punti.append(("Da sistemare", "\(v.posizione.nome): \(v.avviso ?? "")"))
+            punti.append(("Da sistemare", "\(v.posizione.nome): \((v.avviso ?? "").prefix(1).lowercased() + (v.avviso ?? "").dropFirst())"))
         }
         return punti
     }
