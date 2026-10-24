@@ -103,6 +103,23 @@ enum ProvaProspetti {
             }
         }
 
+        // PDF protetto da password: chiuso senza, si apre con la password giusta, stesse pagine
+        if let c = CompositoreProspetti.componi(.portafoglio, dati: dati, cliente: ""), let chiaro = StampaCarta.pdf(c),
+           let cifrato = StampaCarta.protetto(chiaro, password: "15031985"), let doc = PDFDocument(data: cifrato) {
+            verifica("PDF protetto: chiuso senza password", doc.isLocked && doc.isEncrypted)
+            verifica("PDF protetto: la password sbagliata non lo apre", !doc.unlock(withPassword: "00000000"))
+            verifica("PDF protetto: si apre con la password", doc.unlock(withPassword: "15031985") && doc.pageCount == (PDFDocument(data: chiaro)?.pageCount ?? -1))
+        } else {
+            verifica("PDF protetto creato", false)
+        }
+        var regole = ImpostazioniPDF()
+        var nato = dati.clienti[0]
+        nato.dataNascita = Calendar(identifier: .gregorian).date(from: DateComponents(year: 1985, month: 3, day: 15, hour: 12))
+        nato.codiceFiscale = "rssgli85c55h501z"
+        verifica("PDF protetto: password dalla data di nascita", regole.password(per: nato) == "15031985", regole.password(per: nato))
+        regole.regola = .codiceFiscale
+        verifica("PDF protetto: password dal codice fiscale", regole.password(per: nato) == "RSSGLI85C55H501Z", regole.password(per: nato))
+
         // Valutazione di un investimento: prospetto (A4 verticale) e report (A4 orizzontale)
         if let v = dati.valutazioni.first, let p = dati.prodotti.first(where: { $0.id == v.prodottoId }), let c = p.condizioni {
             let t = TestiValutazione(v, prodotto: p, condizioni: c)

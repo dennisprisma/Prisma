@@ -156,6 +156,16 @@ enum StampaCarta {
         }
     }
 
+    /// Il PDF cifrato: per aprirlo serve la password. Quella del proprietario (che permette di togliere la
+    /// protezione) è casuale e non si conserva: nessuno può modificare il documento.
+    static func protetto(_ dati: Data, password: String) -> Data? {
+        guard !password.isEmpty, let documento = PDFDocument(data: dati) else { return nil }
+        return documento.dataRepresentation(options: [
+            PDFDocumentWriteOption.userPasswordOption: password,
+            PDFDocumentWriteOption.ownerPasswordOption: UUID().uuidString,
+        ])
+    }
+
     @MainActor
     static func stampa(_ dati: Data, formato: CGSize) {
         guard let documento = PDFDocument(data: dati) else { return }
