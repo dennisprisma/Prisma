@@ -221,6 +221,11 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.apriProspetto(.successione(report: true))
         }),
+        ("78-portafoglio-da-sistemare", { s in
+            s.portafoglio = true
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "attenzioni"
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"

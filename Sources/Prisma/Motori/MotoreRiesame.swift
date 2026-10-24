@@ -6,7 +6,7 @@ import Foundation
 /// da qui l'ordine del giorno dell'incontro e le domande da fare.
 struct Riesame {
     enum Tema: Int, CaseIterable {
-        case posizioni, scadenze, protezione, obiettivi, proposte, fisco, dati
+        case posizioni, scadenze, protezione, obiettivi, proposte, rischio, costi, famiglia, fisco, dati
 
         var nome: String {
             switch self {
@@ -15,6 +15,9 @@ struct Riesame {
             case .protezione: return "Check-up"
             case .obiettivi: return "Obiettivi"
             case .proposte: return "Proposte"
+            case .rischio: return "Rischio"
+            case .costi: return "Costi"
+            case .famiglia: return "Famiglia"
             case .fisco: return "Fisco"
             case .dati: return "Dati"
             }
@@ -209,6 +212,45 @@ enum MotoreRiesame {
                                dettaglio: "\((p.esito ?? .bozza).nome): è ancora di interesse? Va aggiornata alle nuove cifre?",
                                priorita: .media, canale: p.canale))
         }
+        // Rischio, costi e famiglia: dalle analisi del dossier Posizioni
+        let prova = MotoreResistenza.calcola(f.posizioni, profilo: f.cliente.profilo)
+        if let g = prova.giudizio, g != .dentro, let m = prova.scenario(.mercati), let s = prova.sopportabile {
+            punti.append(.init(tema: .rischio, titolo: g == .oltre ? "Rischio oltre il profilo" : "Rischio al limite del profilo",
+                               dettaglio: "In un anno di crisi perderebbe circa \(euro(m.perdita)) (\(CifreDoc.percento(m.quota * 100))) contro il \(CifreDoc.condizione(s)) che sopporta: ridurre il rischio o rivedere il profilo.",
+                               priorita: g == .oltre ? .alta : .media))
+        }
+        let costi = MotoreCosti.calcola(f.posizioni, prodotti: f.prodotti, cliente: f.cliente.id)
+        for v in costi.conAlternativa.prefix(2) {
+            guard let x = v.alternativa else { continue }
+            punti.append(.init(tema: .costi, titolo: "Costi di «\(v.posizione.nome)»",
+                               dettaglio: "\(CifreDoc.percento(v.annuo, decimali: 2)) l'anno; \(x.prodotto.nome) con lo stesso rischio lascerebbe circa \(euro(x.guadagno)) in più in \(x.anni) anni, uscita compresa.",
+                               priorita: .media, canale: v.posizione.canale))
+        }
+        for v in costi.voci where v.livello == .alto && v.alternativa == nil {
+            punti.append(.init(tema: .costi, titolo: "Costo alto di «\(v.posizione.nome)»",
+                               dettaglio: "\(CifreDoc.percento(v.annuo, decimali: 2)) l'anno, \(euro(v.perso20)) in \(v.anni20) anni: cosa offre in cambio (garanzie, coperture)?",
+                               priorita: .bassa, canale: v.posizione.canale))
+        }
+        let successione = MotoreSuccessione.calcola(cliente: f.cliente, posizioni: f.posizioni, oggi: oggi)
+        let senzaBeneficiari = successione.daSistemare.filter { $0.posizione.beneficiari.trimmingCharacters(in: .whitespaces).isEmpty }
+        if !senzaBeneficiari.isEmpty {
+            punti.append(.init(tema: .famiglia, titolo: "Indicare i beneficiari",
+                               dettaglio: senzaBeneficiari.map(\.posizione.nome).joined(separator: ", ") + ": senza, il capitale va agli eredi legittimi.",
+                               priorita: .alta))
+        }
+        for v in successione.daSistemare where !senzaBeneficiari.contains(where: { $0.id == v.id }) {
+            punti.append(.init(tema: .famiglia, titolo: "Beneficiari di «\(v.posizione.nome)»", dettaglio: v.avviso ?? "", priorita: .alta, canale: v.posizione.canale))
+        }
+        if let cv = successione.conviventeEscluso {
+            punti.append(.init(tema: .famiglia, titolo: "Tutelare \(cv)",
+                               dettaglio: "Convivente: senza testamento non eredita. Una polizza con lui come beneficiario o un testamento, con il notaio.",
+                               priorita: .alta))
+        }
+        if !costi.senzaDati.isEmpty {
+            punti.append(.init(tema: .dati, titolo: "Recuperare i KID",
+                               dettaglio: "Costi non indicati: " + costi.senzaDati.map(\.nome).joined(separator: ", ") + ".",
+                               priorita: .bassa))
+        }
         // Fisco: le scadenze dei prossimi due mesi che chiedono un'azione
         let fisco = MotoreFineAnno.calcola(cliente: f.cliente, posizioni: f.posizioni, oggi: oggi)
         for s in fisco.scadenze where (s.tipo == .deduzione || s.tipo == .nonDedotti) && MotoreFineAnno.vicina(s, oggi: oggi) {
@@ -250,6 +292,9 @@ enum MotoreRiesame {
         }
         for p in proposte {
             domande.append("La proposta «\(p.nome)» è ancora di suo interesse?")
+        }
+        if !successione.daSistemare.isEmpty || successione.conviventeEscluso != nil {
+            domande.append("Chi vorrebbe che ricevesse il capitale delle sue polizze, se venisse a mancare?")
         }
 
         return Riesame(cliente: f.cliente, oggi: oggi, ultimoContatto: passati.max(), prossimo: prossimo,
