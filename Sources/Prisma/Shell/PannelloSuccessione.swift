@@ -27,7 +27,7 @@ struct PannelloSuccessione: View {
                     tabella.frame(maxWidth: .infinity, alignment: .topLeading)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("EREDI SENZA TESTAMENTO").font(Tipo.kpiTitolo).tracking(0.3).foregroundColor(Colori.Analisi.kpiTitolo)
-                        if s.eredi.isEmpty {
+                        if s.eredi.isEmpty && s.asseNetto <= 0 {
                             Text("Nessun erede tra i familiari registrati.").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                         }
                         ForEach(s.eredi) { e in
