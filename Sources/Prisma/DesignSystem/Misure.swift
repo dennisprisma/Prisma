@@ -54,6 +54,11 @@ enum Misure {
         static let moduloSalvaPDF = CGSize(width: 520, height: 330)
         static let moduloImporta = CGSize(width: 640, height: 600)
         static let moduloImportaPosizioni = CGSize(width: 820, height: 620)
+        /// Prova di resistenza: la barra della perdita sui mercati e la colonna delle cifre.
+        static let barraResistenza: CGFloat = 8
+        static let colonnaPerdita: CGFloat = 110
+        static let colonnaCanale: CGFloat = 90
+        static let righeResistenza = 4
     }
 
     enum Rubrica {

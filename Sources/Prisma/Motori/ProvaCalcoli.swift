@@ -889,6 +889,55 @@ enum ProvaCalcoli {
             verifica("Portafoglio: tasso di accettazione delle proposte", conEsiti.tassoAccettazione ?? -1, si / (si + no), tolleranza: 0.0001)
         }
 
+        // Prova di resistenza: mercati per SRI, capitale garantito, inflazione e immobili
+        do {
+            func pos(_ nome: String, _ area: AreaPosizione, _ valore: Double, _ modifica: (inout Posizione) -> Void = { _ in }) -> Posizione {
+                var p = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: area, nome: nome)
+                p.controvalore = valore
+                modifica(&p)
+                return p
+            }
+            let fondo = pos("Fondo azionario", .investimento, 100_000) { $0.tipologia = "Fondo comune"; $0.sri = 4; $0.rendimentoAtteso = 6; $0.costoAnnuo = 1 }
+            let ramoI = pos("Rivalutabile", .risparmio, 50_000) { $0.tipologia = "Polizza rivalutabile (Ramo I)"; $0.rendimentoAtteso = 2.5; $0.costoAnnuo = 1.2 }
+            let multi = pos("Multiramo", .investimento, 100_000) { $0.tipologia = "Polizza multiramo"; $0.sri = 3; $0.quotaGestioneSeparata = 40; $0.rendimentoAtteso = 5 }
+            let conto = pos("Conto", .liquidita, 20_000)
+            let casa = pos("Casa", .immobili, 300_000)
+            var mutuo = pos("Mutuo", .debiti, 100_000)
+            mutuo.canale = .alleanza
+            var proposta = pos("Proposta", .investimento, 80_000) { $0.sri = 6 }
+            proposta.stato = .proposta
+            let tutte = [fondo, ramoI, multi, conto, casa, mutuo, proposta]
+            var profilo = ProfiloInvestitore()
+            profilo.propensione = .moderata
+            let r = MotoreResistenza.calcola(tutte, profilo: profilo)
+            let m = r.scenario(.mercati)
+            verifica("Resistenza: patrimonio finanziario senza immobili, debiti e proposte", r.patrimonioFinanziario, 270_000)
+            verifica("Resistenza: mercati, SRI 4 perde il 20% e la multiramo solo fuori dalla gestione separata", m?.perdita ?? -1, 20_000 + 100_000 * 0.6 * 0.10)
+            verifica("Resistenza: la gestione separata e il conto non perdono sui mercati",
+                     m?.voci.contains { $0.posizione.id == ramoI.id || $0.posizione.id == conto.id } == true ? 1 : 0, 0)
+            verifica("Resistenza: quota garantita o senza rischio di mercato", r.quotaProtetta, (50_000 + 40_000 + 20_000) / 270_000.0, tolleranza: 0.0001)
+            let reale: (Double) -> Double = { netto in 1 - pow((1 + netto / 100) / 1.05, 3) }
+            let inflazione = r.scenario(.inflazione)
+            verifica("Resistenza: inflazione, il conto perde potere d'acquisto", inflazione?.voci.first { $0.posizione.id == conto.id }?.perdita ?? -1, 20_000 * reale(0), tolleranza: 1)
+            verifica("Resistenza: inflazione, la rivalutabile al netto dei costi", inflazione?.voci.first { $0.posizione.id == ramoI.id }?.perdita ?? -1, 50_000 * reale(1.3), tolleranza: 1)
+            verifica("Resistenza: inflazione, chi rende più dei prezzi non perde",
+                     inflazione?.voci.contains { $0.posizione.id == fondo.id || $0.posizione.id == multi.id } == true ? 1 : 0, 0)
+            verifica("Resistenza: immobili −15%", r.scenario(.immobili)?.perdita ?? -1, 45_000)
+            verifica("Resistenza: immobili sul patrimonio netto", r.scenario(.immobili)?.base ?? -1, 270_000 + 300_000 - 100_000)
+            verifica("Resistenza: profilo moderato, perdita del 9,6% dentro il 10%", r.giudizio == .dentro ? 1 : 0, 1)
+            profilo.propensione = .prudente
+            verifica("Resistenza: profilo prudente, oltre il 5% (e oltre il margine)", MotoreResistenza.calcola(tutte, profilo: profilo).giudizio == .oltre ? 1 : 0, 1)
+            verifica("Resistenza: senza propensione nessun giudizio", MotoreResistenza.calcola(tutte, profilo: ProfiloInvestitore()).giudizio == nil ? 1 : 0, 1)
+            let senzaSRI = MotoreResistenza.calcola([pos("Fondo pensione", .previdenza, 10_000)], profilo: nil)
+            verifica("Resistenza: senza SRI si stima dall'area (previdenza 3 su 7)", senzaSRI.scenario(.mercati)?.perdita ?? -1, 1_000)
+            verifica("Resistenza: nessuna posizione, prova vuota", MotoreResistenza.calcola([proposta], profilo: nil).vuota ? 1 : 0, 1)
+            let demo = DatiPrisma.demo()
+            for c in demo.clienti {
+                let rc = MotoreResistenza.calcola(demo.posizioni.filter { $0.clienteId == c.id }, profilo: c.profilo)
+                verifica("Resistenza: \(c.nome), perdite mai oltre il valore", rc.scenari.allSatisfy { s in s.voci.allSatisfy { $0.perdita >= 0 && $0.perdita <= $0.posizione.valore } } ? 1 : 0, 1)
+            }
+        }
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

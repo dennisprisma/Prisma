@@ -192,10 +192,20 @@ enum ProvaEve {
             ("Gli conviene cambiare polizza?", .cambiare),
             ("Come va il rendimento dei suoi investimenti?", .resoconto),
             ("Cosa facciamo con la liquidità sul conto?", .liquidita),
-            ("È coperto in caso di invalidità?", .protezione)
+            ("È coperto in caso di invalidità?", .protezione),
+            ("Cosa succede al suo patrimonio netto se i mercati crollano?", .resistenza),
+            ("Quanto può perdere in una crisi?", .resistenza)
         ]
         for (domanda, atteso) in argomenti {
             controlla(SpuntoEve.argomento(domanda) == atteso, "Argomento di «\(domanda)» → \(atteso.rawValue)")
+        }
+        // Prova di resistenza: le stesse cifre del pannello in Posizioni
+        if let f = stato.fonteEve("marco") {
+            let prova = MotoreResistenza.calcola(f.posizioni, profilo: f.cliente.profilo)
+            let r = MotoriEve.sintesi.componi(RichiestaEve(domanda: "", spunto: .resistenza, fonte: f, storia: []))
+            controlla(!prova.vuota && r.titolo == "Prova di resistenza di Marco Bianchi" && MotoreResistenza.sintesi(prova).allSatisfy { r.testo.contains($0) },
+                      "Prova di resistenza di Marco: Eve riporta le cifre del motore")
+            controlla(ContestoEve.scheda(f).contains("PROVA DI RESISTENZA"), "La scheda per il modello riporta la prova di resistenza")
         }
         // Ogni documento di analisi ha il suo spunto
         for scelta in [SceltaProspetto.resoconto(report: false), .previdenza(report: true), .protezione(report: false),
