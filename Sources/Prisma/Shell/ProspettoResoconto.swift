@@ -496,7 +496,8 @@ private struct PaginaAndamento: View {
                     .frame(width: grafico, height: 112)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        CifraProspetto("Rendimento", TestiResoconto.rendimento(a), "netto dei costi")
+                        CifraProspetto("Rendimento", CifreDoc.variazione(a.rendimentoAnnuo ?? a.rendimentoPeriodo),
+                                       a.rendimentoAnnuo != nil ? "l'anno, netto dei costi" : "in \(TestiResoconto.mesi(a.anni)), netto dei costi")
                         CifraProspetto("Atteso", a.attesoConfrontabile.map { CifreDoc.percento($0) } ?? "—",
                                        a.scarto.map { MotoreAndamento.punti($0) } ?? "non indicato", colore: a.attesoAnnuo == nil ? C.tenue : nil)
                         CifraProspetto(a.guadagno >= 0 ? "Guadagno" : "Perdita", CifreDoc.euro(abs(a.guadagno)), "tolti i versamenti",

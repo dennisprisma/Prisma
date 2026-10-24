@@ -261,8 +261,8 @@ private struct SlideAtteso: View {
         let colore: Color = a.giudizio == .sotto ? C.negativo : a.giudizio == .sopra ? C.positivo : C.tenue
         return HStack(alignment: .center, spacing: 14) {
             HStack(spacing: 6) {
-                Rectangle().fill(C.canale(p.canale)).frame(width: 3, height: 26)
-                VStack(alignment: .leading, spacing: 1) {
+                Rectangle().fill(C.canale(p.canale)).frame(width: 3, height: 34)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: p.nome).font(T.corpoForte).foregroundColor(C.titolo).lineLimit(1).minimumScaleFactor(0.7)
                     Text(verbatim: "dal \(CifreDoc.dataBreve(a.dal)) · \(p.canale.nomeBreve)").font(T.minimo).foregroundColor(C.tenue)
                 }
@@ -274,16 +274,16 @@ private struct SlideAtteso: View {
                 ZStack(alignment: .topLeading) {
                     Rectangle().fill(C.filetto).frame(width: 0.8, height: geo.size.height).offset(x: x(0))
                     Rectangle().fill(C.canale(p.canale))
-                        .frame(width: max(1, abs(x(effettivo) - x(0))), height: 10)
+                        .frame(width: max(1, abs(x(effettivo) - x(0))), height: 14)
                         .offset(x: min(x(effettivo), x(0)), y: 6)
                     if let atteso = a.attesoConfrontabile {
                         Rectangle().fill(C.premio)
-                            .frame(width: max(1, abs(x(atteso) - x(0))), height: 5)
-                            .offset(x: min(x(atteso), x(0)), y: 19)
+                            .frame(width: max(1, abs(x(atteso) - x(0))), height: 6)
+                            .offset(x: min(x(atteso), x(0)), y: 23)
                     }
                 }
             }
-            .frame(height: 30)
+            .frame(height: 36)
             VStack(alignment: .trailing, spacing: 1) {
                 Text(verbatim: TestiResoconto.rendimento(a)).font(T.corpoForte).foregroundColor(effettivo < 0 ? C.negativo : C.titolo)
                 Text(verbatim: a.attesoConfrontabile.map { "atteso \(CifreDoc.percento($0))" } ?? "atteso non indicato").font(T.minimo).foregroundColor(C.tenue)
@@ -292,7 +292,7 @@ private struct SlideAtteso: View {
             Text(verbatim: a.giudizio?.etichetta ?? "—").font(T.piccolo.bold()).foregroundColor(colore)
                 .frame(width: 130, alignment: .leading)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 12)
         .overlay(Rectangle().fill(C.filetto).frame(height: 0.6), alignment: .bottom)
     }
 }
