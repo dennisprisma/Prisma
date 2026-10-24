@@ -40,6 +40,32 @@ struct TestiResoconto {
         return CifreDoc.euroSegno(euro) + (percento.map { " (\(CifreDoc.variazione($0)))" } ?? "")
     }
 
+    /// Le posizioni finanziarie con un andamento (almeno due valori rilevati), nell'ordine del resoconto.
+    var andamenti: [(voce: VoceResoconto, andamento: AndamentoPosizione)] {
+        e.finanziarie.compactMap { v in MotoreAndamento.calcola(v.posizione).map { (v, $0) } }
+    }
+
+    /// Effettivo e atteso in una riga: "+4,9% l'anno contro il 5,0% atteso".
+    static func rendimento(_ a: AndamentoPosizione) -> String {
+        a.rendimentoAnnuo.map { "\(CifreDoc.variazione($0)) l'anno" } ?? "\(CifreDoc.variazione(a.rendimentoPeriodo)) in \(mesi(a.anni))"
+    }
+
+    static func mesi(_ anni: Double) -> String {
+        let m = max(1, Int((anni * 12).rounded()))
+        return m == 1 ? "1 mese" : "\(m) mesi"
+    }
+
+    /// Il titolo della pagina del report sull'atteso.
+    func titoloAtteso(_ elenco: [AndamentoPosizione]) -> String {
+        let giudicate = elenco.compactMap(\.giudizio)
+        guard !giudicate.isEmpty else { return "Come sono andati i tuoi risparmi nel tempo" }
+        let sotto = giudicate.filter { $0 == .sotto }.count
+        if sotto == 0 { return giudicate.count == 1 ? "In linea o meglio di quanto ci aspettavamo" : "Tutte in linea o meglio di quanto ci aspettavamo" }
+        return sotto == 1 ? "Una posizione è andata meno bene del previsto: ne parliamo" : "\(sotto) posizioni sono andate meno bene del previsto: ne parliamo"
+    }
+
+    static let sottotitoloAtteso = "Il rendimento di ogni posizione dai valori rilevati nel tempo, al netto dei costi e senza contare i tuoi versamenti, accanto a quello che ci aspettavamo."
+
     // MARK: - Report
 
     var titoloQuadro: String {
@@ -157,6 +183,7 @@ struct TestiResoconto {
         ("Risultato", "valore meno totale versato, già al netto dei costi del prodotto; prima delle imposte sul guadagno."),
         ("Rendimento medio annuo", "tasso che porta i versamenti, alle loro date, al valore di oggi: il versamento iniziale alla decorrenza e gli altri distribuiti mese per mese. Solo per le posizioni con almeno un anno."),
         ("Ultimi 12 mesi", "variazione rispetto al valore rilevato circa un anno fa, tolti i versamenti del periodo e misurata sul valore di partenza più metà dei versamenti."),
+        ("Andamento e atteso", "rendimento tra un valore rilevato e il successivo, tolti i versamenti del periodo (se manca il versato, stimati dai premi periodici), concatenato su tutto lo storico e reso annuo da circa un anno; confrontato con il rendimento atteso della posizione meno i costi annui: in linea entro un punto all'anno."),
         ("Costi stimati", "costo annuo di gestione, trattenuto sul rendimento della gestione separata e imposta di bollo (0,20% del valore; 34,20 € per i conti correnti), sul valore attuale."),
         ("Imposte e netto", "polizze vita, fondi ed ETF: 26% sul guadagno al netto della penale, 12,5% sulla parte in titoli di Stato; nelle polizze il bollo maturato si paga al riscatto. Conti e depositi: interessi già tassati all'accredito."),
         ("Previdenza", "si tassano solo i contributi dedotti: 15% fino al 15° anno di partecipazione, poi 0,30 punti in meno ogni anno fino al 9%, per pensionamento, riscatti agevolati e spese sanitarie; 23% per anticipazioni casa e ulteriori esigenze e per i riscatti per altre cause."),

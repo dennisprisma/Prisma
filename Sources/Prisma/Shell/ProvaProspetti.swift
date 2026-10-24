@@ -139,6 +139,10 @@ enum ProvaProspetti {
                     verifica("\(nome): valore delle posizioni finanziarie \(valore) nel PDF", testo.contains(valore))
                 }
                 verifica("\(nome): cliente e consulente", testo.contains(cliente.nome) && testo.contains(TestiValutazione.consulente))
+                // Nel report l'occhiello spaziato non si legge come testo: si cerca il sottotitolo
+                if !t.andamenti.isEmpty {
+                    verifica("\(nome): andamento rispetto all'atteso (\(t.andamenti.count) posizioni)", testo.lowercased().contains(report ? "ci aspettavamo" : "rispetto all"))
+                }
                 for c in t.e.canaliPresenti {
                     verifica("\(nome): etichetta \(c.nomeBreve) nel PDF", testo.contains(c.nome))
                 }
