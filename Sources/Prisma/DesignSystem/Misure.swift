@@ -171,7 +171,7 @@ enum Misure {
 
     enum Dock {
         // Icone grandi e con il nome sotto, come sulla home di iOS 5: a 40 punti erano illeggibili
-        static let elemento: CGFloat = 60
+        static let elemento: CGFloat = 58
         static let icona: CGFloat = 52
         static let spazio: CGFloat = 8
         /// Il nome sotto l'icona.

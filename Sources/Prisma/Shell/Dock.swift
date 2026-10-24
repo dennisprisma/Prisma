@@ -119,8 +119,9 @@ struct ElementoDock<Icona: View>: View {
                 .foregroundColor(Colori.Dock.etichetta)
                 .shadow(color: Colori.Dock.etichettaOmbra, radius: 1, x: 0, y: 1)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .frame(width: Misure.Dock.elemento + Misure.Dock.spazio, height: Misure.Dock.etichetta)
+                .minimumScaleFactor(0.7)
+                // Larga quanto l'icona: con 17 app il dock deve stare anche in uno schermo da 1280 punti
+                .frame(width: Misure.Dock.elemento, height: Misure.Dock.etichetta)
             }
         }
         .buttonStyle(StileSemplice())
