@@ -56,10 +56,11 @@ enum MotoreAttenzioni {
             elenco.append(.init(cliente: c, tipo: .rischio, titolo: g == .oltre ? "Rischio oltre il profilo" : "Rischio al limite del profilo",
                                 dettaglio: "In un anno di crisi \(CifreDoc.percento(m.quota * 100)) contro il \(CifreDoc.condizione(r.sopportabile ?? 0)) sopportabile"))
         }
-        let alti = MotoreCosti.calcola(mie).voci.filter { $0.livello == .alto }
+        // Solo il costo annuo dichiarato, senza proiezioni: il pannello gira su tutti i clienti
+        let alti = mie.filter { $0.stato == .inEssere && $0.area.proiettabile && ($0.costoComplessivo ?? 0) > MotoreCosti.sogliaAlto }
         if !alti.isEmpty {
             elenco.append(.init(cliente: c, tipo: .costi, titolo: alti.count == 1 ? "Un costo alto" : "\(alti.count) costi alti",
-                                dettaglio: alti.map { "\($0.posizione.nome) \(CifreDoc.percento($0.annuo, decimali: 2))" }.joined(separator: ", ")))
+                                dettaglio: alti.map { "\($0.nome) \(CifreDoc.percento($0.costoComplessivo ?? 0, decimali: 2))" }.joined(separator: ", ")))
         }
         return elenco
     }

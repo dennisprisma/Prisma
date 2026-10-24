@@ -267,5 +267,9 @@ extension Misure {
         /// Il grafico con e senza costi nel prospetto e nel report.
         static let graficoCosti: CGFloat = 190
         static let graficoCostiReport: CGFloat = 270
+        /// Righe al massimo nelle tabelle dei documenti a pagina fissa (oltre: «…e altre N», l'elenco intero è in Posizioni).
+        static let righeTabellaFissa = 9
+        static let schedeReport = 4
+        static let puntiReport = 5
     }
 }

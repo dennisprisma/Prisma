@@ -68,14 +68,16 @@ private struct PaginaDestini: View {
             if t.beneficiari.isEmpty {
                 Text(verbatim: "Nessuna polizza vita, copertura caso morte o previdenza in essere.").font(T.pCorpo).foregroundColor(C.tenue)
             } else {
-                TabellaCanali(colonne: colonne, gruppi: gruppiSuccessione(t.beneficiari, C))
+                TabellaCanali(colonne: colonne, gruppi: gruppiSuccessione(Array(t.beneficiari.prefix(Misure.Documento.righeTabellaFissa)), C))
+                Altre(numero: t.beneficiari.count - Misure.Documento.righeTabellaFissa)
             }
             SezioneProspetto(titolo: "Agli eredi, con la successione",
                              testo: Text(verbatim: "Conti, fondi e immobili, debiti tolti: bloccati fino alla dichiarazione di successione e divisi secondo la legge."))
             if t.asse.isEmpty {
                 Text(verbatim: "Nessuna posizione nell'asse ereditario.").font(T.pCorpo).foregroundColor(C.tenue)
             } else {
-                TabellaCanali(colonne: colonne, gruppi: gruppiSuccessione(t.asse, C))
+                TabellaCanali(colonne: colonne, gruppi: gruppiSuccessione(Array(t.asse.prefix(Misure.Documento.righeTabellaFissa)), C))
+                Altre(numero: t.asse.count - Misure.Documento.righeTabellaFissa)
             }
         }
     }
@@ -118,7 +120,7 @@ private struct PaginaEredi: View {
             }
             RiquadroBarra(titolo: t.titoloSistemare) {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(s.daSistemare) { v in
+                    ForEach(s.daSistemare.prefix(Misure.Documento.righeTabellaFissa)) { v in
                         PuntoElenco(testo: Text(verbatim: "\(v.posizione.nome): ").bold() + Text(verbatim: v.avviso ?? ""))
                     }
                     ForEach(Array(s.avvisi.enumerated()), id: \.offset) { _, a in PuntoElenco(testo: Text(verbatim: a)) }
@@ -137,6 +139,20 @@ private struct PaginaEredi: View {
              + Text(verbatim: "Stima semplificata senza testamento, legittima, donazioni precedenti né regime patrimoniale: per decisioni su testamento, donazioni o beneficiari serve il parere di un notaio."))
                 .font(T.pTabellaNota).foregroundColor(C.tenue).lineSpacing(1.2).fixedSize(horizontal: false, vertical: true)
             FirmeProspetto()
+        }
+    }
+}
+
+/// «…e altre N posizioni»: le tabelle dei documenti a pagina fissa non vanno oltre il foglio.
+struct Altre: View {
+    @Environment(\.paletteDocumento) private var C
+    let numero: Int
+    var cosa = "posizioni"
+
+    var body: some View {
+        if numero > 0 {
+            Text(verbatim: "…e altre \(numero) \(cosa): l'elenco completo è nel dossier Posizioni.")
+                .font(Tipo.Documento.pTabellaNota).foregroundColor(C.tenue)
         }
     }
 }

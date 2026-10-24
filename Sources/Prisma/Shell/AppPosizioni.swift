@@ -156,9 +156,13 @@ struct AppPosizioni: View {
             if !stato.portafoglio {
                 EtichettaRail(testo: "Analisi")
                 VStack(spacing: 0) {
-                    VoceNavigazione(titolo: "Prova di resistenza", attiva: false) { stato.ancoraPosizioni = "resistenza" }
-                    VoceNavigazione(titolo: "Peso dei costi", attiva: false) { stato.ancoraPosizioni = "costi" }
-                    VoceNavigazione(titolo: "Passaggio generazionale", attiva: false) { stato.ancoraPosizioni = "successione" }
+                    ForEach([("Prova di resistenza", "resistenza"), ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
+                        // Chiusa la scheda di una posizione, il dossier è visibile e l'ancora si consuma
+                        VoceNavigazione(titolo: voce.0, attiva: false) {
+                            stato.posizioneInDettaglio = nil
+                            stato.ancoraPosizioni = voce.1
+                        }
+                    }
                 }
             }
             EtichettaRail(testo: "Collegati")
@@ -222,21 +226,16 @@ struct AppPosizioni: View {
                         .frame(width: 330, alignment: .leading)
                     }
 
-                    // Rischio e costi su tutte le posizioni del cliente, come nei documenti: il filtro canale non cambia il giudizio
-                let tutte = stato.posizioniCliente(stato.clienteAttivoId)
-                let prova = MotoreResistenza.calcola(tutte, profilo: stato.clienteAttivo?.profilo)
-                    if !prova.vuota {
-                        PannelloResistenza(prova: prova).id("resistenza")
+                    // Calcolate una volta e riusate finché posizioni, cliente e catalogo non cambiano
+                    let analisi = stato.analisiDossier(stato.clienteAttivoId)
+                    if !analisi.prova.vuota {
+                        PannelloResistenza(prova: analisi.prova).id("resistenza")
                     }
-                    let costi = MotoreCosti.calcola(tutte, prodotti: stato.dati.prodotti, cliente: stato.clienteAttivoId)
-                    if !costi.vuota {
-                        PannelloCosti(analisi: costi).id("costi")
+                    if !analisi.costi.vuota {
+                        PannelloCosti(analisi: analisi.costi).id("costi")
                     }
-                    if let cliente = stato.clienteAttivo {
-                        let successione = MotoreSuccessione.calcola(cliente: cliente, posizioni: stato.posizioniCliente(cliente.id))
-                        if !successione.vuota {
-                            PannelloSuccessione(s: successione).id("successione")
-                        }
+                    if let successione = analisi.successione, !successione.vuota {
+                        PannelloSuccessione(s: successione).id("successione")
                     }
 
                     PannelloAnalisi(titolo: titoloTabella, nota: "Tocca una riga per il dettaglio e la proiezione") {

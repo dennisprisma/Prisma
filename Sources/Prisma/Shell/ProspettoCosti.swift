@@ -49,7 +49,7 @@ private struct PaginaCostiOggi: View {
                 ColonnaDoc(titolo: "Ingresso", peso: 0.7), ColonnaDoc(titolo: "Annuo", sottotitolo: "giudizio", peso: 0.9),
                 ColonnaDoc(titolo: "Quest'anno", peso: 0.9), ColonnaDoc(titolo: "10 anni", peso: 0.9), ColonnaDoc(titolo: "20 anni", sottotitolo: "o scadenza", peso: 0.9),
             ], gruppi: Canale.allCases.compactMap { c in
-                let mie = a.voci.filter { $0.posizione.canale == c }
+                let mie = a.voci.prefix(Misure.Documento.righeTabellaFissa).filter { $0.posizione.canale == c }
                 guard !mie.isEmpty else { return nil }
                 return GruppoCanale(canale: c, righe: mie.map { v in
                     RigaDoc(celle: [CellaDoc(v.posizione.nome, sotto: v.posizione.tipologia, font: T.pTabellaForte),
@@ -62,6 +62,7 @@ private struct PaginaCostiOggi: View {
                             altezza: 22)
                 }, nota: "\(CifreDoc.euro(mie.reduce(0) { $0 + $1.euroAnno })) quest'anno")
             })
+            Altre(numero: a.voci.count - Misure.Documento.righeTabellaFissa)
             if !a.senzaDati.isEmpty {
                 Text(verbatim: "Senza costi indicati (da completare con il KID): \(a.senzaDati.map(\.nome).joined(separator: ", ")).")
                     .font(T.pCorpo).foregroundColor(C.intermedio).fixedSize(horizontal: false, vertical: true)
@@ -101,7 +102,7 @@ private struct PaginaCostiTempo: View {
                     ColonnaDoc(titolo: "Oggi", sottotitolo: "costo annuo", peso: 2, destra: false), ColonnaDoc(titolo: "Alternativa", sottotitolo: "canale · costo", peso: 2.2, destra: false),
                     ColonnaDoc(titolo: "Uscita oggi", sottotitolo: "penali, imposte, ingresso", peso: 1.1), ColonnaDoc(titolo: "In più", sottotitolo: "netto, uscita compresa", peso: 1.1),
                 ], gruppi: Canale.allCases.compactMap { c in
-                    let mie = a.conAlternativa.filter { $0.posizione.canale == c }
+                    let mie = a.conAlternativa.prefix(Misure.Documento.puntiReport).filter { $0.posizione.canale == c }
                     guard !mie.isEmpty else { return nil }
                     return GruppoCanale(canale: c, righe: mie.compactMap { v in
                         guard let x = v.alternativa else { return nil }

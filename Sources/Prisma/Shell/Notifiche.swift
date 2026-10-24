@@ -147,7 +147,7 @@ enum MotoreNotifiche {
             elenco.append(Notifica(id: "beneficiari-\(senzaBeneficiari.map(\.id).joined(separator: ","))", gruppo: .daSistemare, app: .posizioni,
                                    titolo: senzaBeneficiari.count == 1 ? "\(primo.nome): beneficiari da indicare" : "\(senzaBeneficiari.count) clienti con beneficiari da indicare",
                                    dettaglio: "Polizze o previdenza senza beneficiari: il capitale andrebbe agli eredi legittimi",
-                                   data: inizio, destinazione: senzaBeneficiari.count == 1 ? .cliente(primo.id) : .app(.posizioni)))
+                                   data: inizio, destinazione: nil))
         }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = !MotoreFineAnno.ultimiGiorni(oggi) ? [] : MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
@@ -218,6 +218,20 @@ extension StatoShell {
         pannelloNotifiche = false
         if let d = n.destinazione {
             vai(a: d)
+        } else if n.id.hasPrefix("beneficiari-"), let id = n.id.dropFirst("beneficiari-".count).split(separator: ",").first,
+                  !n.id.contains(",") {
+            // Un cliente solo: il suo passaggio generazionale in Posizioni
+            clienteAttivoId = String(id)
+            portafoglio = false
+            posizioneInDettaglio = nil
+            ancoraPosizioni = "successione"
+            apri(.posizioni)
+        } else if n.id.hasPrefix("beneficiari-") {
+            // Più clienti: l'elenco «Da sistemare nei dossier» nel Portafoglio
+            portafoglio = true
+            posizioneInDettaglio = nil
+            ancoraPosizioni = "attenzioni"
+            apri(.posizioni)
         } else if n.id.hasPrefix("ricontattare-") || n.id.hasPrefix("fineanno-") {
             // Più clienti da ricontattare o con spazio deducibile: l'elenco è nel Portafoglio
             portafoglio = true

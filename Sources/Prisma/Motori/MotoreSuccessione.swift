@@ -32,7 +32,9 @@ struct Successione {
         let aliquota: Double
         let imposta: Double
         let minorenne: Bool
-        var id: String { nome + relazione.rawValue }
+        /// Posizione nell'elenco: due figli senza nome restano due righe distinte.
+        var indice = 0
+        var id: String { "\(indice)·\(nome)·\(relazione.rawValue)" }
     }
 
     let voci: [Voce]
@@ -113,11 +115,11 @@ enum MotoreSuccessione {
             + immobiliVoci.filter { !(primaCasa && $0.id == abitazione?.id) }.reduce(0) { $0 + max(400, $1.importo * ipocatastale / 100) }
 
         let netto = max(0, attivo - debiti)
-        let calcolati = eredi.map { e -> Successione.Erede in
+        let calcolati = eredi.enumerated().map { i, e -> Successione.Erede in
             let importo = netto * e.quota
             let (franchigia, aliquota) = regola(e.relazione)
             return .init(nome: e.nome, relazione: e.relazione, quota: e.quota, importo: importo, franchigia: franchigia, aliquota: aliquota,
-                         imposta: max(0, importo - franchigia) * aliquota / 100, minorenne: e.minorenne)
+                         imposta: max(0, importo - franchigia) * aliquota / 100, minorenne: e.minorenne, indice: i)
         }
 
         if eredi.isEmpty, netto > 0 {
