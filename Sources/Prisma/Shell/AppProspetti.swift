@@ -12,6 +12,8 @@ struct AppProspetti: View {
     @State var archiviato: String?
     /// L'incontro di riesame da fissare.
     @State var moduloAppuntamento: Appuntamento?
+    /// Il PDF da salvare, prima del foglio con la password.
+    @State var daSalvare: PDFDaSalvare?
 
     private var cliente: String { stato.clienteAttivoId }
     private var scelta: SceltaProspetto { stato.sceltaProspetto }
@@ -49,6 +51,10 @@ struct AppProspetti: View {
         .onChange(of: stato.clienteAttivoId) { _ in archiviato = nil }
         .sheet(item: $stato.valutazioneInModifica) { v in
             ModuloValutazione(bozza: v, nuova: stato.valutazione(v.id) == nil)
+                .environmentObject(stato)
+        }
+        .sheet(item: $daSalvare) { p in
+            ModuloSalvaPDF(pdf: p, impostazioni: stato.dati.impostazioni.pdf)
                 .environmentObject(stato)
         }
         .sheet(item: $moduloAppuntamento) { a in
@@ -603,7 +609,12 @@ struct AppProspetti: View {
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                 .fixedSize()
             }
-            Button("Salva PDF…") { if let dati = pdf(d) { StampaCarta.salva(dati, nome: StampaCarta.nomeFile(d)) } }
+            Button("Salva PDF…") {
+                // Il portafoglio è per te: il foglio della password resta, senza proposta dai dati di un cliente
+                if let dati = pdf(d) {
+                    daSalvare = PDFDaSalvare(dati: dati, nome: StampaCarta.nomeFile(d), cliente: scelta.tipo == .portafoglio ? nil : stato.clienteAttivo)
+                }
+            }
                 .buttonStyle(StileBlu())
                 .fixedSize()
         }

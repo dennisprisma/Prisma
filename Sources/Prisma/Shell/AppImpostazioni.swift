@@ -69,6 +69,7 @@ struct AppImpostazioni: View {
         VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
             gruppoProfilo
             gruppoEve
+            gruppoPDF
         }
     }
 
@@ -92,6 +93,23 @@ struct AppImpostazioni: View {
                 Toggle("", isOn: $stato.dati.impostazioni.eve.conservaConversazioni)
                     .toggleStyle(StileInterruttore())
                     .labelsHidden()
+            }
+        }
+    }
+
+    private var gruppoPDF: some View {
+        GruppoImpostazioni(titolo: "PDF per i clienti") {
+            RigaImpostazione(titolo: "Proponi la password", sottotitolo: "Salvando un prospetto o un report, la protezione è già attiva") {
+                Toggle("", isOn: $stato.dati.impostazioni.pdf.proteggi)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
+            RigaImpostazione(titolo: "Password proposta", sottotitolo: "Dai dati del cliente; Prisma non conserva nessuna password", ultima: true) {
+                Picker("", selection: $stato.dati.impostazioni.pdf.regola) {
+                    ForEach(ImpostazioniPDF.Regola.allCases) { r in Text(r.nome).tag(r) }
+                }
+                .labelsHidden()
+                .frame(width: 210)
             }
         }
     }

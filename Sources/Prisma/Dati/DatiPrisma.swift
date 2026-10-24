@@ -121,10 +121,12 @@ struct Impostazioni: Codable, Equatable {
     var backup = ImpostazioniBackup()
     /// Dalla versione 6 dell'archivio.
     var eve = ImpostazioniEve()
+    /// PDF da consegnare ai clienti (letto con tolleranza: gli archivi di prima non l'hanno).
+    var pdf = ImpostazioniPDF()
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve }
+    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve, pdf }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -134,7 +136,51 @@ struct Impostazioni: Codable, Equatable {
         inizialiUtente = try c.decodeIfPresent(String.self, forKey: .inizialiUtente) ?? "DV"
         backup = try c.decodeIfPresent(ImpostazioniBackup.self, forKey: .backup) ?? ImpostazioniBackup()
         eve = (try? c.decodeIfPresent(ImpostazioniEve.self, forKey: .eve)) ?? ImpostazioniEve()
+        pdf = (try? c.decodeIfPresent(ImpostazioniPDF.self, forKey: .pdf)) ?? ImpostazioniPDF()
     }
+}
+
+/// I PDF salvati per i clienti: protezione con password proposta e come si forma la password.
+/// Prisma non conserva nessuna password: la ricava dai dati del cliente o la scrivi ogni volta.
+struct ImpostazioniPDF: Codable, Equatable {
+    enum Regola: String, Codable, CaseIterable, Identifiable {
+        case dataNascita, codiceFiscale, aMano
+
+        var id: String { rawValue }
+
+        var nome: String {
+            switch self {
+            case .dataNascita: return "Data di nascita (ggmmaaaa)"
+            case .codiceFiscale: return "Codice fiscale"
+            case .aMano: return "La scrivo ogni volta"
+            }
+        }
+    }
+
+    var proteggi = false
+    var regola = Regola.dataNascita
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey { case proteggi, regola }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        proteggi = (try? c.decodeIfPresent(Bool.self, forKey: .proteggi)) ?? false
+        regola = (try? c.decodeIfPresent(Regola.self, forKey: .regola)) ?? .dataNascita
+    }
+
+    /// La password proposta per un cliente ("" se il dato manca o si scrive a mano).
+    func password(per cliente: Cliente?) -> String {
+        guard let cliente else { return "" }
+        switch regola {
+        case .dataNascita: return cliente.dataNascita.map { Formati.formato("ddMMyyyy").string(from: $0) } ?? ""
+        case .codiceFiscale: return cliente.codiceFiscale.uppercased().filter { $0.isLetter || $0.isNumber }
+        case .aMano: return ""
+        }
+    }
+
+    static let lunghezzaMinima = 6
 }
 
 /// Impostazioni di Eve (comprese nel backup).

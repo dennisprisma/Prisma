@@ -51,6 +51,7 @@ enum Misure {
         static let dettaglio = CGSize(width: 820, height: 680)
         static let modulo = CGSize(width: 680, height: 640)
         static let moduloRilevazione = CGSize(width: 500, height: 360)
+        static let moduloSalvaPDF = CGSize(width: 520, height: 330)
     }
 
     enum Rubrica {
