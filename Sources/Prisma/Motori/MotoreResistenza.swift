@@ -76,8 +76,10 @@ struct ProvaResistenza {
     /// Il confronto tra la perdita sui mercati e quella sopportabile (nil senza profilo o senza investimenti).
     var giudizio: Giudizio? {
         guard let s = sopportabile, let m = scenario(.mercati), m.base > 0 else { return nil }
-        if m.quota <= s { return .dentro }
-        return m.quota <= s * MotoreResistenza.margineLimite ? .alLimite : .oltre
+        // La soglia è in percentuale, la quota è una frazione
+        let perdita = m.quota * 100
+        if perdita <= s { return .dentro }
+        return perdita <= s * MotoreResistenza.margineLimite ? .alLimite : .oltre
     }
 
     var vuota: Bool { scenari.allSatisfy { $0.voci.isEmpty } }

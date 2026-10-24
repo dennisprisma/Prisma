@@ -927,6 +927,9 @@ enum ProvaCalcoli {
             verifica("Resistenza: profilo moderato, perdita del 9,6% dentro il 10%", r.giudizio == .dentro ? 1 : 0, 1)
             profilo.propensione = .prudente
             verifica("Resistenza: profilo prudente, oltre il 5% (e oltre il margine)", MotoreResistenza.calcola(tutte, profilo: profilo).giudizio == .oltre ? 1 : 0, 1)
+            profilo.propensione = .moderata
+            let alLimite = MotoreResistenza.calcola([pos("Bilanciato", .investimento, 100_000) { $0.sri = 3 }, pos("Azionario", .investimento, 10_000) { $0.sri = 4 }], profilo: profilo)
+            verifica("Resistenza: perdita dell'11%, al limite del 10% moderato", alLimite.giudizio == .alLimite ? 1 : 0, 1)
             verifica("Resistenza: senza propensione nessun giudizio", MotoreResistenza.calcola(tutte, profilo: ProfiloInvestitore()).giudizio == nil ? 1 : 0, 1)
             let senzaSRI = MotoreResistenza.calcola([pos("Fondo pensione", .previdenza, 10_000)], profilo: nil)
             verifica("Resistenza: senza SRI si stima dall'area (previdenza 3 su 7)", senzaSRI.scenario(.mercati)?.perdita ?? -1, 1_000)
