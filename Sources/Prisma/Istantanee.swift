@@ -197,6 +197,10 @@ enum Istantanee {
             s.chiediEve(SpuntoEve.resistenza.domanda, spunto: .resistenza)
             s.apri(.eve)
         }),
+        ("73-resistenza-report", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.resistenza(report: true))
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"

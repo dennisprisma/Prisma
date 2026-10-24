@@ -261,5 +261,8 @@ extension Misure {
         static let rigaTabellaReport: CGFloat = 22
         static let rigaTabellaProspetto: CGFloat = 13.5
         static let tracciatoOcchiello: CGFloat = 1.6
+        /// Prova di resistenza: la barra della perdita sui mercati nel prospetto e nel report.
+        static let barraResistenza: CGFloat = 12
+        static let barraResistenzaReport: CGFloat = 22
     }
 }

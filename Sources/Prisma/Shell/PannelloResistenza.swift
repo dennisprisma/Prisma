@@ -3,11 +3,17 @@ import SwiftUI
 /// La prova di resistenza nel dossier Posizioni: tre scenari avversi, le posizioni più esposte
 /// ai mercati e il confronto con la perdita che il profilo del cliente sopporta.
 struct PannelloResistenza: View {
+    @EnvironmentObject var stato: StatoShell
     let prova: ProvaResistenza
 
     var body: some View {
         PannelloAnalisi(titolo: "Prova di resistenza", nota: "Stime prudenti sulle posizioni in essere: non previsioni, ma un modo per parlarne") {
-            if let g = prova.giudizio { Pillola(testo: g.etichetta, tono: tono(g)) }
+            HStack(spacing: 8) {
+                if let g = prova.giudizio { Pillola(testo: g.etichetta, tono: tono(g)) }
+                Button("Report per il cliente") { stato.apriProspetto(.resistenza(report: true)) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                    .help("Apre in Prospetti il report della prova di resistenza, da stampare o salvare in PDF")
+            }
         } contenuto: {
             VStack(alignment: .leading, spacing: 12) {
                 FasciaKPI {
