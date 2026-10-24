@@ -101,8 +101,10 @@ struct AppPosizioni: View {
 
     private var rail: some View {
         VStack(alignment: .leading, spacing: 6) {
-            SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
-                .padding(.top, 2)
+            if !stato.inModoCliente {
+                SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
+                    .padding(.top, 2)
+            }
             if stato.portafoglio {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("IL TUO PORTAFOGLIO").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)

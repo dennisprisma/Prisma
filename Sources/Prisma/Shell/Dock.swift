@@ -13,16 +13,18 @@ struct Dock: View {
             }
             DivisoreDock()
             ForEach(Array(AppPrisma.allCases.enumerated()), id: \.element) { indice, app in
-                ElementoDock(
-                    titolo: app.titolo,
-                    etichetta: app.nomeDock,
-                    scorciatoia: indice < 9 ? "⌥ \(indice + 1)" : nil,
-                    attivo: stato.appAttiva == app,
-                    inEsecuzione: stato.aperta(app)
-                ) {
-                    stato.apri(app)
-                } icona: {
-                    IconaApp(app: app, lato: Misure.Dock.icona)
+                if stato.appConsentita(app) {
+                    ElementoDock(
+                        titolo: app.titolo,
+                        etichetta: app.nomeDock,
+                        scorciatoia: indice < 9 ? "⌥ \(indice + 1)" : nil,
+                        attivo: stato.appAttiva == app,
+                        inEsecuzione: stato.aperta(app)
+                    ) {
+                        stato.apri(app)
+                    } icona: {
+                        IconaApp(app: app, lato: Misure.Dock.icona)
+                    }
                 }
             }
         }
