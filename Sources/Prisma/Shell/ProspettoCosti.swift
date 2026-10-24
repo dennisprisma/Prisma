@@ -107,7 +107,7 @@ private struct PaginaCostiTempo: View {
                         guard let x = v.alternativa else { return nil }
                         return RigaDoc(celle: [CellaDoc(v.posizione.nome, sotto: CifreDoc.percento(v.annuo, decimali: 2), font: T.pTabellaForte),
                                                CellaDoc(x.prodotto.nome, sotto: "\(x.prodotto.canale.nomeBreve) · \(CifreDoc.percento(x.costoAnnuo, decimali: 2))", font: T.pTabellaForte),
-                                               CellaDoc(CifreDoc.togli(x.costoUscita), font: T.pTabella),
+                                               CellaDoc(x.costoUscita >= 0.5 ? CifreDoc.togli(x.costoUscita) : "—", font: T.pTabella),
                                                CellaDoc("+ \(CifreDoc.euro(x.guadagno))", sotto: "in \(x.anni) anni", colore: C.positivo, font: T.pTabellaForte)], altezza: 22)
                     }, nota: "")
                 })

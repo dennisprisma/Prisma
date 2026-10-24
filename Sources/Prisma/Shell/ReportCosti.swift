@@ -74,7 +74,7 @@ private struct SlideCostiOggi: View {
             }
             .padding(16)
             .riquadroDoc()
-            Text(verbatim: "Verde: costo contenuto (sotto il \(CifreDoc.condizione(MotoreCosti.sogliaBasso))). Ambra: nella media. Rosso: alto (oltre il \(CifreDoc.condizione(MotoreCosti.sogliaAlto))).")
+            Text(verbatim: "Più lunga la barra, più alto il costo. Sotto il \(CifreDoc.condizione(MotoreCosti.sogliaBasso)) l'anno è contenuto, oltre il \(CifreDoc.condizione(MotoreCosti.sogliaAlto)) è alto e la barra diventa rossa.")
                 .font(T.minimo).foregroundColor(C.tenue)
         }
     }
