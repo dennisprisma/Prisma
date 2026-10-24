@@ -68,6 +68,10 @@ struct AppPosizioni: View {
         .sheet(item: $modulo) { p in
             ModuloPosizione(bozza: p, nuova: !stato.posizioni.contains { $0.id == p.id }) { stato.salvaPosizione($0) }
         }
+        .sheet(item: $stato.importazionePosizioni) { i in
+            ModuloImportaPosizioni(importazione: i)
+                .environmentObject(stato)
+        }
         .sheet(item: $moduloAppuntamento) { a in
             ModuloAppuntamento(bozza: a, nuovo: true, salva: { nuovo in
                 stato.salvaAppuntamento(nuovo)
