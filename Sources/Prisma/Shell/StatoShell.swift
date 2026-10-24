@@ -887,6 +887,8 @@ final class StatoShell: ObservableObject {
             return .liquidita(report: report)
         case .checkUp(let report)?:
             return .checkUp(report: report)
+        case .resistenza(let report)?:
+            return .resistenza(report: report)
         case .obiettivo(let id, let report)?:
             let elenco = obiettiviCliente(clienteAttivoId)
             return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
@@ -930,6 +932,9 @@ final class StatoShell: ObservableObject {
         if case .liquidita(let report) = scelta {
             return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
+        if case .resistenza(let report) = scelta {
+            return DocumentoStampabile(testiResistenza(clienteAttivoId), report: report, commento: testoCommento(scelta))
+        }
         if case .protezione(let report) = scelta {
             return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
@@ -945,6 +950,12 @@ final class StatoShell: ObservableObject {
     /// I testi e i numeri del check-up del primo incontro di un cliente.
     func testiCheckUp(_ id: String) -> TestiCheckUp {
         TestiCheckUp(MotoreCheckUp.calcola(cliente: self.cliente(id), posizioni: posizioniCliente(id), analisi: analisi360(id), obiettivi: obiettiviCliente(id)))
+    }
+
+    /// I testi e i numeri della prova di resistenza di un cliente (lo stesso calcolo del pannello in Posizioni).
+    func testiResistenza(_ id: String) -> TestiResistenza {
+        let c = self.cliente(id)
+        return TestiResistenza(MotoreResistenza.calcola(posizioniCliente(id), profilo: c?.profilo), cliente: c)
     }
 
     /// I testi e i numeri del capitale in scadenza e della liquidità di un cliente.
@@ -1609,6 +1620,10 @@ final class StatoShell: ObservableObject {
         case .protezione:
             let t = testiProtezione(id)
             return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro della protezione della tua famiglia: cosa è già coperto e cosa ancora no.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .resistenza:
+            let t = testiResistenza(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio la prova di resistenza dei tuoi risparmi: cosa potrebbe succedere in tre anni difficili e se è una perdita che puoi sopportare.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .liquidita:
             let t = testiLiquidita(id)

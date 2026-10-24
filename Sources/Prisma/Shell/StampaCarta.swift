@@ -46,6 +46,16 @@ struct DocumentoStampabile {
         tipo = report ? .report : .prospetto
     }
 
+    /// Il prospetto (A4 verticale) o il report (A4 orizzontale) della prova di resistenza.
+    init(_ t: TestiResistenza, report: Bool, commento: String? = nil) {
+        titolo = TestiResistenza.titolo
+        cliente = t.cliente
+        genere = report ? "Report" : "Prospetto"
+        formato = report ? Misure.Documento.report : Misure.Documento.prospetto
+        pagine = report ? ReportResistenza.pagine(t, commento: commento) : ProspettoResistenza.pagine(t)
+        tipo = report ? .report : .prospetto
+    }
+
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del capitale in scadenza e della liquidità.
     init(_ t: TestiLiquidita, report: Bool, commento: String? = nil) {
         titolo = TestiLiquidita.titolo
