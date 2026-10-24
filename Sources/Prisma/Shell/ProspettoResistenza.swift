@@ -56,7 +56,7 @@ private struct PaginaMercati: View {
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
             HStack(spacing: 6) {
-                CifraProspetto("Patrimonio finanziario", CifreDoc.euro(r.patrimonioFinanziario), "investimenti, risparmio, previdenza, conti")
+                CifraProspetto("Patrimonio finanziario", CifreDoc.euro(r.patrimonioFinanziario), "senza immobili e debiti")
                 CifraProspetto("Mercati in forte calo", t.mercati.map { CifreDoc.togli($0.perdita) } ?? "—",
                                t.mercati.map { "il \(CifreDoc.percento($0.quota * 100)) del finanziario" } ?? "", colore: C.negativo)
                 CifraProspetto("Inflazione alta", t.inflazione.map { CifreDoc.togli($0.perdita) } ?? "—",
@@ -108,7 +108,7 @@ struct BarraProfilo: View {
         return VStack(alignment: .leading, spacing: 4) {
             GeometryReader { g in
                 ZStack(alignment: .leading) {
-                    Rectangle().fill(C.fondoInterno)
+                    Rectangle().fill(C.griglia)
                     Rectangle().fill(coloreGiudizio(prova.giudizio, C)).frame(width: max(g.size.width * quota / scala, 2))
                     if prova.sopportabile != nil {
                         Rectangle().fill(C.titolo).frame(width: 2).offset(x: g.size.width * soglia / scala - 1)

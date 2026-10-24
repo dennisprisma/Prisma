@@ -36,7 +36,7 @@ struct TestiResistenza {
     /// La perdita di uno scenario in euro e in percentuale, per i titoli.
     func perdita(_ s: ProvaResistenza.Scenario?) -> String {
         guard let s, !s.voci.isEmpty else { return "nessuna perdita" }
-        return "\(CifreDoc.togli(s.perdita)) (\(CifreDoc.percento(s.quota * 100)))"
+        return "circa \(CifreDoc.euro(s.perdita)), il \(CifreDoc.percento(s.quota * 100))"
     }
 
     var titoloScenari: String {
@@ -65,7 +65,7 @@ struct TestiResistenza {
     var sintesi: [(String, String)] {
         var punti: [(String, String)] = []
         if let m = mercati, !m.voci.isEmpty {
-            punti.append(("Se i mercati crollano", "In un anno come il 2008 o il 2022 la perdita stimata è di \(perdita(m)) sui tuoi risparmi."))
+            punti.append(("Se i mercati crollano", "In un anno come il 2008 o il 2022 la perdita stimata è di \(perdita(m)) dei tuoi risparmi."))
         }
         if let g = r.giudizio, let s = r.sopportabile {
             punti.append(("Il tuo profilo", "\(g.etichetta): sopporti fino al \(CifreDoc.condizione(s))."))
