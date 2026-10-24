@@ -64,6 +64,27 @@ enum ProvaEve {
         } else {
             controlla(false, "Estratto conto di prova e posizione riconosciuta")
         }
+        // Riesame annuale: ordine del giorno, domande, bozza dell'incontro con l'agenda nelle note
+        for c in stato.clienti {
+            guard let f = stato.fonteEve(c.id) else { continue }
+            let r = MotoreRiesame.calcola(f)
+            controlla(r.domande.count >= 2, "Riesame di \(c.nome): \(r.punti.count) punti, \(r.domande.count) domande")
+            controlla(zip(r.punti, r.punti.dropFirst()).allSatisfy { $0.priorita <= $1.priorita }, "Riesame di \(c.nome): prima i punti con priorità alta")
+        }
+        if let f = stato.fonteEve("giulia") {
+            let r = MotoreRiesame.calcola(f)
+            controlla(r.andamenti.count == MotoreResoconto.calcola(f.posizioni, cliente: "").finanziarie.compactMap { MotoreAndamento.calcola($0.posizione) }.count,
+                      "Riesame di Giulia: lo stesso andamento del resoconto")
+            if let a = stato.bozzaRiesame("giulia") {
+                controlla(a.tipo == .revisione && a.durataMinuti == 60 && a.note.hasPrefix("Ordine del giorno"), "Bozza del riesame: revisione di un'ora con l'ordine del giorno")
+                controlla(!Calendar.current.isDateInWeekend(a.inizio) && a.inizio > Date(), "Bozza del riesame: un giorno lavorativo futuro")
+            } else {
+                controlla(false, "Bozza del riesame di Giulia")
+            }
+            stato.clienteAttivoId = "giulia"
+            let c = stato.contenutoProspetto(.riesame)
+            controlla(c?.titolo == "Riesame annuale di \(f.cliente.nome)", "Prospetto del riesame composto")
+        }
         // Una domanda scritta a mano uguale a uno spunto viene riconosciuta
         controlla(SpuntoEve.da("  fammi un riepilogo del cliente ") == .riepilogo, "Riconoscimento degli spunti scritti a mano")
         // La sintesi di Giulia riporta il patrimonio netto calcolato dal motore

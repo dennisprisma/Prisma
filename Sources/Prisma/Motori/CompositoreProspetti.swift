@@ -28,6 +28,9 @@ enum CompositoreProspetti {
             return confronto(a, b, orizzonte: orizzonteConfronto, dati: dati, cliente: cliente)
         case .portafoglio:
             return portafoglio(dati)
+        case .riesame:
+            // Il riesame vuole la fonte completa del cliente (Analisi 360, incontri…): lo compone StatoShell
+            return nil
         case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp:
             // Valutazioni e resoconto hanno pagine proprie (ProspettoValutazione, ReportResoconto…)
             return nil

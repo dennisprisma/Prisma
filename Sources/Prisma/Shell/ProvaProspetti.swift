@@ -22,6 +22,10 @@ enum ProvaProspetti {
         ]
         var tutti = casi
         tutti.append(("portafoglio", "", .portafoglio))
+        tutti.append(("riesame-giulia", "giulia", .riesame))
+        tutti.append(("riesame-marco", "marco", .riesame))
+        // Il riesame vuole la fonte completa del cliente: lo compone lo stato dell'app
+        let statoRiesame = StatoShell(persistente: false)
         let voci = ElementoConfronto.elenco(dati, cliente: "marco")
         let coppia = ElementoConfronto.coppia(voci, a: nil, b: nil, posizioni: dati.posizioni.filter { $0.clienteId == "marco" })
         if let a = coppia.0, let b = coppia.1 {
@@ -31,7 +35,12 @@ enum ProvaProspetti {
         }
 
         for (nome, cliente, scelta) in tutti {
-            guard let c = CompositoreProspetti.componi(scelta, dati: dati, cliente: cliente) else {
+            var composto = CompositoreProspetti.componi(scelta, dati: dati, cliente: cliente)
+            if case .riesame = scelta {
+                statoRiesame.clienteAttivoId = cliente
+                composto = statoRiesame.contenutoProspetto(scelta)
+            }
+            guard let c = composto else {
                 verifica("Prospetto \(nome) composto", false)
                 continue
             }
@@ -87,6 +96,8 @@ enum ProvaProspetti {
                 verifica("\(nome): patrimonio seguito \(totale) nel PDF", testo.contains(totale))
                 verifica("\(nome): tutti i clienti e i due canali nel PDF",
                          dati.clienti.allSatisfy { testo.contains($0.nome) } && Canale.allCases.allSatisfy { testo.contains($0.nomeBreve) })
+            case .riesame:
+                verifica("\(nome): ordine del giorno e domande nel PDF", testo.contains("Ordine del giorno") && testo.contains("Domande da fare"))
             case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp:
                 break
             }

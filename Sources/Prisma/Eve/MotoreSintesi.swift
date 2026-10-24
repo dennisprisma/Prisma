@@ -85,8 +85,17 @@ struct MotoreSintesi: MotoreEve {
 
     private func incontro(_ f: FonteEve) -> RispostaEve {
         guard let e = prossimoIncontro(f) else {
-            return RispostaEve(titolo: "Nessun incontro in agenda",
-                               testo: "Non trovo incontri futuri con \(f.cliente.nome). Puoi fissarne uno dall'Agenda: ti preparo la traccia appena c'è.")
+            // Niente in agenda: se è passato un anno, la traccia è quella del riesame annuale
+            let r = MotoreRiesame.calcola(f)
+            guard r.dovuto, !r.punti.isEmpty else {
+                return RispostaEve(titolo: "Nessun incontro in agenda",
+                                   testo: "Non trovo incontri futuri con \(f.cliente.nome). Puoi fissarne uno dall'Agenda: ti preparo la traccia appena c'è.")
+            }
+            let quando = r.ultimoContatto.map { "L'ultimo incontro con \(f.cliente.nome) è del \(Formati.dataEstesa.string(from: $0)): è tempo del riesame annuale." }
+                ?? "Con \(f.cliente.nome) non c'è ancora un incontro registrato: un riesame mette in fila tutto."
+            return RispostaEve(titolo: "Riesame annuale da fissare",
+                               testo: quando + "\n\nOrdine del giorno:\n" + r.punti.prefix(6).map { "• \($0.titolo): \($0.dettaglio)" }.joined(separator: "\n")
+                                   + "\n\nIl prospetto completo, con le domande da fare, è in Prospetti e report → Riesame annuale: da lì fissi anche l'incontro.")
         }
         var parti = ["\(Formati.dataLunga.string(from: e.inizio).capitalized), ore \(Formati.ora.string(from: e.inizio)) · \(e.luogo.isEmpty ? "luogo da definire" : e.luogo) · \(e.durataMinuti) minuti · \(e.tipo.nome.lowercased())."]
         if !e.note.isEmpty { parti.append("Le tue note: \(e.note)") }
@@ -110,6 +119,12 @@ struct MotoreSintesi: MotoreEve {
         if prev.divarioResiduo > 0 { punti.append("previdenza: restano scoperti \(Formati.euro(prev.divarioResiduo)) al mese alla pensione") }
         for t in f.attivita.filter({ !$0.completata && $0.appuntamentoId == e.id }) { punti.append("da preparare: \(t.titolo.lowercased())") }
         if !f.analisiSalvata { punti.append("verificare con il cliente le ipotesi dell'Analisi 360 (ora sono ricavate dalle posizioni)") }
+        // Una revisione periodica: i punti del riesame annuale
+        if e.tipo == .revisione {
+            for p in MotoreRiesame.calcola(f).punti.prefix(6) where !punti.contains(where: { $0.contains(p.titolo) }) {
+                punti.append("\(p.titolo.prefix(1).lowercased() + p.titolo.dropFirst()): \(p.dettaglio)")
+            }
+        }
         if !punti.isEmpty {
             parti.append("Punti da toccare:\n" + punti.map { "• " + $0.prefix(1).uppercased() + String($0.dropFirst()) }.joined(separator: "\n"))
         }

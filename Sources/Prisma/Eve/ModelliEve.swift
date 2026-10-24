@@ -172,6 +172,7 @@ extension SceltaProspetto {
         case .obiettivo: return .obiettivi
         case .liquidita: return .liquidita
         case .checkUp: return .checkUp
+        case .riesame: return .incontro
         case .posizione, .confronto, .valutazione, .portafoglio: return nil
         }
     }
