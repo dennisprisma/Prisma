@@ -73,6 +73,9 @@ enum Misure {
     }
 
     enum Widget {
+        /// La striscia della guida «Comincia con i tuoi dati» e il suo elenco.
+        static let striscia: CGFloat = 50
+        static let elencoGuida: CGFloat = 480
         static let raggio: CGFloat = 10
         static let spazio: CGFloat = 16
         static let intestazione: CGFloat = 40

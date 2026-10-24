@@ -11,6 +11,10 @@ struct Scrivania: View {
                 Spacer(minLength: 20)
                 pulsantiRapidi
             }
+            if stato.guidaVisibile {
+                StrisciaGuida()
+                    .padding(.top, 12)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 intestazioneBacheca
                 BachecaWidget()

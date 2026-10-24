@@ -150,6 +150,16 @@ enum ProvaEve {
         let importati = Set(foglio.clienti.map(\.nome))
         stato.dati.clienti.removeAll { importati.contains($0.nome) }
         stato.clienteAttivoId = "giulia"
+        // La guida per cominciare: con i dati di prova è visibile, i passi si spuntano da soli
+        let guida = StatoShell(persistente: false)
+        controlla(guida.guidaVisibile && guida.passiGuida.count == 6 && guida.passiGuida.allSatisfy { !$0.fatto || $0.azione == .passwordPDF },
+                  "Guida: visibile con i dati di prova, nessun passo fatto")
+        guida.dati.impostazioni.pdf.proteggi = true
+        guida.dati.clienti.append(Cliente(id: "vero", nome: "Cliente Vero", iniziali: "CV", tinta: .blu, tema: "", email: "", telefono: "",
+                                          preferito: false, nota: "", creatoIl: Date()))
+        controlla(guida.passiGuida.filter(\.fatto).count == 2, "Guida: password dei PDF e primo cliente vero spuntati da soli")
+        guida.dati.impostazioni.guidaNascosta = true
+        controlla(!guida.guidaVisibile, "Guida: nascosta dalla scrivania")
         // Una domanda scritta a mano uguale a uno spunto viene riconosciuta
         controlla(SpuntoEve.da("  fammi un riepilogo del cliente ") == .riepilogo, "Riconoscimento degli spunti scritti a mano")
         // La sintesi di Giulia riporta il patrimonio netto calcolato dal motore
