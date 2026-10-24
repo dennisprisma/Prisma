@@ -881,6 +881,8 @@ final class StatoShell: ObservableObject {
             return .sostituzione(coppia?.0 ?? "", coppia?.1 ?? "", report: report)
         case .portafoglio?:
             return .portafoglio
+        case .riesame?:
+            return .riesame
         case .confronto(let a, let b)?:
             let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
             if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
@@ -972,7 +974,8 @@ final class StatoShell: ObservableObject {
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
-        CompositoreProspetti.componi(scelta, dati: dati, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
+        if case .riesame = scelta { return fonteEve(clienteAttivoId).map { CompositoreProspetti.riesame($0) } }
+        return CompositoreProspetti.componi(scelta, dati: dati, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
     }
 
     /// Apre Prospetti e report su una scelta precisa (dal dettaglio di una posizione o da Confronti).
@@ -1600,7 +1603,7 @@ final class StatoShell: ObservableObject {
             return CommentoEve.bozza(nome: nome, apertura: t.e.sostituzione ? "ti lascio il confronto tra restare in \(t.a.nome) e passare a \(t.b.nome), con quello che costa uscire e quello che rende ciascuna strada."
                                                                             : "ti lascio il confronto tra \(t.a.nome) e \(t.b.nome), al netto di costi e imposte.",
                                      punti: punti, passo: t.prossimiPassi.first)
-        case .posizione, .confronto, .valutazione, .portafoglio:
+        case .posizione, .confronto, .valutazione, .portafoglio, .riesame:
             return nil
         }
     }
@@ -1791,6 +1794,22 @@ final class StatoShell: ObservableObject {
         a.note = [d.motivo.map { "Motivo: \($0)." },
                   d.ultimoContatto.map { "Ultimo contatto il \(Formati.dataEstesa.string(from: $0))." } ?? "Nessun incontro registrato in Prisma."]
             .compactMap { $0 }.joined(separator: " ")
+        return a
+    }
+
+    /// La bozza dell'incontro di riesame: un'ora, in ufficio, il primo giorno lavorativo tra una settimana,
+    /// con l'ordine del giorno nelle note. Si completa nel modulo dell'agenda.
+    func bozzaRiesame(_ clienteId: String, oggi: Date = Date()) -> Appuntamento? {
+        guard let f = fonteEve(clienteId) else { return nil }
+        let r = MotoreRiesame.calcola(f)
+        let cal = Calendar.current
+        var giorno = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: oggi)) ?? oggi
+        while cal.isDateInWeekend(giorno) { giorno = cal.date(byAdding: .day, value: 1, to: giorno) ?? giorno }
+        var a = Appuntamento.nuovo(clienteId: clienteId, giorno: giorno)
+        a.titolo = "Riesame annuale"
+        a.tipo = .revisione
+        a.durataMinuti = 60
+        a.note = MotoreRiesame.agenda(r)
         return a
     }
 

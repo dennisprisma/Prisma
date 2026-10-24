@@ -471,6 +471,7 @@ struct PanoramicaCliente: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            riesame
             OcchielloSezione(titolo: "Il dossier collegato")
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                 collegamento(.posizioni, "In essere e in proposta")
@@ -483,6 +484,31 @@ struct PanoramicaCliente: View {
                 collegamento(.note, "Appunti e idee")
                 collegamento(.presentazioni, "Prospetti in PDF")
                 collegamento(.eve, "Ragiona su questo cliente")
+            }
+        }
+    }
+
+    /// Il riesame annuale, quando è dovuto: quanti punti ci sono da trattare e il prospetto per prepararlo.
+    @ViewBuilder private var riesame: some View {
+        if let f = stato.fonteEve(cliente.id) {
+            let r = MotoreRiesame.calcola(f)
+            if r.dovuto, r.prossimo == nil, !r.punti.isEmpty {
+                let alta = r.punti.filter { $0.priorita == .alta }.count
+                VStack(alignment: .leading, spacing: 6) {
+                    OcchielloSezione(titolo: "Riesame annuale", nota: r.ultimoContatto.map { "Ultimo incontro il \(Formati.dataEstesa.string(from: $0))" } ?? "Nessun incontro registrato")
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("\(r.punti.count) punti da trattare" + (alta > 0 ? ", \(alta) con priorità alta" : "") + ": " + r.punti.prefix(2).map(\.titolo).joined(separator: "; ") + (r.punti.count > 2 ? "…" : "."))
+                            .font(Tipo.campoValore)
+                            .foregroundColor(Colori.Rubrica.testo)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Button("Prepara il riesame") {
+                            stato.clienteAttivoId = cliente.id
+                            stato.apriProspetto(.riesame)
+                        }
+                        .buttonStyle(StileCuoioChiaro())
+                    }
+                }
             }
         }
     }

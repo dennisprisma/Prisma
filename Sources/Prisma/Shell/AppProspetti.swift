@@ -10,6 +10,8 @@ struct AppProspetti: View {
     @EnvironmentObject var stato: StatoShell
     @Environment(\.modoIstantanea) var modoIstantanea
     @State var archiviato: String?
+    /// L'incontro di riesame da fissare.
+    @State var moduloAppuntamento: Appuntamento?
 
     private var cliente: String { stato.clienteAttivoId }
     private var scelta: SceltaProspetto { stato.sceltaProspetto }
@@ -49,6 +51,13 @@ struct AppProspetti: View {
             ModuloValutazione(bozza: v, nuova: stato.valutazione(v.id) == nil)
                 .environmentObject(stato)
         }
+        .sheet(item: $moduloAppuntamento) { a in
+            ModuloAppuntamento(bozza: a, nuovo: true, salva: { nuovo in
+                stato.salvaAppuntamento(nuovo)
+                stato.mostraAvviso("Riesame fissato con \(stato.cliente(nuovo.clienteId)?.nome ?? "il cliente"): \(Formati.dataOra.string(from: nuovo.inizio)).")
+            }, elimina: {})
+            .environmentObject(stato)
+        }
     }
 
     private var vuoto: some View {
@@ -72,7 +81,7 @@ struct AppProspetti: View {
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
-        ForEach([TipoProspetto.posizione, .confronto]) { t in
+        ForEach([TipoProspetto.riesame, .posizione, .confronto]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Per te")
@@ -111,6 +120,8 @@ struct AppProspetti: View {
             stato.prospetto = stato.confrontoPredefinito()
         case .portafoglio:
             stato.prospetto = .portafoglio
+        case .riesame:
+            stato.prospetto = .riesame
         }
     }
 
@@ -144,6 +155,7 @@ struct AppProspetti: View {
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
                     case .portafoglio: sceltaPortafoglio
+                    case .riesame: sceltaRiesame
                     }
                     if scelta.conCommento, let chiave = scelta.chiaveCommento(cliente: cliente) {
                         PannelloCommento(scelta: scelta).id(chiave)
@@ -167,6 +179,7 @@ struct AppProspetti: View {
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
         case .portafoglio: return "TUTTI I CLIENTI"
+        case .riesame: return "RIESAME DEL CLIENTE"
         }
     }
 
@@ -218,6 +231,45 @@ struct AppProspetti: View {
             .foregroundColor(Colori.Colonna.collegamento)
         }
         .padding(12)
+    }
+
+    @ViewBuilder private var sceltaRiesame: some View {
+        if let f = stato.fonteEve(cliente) {
+            let r = MotoreRiesame.calcola(f)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Prospetto per te: A4 verticale, da preparare prima dell'incontro di revisione e da tenere sul tavolo mentre parli con il cliente.")
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+                Text(r.ultimoContatto.map { "Ultimo incontro il \(Formati.dataEstesa.string(from: $0))" + (r.dovuto ? ": il riesame è dovuto." : ".") }
+                     ?? "Nessun incontro registrato in Prisma.")
+                    .font(Tipo.strumentoTesto).foregroundColor(Colori.Analisi.tabellaTesto).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(Array(r.punti.prefix(6).enumerated()), id: \.offset) { i, p in
+                        HStack(alignment: .top, spacing: 7) {
+                            Text("\(i + 1).").foregroundColor(p.priorita == .alta ? Colori.Analisi.erroreTesto : Colori.Analisi.navBasso)
+                            Text(p.titolo).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .font(Tipo.strumentoTesto)
+                        .foregroundColor(Colori.Analisi.tabellaTesto)
+                    }
+                    if r.punti.count > 6 {
+                        Text("…e altri \(r.punti.count - 6) punti nel prospetto.").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    }
+                }
+                if let a = r.prossimo {
+                    Button("In agenda: \(a.titolo), \(Formati.dataOra.string(from: a.inizio)) ↗") { stato.mostraInAgenda(a) }
+                        .buttonStyle(StileSemplice())
+                        .font(Tipo.kpiNota)
+                        .foregroundColor(Colori.Colonna.collegamento)
+                } else {
+                    Button("Fissa l'incontro di riesame") { moduloAppuntamento = stato.bozzaRiesame(cliente) }
+                        .buttonStyle(StileBlu())
+                        .disabled(stato.solaLettura)
+                    Text("Un'ora, tra una settimana: l'ordine del giorno va nelle note dell'appuntamento.")
+                        .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(12)
+        }
     }
 
     private func sceltaCheckUp(report: Bool) -> some View {

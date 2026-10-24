@@ -186,6 +186,10 @@ enum Istantanee {
             s.documentoSelezionato = "doc-giulia-kid"
             s.apri(.documenti)
         }),
+        ("69-riesame-prospetto", { s in
+            s.clienteAttivoId = "giulia"
+            s.apriProspetto(.riesame)
+        }),
         ("68-documenti-estratto", { s in
             // Estratto conto confermato: il valore pronto per lo storico del piano di risparmio
             s.clienteAttivoId = "giulia"
