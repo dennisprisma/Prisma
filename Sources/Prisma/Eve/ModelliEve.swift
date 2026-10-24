@@ -60,7 +60,7 @@ struct PropostaEve: Codable, Equatable, Identifiable {
 /// Gli spunti pronti sotto la conversazione. Quelli di analisi leggono gli stessi motori dei
 /// prospetti e dei report: i numeri di Eve e quelli dei documenti coincidono.
 enum SpuntoEve: String, CaseIterable, Identifiable {
-    case riepilogo, checkUp, proposte, incontro, prossimiPassi, resoconto, costi, resistenza, pensione, protezione, liquidita, obiettivi, cambiare, documenti, scadenze
+    case riepilogo, checkUp, proposte, incontro, prossimiPassi, resoconto, costi, resistenza, successione, pensione, protezione, liquidita, obiettivi, cambiare, documenti, scadenze
 
     var id: String { rawValue }
 
@@ -74,6 +74,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         case .resoconto: return "Come stanno andando le posizioni?"
         case .costi: return "Quanto pesano i costi?"
         case .resistenza: return "Cosa succede se i mercati crollano?"
+        case .successione: return "Cosa andrebbe agli eredi?"
         case .pensione: return "Spiegami il piano pensione"
         case .protezione: return "Dove è scoperta la protezione?"
         case .liquidita: return "Cosa fare della liquidità?"
@@ -94,6 +95,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         case .resoconto: return "↗"
         case .costi: return "%"
         case .resistenza: return "↘"
+        case .successione: return "⚭"
         case .pensione: return "☂"
         case .protezione: return "◈"
         case .liquidita: return "€"
@@ -116,6 +118,7 @@ enum SpuntoEve: String, CaseIterable, Identifiable {
         // Ogni chiave è l'inizio di una parola ("pension" sì in «pensione», no in «sospensione»);
         // con \b in fondo vale solo la parola intera («passi» sì, «passività» no).
         let parole: [(SpuntoEve, [String])] = [
+            (.successione, ["eredi", "eredit", "succession", "testament", "beneficiar", #"passaggio generazionale\b"#]),
             (.costi, [#"cost[oi]\b"#, #"costano\b"#, "commission", "caricament"]),
             (.resistenza, ["croll", #"crisi\b"#, "stress", "resisten", "ribass", #"perder[eà]\b"#]),
             (.riepilogo, [#"patrimonio netto\b"#]),

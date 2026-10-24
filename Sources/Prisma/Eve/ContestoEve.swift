@@ -64,6 +64,11 @@ enum ContestoEve {
             righe.append("POSIZIONI IN ESSERE:")
             righe.append(contentsOf: inEssere.prefix(12).map { "- " + riga($0) })
         }
+        let successione = MotoreSuccessione.calcola(cliente: c, posizioni: f.posizioni, oggi: f.oggi)
+        if !successione.vuota {
+            let eredi = successione.eredi.isEmpty ? "nessun erede registrato" : successione.eredi.map { "\($0.nome) \(MotoreSuccessione.frazione($0.quota))" }.joined(separator: ", ")
+            righe.append("SUCCESSIONE (stima di Prisma, senza testamento): ai beneficiari \(Formati.euro(successione.fuoriAsse)), agli eredi \(Formati.euro(successione.asseNetto)) (\(eredi)); imposte \(Formati.euro(successione.imposte)); da sistemare: \(successione.daSistemare.count + (successione.conviventeEscluso == nil ? 0 : 1)).")
+        }
         let costi = MotoreCosti.calcola(f.posizioni, prodotti: f.prodotti, cliente: c.id)
         if let m = costi.costoMedio {
             let alternativa = costi.conAlternativa.first.flatMap { v in v.alternativa.map { "; alternativa a parità di rischio per \(v.posizione.nome): \($0.prodotto.nome), +\(Formati.euro($0.guadagno)) in \($0.anni) anni" } } ?? ""

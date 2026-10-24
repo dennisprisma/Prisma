@@ -158,6 +158,7 @@ struct AppPosizioni: View {
                 VStack(spacing: 0) {
                     VoceNavigazione(titolo: "Prova di resistenza", attiva: false) { stato.ancoraPosizioni = "resistenza" }
                     VoceNavigazione(titolo: "Peso dei costi", attiva: false) { stato.ancoraPosizioni = "costi" }
+                    VoceNavigazione(titolo: "Passaggio generazionale", attiva: false) { stato.ancoraPosizioni = "successione" }
                 }
             }
             EtichettaRail(testo: "Collegati")
@@ -228,6 +229,12 @@ struct AppPosizioni: View {
                     let costi = MotoreCosti.calcola(delCliente, prodotti: stato.dati.prodotti, cliente: stato.clienteAttivoId)
                     if !costi.vuota {
                         PannelloCosti(analisi: costi).id("costi")
+                    }
+                    if let cliente = stato.clienteAttivo {
+                        let successione = MotoreSuccessione.calcola(cliente: cliente, posizioni: stato.posizioniCliente(cliente.id))
+                        if !successione.vuota {
+                            PannelloSuccessione(s: successione).id("successione")
+                        }
                     }
 
                     PannelloAnalisi(titolo: titoloTabella, nota: "Tocca una riga per il dettaglio e la proiezione") {

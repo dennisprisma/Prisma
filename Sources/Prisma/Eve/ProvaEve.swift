@@ -196,10 +196,20 @@ enum ProvaEve {
             ("Cosa succede al suo patrimonio netto se i mercati crollano?", .resistenza),
             ("Quanto può perdere in una crisi?", .resistenza),
             ("Quali costi paga sulle sue polizze?", .costi),
-            ("Quanto gli costano di commissioni?", .costi)
+            ("Quanto gli costano di commissioni?", .costi),
+            ("Cosa succede ai figli se viene a mancare? Chi eredita?", .successione),
+            ("Chi sono i beneficiari delle polizze?", .successione)
         ]
         for (domanda, atteso) in argomenti {
             controlla(SpuntoEve.argomento(domanda) == atteso, "Argomento di «\(domanda)» → \(atteso.rawValue)")
+        }
+        // Passaggio generazionale: le stesse cifre del pannello in Posizioni
+        if let f = stato.fonteEve("marco") {
+            let su = MotoreSuccessione.calcola(cliente: f.cliente, posizioni: f.posizioni, oggi: f.oggi)
+            let r = MotoriEve.sintesi.componi(RichiestaEve(domanda: "", spunto: .successione, fonte: f, storia: []))
+            controlla(r.titolo == "Il passaggio generazionale di Marco Bianchi" && MotoreSuccessione.sintesi(su).allSatisfy { r.testo.contains($0) },
+                      "Passaggio generazionale di Marco: Eve riporta le cifre del motore")
+            controlla(ContestoEve.scheda(f).contains("SUCCESSIONE (stima di Prisma"), "La scheda per il modello riporta la successione")
         }
         // Peso dei costi: le stesse cifre del pannello in Posizioni
         if let f = stato.fonteEve("marco") {
