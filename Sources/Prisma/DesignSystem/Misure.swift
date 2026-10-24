@@ -170,24 +170,27 @@ enum Misure {
     }
 
     enum Dock {
-        static let elemento: CGFloat = 46
-        static let icona: CGFloat = 40
-        static let spazio: CGFloat = 10
+        // Icone grandi e con il nome sotto, come sulla home di iOS 5: a 40 punti erano illeggibili
+        static let elemento: CGFloat = 60
+        static let icona: CGFloat = 52
+        static let spazio: CGFloat = 8
+        /// Il nome sotto l'icona.
+        static let etichetta: CGFloat = 14
         static let margineOrizzontale: CGFloat = 14
         static let margineAlto: CGFloat = 5
         static let margineBasso: CGFloat = 6
-        static let ripianoAltezza: CGFloat = 32
+        static let ripianoAltezza: CGFloat = 44
         static let ripianoAlto: CGFloat = 21
         static let ripianoSporgenza: CGFloat = 9
         static let ripianoRientro: CGFloat = 12
         static let ingrandimento: CGFloat = 1.13
         /// Area riservata al dock sotto le finestre (--os-bottom).
-        static let riservato: CGFloat = 76
+        static let riservato: CGFloat = 104
         /// Con il dock nascosto (finestre aperte): il margine che resta in basso e la striscia che lo richiama.
         static let riservatoNascosto: CGFloat = 4
         static let strisciaRichiamo: CGFloat = 6
         /// Quanto scende il dock per nascondersi.
-        static let corsaNascosto: CGFloat = 100
+        static let corsaNascosto: CGFloat = 130
     }
 
     enum Finestra {

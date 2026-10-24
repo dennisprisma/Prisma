@@ -225,6 +225,7 @@ enum Tipo {
 
     // Dock
     static let dockSuggerimento = sistema(11, .bold)
+    static let dockEtichetta = sistema(10, .semibold)
 
     // Finestre
     static let finestraTitolo = sistema(12)
