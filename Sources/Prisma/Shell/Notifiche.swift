@@ -134,6 +134,21 @@ enum MotoreNotifiche {
                                                                                     : "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda"),
                                    data: inizio, destinazione: richiamare.count == 1 ? .cliente(primo.id) : nil))
         }
+        // Polizze e previdenza senza beneficiari: il capitale andrebbe agli eredi legittimi
+        let perCliente = Dictionary(grouping: dati.posizioni.filter { $0.stato == .inEssere }, by: \.clienteId)
+        let senzaBeneficiari = dati.clienti.filter { c in
+            guard let mie = perCliente[c.id] else { return false }
+            return mie.contains { p in
+                MotoreSuccessione.classifica(p).1 == .beneficiari && p.beneficiari.trimmingCharacters(in: .whitespaces).isEmpty
+                    && abs(MotoreSuccessione.classifica(p).0) > 0.5
+            }
+        }
+        if let primo = senzaBeneficiari.first {
+            elenco.append(Notifica(id: "beneficiari-\(senzaBeneficiari.map(\.id).joined(separator: ","))", gruppo: .daSistemare, app: .posizioni,
+                                   titolo: senzaBeneficiari.count == 1 ? "\(primo.nome): beneficiari da indicare" : "\(senzaBeneficiari.count) clienti con beneficiari da indicare",
+                                   dettaglio: "Polizze o previdenza senza beneficiari: il capitale andrebbe agli eredi legittimi",
+                                   data: inizio, destinazione: senzaBeneficiari.count == 1 ? .cliente(primo.id) : .app(.posizioni)))
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = !MotoreFineAnno.ultimiGiorni(oggi) ? [] : MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
             .filter { f in f.scadenze.contains { $0.tipo == .deduzione && MotoreFineAnno.vicina($0, oggi: oggi) } }

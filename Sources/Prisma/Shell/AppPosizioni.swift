@@ -251,7 +251,7 @@ struct AppPosizioni: View {
     }
 
     /// Porta in vista il pannello chiesto (dalla colonna o da un'istantanea), poi dimentica l'ancora.
-    private func scorri(_ lettore: ScrollViewProxy) {
+    func scorri(_ lettore: ScrollViewProxy) {
         guard let ancora = stato.ancoraPosizioni else { return }
         DispatchQueue.main.async {
             withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }

@@ -9,76 +9,89 @@ extension AppPosizioni {
         p.daRicontattare = MotorePortafoglio.daRicontattare(stato.posizioni, clienti: stato.clienti,
                                                             appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
         let r = p.riepilogo
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                FasciaKPI {
-                    KPI(titolo: "Patrimonio seguito", valore: Formati.euro(r.attivita)) {
-                        Chip(testo: "\(p.clienti.count) \(p.clienti.count == 1 ? "cliente" : "clienti")")
-                        Chip(testo: "Debiti \(Formati.euroBreve(r.debiti))")
-                    }
-                    KPI(titolo: "Premi e versamenti", valore: Formati.euro(r.premiAnnui)) {
-                        Text("all'anno")
-                        Chip(testo: "\(r.contrattiConPremi) \(r.contrattiConPremi == 1 ? "contratto" : "contratti")")
-                    }
-                    KPI(titolo: "Capitale assicurato", valore: Formati.euro(r.capitaleAssicurato)) {
-                        Chip(testo: "\(r.coperture) \(r.coperture == 1 ? "copertura" : "coperture")")
-                    }
-                    KPI(titolo: "Proposte aperte", valore: "\(r.proposteAperte)", ultimo: true) {
-                        Text("per \(Formati.euro(r.valoreProposte))")
-                        if let t = p.tassoAccettazione { Chip(testo: "accettate \(Formati.percentuale((t * 100).rounded()))") }
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 24) {
-                    PannelloAnalisi(titolo: "Ripartizione per area", nota: "Tutti i clienti, posizioni in essere") { EmptyView() } contenuto: {
-                        ripartizione(r)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    PannelloAnalisi(titolo: "Per canale", nota: "Attività in essere") { EmptyView() } contenuto: {
-                        canali(r)
-                    }
-                    .frame(width: 330, alignment: .leading)
-                }
-
-                PannelloAnalisi(titolo: "Per cliente", nota: "Dal più seguito · tocca una riga per aprire le sue posizioni") { EmptyView() } contenuto: {
-                    tabellaClienti(p.clienti)
-                }
-
-                // Il calendario delle revisioni: non dipende dai filtri di canale e area
-                let dovuti = MotoreRiesame.dovuti(clienti: stato.clienti, posizioni: stato.posizioni,
-                                                  appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
-                let fine = MotoreFineAnno.conSpazio(clienti: stato.clienti, posizioni: stato.posizioni)
-                PannelloAnalisi(titolo: "Fine anno \(Calendar.current.component(.year, from: Date()))",
-                                nota: "Spazio deducibile ancora libero sui piani di previdenza: i versamenti contano entro il 31 dicembre") { EmptyView() } contenuto: {
-                    fineAnno(fine)
-                }
-                PannelloAnalisi(titolo: "Riesami annuali",
-                                nota: "Scaduti o in arrivo nei prossimi \(MotoreRiesame.mesiAvanti) mesi, senza un incontro in agenda") { EmptyView() } contenuto: {
-                    riesami(dovuti)
-                }
-
-                HStack(alignment: .top, spacing: 24) {
-                    PannelloAnalisi(titolo: "Scadenze dei prossimi \(Portafoglio.mesiScadenze) mesi",
-                                    nota: "Capitali da reinvestire e coperture da rinnovare") { EmptyView() } contenuto: {
-                        scadenze(p.scadenze)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 18) {
-                        PannelloAnalisi(titolo: "Concentrazione per emittente", nota: "Quota delle attività finanziarie in essere (immobili esclusi)") { EmptyView() } contenuto: {
-                            emittenti(p.emittenti)
+        return ScrollViewReader { lettore in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    FasciaKPI {
+                        KPI(titolo: "Patrimonio seguito", valore: Formati.euro(r.attivita)) {
+                            Chip(testo: "\(p.clienti.count) \(p.clienti.count == 1 ? "cliente" : "clienti")")
+                            Chip(testo: "Debiti \(Formati.euroBreve(r.debiti))")
                         }
-                        PannelloAnalisi(titolo: "Da ricontattare",
-                                        nota: "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda") { EmptyView() } contenuto: {
-                            ricontattare(p.daRicontattare)
+                        KPI(titolo: "Premi e versamenti", valore: Formati.euro(r.premiAnnui)) {
+                            Text("all'anno")
+                            Chip(testo: "\(r.contrattiConPremi) \(r.contrattiConPremi == 1 ? "contratto" : "contratti")")
                         }
-                        PannelloAnalisi(titolo: "Proposte", nota: "Per esito") { EmptyView() } contenuto: {
-                            esiti(p)
+                        KPI(titolo: "Capitale assicurato", valore: Formati.euro(r.capitaleAssicurato)) {
+                            Chip(testo: "\(r.coperture) \(r.coperture == 1 ? "copertura" : "coperture")")
+                        }
+                        KPI(titolo: "Proposte aperte", valore: "\(r.proposteAperte)", ultimo: true) {
+                            Text("per \(Formati.euro(r.valoreProposte))")
+                            if let t = p.tassoAccettazione { Chip(testo: "accettate \(Formati.percentuale((t * 100).rounded()))") }
                         }
                     }
-                    .frame(width: Misure.Portafoglio.emittenti, alignment: .leading)
+
+                    HStack(alignment: .top, spacing: 24) {
+                        PannelloAnalisi(titolo: "Ripartizione per area", nota: "Tutti i clienti, posizioni in essere") { EmptyView() } contenuto: {
+                            ripartizione(r)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        PannelloAnalisi(titolo: "Per canale", nota: "Attività in essere") { EmptyView() } contenuto: {
+                            canali(r)
+                        }
+                        .frame(width: 330, alignment: .leading)
+                    }
+
+                    PannelloAnalisi(titolo: "Per cliente", nota: "Dal più seguito · tocca una riga per aprire le sue posizioni") { EmptyView() } contenuto: {
+                        tabellaClienti(p.clienti)
+                    }
+
+                    // Il calendario delle revisioni: non dipende dai filtri di canale e area
+                    let dovuti = MotoreRiesame.dovuti(clienti: stato.clienti, posizioni: stato.posizioni,
+                                                      appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
+                    let fine = MotoreFineAnno.conSpazio(clienti: stato.clienti, posizioni: stato.posizioni)
+                    PannelloAnalisi(titolo: "Fine anno \(Calendar.current.component(.year, from: Date()))",
+                                    nota: "Spazio deducibile ancora libero sui piani di previdenza: i versamenti contano entro il 31 dicembre") { EmptyView() } contenuto: {
+                        fineAnno(fine)
+                    }
+                    let attenzioni = MotoreAttenzioni.calcola(clienti: stato.clienti, posizioni: stato.posizioni)
+                    if !attenzioni.isEmpty {
+                        PannelloAnalisi(titolo: "Da sistemare nei dossier",
+                                        nota: "Dalle analisi delle posizioni: beneficiari, tutele, rischio e costi · tocca una riga per aprire il pannello") { EmptyView() } contenuto: {
+                            daSistemare(attenzioni)
+                        }
+                        .id("attenzioni")
+                    }
+                    PannelloAnalisi(titolo: "Riesami annuali",
+                                    nota: "Scaduti o in arrivo nei prossimi \(MotoreRiesame.mesiAvanti) mesi, senza un incontro in agenda") { EmptyView() } contenuto: {
+                        riesami(dovuti)
+                    }
+
+                    HStack(alignment: .top, spacing: 24) {
+                        PannelloAnalisi(titolo: "Scadenze dei prossimi \(Portafoglio.mesiScadenze) mesi",
+                                        nota: "Capitali da reinvestire e coperture da rinnovare") { EmptyView() } contenuto: {
+                            scadenze(p.scadenze)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 18) {
+                            PannelloAnalisi(titolo: "Concentrazione per emittente", nota: "Quota delle attività finanziarie in essere (immobili esclusi)") { EmptyView() } contenuto: {
+                                emittenti(p.emittenti)
+                            }
+                            PannelloAnalisi(titolo: "Da ricontattare",
+                                            nota: "Nessun contatto da \(Portafoglio.mesiSenzaContatto) mesi e niente in agenda") { EmptyView() } contenuto: {
+                                ricontattare(p.daRicontattare)
+                            }
+                            PannelloAnalisi(titolo: "Proposte", nota: "Per esito") { EmptyView() } contenuto: {
+                                esiti(p)
+                            }
+                        }
+                        .frame(width: Misure.Portafoglio.emittenti, alignment: .leading)
+                    }
                 }
+                .padding(EdgeInsets(top: 10, leading: 12, bottom: 16, trailing: 12))
             }
-            .padding(EdgeInsets(top: 10, leading: 12, bottom: 16, trailing: 12))
+            // Solo le ancore del portafoglio: quelle del dossier le consuma la vista del cliente
+            .onAppear { if stato.ancoraPosizioni == "attenzioni" { scorri(lettore) } }
+            .onChange(of: stato.ancoraPosizioni) { a in if a == "attenzioni" { scorri(lettore) } }
         }
     }
 
@@ -365,5 +378,46 @@ extension AppPosizioni {
             .lineLimit(1)
             .padding(Misure.Analisi.cellaMargine)
             .frame(width: larghezza, alignment: .trailing)
+    }
+}
+
+
+extension AppPosizioni {
+    /// Righe al massimo in «Da sistemare nei dossier».
+    static let massimoAttenzioni = 12
+
+    /// Le cose da sistemare nei dossier, raggruppate per tipo: un clic apre il cliente sul pannello che le spiega.
+    func daSistemare(_ elenco: [Attenzione]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(elenco.prefix(Self.massimoAttenzioni).enumerated()), id: \.element.id) { i, a in
+                Button {
+                    stato.clienteAttivoId = a.cliente.id
+                    stato.portafoglio = false
+                    stato.ancoraPosizioni = a.tipo.ancora
+                } label: {
+                    HStack(spacing: 10) {
+                        Pillola(testo: a.tipo.nome, tono: a.tipo == .costi ? .neutro : .attenzione)
+                            .frame(width: Misure.Portafoglio.colonnaTipo, alignment: .leading)
+                        Text(a.cliente.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
+                            .frame(width: Misure.Portafoglio.colonnaCliente, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(a.titolo).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
+                            Text(a.dettaglio).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(Misure.Analisi.cellaMargine)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(StileSemplice())
+                .background(i % 2 == 1 ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale)
+                .bordoBasso(Colori.Analisi.tabellaRiga)
+            }
+            if elenco.count > Self.massimoAttenzioni {
+                Text("…e altre \(elenco.count - Self.massimoAttenzioni).").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    .padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
     }
 }

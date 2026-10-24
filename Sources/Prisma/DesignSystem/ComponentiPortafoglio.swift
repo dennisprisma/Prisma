@@ -21,6 +21,9 @@ extension Misure {
         static let barra: CGFloat = 8
         static let avatar: CGFloat = 24
         static let emittenti: CGFloat = 380
+        /// Da sistemare nei dossier: la colonna del tipo e quella del cliente.
+        static let colonnaTipo: CGFloat = 104
+        static let colonnaCliente: CGFloat = 170
     }
 }
 

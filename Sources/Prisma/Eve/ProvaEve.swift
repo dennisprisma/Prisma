@@ -71,6 +71,22 @@ enum ProvaEve {
             controlla(r.domande.count >= 2, "Riesame di \(c.nome): \(r.punti.count) punti, \(r.domande.count) domande")
             controlla(zip(r.punti, r.punti.dropFirst()).allSatisfy { $0.priorita <= $1.priorita }, "Riesame di \(c.nome): prima i punti con priorità alta")
         }
+        // Il riesame raccoglie le analisi del dossier: beneficiari, convivente, costi
+        if let f = stato.fonteEve("marco") {
+            let r = MotoreRiesame.calcola(f)
+            controlla(r.punti.contains { $0.tema == .famiglia && $0.titolo == "Indicare i beneficiari" && $0.priorita == .alta },
+                      "Riesame di Marco: beneficiari da indicare, priorità alta")
+            controlla(r.punti.contains { $0.tema == .costi && $0.titolo.contains("Piano individuale pensionistico") },
+                      "Riesame di Marco: l'alternativa più economica al PIP")
+            controlla(r.domande.contains { $0.contains("beneficiari") || $0.contains("ricevesse") }, "Riesame di Marco: la domanda sui beneficiari")
+        }
+        if let f = stato.fonteEve("giulia") {
+            controlla(MotoreRiesame.calcola(f).punti.contains { $0.tema == .famiglia && $0.titolo == "Tutelare Luca Ferri" }, "Riesame di Giulia: tutelare il convivente")
+        }
+        let attenzioni = MotoreAttenzioni.calcola(clienti: stato.dati.clienti, posizioni: stato.dati.posizioni)
+        controlla(attenzioni.contains { $0.cliente.id == "marco" && $0.tipo == .beneficiari } && attenzioni.contains { $0.cliente.id == "giulia" && $0.tipo == .convivente },
+                  "Da sistemare nei dossier: i beneficiari di Marco e il convivente di Giulia")
+        controlla(MotoreNotifiche.calcola(stato).contains { $0.id.hasPrefix("beneficiari-") && $0.id.contains("marco") }, "Notifiche: clienti con beneficiari da indicare")
         if let f = stato.fonteEve("giulia") {
             let r = MotoreRiesame.calcola(f)
             controlla(r.andamenti.count == MotoreResoconto.calcola(f.posizioni, cliente: "").finanziarie.compactMap { MotoreAndamento.calcola($0.posizione) }.count,
