@@ -135,7 +135,7 @@ enum MotoreNotifiche {
                                    data: inizio, destinazione: richiamare.count == 1 ? .cliente(primo.id) : nil))
         }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
-        let deducibili = MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
+        let deducibili = !MotoreFineAnno.ultimiGiorni(oggi) ? [] : MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
             .filter { f in f.scadenze.contains { $0.tipo == .deduzione && MotoreFineAnno.vicina($0, oggi: oggi) } }
         if let primo = deducibili.first {
             let anno = cal.component(.year, from: oggi)

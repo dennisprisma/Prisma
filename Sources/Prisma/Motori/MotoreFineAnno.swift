@@ -47,6 +47,7 @@ enum MotoreFineAnno {
     /// Le scadenze entro questi giorni sono vicine (notifiche, riesame).
     static let giorniVicini = 60
 
+    /// Le posizioni possono essere di tutti i clienti: si tengono quelle del cliente.
     static func calcola(cliente: Cliente, posizioni: [Posizione], oggi: Date = Date()) -> FineAnno {
         let cal = Calendar.current
         let anno = cal.component(.year, from: oggi)
@@ -102,11 +103,19 @@ enum MotoreFineAnno {
 
     /// I clienti con un piano di previdenza e ancora spazio deducibile quest'anno: prima chi risparmierebbe di più.
     static func conSpazio(clienti: [Cliente], posizioni: [Posizione], oggi: Date = Date()) -> [FineAnno] {
-        let conPiani = Set(posizioni.filter { $0.stato == .inEssere && $0.regime == .previdenza }.map(\.clienteId))
-        return clienti.filter { conPiani.contains($0.id) }
-            .map { calcola(cliente: $0, posizioni: posizioni, oggi: oggi) }
+        // Le posizioni raggruppate una volta sola: con molti clienti non si rilegge tutto per ognuno
+        let perCliente = Dictionary(grouping: posizioni.filter { $0.stato == .inEssere }, by: \.clienteId)
+        return clienti.filter { c in perCliente[c.id]?.contains { $0.regime == .previdenza } ?? false }
+            .map { calcola(cliente: $0, posizioni: perCliente[$0.id] ?? [], oggi: oggi) }
             .filter { $0.spazio >= 1 }
             .sorted { $0.risparmioPossibile != $1.risparmioPossibile ? $0.risparmioPossibile > $1.risparmioPossibile : $0.spazio > $1.spazio }
+    }
+
+    /// true negli ultimi `giorniVicini` giorni dell'anno: allora si guarda lo spazio deducibile.
+    static func ultimiGiorni(_ oggi: Date = Date()) -> Bool {
+        let cal = Calendar.current
+        let fine = cal.date(from: DateComponents(year: cal.component(.year, from: oggi), month: 12, day: 31)) ?? oggi
+        return (cal.dateComponents([.day], from: cal.startOfDay(for: oggi), to: fine).day ?? 999) <= giorniVicini
     }
 
     /// true se mancano al massimo `giorniVicini` giorni.
