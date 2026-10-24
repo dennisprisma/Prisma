@@ -264,5 +264,8 @@ extension Misure {
         /// Prova di resistenza: la barra della perdita sui mercati nel prospetto e nel report.
         static let barraResistenza: CGFloat = 12
         static let barraResistenzaReport: CGFloat = 22
+        /// Il grafico con e senza costi nel prospetto e nel report.
+        static let graficoCosti: CGFloat = 190
+        static let graficoCostiReport: CGFloat = 270
     }
 }

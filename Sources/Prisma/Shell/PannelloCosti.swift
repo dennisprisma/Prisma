@@ -8,8 +8,13 @@ struct PannelloCosti: View {
 
     var body: some View {
         PannelloAnalisi(titolo: "Peso dei costi", nota: "Gestione, caricamenti e trattenute delle posizioni finanziarie in essere; imposte e bollo a parte") {
-            if analisi.risparmioPossibile > 0 {
-                Pillola(testo: "Si può risparmiare", tono: .attenzione)
+            HStack(spacing: 8) {
+                if analisi.risparmioPossibile > 0 {
+                    Pillola(testo: "Si può risparmiare", tono: .attenzione)
+                }
+                Button("Report per il cliente") { stato.apriProspetto(.costi(report: true)) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                    .help("Apre in Prospetti il report dei costi, da stampare o salvare in PDF")
             }
         } contenuto: {
             VStack(alignment: .leading, spacing: 12) {

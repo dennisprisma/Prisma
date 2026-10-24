@@ -98,7 +98,7 @@ enum ProvaProspetti {
                          dati.clienti.allSatisfy { testo.contains($0.nome) } && Canale.allCases.allSatisfy { testo.contains($0.nomeBreve) })
             case .riesame:
                 verifica("\(nome): ordine del giorno e domande nel PDF", testo.contains("Ordine del giorno") && testo.contains("Domande da fare"))
-            case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp, .resistenza:
+            case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp, .resistenza, .costi:
                 break
             }
         }
@@ -341,6 +341,36 @@ enum ProvaProspetti {
                         let mancanti = m.voci.filter { !testo.contains(spazi($0.posizione.nome)) }.map(\.posizione.nome)
                         verifica("\(nome): tutte le posizioni esposte ai mercati", mancanti.isEmpty, mancanti.joined(separator: ", "))
                     }
+                }
+                if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
+            }
+        }
+
+        // Costo degli investimenti: prospetto e report per ogni cliente con posizioni finanziarie con i costi
+        for cliente in dati.clienti {
+            let mie = dati.posizioni.filter { $0.clienteId == cliente.id }
+            let a = MotoreCosti.calcola(mie, prodotti: dati.prodotti, cliente: cliente.id)
+            guard !a.voci.isEmpty else { continue }
+            let t = TestiCosti(a, cliente: cliente)
+            verifica("costi-\(cliente.id): il grafico parte dallo stesso valore e i costi tolgono", t.serie.con.first == t.serie.senza.first
+                     && (t.serie.con.last ?? 0) < (t.serie.senza.last ?? 0))
+            for report in [false, true] {
+                let d = DocumentoStampabile(t, report: report)
+                let nome = "costi-\(cliente.id)-\(report ? "report" : "prospetto")"
+                guard let pdf = StampaCarta.pdf(d), let documento = PDFDocument(data: pdf) else {
+                    verifica("\(nome): PDF creato", false)
+                    continue
+                }
+                verifica("\(nome): PDF di \(d.pagine.count) pagine", documento.pageCount == d.pagine.count && d.pagine.count >= (report ? 5 : 2),
+                         "\(documento.pageCount) pagine, \(pdf.count / 1024) KB")
+                let orizzontale = (documento.page(at: 0)?.bounds(for: .mediaBox).width ?? 0) > (documento.page(at: 0)?.bounds(for: .mediaBox).height ?? 0)
+                verifica("\(nome): \(report ? "A4 orizzontale" : "A4 verticale")", orizzontale == report)
+                let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
+                verifica("\(nome): cliente e consulente", testo.contains(cliente.nome) && testo.contains(TestiValutazione.consulente))
+                verifica("\(nome): costi di quest'anno \(CifreDoc.euro(a.euroAnno)) nel PDF", testo.contains(spazi(CifreDoc.euro(a.euroAnno))))
+                if !report {
+                    let mancanti = a.voci.filter { !testo.contains(spazi($0.posizione.nome)) }.map(\.posizione.nome)
+                    verifica("\(nome): tutte le posizioni con i costi", mancanti.isEmpty, mancanti.joined(separator: ", "))
                 }
                 if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
             }
