@@ -167,6 +167,8 @@ final class StatoShell: ObservableObject {
         if persistente {
             let caricati = Archivio.carica()
             dati = caricati.dati
+            // Prima di disegnare qualcosa: i caratteri dell'interfaccia nascono con questa misura
+            Tipo.fattore = caricati.dati.impostazioni.dimensioneTesto.fattore
             salvataggioSospeso = caricati.solaLettura
             solaLettura = caricati.solaLettura
             ripristinoBloccato = caricati.bloccaRipristino

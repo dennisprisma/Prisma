@@ -125,10 +125,12 @@ struct Impostazioni: Codable, Equatable {
     var pdf = ImpostazioniPDF()
     /// La guida «Comincia con i tuoi dati» nascosta dalla scrivania.
     var guidaNascosta = false
+    /// Dimensione dei testi dell'interfaccia (si applica all'avvio).
+    var dimensioneTesto = DimensioneTesto.normale
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta }
+    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -140,6 +142,30 @@ struct Impostazioni: Codable, Equatable {
         eve = (try? c.decodeIfPresent(ImpostazioniEve.self, forKey: .eve)) ?? ImpostazioniEve()
         pdf = (try? c.decodeIfPresent(ImpostazioniPDF.self, forKey: .pdf)) ?? ImpostazioniPDF()
         guidaNascosta = (try? c.decodeIfPresent(Bool.self, forKey: .guidaNascosta)) ?? false
+        dimensioneTesto = (try? c.decodeIfPresent(DimensioneTesto.self, forKey: .dimensioneTesto)) ?? .normale
+    }
+}
+
+/// Quanto si ingrandiscono i testi dell'interfaccia.
+enum DimensioneTesto: String, Codable, CaseIterable, Identifiable {
+    case normale, grande, moltoGrande
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .normale: return "Normale"
+        case .grande: return "Grande"
+        case .moltoGrande: return "Molto grande"
+        }
+    }
+
+    var fattore: CGFloat {
+        switch self {
+        case .normale: return 1
+        case .grande: return 1.1
+        case .moltoGrande: return 1.2
+        }
     }
 }
 
