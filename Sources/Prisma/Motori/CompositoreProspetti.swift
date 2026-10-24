@@ -31,7 +31,7 @@ enum CompositoreProspetti {
         case .riesame:
             // Il riesame vuole la fonte completa del cliente (Analisi 360, incontri…): lo compone StatoShell
             return nil
-        case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp, .resistenza, .costi:
+        case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp, .resistenza, .costi, .successione:
             // Valutazioni e resoconto hanno pagine proprie (ProspettoValutazione, ReportResoconto…)
             return nil
         }

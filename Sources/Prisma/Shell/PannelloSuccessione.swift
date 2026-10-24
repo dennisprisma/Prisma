@@ -8,8 +8,13 @@ struct PannelloSuccessione: View {
 
     var body: some View {
         PannelloAnalisi(titolo: "Passaggio generazionale", nota: "Se mancasse oggi, senza testamento: una stima per parlarne, non un parere legale o notarile") {
-            if !s.daSistemare.isEmpty || s.conviventeEscluso != nil {
-                Pillola(testo: "Da sistemare", tono: .attenzione)
+            HStack(spacing: 8) {
+                if !s.daSistemare.isEmpty || s.conviventeEscluso != nil {
+                    Pillola(testo: "Da sistemare", tono: .attenzione)
+                }
+                Button("Report per il cliente") { stato.apriProspetto(.successione(report: true)) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                    .help("Apre in Prospetti il report del passaggio generazionale, da stampare o salvare in PDF")
             }
         } contenuto: {
             VStack(alignment: .leading, spacing: 12) {
