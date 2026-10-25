@@ -21,6 +21,8 @@ struct PatrimonioNelTempo {
     /// Versamenti di un anno, oggi e con le proposte.
     let versamentiAnnui: Double
     let versamentiAnnuiProposte: Double
+    /// La parte dei versamenti iniziali delle proposte che i conti non coprono: capitale che deve arrivare da fuori.
+    var capitaleNuovo: Double = 0
 
     var nettoOggi: Double { oggi.first?.valore ?? 0 }
     func valore(_ anno: Int, conProposte: Bool = false) -> Double {
@@ -39,35 +41,44 @@ enum MotorePatrimonio {
     static func calcola(_ posizioni: [Posizione], obiettivi: [Obiettivo] = [], anni: Int = orizzonte, oggi: Date = Date()) -> PatrimonioNelTempo {
         let inEssere = posizioni.filter { $0.stato == .inEssere }
         let proposte = posizioni.filter { $0.stato == .proposta && $0.esito != .rifiutata && $0.esito != .accettata && $0.area.proiettabile }
-        let base = serie(inEssere, anni: anni)
+        let base = serie(inEssere, anni: anni, oggi: oggi)
         var conProposte: [PuntoProiezione]?
+        var capitaleNuovo = 0.0
         if !proposte.isEmpty {
-            // Il versamento iniziale delle proposte viene dalla liquidità: non si conta due volte
-            let iniziale = proposte.reduce(0) { $0 + $1.versamentoIniziale }
-            let liquidita = inEssere.filter { $0.area == .liquidita }.reduce(0) { $0 + $1.valore }
+            // Il versamento iniziale delle proposte viene prima dai conti, che si riducono in proporzione
+            // (e smettono di rendere su quella parte); quello che i conti non coprono è capitale nuovo
+            let iniziale = proposte.reduce(0) { $0 + max(0, $1.versamentoIniziale) }
+            let liquidita = max(0, inEssere.filter { $0.area == .liquidita }.reduce(0) { $0 + $1.valore })
             let presoDaiConti = min(iniziale, liquidita)
-            let extra = serie(proposte, anni: anni)
-            conProposte = zip(base, extra).map { a, b in
-                PuntoProiezione(anno: a.anno, versato: a.versato + b.versato - presoDaiConti, valore: a.valore + b.valore - presoDaiConti)
+            capitaleNuovo = iniziale - presoDaiConti
+            let resta = liquidita > 0 ? 1 - presoDaiConti / liquidita : 1
+            let ridotte = inEssere.map { p -> Posizione in
+                guard p.area == .liquidita else { return p }
+                var q = p
+                q.controvalore = p.valore * resta
+                return q
             }
+            conProposte = serie(ridotte + proposte, anni: anni, oggi: oggi)
         }
         let cal = Calendar.current
         let traguardi = obiettivi.compactMap { o -> PatrimonioNelTempo.Traguardo? in
+            // Un obiettivo già passato non è più lungo la strada
+            guard o.scadenza >= cal.startOfDay(for: oggi) else { return nil }
             let mesi = cal.dateComponents([.month], from: oggi, to: o.scadenza).month ?? 0
             let anno = Int((Double(mesi) / 12).rounded())
             return (0...anni).contains(anno) ? .init(obiettivo: o, anno: anno) : nil
         }.sorted { $0.anno < $1.anno }
         return PatrimonioNelTempo(anni: anni, oggi: base, conProposte: conProposte, proposte: proposte, traguardi: traguardi,
                                   versamentiAnnui: inEssere.filter(\.area.proiettabile).reduce(0) { $0 + $1.premioAnnuo },
-                                  versamentiAnnuiProposte: proposte.reduce(0) { $0 + $1.premioAnnuo })
+                                  versamentiAnnuiProposte: proposte.reduce(0) { $0 + $1.premioAnnuo }, capitaleNuovo: capitaleNuovo)
     }
 
     /// La somma anno per anno delle posizioni: valore (debiti in negativo) e versato cumulato.
-    static func serie(_ posizioni: [Posizione], anni: Int) -> [PuntoProiezione] {
+    static func serie(_ posizioni: [Posizione], anni: Int, oggi: Date = Date()) -> [PuntoProiezione] {
         var valori = [Double](repeating: 0, count: anni + 1)
         var versati = valori
         for p in posizioni {
-            for (i, v) in andamento(p, anni: anni).enumerated() {
+            for (i, v) in andamento(p, anni: anni, oggi: oggi).enumerated() {
                 valori[i] += v.valore
                 versati[i] += v.versato
             }
@@ -76,7 +87,7 @@ enum MotorePatrimonio {
     }
 
     /// Valore e versato di una posizione anno per anno (anni + 1 punti).
-    static func andamento(_ p: Posizione, anni: Int) -> [(valore: Double, versato: Double)] {
+    static func andamento(_ p: Posizione, anni: Int, oggi: Date = Date()) -> [(valore: Double, versato: Double)] {
         let punti = 0...anni
         switch p.area {
         case .protezione:
@@ -84,7 +95,8 @@ enum MotorePatrimonio {
         case .immobili:
             return punti.map { _ in (p.valore, p.valore) }
         case .debiti:
-            // Rimborso lineare fino alla scadenza; senza scadenza resta com'è
+            // Rimborso lineare fino alla scadenza; senza scadenza resta com'è; già scaduto, estinto
+            if let s = p.scadenza, s <= oggi { return punti.map { _ in (0, 0) } }
             let durata = p.anniAllaScadenza.map(Double.init)
             return punti.map { a in
                 let residuo = durata.map { p.valore * max(0, 1 - Double(a) / $0) } ?? p.valore
@@ -95,7 +107,9 @@ enum MotorePatrimonio {
             return punti.map { a in (p.valore * pow(1 + r, Double(a)), p.valore) }
         case .investimento, .risparmio, .previdenza:
             var par = ParametriProiezione(posizione: p)
-            let durata = min(anni, p.anniAllaScadenza ?? anni)
+            // Già scaduta: il capitale resta fermo, senza versamenti né crescita
+            let scaduta = p.scadenza.map { $0 <= oggi } ?? false
+            let durata = scaduta ? 0 : min(anni, p.anniAllaScadenza ?? anni)
             par.anni = durata
             let e = MotoreProiezione.calcola(par)
             return punti.map { a in
@@ -108,9 +122,12 @@ enum MotorePatrimonio {
 
     /// Le righe per Eve e per le schede.
     static func sintesi(_ p: PatrimonioNelTempo) -> [String] {
-        var righe = ["Patrimonio netto oggi \(Formati.euro(p.nettoOggi)); tra 10 anni circa \(Formati.euro(p.valore(10))), tra \(p.anni) circa \(Formati.euro(p.valore(p.anni))) (\(Formati.euro(p.reale(p.valore(p.anni), anno: p.anni))) in euro di oggi), con i versamenti attuali di \(Formati.euro(p.versamentiAnnui)) l'anno."]
+        var righe = ["Patrimonio netto oggi \(Formati.euro(p.nettoOggi)); tra 10 anni circa \(Formati.euro(p.valore(10))), tra \(p.anni) anni circa \(Formati.euro(p.valore(p.anni))) (\(Formati.euro(p.reale(p.valore(p.anni), anno: p.anni))) in euro di oggi), con i versamenti attuali di \(Formati.euro(p.versamentiAnnui)) l'anno."]
         if let d = p.differenzaProposte {
             righe.append("Con le proposte aperte (\(p.proposte.map(\.nome).joined(separator: ", "))): \(Formati.euro(p.valore(p.anni, conProposte: true))) tra \(p.anni) anni, \(d >= 0 ? "+" : "")\(Formati.euro(d)) rispetto a oggi.")
+            if p.capitaleNuovo > 0.5 {
+                righe.append("Le proposte chiedono \(Formati.euro(p.capitaleNuovo)) di capitale in più rispetto ai conti: da dove arrivano (un riscatto, un'entrata) va deciso.")
+            }
         }
         for t in p.traguardi.prefix(3) {
             righe.append("Obiettivo «\(t.obiettivo.titolo)» tra \(t.anno) anni (\(Formati.euro(t.obiettivo.importo))): il patrimonio stimato allora è \(Formati.euro(p.valore(t.anno, conProposte: p.conProposte != nil))).")

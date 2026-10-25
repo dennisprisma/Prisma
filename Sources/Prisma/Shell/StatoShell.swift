@@ -221,7 +221,12 @@ final class StatoShell: ObservableObject {
     /// In modalità cliente il cliente attivo resta quello mostrato: nessun percorso porta a un altro dossier.
     var clienteAttivoId: String {
         get { modoCliente ?? dati.clienteAttivoId }
-        set { if modoCliente == nil { dati.clienteAttivoId = newValue } }
+        set {
+            guard modoCliente == nil else { return }
+            // Il fascicolo preparato per l'appuntamento di un cliente non segue un altro cliente
+            if newValue != dati.clienteAttivoId { fascicoloAppuntamento = nil }
+            dati.clienteAttivoId = newValue
+        }
     }
 
     var clienteAttivo: Cliente? { clienti.first { $0.id == clienteAttivoId } }
@@ -305,8 +310,8 @@ final class StatoShell: ObservableObject {
         pannelloNotifiche = false
         pannelloSpazi = false
         pannelloAppAperte = false
-        // Dalla schermata di blocco si torna sempre a Prisma completo
-        presentazione = nil
+        // Dalla schermata di blocco si torna sempre a Prisma completo (e la finestra esce dal tutto schermo)
+        chiudiPresentazione()
         modoCliente = nil
         anima { bloccato = true }
     }

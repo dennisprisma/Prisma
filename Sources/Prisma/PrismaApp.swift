@@ -55,8 +55,6 @@ struct PrismaApp: App {
                 Button("Spazi di lavoro…") { stato.pannelloSpazi = true }
                     .disabled(stato.inModoCliente)
                 Button("Le tue app aperte…") { stato.pannelloAppAperte = true }
-                Button("Schermata di benvenuto") { stato.blocca() }
-                    .keyboardShortcut("l", modifiers: [.command, .option])
                 Divider()
                 Button("Scrivania") { stato.mostraScrivania() }
                     .keyboardShortcut("0", modifiers: .option)
@@ -70,7 +68,12 @@ struct PrismaApp: App {
                     Button(app.titolo) { stato.apri(app) }
                 }
                 }
-                .disabled(stato.bloccato)
+                // Durante la presentazione nulla si muove sotto il velo: resta solo la schermata di benvenuto
+                .disabled(stato.bloccato || stato.presentazione != nil)
+                Divider()
+                Button("Schermata di benvenuto") { stato.blocca() }
+                    .keyboardShortcut("l", modifiers: [.command, .option])
+                    .disabled(stato.bloccato)
             }
             CommandGroup(replacing: .newItem) {}
         }

@@ -695,8 +695,14 @@ struct DettaglioAppuntamento: View {
                 }
                 GridRow {
                     PulsanteAzione(titolo: stato.fascicoloArchiviato(per: evento) == nil ? "▤ Prepara il fascicolo da consegnare"
-                                                                                       : "▤ Fascicolo consegnato: riaprilo") {
-                        stato.preparaFascicolo(per: evento)
+                                                                                       : "▤ Fascicolo consegnato: aprilo in Documenti") {
+                        if let d = stato.fascicoloArchiviato(per: evento) {
+                            stato.clienteAttivoId = evento.clienteId
+                            stato.documentoSelezionato = d.id
+                            stato.apri(.documenti)
+                        } else {
+                            stato.preparaFascicolo(per: evento)
+                        }
                     }
                     .gridCellColumns(3)
                 }

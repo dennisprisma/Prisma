@@ -17,6 +17,8 @@ struct Presentazione {
     var clienteId: String?
     var appuntamentoId: String?
     var annotazioni = 0
+    /// La finestra messa a tutto schermo: all'uscita si rimette com'era quella, non la finestra in primo piano.
+    var finestra: NSWindow?
 }
 
 extension StatoShell {
@@ -24,20 +26,26 @@ extension StatoShell {
     func presenta(_ d: DocumentoStampabile, delCliente: Bool = true) {
         guard !d.pagine.isEmpty else { return }
         var p = Presentazione(titolo: d.titolo, cliente: d.cliente, formato: d.formato, pagine: d.pagine)
-        if delCliente {
-            p.clienteId = clienteAttivoId
-            // Il fascicolo preparato dall'Agenda porta con sé l'appuntamento
-            if case .fascicolo? = prospetto { p.appuntamentoId = fascicoloAppuntamento }
+        if delCliente, let c = clienteAttivo {
+            p.clienteId = c.id
+            // Il fascicolo preparato dall'Agenda porta con sé l'appuntamento, se è proprio di questo cliente
+            if case .fascicolo? = prospetto, let id = fascicoloAppuntamento,
+               dati.appuntamenti.contains(where: { $0.id == id && $0.clienteId == c.id }) {
+                p.appuntamentoId = id
+            }
         }
-        if delCliente, !inModoCliente {
+        if p.clienteId != nil, !inModoCliente {
             entraModoCliente(avviso: false)
             p.haAccesoModoCliente = inModoCliente
         }
         if persistente, let finestra = NSApp.keyWindow, !finestra.styleMask.contains(.fullScreen) {
             finestra.toggleFullScreen(nil)
             p.haAccesoSchermoIntero = true
+            p.finestra = finestra
         }
         pannelloNotifiche = false
+        // Nessun campo sotto il velo deve ricevere i tasti: il commento o la chat di Eve resterebbero scrivibili
+        if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
         presentazione = p
     }
 
@@ -59,10 +67,11 @@ extension StatoShell {
         let t = testo.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, var p = presentazione, let cliente = p.clienteId else { return }
         let cal = Calendar.current
-        var incontro = dati.incontri.first { i in p.appuntamentoId.map { i.appuntamentoId == $0 } ?? false }
+        // Sempre e solo incontri e appuntamenti di questo cliente
+        var incontro = dati.incontri.first { i in i.clienteId == cliente && (p.appuntamentoId.map { i.appuntamentoId == $0 } ?? false) }
             ?? dati.incontri.first { $0.clienteId == cliente && cal.isDate($0.data, inSameDayAs: oggi) }
         if incontro == nil {
-            let a = p.appuntamentoId.flatMap { id in dati.appuntamenti.first { $0.id == id } }
+            let a = p.appuntamentoId.flatMap { id in dati.appuntamenti.first { $0.id == id && $0.clienteId == cliente } }
             incontro = Incontro(clienteId: cliente, titolo: a?.titolo ?? "Incontro del \(CifreDoc.dataBreve(oggi))",
                                 data: a?.inizio ?? Appuntamento.alMinuto(oggi), appuntamentoId: a?.id)
         }
@@ -73,6 +82,8 @@ extension StatoShell {
         if comeAttivita {
             var a = Attivita.nuova(clienteId: cliente, scadenza: cal.date(byAdding: .day, value: 7, to: oggi) ?? oggi)
             a.titolo = t
+            // Collegata all'appuntamento da cui nasce: si ritrova sotto di lui in Agenda
+            a.appuntamentoId = p.appuntamentoId
             salvaAttivita(a)
         }
         p.annotazioni += 1
@@ -83,7 +94,7 @@ extension StatoShell {
         guard let p = presentazione else { return }
         presentazione = nil
         if p.haAccesoModoCliente { esciModoCliente() }
-        if p.haAccesoSchermoIntero, let finestra = NSApp.keyWindow, finestra.styleMask.contains(.fullScreen) {
+        if p.haAccesoSchermoIntero, let finestra = p.finestra ?? NSApp.keyWindow, finestra.styleMask.contains(.fullScreen) {
             finestra.toggleFullScreen(nil)
         }
     }

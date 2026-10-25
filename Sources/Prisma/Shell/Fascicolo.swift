@@ -86,11 +86,14 @@ extension StatoShell {
                                         cartellini: [("Documenti", ["\(parti.count)"]), ("Pagine", ["\(pagina - 1)"])])
         let apertura = ImpaginaReport.pagine(copertina: AnyView(copertina), interne: [AnyView(IndiceFascicolo(voci: voci))],
                                              intestazione: "Fascicolo dell'incontro · \(c.nome)")
-        return DocumentoStampabile(report: Self.titoloFascicolo(data), cliente: c.nome, pagine: apertura + parti.flatMap(\.1.pagine))
+        return DocumentoStampabile(report: Self.titoloFascicolo(data, conOra: incontro != nil), cliente: c.nome, pagine: apertura + parti.flatMap(\.1.pagine))
     }
 
-    /// «Fascicolo dell'incontro del 28/10/2026»: con la data, l'archivio in Documenti tiene un fascicolo per incontro.
-    static func titoloFascicolo(_ data: Date) -> String { "Fascicolo dell'incontro del \(CifreDoc.dataBreve(data))" }
+    /// «Fascicolo dell'incontro del 28/10/2026 ore 10:00»: con data e ora dell'appuntamento l'archivio in Documenti
+    /// tiene un fascicolo per incontro, anche con due incontri nello stesso giorno.
+    static func titoloFascicolo(_ data: Date, conOra: Bool = true) -> String {
+        "Fascicolo dell'incontro del \(CifreDoc.dataBreve(data))" + (conOra ? " ore \(Formati.ora.string(from: data))" : "")
+    }
 
     /// Dall'Agenda: i report adatti all'appuntamento, già spuntati, nel fascicolo del cliente.
     func preparaFascicolo(per a: Appuntamento) {
@@ -112,6 +115,9 @@ struct IndiceFascicolo: View {
     @Environment(\.paletteDocumento) private var C
     let voci: [(String, Int)]
 
+    /// Con molti documenti le righe si stringono, per restare nella pagina.
+    private var fitto: Bool { voci.count > Misure.Documento.schedeReport + 2 }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             TestaReport(occhiello: "Indice", titolo: "Cosa trovi in questo fascicolo",
@@ -119,12 +125,12 @@ struct IndiceFascicolo: View {
             VStack(spacing: 0) {
                 ForEach(Array(voci.enumerated()), id: \.offset) { i, v in
                     HStack(alignment: .firstTextBaseline, spacing: 14) {
-                        Text(verbatim: String(format: "%02d", i + 1)).font(T.sintesiNumero).foregroundColor(C.occhiello).frame(width: 40, alignment: .leading)
+                        Text(verbatim: String(format: "%02d", i + 1)).font(fitto ? T.titoloRiquadro : T.sintesiNumero).foregroundColor(C.occhiello).frame(width: 40, alignment: .leading)
                         Text(verbatim: v.0).font(T.titoloRiquadro).foregroundColor(C.titolo)
                         Spacer(minLength: 10)
                         Text(verbatim: "pagina \(v.1)").font(T.piccolo).foregroundColor(C.tenue)
                     }
-                    .padding(.vertical, 9)
+                    .padding(.vertical, fitto ? 4 : 9)
                     Rectangle().fill(C.filetto).frame(height: 0.6)
                 }
             }

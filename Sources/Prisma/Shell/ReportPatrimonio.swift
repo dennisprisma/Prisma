@@ -139,6 +139,9 @@ private struct SlideProposte: View {
                             }
                         }
                     }
+                    if p.proposte.count > D.puntiReport {
+                        Text(verbatim: "…e altre \(p.proposte.count - D.puntiReport)").font(T.minimo).foregroundColor(C.tenue)
+                    }
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -157,6 +160,9 @@ private struct SlideProposte: View {
                             Text(verbatim: "patrimonio stimato allora \(CifreDoc.euro(p.valore(o.anno, conProposte: p.conProposte != nil)))")
                                 .font(T.minimo).foregroundColor(C.tenue)
                         }
+                    }
+                    if p.traguardi.count > D.puntiReport {
+                        Text(verbatim: "…e altri \(p.traguardi.count - D.puntiReport)").font(T.minimo).foregroundColor(C.tenue)
                     }
                 }
                 .padding(18)
