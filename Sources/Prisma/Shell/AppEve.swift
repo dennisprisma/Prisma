@@ -244,23 +244,56 @@ struct AppEve: View {
         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Eve.conversazioneBordo, lineWidth: 1))
     }
 
-    /// Display scuro con l'onda: Eve pronta o al lavoro.
+    /// Display scuro con l'onda: Eve pronta, al lavoro, in ascolto o mentre parla.
     private var display: some View {
-        HStack(spacing: 10) {
-            OndaEve(attiva: stato.eveInCorso)
-                .frame(height: 26)
-            Text(stato.eveInCorso ? "EVE · STA PENSANDO" : "EVE · PRONTA")
-                .font(Tipo.eveDisplay)
-                .tracking(1.2)
-                .foregroundColor(Colori.Eve.displayTesto)
-                .fixedSize()
+        conVoce { v in
+            let attiva = stato.eveInCorso || v.ascolta || v.parla
+            let scritta = v.ascolta ? "EVE · TI ASCOLTA" : (stato.eveInCorso ? "EVE · STA PENSANDO" : (v.parla ? "EVE · TI RISPONDE" : "EVE · PRONTA"))
+            HStack(spacing: 10) {
+                if v.ascolta || v.parla {
+                    Circle().fill(v.ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).frame(width: 7, height: 7)
+                        .shadow(color: (v.ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).opacity(0.9), radius: 3)
+                }
+                OndaEve(attiva: attiva)
+                    .frame(height: 26)
+                Text(scritta)
+                    .font(Tipo.eveDisplay)
+                    .tracking(1.2)
+                    .foregroundColor(attiva ? Colori.Eve.displayAttivo : Colori.Eve.displayTesto)
+                    .fixedSize()
+                if v.parla {
+                    Button("Interrompi") { stato.voceEve.zitta() }
+                        .buttonStyle(StileSemplice())
+                        .font(Tipo.eveAzione)
+                        .foregroundColor(Colori.Eve.displayTesto)
+                        .fixedSize()
+                }
+                if stato.conversazioneAVoce {
+                    Button("■ Chiudi la conversazione a voce") { stato.fermaVoce() }
+                        .buttonStyle(StileSemplice())
+                        .font(Tipo.eveAzione)
+                        .foregroundColor(Colori.Eve.displayTesto)
+                        .fixedSize()
+                        .help("Oppure di' a Eve «basta così»")
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(height: Misure.Eve.display)
+            .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.displayEve))
+            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.displayBordo, lineWidth: 1))
+            .shadow(color: .white.opacity(0.5), radius: 0, x: 0, y: 1)
+            .padding(EdgeInsets(top: 8, leading: 10, bottom: 4, trailing: 10))
         }
-        .padding(.horizontal, 12)
-        .frame(height: Misure.Eve.display)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.displayEve))
-        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.displayBordo, lineWidth: 1))
-        .shadow(color: .white.opacity(0.5), radius: 0, x: 0, y: 1)
-        .padding(EdgeInsets(top: 8, leading: 10, bottom: 4, trailing: 10))
+    }
+
+    /// Il contenuto che segue la voce e l'ascolto di Eve (nelle istantanee, lo stato di prova).
+    @ViewBuilder
+    private func conVoce<C: View>(@ViewBuilder _ contenuto: @escaping (StatoVoce) -> C) -> some View {
+        if stato.persistente {
+            OsservaVoce(ascolto: stato.ascoltoEve, voce: stato.voceEve, contenuto: contenuto)
+        } else {
+            contenuto(stato.voceIstantanea ?? StatoVoce())
+        }
     }
 
     private var messaggiVista: some View {
@@ -350,14 +383,37 @@ struct AppEve: View {
                 }
             }
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("Chiedi una sintesi, un incontro, i prossimi passi…", text: $stato.domandaEve, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(Tipo.eveCampo)
-                    .lineLimit(1...4)
-                    .onSubmit { invia(stato.domandaEve) }
-                    .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Eve.campo))
-                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Eve.campoBordo, lineWidth: 1))
+                conVoce { v in
+                    if v.ascolta {
+                        // Mentre parli, al posto del campo c'è quello che Eve sta capendo
+                        Text(v.trascritto.isEmpty ? "Ti ascolto…" : v.trascritto)
+                            .font(Tipo.eveCampo)
+                            .italic(v.trascritto.isEmpty)
+                            .foregroundColor(v.trascritto.isEmpty ? Colori.Eve.ascoltoTesto : Colori.Eve.nuvolaEveTesto)
+                            .lineLimit(4)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Eve.campo))
+                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Eve.spiaAscolto, lineWidth: 1.5))
+                    } else {
+                        TextField("Chiedi una sintesi, un incontro, i prossimi passi…", text: $stato.domandaEve, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(Tipo.eveCampo)
+                            .lineLimit(1...4)
+                            .onSubmit { invia(stato.domandaEve) }
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Eve.campo))
+                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Eve.campoBordo, lineWidth: 1))
+                    }
+                }
+                conVoce { v in
+                    Button { stato.alternaAscolto() } label: {
+                        Image(systemName: v.ascolta ? "waveform" : "mic.fill").frame(width: 18)
+                    }
+                    .buttonStyle(StileMicrofono(acceso: v.ascolta))
+                    .disabled(stato.eveInCorso && !v.ascolta)
+                    .help(v.ascolta ? "Ho finito di parlare" : "Parla con Eve (⌥⌘E)")
+                }
                 Button { invia(stato.domandaEve) } label: {
                     Text("↑").font(Tipo.eveTitoloRisposta).frame(width: 18)
                 }
@@ -366,12 +422,15 @@ struct AppEve: View {
                 .keyboardShortcut(.return, modifiers: .command)
                 .help("Invia (⌘↩)")
             }
-            Text(stato.dati.impostazioni.eve.conservaConversazioni
-                 ? (stato.evePortafoglio ? "Invio per mandare · la conversazione del portafoglio resta sul Mac"
-                                         : "Invio per mandare · la conversazione resta nel dossier del cliente, sul Mac")
-                 : "Invio per mandare · conversazione non conservata")
-                .font(Tipo.eveTappaNota)
-                .foregroundColor(Colori.Eve.autore)
+            conVoce { v in
+                Text(v.errore ?? (stato.dati.impostazioni.eve.conservaConversazioni
+                     ? (stato.evePortafoglio ? "Invio per mandare, ⌥⌘E per parlare · la conversazione del portafoglio resta sul Mac"
+                                             : "Invio per mandare, ⌥⌘E per parlare · la conversazione resta nel dossier del cliente, sul Mac")
+                     : "Invio per mandare, ⌥⌘E per parlare · conversazione non conservata"))
+                    .font(Tipo.eveTappaNota)
+                    .foregroundColor(v.errore == nil ? Colori.Eve.autore : Colori.Eve.spiaAscolto)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(10)
         .background(Gradienti.barraEve)
@@ -393,6 +452,29 @@ extension AppEve {
         .padding(.vertical, 4)
         .background(Capsule().fill(Gradienti.azioneEve))
         .overlay(Capsule().strokeBorder(Colori.Eve.azioneBordo, lineWidth: 1))
+    }
+}
+
+// MARK: - Voce
+
+/// Lo stato della voce di Eve in un momento: ascolta, parla, cosa ha capito, perché non può ascoltare.
+struct StatoVoce {
+    var ascolta = false
+    var parla = false
+    var trascritto = ""
+    var errore: String?
+}
+
+/// Segue l'ascolto e la voce di Eve e ridisegna solo il pezzo che ne dipende.
+private struct OsservaVoce<C: View>: View {
+    @ObservedObject var ascolto: AscoltoEve
+    @ObservedObject var voce: VoceEve
+    let contenuto: (StatoVoce) -> C
+
+    var body: some View {
+        var errore: String?
+        if case .nonDisponibile(let m) = ascolto.stato { errore = m }
+        return contenuto(StatoVoce(ascolta: ascolto.ascolta, parla: voce.parla, trascritto: ascolto.trascritto, errore: errore))
     }
 }
 

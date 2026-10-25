@@ -754,6 +754,14 @@ enum Colori {
         static let quadroAlto = Color(hex: "#fcf9ef")
         static let quadroBasso = Color(hex: "#e9e3d2")
         static let quadroTesto = Color(hex: "#716248")
+        // Voce: il microfono acceso è un pulsante rosso lucido iOS 5, la spia rossa dice che Eve ascolta
+        static let microfonoAcceso = [Color(hex: "#ef8a7f"), Color(hex: "#df5b4d"), Color(hex: "#cc3b2c"), Color(hex: "#d9503f")]
+        static let microfonoBordo = Color(hex: "#8f2a20")
+        static let microfonoIncisione = Color(hex: "#7a2017")
+        static let spiaAscolto = Color(hex: "#e2493b")
+        static let spiaVoce = Color(hex: "#7fb3e8")
+        static let displayAttivo = Color(hex: "#dfe7f2")
+        static let ascoltoTesto = Color(hex: "#6c7a88")
     }
 
     /// Strumenti di analisi: Simulazioni, Confronti, Analisi 360 (passata "2011", stile Lion).

@@ -22,5 +22,9 @@
     <string>NSApplication</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Eve ti ascolta quando le parli. L'audio resta sul Mac.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Eve trasforma in testo quello che le dici, solo sul Mac: l'audio non viene mai inviato fuori dal computer.</string>
 </dict>
 </plist>

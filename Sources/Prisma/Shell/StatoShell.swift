@@ -153,6 +153,15 @@ final class StatoShell: ObservableObject {
     @Published var domandaEve = ""
     /// Conversazioni non conservate nell'archivio (se l'utente lo sceglie nelle impostazioni).
     @Published var conversazioniTemporanee: [String: [MessaggioEve]] = [:]
+    /// La voce e l'orecchio di Eve: nascono alla prima parola (niente microfono finché non serve).
+    lazy var voceEve = VoceEve()
+    lazy var ascoltoEve = AscoltoEve()
+    /// La prossima risposta di Eve si dice anche a voce (la domanda è arrivata a voce).
+    var rispostaAVoce = false
+    /// Conversazione a voce in corso: dopo ogni risposta Eve torna ad ascoltare, finché non le dici «basta».
+    @Published var conversazioneAVoce = false
+    /// Nelle istantanee: lo stato della voce da mostrare (non c'è microfono).
+    var voceIstantanea: StatoVoce?
 
     // Backup
     @Published private(set) var elencoBackup: [VoceBackup] = []
@@ -312,6 +321,7 @@ final class StatoShell: ObservableObject {
         pannelloAppAperte = false
         // Dalla schermata di blocco si torna sempre a Prisma completo (e la finestra esce dal tutto schermo)
         chiudiPresentazione()
+        fermaVoce()
         modoCliente = nil
         anima { bloccato = true }
     }
@@ -1545,6 +1555,7 @@ final class StatoShell: ObservableObject {
         } else {
             conversazioniTemporanee[id] = elenco
         }
+        if m.autore == .eve { parlaRisposta(m) }
     }
 
     func nuovaConversazione() {

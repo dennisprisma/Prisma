@@ -723,6 +723,32 @@ enum ProvaEve {
         controlla(pf.conversazione(EvePortafoglio.chiave).isEmpty, "Eve · portafoglio: nuova conversazione")
         controlla(EvePortafoglio.scheda(pf.dati).count <= ContestoEve.limite, "Eve · portafoglio: scheda entro il limite del modello")
 
+        // Voce: il testo parlato è pulito e breve, le impostazioni vecchie si leggono, «basta» chiude
+        let parlato = TestoParlato.da(titolo: "Check-up di Marco", testo: "• **Oggi**: € 12.000 → in crescita\n1. Protezione · scoperta\n\nAltro", completo: true)
+        controlla(parlato == "Check-up di Marco. Oggi: € 12.000 in crescita. Protezione, scoperta. Altro.", "Voce: testo parlato senza simboli («\(parlato)»)")
+        let lungo = String(repeating: "Una frase di prova abbastanza lunga. ", count: 40)
+        let breve = TestoParlato.da(titolo: nil, testo: lungo, completo: false)
+        controlla(breve.count <= TestoParlato.limite && breve.hasSuffix("."), "Voce: senza «leggi tutto» dice solo l'inizio, a fine frase (\(breve.count) caratteri)")
+        controlla(TestoParlato.da(titolo: nil, testo: lungo, completo: true).count > TestoParlato.limite, "Voce: con «leggi tutto» dice tutta la risposta")
+        controlla(TestoParlato.da(titolo: "Riepilogo", testo: "Riepilogo del cliente: tutto bene", completo: false) == "Riepilogo del cliente: tutto bene.", "Voce: il titolo non si ripete")
+        controlla(CongedoEve.e("Basta così, grazie") && CongedoEve.e("grazie Eve") && CongedoEve.e("Ok, è tutto.") && !CongedoEve.e("Basta con i costi alti: cosa propongo?"),
+                  "Voce: «basta così» chiude la conversazione, una domanda no")
+        let vecchie = try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"motore":"sintesi","conservaConversazioni":false}"#.utf8))
+        controlla(vecchie?.motore == .sintesi && vecchie?.conservaConversazioni == false && vecchie?.risposteAVoce == .quandoParli
+                  && vecchie?.voce == nil && vecchie?.velocitaVoce == 1 && vecchie?.conversazioneContinua == true,
+                  "Voce: le impostazioni di Eve di prima si leggono con i valori predefiniti della voce")
+        let fuori = try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"velocitaVoce":9}"#.utf8))
+        controlla(fuori?.velocitaVoce == 1.4, "Voce: una velocità fuori misura torna nei limiti")
+        let voci = VoceEve.vociItaliane()
+        print("INFO Voci italiane su questo Mac: \(voci.map(VoceEve.nome).joined(separator: ", "))")
+        // Una domanda arrivata a voce: la risposta si dice (nelle prove non c'è audio, ma lo stato si chiude bene)
+        let v = StatoShell(persistente: false)
+        v.dati.impostazioni.eve.motore = .sintesi
+        v.fraseDetta("Fammi un riepilogo del cliente")
+        controlla(v.conversazione(v.clienteAttivoId).last?.autore == .eve && !v.rispostaAVoce, "Voce: la frase detta diventa una domanda e la risposta arriva")
+        v.fraseDetta("basta così")
+        controlla(!v.conversazioneAVoce, "Voce: «basta così» chiude la conversazione a voce")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")

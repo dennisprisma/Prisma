@@ -252,6 +252,19 @@ enum Istantanee {
                 s.paginaSeguente()
             }
         }),
+        ("84-eve-ascolta", { s in
+            // Una conversazione a voce: Eve ha risposto e ora ascolta la frase successiva
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.clienteAttivoId = "marco"
+            s.chiediEve(SpuntoEve.resistenza.domanda, spunto: .resistenza)
+            s.conversazioneAVoce = true
+            s.voceIstantanea = StatoVoce(ascolta: true, trascritto: "Va bene, e quanto pesano i costi del suo piano pensione")
+            s.apri(.eve)
+        }),
+        ("85-impostazioni-voce", { s in
+            s.schedaImpostazioni = .esperienza
+            s.apri(.impostazioni)
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"
