@@ -82,12 +82,13 @@ struct AppProspetti: View {
 
     @ViewBuilder private var rail: some View {
         DossierRail()
+        // Il fascicolo in cima: è il documento dell'incontro e si vede senza scorrere la colonna
+        EtichettaRail(testo: "Per l'incontro")
+        VoceNavigazione(titolo: TipoProspetto.fascicolo.nome, attiva: scelta.tipo == .fascicolo) { scegli(.fascicolo) }
         EtichettaRail(testo: "Prospetto e report")
         ForEach([TipoProspetto.checkUp, .valutazione, .resoconto, .patrimonio, .resistenza, .costi, .successione, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
-        EtichettaRail(testo: "Per l'incontro")
-        VoceNavigazione(titolo: TipoProspetto.fascicolo.nome, attiva: scelta.tipo == .fascicolo) { scegli(.fascicolo) }
         EtichettaRail(testo: "Prospetti di dettaglio")
         ForEach([TipoProspetto.riesame, .posizione, .confronto]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
