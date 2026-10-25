@@ -5,18 +5,20 @@ import Speech
 /// Eve ti ascolta, solo sul Mac: l'audio non viene mai mandato fuori dal computer.
 /// Su macOS 26 e successivi usa il riconoscimento vocale nuovo di Apple (SpeechAnalyzer, sul dispositivo);
 /// sui sistemi precedenti, o se quello non c'è, la dettatura classica in italiano sul dispositivo.
-/// La frase finisce da sola dopo una breve pausa.
+/// La frase finisce quando smetti di parlare: Eve chiede al riconoscimento il testo definitivo e lo manda.
 final class AscoltoEve: ObservableObject {
     enum Stato: Equatable {
         case fermo
         case ascolta
+        /// Hai smesso di parlare: Eve aspetta il testo definitivo.
+        case capisce
         case nonDisponibile(String)
     }
 
     @Published private(set) var stato = Stato.fermo
     /// Quello che Eve ha capito finora (si aggiorna mentre parli).
     @Published private(set) var trascritto = ""
-    /// Cosa sta facendo Eve prima di sentirti (per esempio la prima preparazione dell'italiano).
+    /// Cosa sta facendo Eve quando non ti sta sentendo («Mi preparo…», «Un attimo…»).
     @Published private(set) var nota: String?
     /// Quanto suona il microfono (0…1), per l'onda: se resta fermo mentre parli, il microfono non sente.
     @Published private(set) var livello: Float = 0
@@ -25,31 +27,42 @@ final class AscoltoEve: ObservableObject {
     /// Perché Eve non ha potuto ascoltare o capire: chi ha avviato l'ascolto lo fa vedere bene.
     var problema: ((String) -> Void)?
 
-    /// Pausa dopo cui la frase si considera finita.
-    static let pausa: TimeInterval = 1.6
+    /// Silenzio dopo cui la frase si considera finita.
+    static let pausa: TimeInterval = 1.5
     /// Se non dici niente entro questo tempo, Eve smette di ascoltare.
     static let attesaMassima: TimeInterval = 8
     /// Una frase non dura più di così.
     static let durataMassima: TimeInterval = 50
+    /// Quanto aspettare il testo definitivo dopo che hai smesso di parlare.
+    static let attesaFinale: TimeInterval = 4
+    /// Sopra questo picco il microfono sente una voce (sotto è silenzio o rumore di fondo).
+    static let sogliaVoce: Float = 0.03
 
     private let motoreAudio = AVAudioEngine()
     private var timerPausa: Timer?
     private var timerLimite: Timer?
+    private var timerFinale: Timer?
     private var sessione = 0
     /// Il suono più forte sentito in questa frase: distingue «microfono muto» da «non ho capito le parole».
     private var piccoMassimo: Float = 0
+    /// Quando il microfono ha sentito la voce l'ultima volta (nil = non ancora).
+    private var ultimaVoce: Date?
     /// L'ultimo errore del riconoscimento, per spiegarlo se non è arrivata nessuna parola.
     private var ultimoErrore: String?
-    /// Come chiudere il riconoscimento in corso (classico o nuovo).
-    private var chiudiRiconoscimento: (() -> Void)?
+    /// Quale riconoscimento è in uso e quante risposte ha dato: per capire cosa non va.
+    private var riconoscimento = ""
+    private var risposte = 0
+    /// Chiede il testo definitivo (fine dell'audio) e, per lasciar perdere, chiude subito.
+    private var finalizza: (() -> Void)?
+    private var annulla: (() -> Void)?
     /// Nel riconoscimento nuovo le frasi già confermate; quella in corso si aggiunge in coda.
     private var confermato = ""
 
-    var ascolta: Bool { stato == .ascolta }
+    var ascolta: Bool { stato == .ascolta || stato == .capisce }
 
     /// Inizia ad ascoltare, chiedendo prima i permessi (microfono e riconoscimento vocale) se serve.
     func avvia() {
-        guard stato != .ascolta else { return }
+        guard !ascolta else { return }
         Self.permessi { [weak self] motivo in
             guard let self else { return }
             if let motivo {
@@ -60,37 +73,72 @@ final class AscoltoEve: ObservableObject {
         }
     }
 
-    /// Smette di ascoltare; con `invia` passa la frase capita finora.
+    /// Smette di ascoltare. Con `invia` chiede al riconoscimento il testo definitivo e poi manda la frase;
+    /// senza, lascia perdere tutto.
     func ferma(invia: Bool) {
-        guard stato == .ascolta else { return }
-        sessione += 1
-        timerPausa?.invalidate()
-        timerLimite?.invalidate()
-        if motoreAudio.isRunning { motoreAudio.stop() }
-        motoreAudio.inputNode.removeTap(onBus: 0)
-        chiudiRiconoscimento?()
-        chiudiRiconoscimento = nil
-        stato = .fermo
-        livello = 0
-        nota = nil
-        let frase = trascritto.trimmingCharacters(in: .whitespacesAndNewlines)
-        trascritto = ""
-        confermato = ""
-        guard invia else { return }
-        if !frase.isEmpty {
-            concluso?(frase)
-        } else if let e = ultimoErrore {
-            segnala("Non sono riuscita a capirti: \(e). Se capita sempre, controlla che la dettatura in italiano sia attiva in Impostazioni di Sistema › Tastiera › Dettatura.")
-        } else if piccoMassimo < 0.01 {
-            segnala("Non arriva nessun suono dal microfono. Controlla in Impostazioni di Sistema › Suono › Ingresso quale microfono è scelto, e in Privacy e sicurezza › Microfono che Prisma sia attivo.")
-        } else {
-            segnala("Ho sentito la tua voce ma il riconoscimento non mi ha restituito parole. Riprova; se succede ancora, scrivimi cosa vedi.")
+        switch stato {
+        case .ascolta:
+            spegniMicrofono()
+            guard invia else {
+                lasciaPerdere()
+                return
+            }
+            stato = .capisce
+            nota = "Un attimo…"
+            finalizza?()
+            finalizza = nil
+            timerFinale?.invalidate()
+            timerFinale = Timer.scheduledTimer(withTimeInterval: Self.attesaFinale, repeats: false) { [weak self] _ in
+                self?.concludi()
+            }
+        case .capisce:
+            if invia { concludi() } else { lasciaPerdere() }
+        default:
+            break
         }
     }
 
     /// Dopo un errore si può riprovare: la spia torna normale.
     func azzera() {
         if case .nonDisponibile = stato { stato = .fermo }
+    }
+
+    private func spegniMicrofono() {
+        timerPausa?.invalidate()
+        timerLimite?.invalidate()
+        if motoreAudio.isRunning { motoreAudio.stop() }
+        motoreAudio.inputNode.removeTap(onBus: 0)
+        livello = 0
+    }
+
+    private func lasciaPerdere() {
+        sessione += 1
+        timerFinale?.invalidate()
+        annulla?()
+        annulla = nil
+        finalizza = nil
+        stato = .fermo
+        nota = nil
+        trascritto = ""
+        confermato = ""
+    }
+
+    /// La frase è finita: la manda, oppure spiega perché non c'è.
+    private func concludi() {
+        guard stato == .capisce || stato == .ascolta else { return }
+        if stato == .ascolta { spegniMicrofono() }
+        let frase = trascritto.trimmingCharacters(in: .whitespacesAndNewlines)
+        let dettaglio = "(\(riconoscimento), \(risposte) \(risposte == 1 ? "risposta" : "risposte"), voce \(String(format: "%.2f", piccoMassimo)))"
+        lasciaPerdere()
+        if !frase.isEmpty {
+            concluso?(frase)
+        } else if let e = ultimoErrore {
+            segnala("Non sono riuscita a capirti: \(e). Se capita sempre, controlla che la dettatura in italiano sia attiva in Impostazioni di Sistema › Tastiera › Dettatura. \(dettaglio)")
+        } else if piccoMassimo < 0.01 {
+            segnala("Non arriva nessun suono dal microfono. Controlla in Impostazioni di Sistema › Suono › Ingresso quale microfono è scelto, e in Privacy e sicurezza › Microfono che Prisma sia attivo. \(dettaglio)")
+        } else {
+            segnala("Ho sentito la tua voce ma il riconoscimento non mi ha restituito parole. Riprova; se succede ancora, mandami questo messaggio. \(dettaglio)")
+        }
     }
 
     /// Mette Eve in stato di problema e lo fa sapere a chi ha avviato l'ascolto.
@@ -102,7 +150,9 @@ final class AscoltoEve: ObservableObject {
     private func inizia() {
         sessione += 1
         piccoMassimo = 0
+        ultimaVoce = nil
         ultimoErrore = nil
+        risposte = 0
         trascritto = ""
         confermato = ""
         #if canImport(FoundationModels)
@@ -118,7 +168,7 @@ final class AscoltoEve: ObservableObject {
     // MARK: - Microfono
 
     /// Accende il microfono e passa ogni pezzo di audio a `consegna` (sul thread dell'audio).
-    /// Avvia i tempi: pausa, silenzio, durata massima.
+    /// La frase finisce quando, dopo aver sentito la voce, il microfono resta in silenzio per un po'.
     private func accendiMicrofono(_ consegna: @escaping (AVAudioPCMBuffer) -> Void) -> Bool {
         let ingresso = motoreAudio.inputNode
         let formato = ingresso.outputFormat(forBus: 0)
@@ -128,13 +178,7 @@ final class AscoltoEve: ObservableObject {
         }
         let questa = sessione
         Self.collega(ingresso, formato: formato, consegna: consegna) { [weak self] picco in
-            DispatchQueue.main.async {
-                guard let self, self.sessione == questa, self.stato == .ascolta else { return }
-                self.piccoMassimo = max(self.piccoMassimo, picco)
-                // Solo cambi visibili: niente ridisegni inutili
-                let nuovo = min(1, picco * 4)
-                if abs(nuovo - self.livello) > 0.04 { self.livello = nuovo }
-            }
+            DispatchQueue.main.async { self?.suono(picco, sessione: questa) }
         }
         motoreAudio.prepare()
         do {
@@ -146,16 +190,31 @@ final class AscoltoEve: ObservableObject {
         }
         stato = .ascolta
         nota = nil
-        // Se non arriva nessuna parola, Eve smette di ascoltare da sola
+        // Se non dici niente, Eve smette di ascoltare da sola
         timerPausa?.invalidate()
         timerPausa = Timer.scheduledTimer(withTimeInterval: Self.attesaMassima, repeats: false) { [weak self] _ in
-            self?.ferma(invia: true)
+            guard let self, self.ultimaVoce == nil else { return }
+            self.ferma(invia: true)
         }
         timerLimite?.invalidate()
         timerLimite = Timer.scheduledTimer(withTimeInterval: Self.durataMassima, repeats: false) { [weak self] _ in
             self?.ferma(invia: true)
         }
         return true
+    }
+
+    /// Il suono del microfono, circa dieci volte al secondo: l'onda, e la fine della frase quando torna il silenzio.
+    private func suono(_ picco: Float, sessione questa: Int) {
+        guard sessione == questa, stato == .ascolta else { return }
+        piccoMassimo = max(piccoMassimo, picco)
+        let nuovo = min(1, picco * 4)
+        if abs(nuovo - livello) > 0.04 { livello = nuovo }
+        let adesso = Date()
+        if picco > Self.sogliaVoce {
+            ultimaVoce = adesso
+        } else if let v = ultimaVoce, adesso.timeIntervalSince(v) > Self.pausa {
+            ferma(invia: true)
+        }
     }
 
     /// Il microfono passa l'audio a chi riconosce (il blocco gira sul thread dell'audio).
@@ -165,7 +224,6 @@ final class AscoltoEve: ObservableObject {
         var contatore = 0
         ingresso.installTap(onBus: 0, bufferSize: 1024, format: formato) { buffer, _ in
             consegna(buffer)
-            // Il picco del suono, circa dieci volte al secondo
             contatore += 1
             guard contatore % 4 == 0, let canale = buffer.floatChannelData?[0] else { return }
             var picco: Float = 0
@@ -174,23 +232,22 @@ final class AscoltoEve: ObservableObject {
         }
     }
 
-    /// Un pezzo di testo riconosciuto: aggiorna la frase e fa ripartire l'attesa della pausa.
+    /// Un pezzo di testo riconosciuto. `finale`: il riconoscimento ha finito, la frase si manda.
     private func ricevi(_ testo: String?, finale: Bool, errore: String?, sessione questa: Int) {
-        guard questa == sessione, stato == .ascolta else { return }
+        guard questa == sessione, ascolta else { return }
+        risposte += 1
         if let errore { ultimoErrore = errore }
         if let testo, !testo.trimmingCharacters(in: .whitespaces).isEmpty {
             trascritto = testo
-            timerPausa?.invalidate()
-            timerPausa = Timer.scheduledTimer(withTimeInterval: Self.pausa, repeats: false) { [weak self] _ in
-                self?.ferma(invia: true)
-            }
+            if stato == .ascolta { ultimaVoce = Date() }
         }
-        if finale || errore != nil { ferma(invia: true) }
+        if finale || errore != nil { concludi() }
     }
 
     // MARK: - Riconoscimento classico (macOS 13–15)
 
     private func iniziaClassico() {
+        riconoscimento = "dettatura classica"
         guard let riconoscitore = SFSpeechRecognizer(locale: Locale(identifier: "it-IT")), riconoscitore.isAvailable else {
             segnala("Il riconoscimento vocale in italiano non è disponibile adesso. Controlla che la dettatura sia attiva in Impostazioni di Sistema › Tastiera › Dettatura e riprova.")
             return
@@ -209,7 +266,8 @@ final class AscoltoEve: ObservableObject {
         let compito = Self.riconosci(riconoscitore, r) { [weak self] testo, finale, errore in
             DispatchQueue.main.async { self?.ricevi(testo, finale: finale, errore: errore, sessione: questa) }
         }
-        chiudiRiconoscimento = {
+        finalizza = { r.endAudio() }
+        annulla = {
             r.endAudio()
             compito.cancel()
         }
@@ -227,6 +285,7 @@ final class AscoltoEve: ObservableObject {
     #if canImport(FoundationModels)
     @available(macOS 26.0, *)
     private func iniziaNuovo(_ questa: Int) {
+        riconoscimento = "riconoscimento nuovo"
         stato = .ascolta
         nota = "Mi preparo ad ascoltarti…"
         Task {
@@ -266,7 +325,12 @@ final class AscoltoEve: ObservableObject {
                             }
                         }
                         if ok {
-                            self.chiudiRiconoscimento = {
+                            // Finita la frase: fine dell'audio e testo definitivo; per lasciar perdere: chiude subito
+                            self.finalizza = {
+                                ingresso.finish()
+                                Task { try? await analizzatore.finalizeAndFinishThroughEndOfInput() }
+                            }
+                            self.annulla = {
                                 ingresso.finish()
                                 Task { await analizzatore.cancelAndFinishNow() }
                             }
@@ -281,22 +345,24 @@ final class AscoltoEve: ObservableObject {
                 }
                 for try await risultato in trascrittore.results {
                     let testo = String(risultato.text.characters)
-                    let finale = risultato.isFinal
+                    let definitivo = risultato.isFinal
                     DispatchQueue.main.async {
                         guard self.sessione == questa else { return }
                         // Le frasi confermate restano; quella provvisoria si sostituisce a ogni aggiornamento
                         let tutto = (self.confermato + " " + testo).trimmingCharacters(in: .whitespaces)
-                        if finale { self.confermato = tutto }
+                        if definitivo { self.confermato = tutto }
                         self.ricevi(tutto, finale: false, errore: nil, sessione: questa)
                     }
                 }
+                // Il riconoscimento ha consegnato tutto: la frase è pronta
+                DispatchQueue.main.async { if self.sessione == questa { self.concludi() } }
             } catch {
                 let motivo = error.localizedDescription
                 DispatchQueue.main.async {
                     guard self.sessione == questa else { return }
-                    if self.stato == .ascolta, self.motoreAudio.isRunning {
+                    if self.motoreAudio.isRunning || self.stato == .capisce {
                         self.ultimoErrore = motivo
-                        self.ferma(invia: true)
+                        self.concludi()
                     } else {
                         // Il riconoscimento nuovo non è partito: si prova con la dettatura classica
                         self.ripiegaSuClassico(questa)
