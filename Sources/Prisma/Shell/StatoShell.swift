@@ -44,6 +44,8 @@ final class StatoShell: ObservableObject {
     @Published var sceltaFascicolo: Set<TipoProspetto> = TipoProspetto.fascicoloPredefinito
     /// L'appuntamento per cui si prepara il fascicolo (dà la data e il tipo d'incontro alla copertina).
     @Published var fascicoloAppuntamento: String?
+    /// Il documento mostrato a tutto schermo all'incontro (nil se non si presenta).
+    @Published var presentazione: Presentazione?
     /// Le analisi del dossier dell'ultimo cliente mostrato (vedi `analisiDossier`): non pubblicate, è solo una cache.
     var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
@@ -304,6 +306,7 @@ final class StatoShell: ObservableObject {
         pannelloSpazi = false
         pannelloAppAperte = false
         // Dalla schermata di blocco si torna sempre a Prisma completo
+        presentazione = nil
         modoCliente = nil
         anima { bloccato = true }
     }

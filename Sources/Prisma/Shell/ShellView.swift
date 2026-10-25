@@ -75,6 +75,12 @@ struct ShellView: View {
                         .transition(.opacity)
                 }
 
+                if let p = stato.presentazione {
+                    VistaPresentazione(p: p)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(.opacity)
+                }
+
                 if stato.bloccato {
                     SchermataBenvenuto()
                         .frame(width: geo.size.width, height: geo.size.height)

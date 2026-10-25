@@ -244,6 +244,14 @@ enum Istantanee {
             // Dall'appuntamento di Marco: il fascicolo con i report adatti alla revisione
             if let a = s.appuntamenti.first(where: { $0.clienteId == "marco" && $0.stato == .pianificato }) { s.preparaFascicolo(per: a) }
         }),
+        ("83-presentazione", { s in
+            // Il patrimonio di Marco mostrato all'incontro: seconda pagina, a tutta finestra
+            s.clienteAttivoId = "marco"
+            if let d = s.documentoProspetto(.patrimonio(report: true)) {
+                s.presenta(d)
+                s.paginaSeguente()
+            }
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"

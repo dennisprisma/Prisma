@@ -579,6 +579,23 @@ enum ProvaEve {
         schermo.clienteAttivoId = "nessuno"
         schermo.entraModoCliente()
         controlla(!schermo.inModoCliente, "Senza un cliente attivo la modalità cliente non parte")
+        // Presentazione all'incontro: a tutto schermo in modalità cliente, si sfoglia, all'uscita tutto com'era
+        let sala = StatoShell(persistente: false)
+        sala.clienteAttivoId = "marco"
+        if let d = sala.documentoProspetto(.patrimonio(report: true)) {
+            sala.presenta(d)
+            controlla(sala.presentazione != nil && sala.inModoCliente, "Presentazione: parte in modalità cliente")
+            sala.paginaPrecedente()
+            controlla(sala.presentazione?.pagina == 0, "Presentazione: prima della prima pagina non si va")
+            for _ in 0..<(d.pagine.count + 3) { sala.paginaSeguente() }
+            controlla(sala.presentazione?.pagina == d.pagine.count - 1, "Presentazione: dopo l'ultima pagina non si va")
+            sala.chiudiPresentazione()
+            controlla(sala.presentazione == nil && !sala.inModoCliente, "Presentazione: all'uscita la modalità cliente si spegne")
+            sala.entraModoCliente()
+            sala.presenta(d)
+            sala.chiudiPresentazione()
+            controlla(sala.inModoCliente, "Presentazione: se la modalità cliente era già accesa, resta")
+        }
         let cache = StatoShell(persistente: false)
         let primo = cache.analisiDossier("marco")
         controlla(cache.analisiDossier("marco").costi.euroAnno == primo.costi.euroAnno && cache.cacheDossier != nil, "Analisi del dossier: riusate finché i dati non cambiano")
