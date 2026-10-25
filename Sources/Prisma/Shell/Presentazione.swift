@@ -21,7 +21,7 @@ extension StatoShell {
         guard !d.pagine.isEmpty else { return }
         var p = Presentazione(titolo: d.titolo, cliente: d.cliente, formato: d.formato, pagine: d.pagine)
         if delCliente, !inModoCliente {
-            entraModoCliente()
+            entraModoCliente(avviso: false)
             p.haAccesoModoCliente = inModoCliente
         }
         if persistente, let finestra = NSApp.keyWindow, !finestra.styleMask.contains(.fullScreen) {
