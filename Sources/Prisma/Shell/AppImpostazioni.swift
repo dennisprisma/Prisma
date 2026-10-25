@@ -145,6 +145,22 @@ struct AppImpostazioni: View {
                     .toggleStyle(StileInterruttore())
                     .labelsHidden()
             }
+            RigaImpostazione(titolo: "Riconoscimento della voce",
+                             sottotitolo: "Sempre sul Mac. Automatico: quello nuovo di Apple su macOS 26 e successivi, altrimenti la dettatura classica") {
+                Picker("", selection: $stato.dati.impostazioni.eve.riconoscimento) {
+                    ForEach(SceltaRiconoscimento.allCases) { r in Text(r.nome).tag(r) }
+                }
+                .labelsHidden()
+                .frame(width: 190)
+            }
+            RigaImpostazione(titolo: "Prova il riconoscimento",
+                             sottotitolo: stato.esitoProvaRiconoscimento ?? "Senza microfono: Eve dice una frase e si vede se il riconoscimento la capisce. Poi «Copia» e mandami il risultato") {
+                HStack(spacing: 8) {
+                    Button("Prova") { stato.provaRiconoscimento() }
+                        .disabled(stato.esitoProvaRiconoscimento == "In prova…")
+                    Button("Copia") { stato.copiaDiagnosticaVoce() }
+                }
+            }
             RigaImpostazione(titolo: "Conversazione continua",
                              sottotitolo: "Dopo aver risposto Eve torna ad ascoltarti, finché non le dici «basta così» · ⌥⌘E per parlarle",
                              ultima: true) {

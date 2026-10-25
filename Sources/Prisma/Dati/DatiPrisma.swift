@@ -264,6 +264,8 @@ struct ImpostazioniEve: Codable, Equatable {
     var leggiTutto = false
     /// Dopo aver risposto a voce, Eve torna ad ascoltare finché non le dici «basta».
     var conversazioneContinua = true
+    /// Quale riconoscimento vocale usare per ascoltarti (sempre sul Mac).
+    var riconoscimento = SceltaRiconoscimento.automatico
     /// Il modello aperto sul Mac (Ollama): solo indirizzi locali, il nome del modello da usare.
     var indirizzoLocale = MotoreLocale.indirizzoPredefinito
     var modelloLocale = MotoreLocale.modelloPredefinito
@@ -271,7 +273,7 @@ struct ImpostazioniEve: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case motore, conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale
+        case motore, conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale, riconoscimento
     }
 
     init(from decoder: Decoder) throws {
@@ -285,6 +287,7 @@ struct ImpostazioniEve: Codable, Equatable {
         conversazioneContinua = (try? c.decodeIfPresent(Bool.self, forKey: .conversazioneContinua)) ?? true
         indirizzoLocale = (try? c.decodeIfPresent(String.self, forKey: .indirizzoLocale)) ?? MotoreLocale.indirizzoPredefinito
         modelloLocale = (try? c.decodeIfPresent(String.self, forKey: .modelloLocale)) ?? MotoreLocale.modelloPredefinito
+        riconoscimento = (try? c.decodeIfPresent(SceltaRiconoscimento.self, forKey: .riconoscimento)) ?? .automatico
     }
 }
 

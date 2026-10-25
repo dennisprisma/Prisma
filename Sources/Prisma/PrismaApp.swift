@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @main
@@ -41,6 +42,10 @@ struct PrismaApp: App {
         Window("Prisma", id: "prisma") {
             ShellView()
                 .environmentObject(stato)
+                // Il tema iOS 5 è chiaro: con il Mac in modalità scura i controlli di sistema (pulsanti, menu)
+                // prenderebbero lo stile scuro e sparirebbero sugli sfondi chiari di Prisma
+                .preferredColorScheme(.light)
+                .onAppear { NSApp.appearance = NSAppearance(named: .aqua) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)

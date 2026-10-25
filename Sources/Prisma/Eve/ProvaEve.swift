@@ -879,6 +879,16 @@ enum ProvaEve {
         let qwenPrima = vecchieQwen ?? ImpostazioniEve()
         controlla(qwenPrima.modelloLocale == "qwen3:4b" && qwenPrima.indirizzoLocale == "http://127.0.0.1:11434", "Qwen: impostazioni di prima con i valori predefiniti")
 
+        // Prova del riconoscimento senza microfono (sul server di build solo informativa: niente permessi)
+        let provaVoce = ProvaRiconoscimento()
+        var esitoVoce: String?
+        provaVoce.esegui(.classico) { esitoVoce = $0 }
+        let scadenza = Date().addingTimeInterval(25)
+        while esitoVoce == nil && Date() < scadenza { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        print("INFO Prova del riconoscimento sul server: \(esitoVoce ?? "nessun esito in 25 secondi")")
+        let diagnostica = DiagnosticaVoce.testo
+        controlla(diagnostica.hasPrefix("Prisma · diagnostica dell'ascolto"), "Voce: la diagnostica dell'ascolto si può copiare")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")

@@ -150,7 +150,7 @@ final class StatoShell: ObservableObject {
 
     // Eve
     @Published var eveInCorso = false
-    @Published var domandaEve = ""
+    @Published var domandaEve = "" { didSet { if dettaturaAttiva, domandaEve != oldValue { dettaturaCambiata() } } }
     /// Conversazioni non conservate nell'archivio (se l'utente lo sceglie nelle impostazioni).
     @Published var conversazioniTemporanee: [String: [MessaggioEve]] = [:]
     /// La voce e l'orecchio di Eve: nascono alla prima parola (niente microfono finché non serve).
@@ -164,6 +164,15 @@ final class StatoShell: ObservableObject {
     @Published var disponibilitaLocale = DisponibilitaEve.nonDisponibile("Ollama non ancora verificato.")
     /// L'appuntamento chiesto a Eve a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
     var appuntamentoInSospeso: Appuntamento.Bozza?
+    /// La dettatura di macOS nel campo di Eve: ogni richiesta la avvia; la frase parte da sola alla pausa.
+    @Published var richiestaDettatura = 0
+    @Published var dettaturaAttiva = false
+    /// In automatico, dopo che il riconoscimento di Prisma non ha dato parole, Eve usa la dettatura di macOS.
+    var usaDettatura = false
+    var lavoroDettatura: DispatchWorkItem?
+    /// L'esito dell'ultima prova del riconoscimento (dalle impostazioni) e la prova in corso.
+    @Published var esitoProvaRiconoscimento: String?
+    var provaInCorso: ProvaRiconoscimento?
     /// Nelle istantanee: lo stato della voce da mostrare (non c'è microfono).
     var voceIstantanea: StatoVoce?
 
