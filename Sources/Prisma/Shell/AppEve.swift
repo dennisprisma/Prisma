@@ -545,7 +545,7 @@ struct NuvolaEve: View {
                     .padding(.top, 3)
                 } else if !mio {
                     HStack(spacing: 6) {
-                        if azioniCliente && messaggio.motore != "Eve" {
+                        if azioniCliente && messaggio.motore != StatoShell.motoreAzioni {
                             azione("✓ Crea attività", creaAttivita)
                             azione("＋ Nota del cliente", aggiungiNota)
                         }

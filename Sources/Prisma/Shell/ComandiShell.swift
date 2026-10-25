@@ -55,12 +55,15 @@ extension StatoShell {
         }
     }
 
+    /// L'etichetta delle risposte in cui Eve ha fatto qualcosa (non è un motore che scrive).
+    static let motoreAzioni = "Azione"
+
     var chiaveConversazione: String { evePortafoglio ? EvePortafoglio.chiave : clienteAttivoId }
 
     private func rispondiComando(_ domanda: String, _ risposta: String, chiave: String, azione: AzioneEve? = nil) {
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: domanda), cliente: chiave)
         domandaEve = ""
-        var m = MessaggioEve(autore: .eve, testo: risposta, motore: "Eve")
+        var m = MessaggioEve(autore: .eve, testo: risposta, motore: Self.motoreAzioni)
         m.azione = azione
         aggiungiMessaggio(m, cliente: chiave)
     }
@@ -175,7 +178,9 @@ extension StatoShell {
             let numero = elenco.count == 1 ? "un appuntamento" : "\(elenco.count) appuntamenti"
             righe.append("\(Quando) hai \(numero):")
             for a in elenco {
-                righe.append("• alle \(Formati.ora.string(from: a.inizio)) \(a.titolo)\(cliente(a.clienteId).map { " (\($0.nome))" } ?? "")")
+                let nome = cliente(a.clienteId)?.nome ?? ""
+                let chi = nome.isEmpty || a.titolo.contains(nome) ? "" : " (\(nome))"
+                righe.append("• alle \(Formati.ora.string(from: a.inizio)) \(a.titolo)\(chi)")
             }
         }
         if !scadono.isEmpty {
