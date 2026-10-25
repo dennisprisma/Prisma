@@ -51,7 +51,7 @@ Lo spunto «Cosa proporre al cliente?» (`Sources/Prisma/Eve/ProposteEve.swift`)
 
 ## Parlare con Eve
 Eve ascolta e risponde a voce (`Sources/Prisma/Eve/VoceEve.swift`, `AscoltoEve.swift`, `Sources/Prisma/Shell/VoceShell.swift`).
-- **Ascolto**: riconoscimento vocale di macOS in italiano, **solo sul dispositivo** (`requiresOnDeviceRecognition`). Se il Mac non sa riconoscere l'italiano senza internet, Eve non ascolta e spiega come attivare la dettatura: l'audio non esce mai dal Mac.
+- **Ascolto**: solo sul dispositivo, l'audio non esce mai dal Mac. Su macOS 26 e successivi il riconoscimento vocale nuovo di Apple (SpeechAnalyzer con SpeechTranscriber; la prima volta il Mac scarica l'italiano); altrimenti, o se quello non parte, la dettatura classica (`requiresOnDeviceRecognition`). Se Eve non riesce ad ascoltare o a capire lo scrive nella conversazione con cosa fare, e mentre ascolta l'onda segue il microfono.
 - **Voce**: sintesi vocale di macOS, la migliore voce femminile italiana installata (le «Premium» e «Avanzate» sono le più naturali), scelta e velocità nelle impostazioni. Non si imita la voce di una persona o di un personaggio reale: si sceglie tra le voci di sistema.
 - **Conversazione**: pulsante del microfono o ⌥⌘E. La frase finisce da sola dopo una breve pausa e segue la stessa strada delle domande scritte. La risposta resta scritta; a voce Eve ne dice l'inizio (o tutta, se si sceglie). A conversazione continua, finita la risposta Eve torna ad ascoltare finché non le si dice «basta così».
 - Permessi: microfono e riconoscimento vocale (testi in `Info.plist`).

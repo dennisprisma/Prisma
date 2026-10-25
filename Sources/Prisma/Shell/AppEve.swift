@@ -388,7 +388,7 @@ struct AppEve: View {
                 conVoce { v in
                     if v.ascolta {
                         // Mentre parli, al posto del campo c'è quello che Eve sta capendo
-                        Text(v.trascritto.isEmpty ? "Ti ascolto…" : v.trascritto)
+                        Text(v.trascritto.isEmpty ? (v.nota ?? "Ti ascolto…") : v.trascritto)
                             .font(Tipo.eveCampo)
                             .italic(v.trascritto.isEmpty)
                             .foregroundColor(v.trascritto.isEmpty ? Colori.Eve.ascoltoTesto : Colori.Eve.nuvolaEveTesto)
@@ -467,6 +467,8 @@ struct StatoVoce {
     var errore: String?
     /// Quanto suona il microfono (0…1) mentre Eve ascolta.
     var livello: Float = 0
+    /// Cosa fa Eve prima di sentirti («Mi preparo ad ascoltarti…»).
+    var nota: String?
 }
 
 /// Segue l'ascolto e la voce di Eve e ridisegna solo il pezzo che ne dipende.
@@ -478,7 +480,7 @@ private struct OsservaVoce<C: View>: View {
     var body: some View {
         var errore: String?
         if case .nonDisponibile(let m) = ascolto.stato { errore = m }
-        return contenuto(StatoVoce(ascolta: ascolto.ascolta, parla: voce.parla, trascritto: ascolto.trascritto, errore: errore, livello: ascolto.livello))
+        return contenuto(StatoVoce(ascolta: ascolto.ascolta, parla: voce.parla, trascritto: ascolto.trascritto, errore: errore, livello: ascolto.livello, nota: ascolto.nota))
     }
 }
 
