@@ -70,7 +70,7 @@ struct AppEve: View {
     private var avviso: some View {
         let motore = stato.motoreEve
         let apple = !(motore is MotoreSintesi)
-        let motivo = MotoriEve.motivoAppleNonDisponibile
+        let motivo = MotoriEve.motivo(stato.dati.impostazioni.eve, locale: stato.disponibilitaLocale)
         return HStack(spacing: 8) {
             Circle().fill(apple ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).frame(width: 8, height: 8)
                 .shadow(color: (apple ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).opacity(0.8), radius: 3)
@@ -85,7 +85,7 @@ struct AppEve: View {
             }
             .labelsHidden()
             .frame(width: 160)
-            .help("Chi risponde: il modello Apple sul Mac, se disponibile, oppure la sintesi dai dati del dossier")
+            .help("Chi risponde: il modello Apple o Qwen sul Mac, se disponibili, oppure la sintesi dai dati del dossier")
         }
         .foregroundColor(Colori.Eve.avvisoTesto)
         .incisione(Color.white.opacity(0.6))
@@ -305,7 +305,9 @@ struct AppEve: View {
                         NuvolaEve(messaggio: m, nomeUtente: stato.nomeUtente, azioniCliente: !stato.evePortafoglio,
                                   creaAttivita: { stato.attivitaDaEve(m) }, aggiungiNota: { stato.notaDaEve(m) },
                                   attivitaProposta: { stato.attivitaDaProposta($0, messaggio: m.id) },
-                                  posizioneProposta: { stato.posizioneDaProposta($0, messaggio: m.id) })
+                                  posizioneProposta: { stato.posizioneDaProposta($0, messaggio: m.id) },
+                                  apriAzione: { stato.apriAzioneEve($0) },
+                                  annullaAzione: { stato.annullaAzioneEve($0, messaggio: m.id) })
                             .id(m.id)
                     }
                     if stato.eveInCorso {
@@ -489,6 +491,8 @@ struct NuvolaEve: View {
     let aggiungiNota: () -> Void
     var attivitaProposta: (PropostaEve) -> Void = { _ in }
     var posizioneProposta: (PropostaEve) -> Void = { _ in }
+    var apriAzione: (AzioneEve) -> Void = { _ in }
+    var annullaAzione: (AzioneEve) -> Void = { _ in }
 
     var body: some View {
         let mio = messaggio.autore == .utente
@@ -529,9 +533,19 @@ struct NuvolaEve: View {
                     }
                     .padding(.top, 4)
                 }
-                if !mio {
+                if let a = messaggio.azione, !mio {
                     HStack(spacing: 6) {
-                        if azioniCliente {
+                        if a.annullata {
+                            Text("Annullato").font(Tipo.eveAzione).foregroundColor(Colori.Eve.autore)
+                        } else {
+                            azione(Self.apri(a)) { apriAzione(a) }
+                            azione("Annulla") { annullaAzione(a) }
+                        }
+                    }
+                    .padding(.top, 3)
+                } else if !mio {
+                    HStack(spacing: 6) {
+                        if azioniCliente && messaggio.motore != "Eve" {
                             azione("✓ Crea attività", creaAttivita)
                             azione("＋ Nota del cliente", aggiungiNota)
                         }
@@ -553,6 +567,14 @@ struct NuvolaEve: View {
                 .strokeBorder(mio ? Colori.Eve.nuvolaTuaBordo : Colori.Eve.nuvolaEveBordo, lineWidth: 1))
             .shadow(color: Color.black.opacity(0.12), radius: 1, x: 0, y: 1)
             if !mio { Spacer(minLength: 60) }
+        }
+    }
+
+    private static func apri(_ a: AzioneEve) -> String {
+        switch a.tipo {
+        case .appuntamento: return "Apri in Agenda ↗"
+        case .attivita: return "Apri in Attività ↗"
+        case .nota: return "Apri la nota ↗"
         }
     }
 

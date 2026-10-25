@@ -19,10 +19,41 @@ enum IstruzioniEve {
     }
 }
 
+/// Un motore che scrive testo libero (il modello Apple o Qwen sul Mac): lo usano chat, commenti ed estrazioni.
+protocol MotoreGenerativo {
+    var nome: String { get }
+    func genera(istruzioni: String, richiesta: String) async throws -> String
+}
+
+/// Le istruzioni e la richiesta per una domanda in chat, uguali per ogni modello.
+enum PromptEve {
+    static func chat(_ r: RichiestaEve) -> (istruzioni: String, prompt: String) {
+        let istruzioni = IstruzioniEve.chat + "\n\nSCHEDA DEL CLIENTE\n" + ContestoEve.scheda(r.fonte)
+        // Le ultime battute, per le domande di seguito (brevi: la finestra del modello è piccola).
+        let storia = r.storia.suffix(4).map { m in
+            "\(m.autore == .utente ? "Consulente" : "Eve"): \(String(m.testo.prefix(500)))"
+        }
+        var prompt = (storia.isEmpty ? "" : "CONVERSAZIONE FIN QUI\n" + storia.joined(separator: "\n") + "\n\n")
+            + "DOMANDA DEL CONSULENTE\n" + r.domanda
+        if r.spunto != nil {
+            // Per gli spunti Prisma prepara già la bozza con i numeri esatti: il modello la rende discorsiva.
+            prompt += "\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n"
+                + String(MotoriEve.sintesi.componi(r).testo.prefix(ContestoEve.limiteCalcoli))
+                + "\n\nRiscrivi la bozza in modo naturale e ordinato e aggiungi al massimo due domande utili da fare al cliente."
+        } else if let s = SpuntoEve.argomento(r.domanda) {
+            // Domanda libera su un argomento che Prisma ha già calcolato: le passo le cifre pertinenti.
+            let calcoli = MotoriEve.sintesi.componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: r.fonte, storia: [])).testo
+            prompt += "\n\nCALCOLI DI PRISMA PERTINENTI (numeri esatti: usali solo se servono alla domanda, senza cambiarli)\n"
+                + String(calcoli.prefix(ContestoEve.limiteCalcoli))
+        }
+        return (istruzioni, prompt)
+    }
+}
+
 /// Fabbrica dei motori: chi è disponibile su questo Mac.
 enum MotoriEve {
     /// Il modello Apple, se l'app è stata compilata con l'SDK di macOS 26 e il sistema è macOS 26 o successivo.
-    static var apple: MotoreEve? {
+    static var apple: (MotoreEve & MotoreGenerativo)? {
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) { return MotoreApple() }
         #endif
@@ -30,18 +61,6 @@ enum MotoriEve {
     }
 
     static let sintesi = MotoreSintesi()
-
-    /// Testo libero dal modello Apple (per l'estrazione dagli appunti); nil se il modello non c'è.
-    static func generaConApple(istruzioni: String, richiesta: String) async throws -> String? {
-        #if canImport(FoundationModels)
-        if #available(macOS 26.0, *) {
-            let m = MotoreApple()
-            guard m.disponibilita.pronto else { return nil }
-            return try await m.genera(istruzioni: istruzioni, richiesta: richiesta)
-        }
-        #endif
-        return nil
-    }
 
     /// Motivo per cui il modello Apple non si può usare (nil se è pronto).
     static var motivoAppleNonDisponibile: String? {
@@ -51,14 +70,38 @@ enum MotoriEve {
         return a.disponibilita.motivo
     }
 
-    /// Il motore da usare secondo le impostazioni.
-    static func scelto(_ preferenza: ImpostazioniEve.Motore) -> MotoreEve {
-        switch preferenza {
+    /// Il modello che scrive, secondo le impostazioni e la disponibilità (nil = solo la sintesi dai dati).
+    /// Automatico: il modello Apple se è pronto, altrimenti Qwen sul Mac se è pronto.
+    static func generativo(_ eve: ImpostazioniEve, locale: DisponibilitaEve) -> (MotoreEve & MotoreGenerativo)? {
+        let qwen = MotoreLocale(eve, disponibilita: locale)
+        switch eve.motore {
         case .sintesi:
-            return sintesi
-        case .apple, .automatico:
+            return nil
+        case .apple:
             if let a = apple, a.disponibilita.pronto { return a }
-            return sintesi
+            return nil
+        case .locale:
+            return qwen.disponibilita.pronto ? qwen : nil
+        case .automatico:
+            if let a = apple, a.disponibilita.pronto { return a }
+            return qwen.disponibilita.pronto ? qwen : nil
+        }
+    }
+
+    /// Il motore da usare secondo le impostazioni.
+    static func scelto(_ eve: ImpostazioniEve, locale: DisponibilitaEve) -> MotoreEve {
+        generativo(eve, locale: locale) ?? sintesi
+    }
+
+    /// Perché il motore scelto non risponde (nil se risponde o se si è scelta la sintesi).
+    static func motivo(_ eve: ImpostazioniEve, locale: DisponibilitaEve) -> String? {
+        switch eve.motore {
+        case .sintesi: return nil
+        case .apple: return motivoAppleNonDisponibile
+        case .locale: return locale.motivo
+        case .automatico:
+            guard generativo(eve, locale: locale) == nil else { return nil }
+            return motivoAppleNonDisponibile
         }
     }
 }
@@ -67,7 +110,7 @@ enum MotoriEve {
 /// Primo motore di Eve: il modello Apple integrato, sul dispositivo (framework FoundationModels).
 /// Nessun dato esce dal Mac.
 @available(macOS 26.0, *)
-struct MotoreApple: MotoreEve {
+struct MotoreApple: MotoreEve, MotoreGenerativo {
     let nome = "Modello Apple"
     let descrizione = "Apple Intelligence sul Mac: il modello gira sul dispositivo e nessun dato esce dal computer."
 
@@ -95,25 +138,8 @@ struct MotoreApple: MotoreEve {
     }
 
     func rispondi(_ r: RichiestaEve) async throws -> RispostaEve {
-        let istruzioni = IstruzioniEve.chat + "\n\nSCHEDA DEL CLIENTE\n" + ContestoEve.scheda(r.fonte)
+        let (istruzioni, prompt) = PromptEve.chat(r)
         let session = LanguageModelSession(instructions: istruzioni)
-        // Le ultime battute, per le domande di seguito (brevi: la finestra del modello è piccola).
-        let storia = r.storia.suffix(4).map { m in
-            "\(m.autore == .utente ? "Consulente" : "Eve"): \(String(m.testo.prefix(500)))"
-        }
-        var prompt = (storia.isEmpty ? "" : "CONVERSAZIONE FIN QUI\n" + storia.joined(separator: "\n") + "\n\n")
-            + "DOMANDA DEL CONSULENTE\n" + r.domanda
-        if r.spunto != nil {
-            // Per gli spunti Prisma prepara già la bozza con i numeri esatti: il modello la rende discorsiva.
-            prompt += "\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n"
-                + String(MotoriEve.sintesi.componi(r).testo.prefix(ContestoEve.limiteCalcoli))
-                + "\n\nRiscrivi la bozza in modo naturale e ordinato e aggiungi al massimo due domande utili da fare al cliente."
-        } else if let s = SpuntoEve.argomento(r.domanda) {
-            // Domanda libera su un argomento che Prisma ha già calcolato: le passo le cifre pertinenti.
-            let calcoli = MotoriEve.sintesi.componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: r.fonte, storia: [])).testo
-            prompt += "\n\nCALCOLI DI PRISMA PERTINENTI (numeri esatti: usali solo se servono alla domanda, senza cambiarli)\n"
-                + String(calcoli.prefix(ContestoEve.limiteCalcoli))
-        }
         do {
             let risposta = try await session.respond(to: prompt)
             let testo = risposta.content.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -160,6 +160,10 @@ final class StatoShell: ObservableObject {
     var rispostaAVoce = false
     /// Conversazione a voce in corso: dopo ogni risposta Eve torna ad ascoltare, finché non le dici «basta».
     @Published var conversazioneAVoce = false
+    /// Qwen sul Mac (Ollama): pronto o perché no. Si aggiorna con `verificaMotoreLocale()`.
+    @Published var disponibilitaLocale = DisponibilitaEve.nonDisponibile("Ollama non ancora verificato.")
+    /// L'appuntamento chiesto a Eve a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
+    var appuntamentoInSospeso: Appuntamento.Bozza?
     /// Nelle istantanee: lo stato della voce da mostrare (non c'è microfono).
     var voceIstantanea: StatoVoce?
 
@@ -202,6 +206,7 @@ final class StatoShell: ObservableObject {
             if dati.note.contains(where: \.vuota) { dati.note.removeAll(where: \.vuota) }
             avviaSalvataggio()
             avviaBackupAutomatico()
+            verificaMotoreLocale()
             aggiornaElencoBackup()
             // I file rimasti da un'importazione interrotta vanno nel Cestino; solo con l'archivio
             // letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
@@ -285,6 +290,7 @@ final class StatoShell: ObservableObject {
             }
         }
         if app == .impostazioni { aggiornaElencoBackup() }
+        if app == .eve || app == .impostazioni { verificaMotoreLocale() }
     }
 
     func primoPiano(_ app: AppPrisma) {
@@ -805,21 +811,20 @@ final class StatoShell: ObservableObject {
 
     /// Il modello Apple legge le prime pagine e propone i campi che le regole non hanno trovato.
     private func completaConModello(_ id: String, pagine: [String], trovati: [CampoEstratto]) {
-        guard dati.impostazioni.eve.motore != .sintesi, MotoriEve.motivoAppleNonDisponibile == nil,
-              trovati.count < CampoDocumento.allCases.count else {
+        guard let modello = generativo, trovati.count < CampoDocumento.allCases.count else {
             documentiInLettura.remove(id)
             return
         }
         Task { @MainActor in
-            var modello: [CampoEstratto] = []
+            var trovatiModello: [CampoEstratto] = []
             for (n, pagina) in pagine.prefix(6).enumerated() where pagina.count > 80 {
-                if let r = try? await MotoriEve.generaConApple(istruzioni: EstrattoreDocumento.istruzioniModello,
-                                                               richiesta: "PAGINA \(n + 1)\n" + String(pagina.prefix(3_000))) {
-                    modello += EstrattoreDocumento.daRisposta(r, pagina: n + 1)
+                if let r = try? await modello.genera(istruzioni: EstrattoreDocumento.istruzioniModello,
+                                                     richiesta: "PAGINA \(n + 1)\n" + String(pagina.prefix(3_000))) {
+                    trovatiModello += EstrattoreDocumento.daRisposta(r, pagina: n + 1)
                 }
             }
             // Contro lo stato di adesso: conferme e correzioni fatte durante la lettura restano
-            self.aggiornaDocumento(id) { $0.campi = EstrattoreDocumento.unisci($0.campi, modello) }
+            self.aggiornaDocumento(id) { $0.campi = EstrattoreDocumento.unisci($0.campi, trovatiModello) }
             self.documentiInLettura.remove(id)
         }
     }
@@ -1386,12 +1391,12 @@ final class StatoShell: ObservableObject {
         let regole = EstrattoreIncontro.conRegole(altro, preoccupazioni: i.preoccupazioni)
         proposteIncontro[i.id] = regole
         proposteScelte = Set(regole.map(\.id))
-        guard persistente, dati.impostazioni.eve.motore != .sintesi, MotoriEve.motivoAppleNonDisponibile == nil, !i.vuoto else { return }
+        guard persistente, let modello = generativo, !i.vuoto else { return }
         estrazioneInCorso = true
         let testo = i.testoAscolto
         Task { @MainActor in
-            if let risposta = try? await MotoriEve.generaConApple(istruzioni: EstrattoreIncontro.istruzioniModello,
-                                                                    richiesta: "APPUNTI DELL'INCONTRO\n" + testo) {
+            if let risposta = try? await modello.genera(istruzioni: EstrattoreIncontro.istruzioniModello,
+                                                         richiesta: "APPUNTI DELL'INCONTRO\n" + testo) {
                 let modello = EstrattoreIncontro.daRisposta(risposta)
                 let unite = EstrattoreIncontro.unisci(regole, modello)
                 self.proposteIncontro[i.id] = unite
@@ -1540,13 +1545,25 @@ final class StatoShell: ObservableObject {
     /// Messaggi conservati per cliente.
     static let massimoMessaggi = 60
 
-    var motoreEve: MotoreEve { MotoriEve.scelto(dati.impostazioni.eve.motore) }
+    var motoreEve: MotoreEve { MotoriEve.scelto(dati.impostazioni.eve, locale: disponibilitaLocale) }
+    /// Il modello che scrive (Apple o Qwen sul Mac) se è pronto; nil = risponde la sintesi dai dati.
+    var generativo: (MotoreEve & MotoreGenerativo)? { MotoriEve.generativo(dati.impostazioni.eve, locale: disponibilitaLocale) }
+
+    /// Chiede a Ollama, sul Mac, se Qwen è pronto (all'avvio, aprendo Eve e dalle impostazioni).
+    func verificaMotoreLocale() {
+        guard persistente else { return }
+        let eve = dati.impostazioni.eve
+        Task {
+            let d = await MotoreLocale.verifica(eve)
+            DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
+        }
+    }
 
     func conversazione(_ id: String) -> [MessaggioEve] {
         dati.impostazioni.eve.conservaConversazioni ? (dati.conversazioni[id] ?? []) : (conversazioniTemporanee[id] ?? [])
     }
 
-    private func aggiungiMessaggio(_ m: MessaggioEve, cliente id: String) {
+    func aggiungiMessaggio(_ m: MessaggioEve, cliente id: String) {
         var elenco = conversazione(id)
         elenco.append(m)
         elenco = Array(elenco.suffix(Self.massimoMessaggi))
@@ -1569,12 +1586,13 @@ final class StatoShell: ObservableObject {
     func chiediEvePortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil) {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty, !eveInCorso else { return }
+        if spunto == nil, eseguiComandoEve(testo) { return }
         let id = EvePortafoglio.chiave
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: testo), cliente: id)
         domandaEve = ""
         let argomento = spunto ?? SpuntoPortafoglio.da(testo)
         let bozza = EvePortafoglio.risposta(argomento, domanda: testo, dati: dati)
-        guard !(motoreEve is MotoreSintesi) else {
+        guard let modello = generativo else {
             aggiungiMessaggio(MessaggioEve(autore: .eve, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriEve.sintesi.nome), cliente: id)
             return
         }
@@ -1585,12 +1603,12 @@ final class StatoShell: ObservableObject {
         Task { @MainActor in
             var risposta = bozza.testo
             var motore = MotoriEve.sintesi.nome
-            if let t = try? await MotoriEve.generaConApple(istruzioni: istruzioni, richiesta: richiesta) {
+            if let t = try? await modello.genera(istruzioni: istruzioni, richiesta: richiesta) {
                 let pulito = t.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
                 // Ogni cifra della risposta deve venire dalla scheda o dalla bozza
                 if !pulito.isEmpty, CommentoEve.numeriConservati(bozza: scheda + "\n" + bozza.testo, testo: pulito) {
                     risposta = pulito
-                    motore = "Modello Apple"
+                    motore = modello.nome
                 }
             }
             self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: risposta, titolo: bozza.titolo, motore: motore), cliente: id)
@@ -1626,8 +1644,7 @@ final class StatoShell: ObservableObject {
         let domanda = "Spiegami il documento «\(d.titolo)»"
         let bozza = MotoriEve.sintesi.documento(d, fonte: fonte)
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: domanda), cliente: id)
-        let motore = motoreEve
-        guard !(motore is MotoreSintesi), !d.campi.isEmpty else {
+        guard let modello = generativo, !d.campi.isEmpty else {
             aggiungiMessaggio(MessaggioEve(autore: .eve, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriEve.sintesi.nome), cliente: id)
             return
         }
@@ -1640,11 +1657,11 @@ final class StatoShell: ObservableObject {
         Task { @MainActor in
             var testo = bozza.testo
             var nome = MotoriEve.sintesi.nome
-            if let r = try? await MotoriEve.generaConApple(istruzioni: IstruzioniEve.chat, richiesta: richiesta),
+            if let r = try? await modello.genera(istruzioni: IstruzioniEve.chat, richiesta: richiesta),
                !r.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                CommentoEve.numeriConservati(bozza: bozza.testo + "\n" + estratto, testo: r) {
                 testo = r.trimmingCharacters(in: .whitespacesAndNewlines)
-                nome = "Modello Apple"
+                nome = modello.nome
             }
             self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: testo, titolo: bozza.titolo, motore: nome), cliente: id)
             self.eveInCorso = false
@@ -1726,15 +1743,14 @@ final class StatoShell: ObservableObject {
     /// Fa scrivere a Eve il commento del report aperto (il consulente poi lo rilegge e lo modifica).
     func scriviCommentoConEve(_ scelta: SceltaProspetto) {
         guard !eveInCorso, let bozza = bozzaCommento(scelta) else { return }
-        let preferenza = dati.impostazioni.eve.motore
         let id = clienteAttivoId
-        if preferenza == .sintesi || MotoriEve.motivoAppleNonDisponibile != nil {
+        guard let modello = generativo else {
             salvaCommento(scelta, testo: bozza, bozzaDi: MotoriEve.sintesi.nome)
             return
         }
         eveInCorso = true
         Task { @MainActor in
-            let r = await CommentoEve.scrivi(bozza: bozza, preferenza: preferenza)
+            let r = await CommentoEve.scrivi(bozza: bozza, modello: modello)
             if self.clienteAttivoId == id { self.salvaCommento(scelta, testo: r.testo, bozzaDi: r.motore) }
             self.eveInCorso = false
         }
@@ -1750,8 +1766,10 @@ final class StatoShell: ObservableObject {
     /// Manda una domanda a Eve per il cliente attivo.
     func chiediEve(_ domanda: String, spunto: SpuntoEve? = nil) {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !testo.isEmpty, !eveInCorso else { return }
+        if spunto == nil, eseguiComandoEve(testo) { return }
         let id = clienteAttivoId
-        guard !testo.isEmpty, !eveInCorso, let fonte = fonteEve(id) else { return }
+        guard let fonte = fonteEve(id) else { return }
         let storia = conversazione(id)
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: testo), cliente: id)
         domandaEve = ""

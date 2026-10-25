@@ -14,6 +14,8 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
     var data = Date()
     /// Le azioni proposte da Eve (spunto «Cosa proporre al cliente?»), con quello che ne è stato fatto.
     var proposte: [PropostaEve]?
+    /// Quello che Eve ha fatto su tua richiesta (un appuntamento, un promemoria, una nota): si apre o si annulla.
+    var azione: AzioneEve?
 
     init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil, proposte: [PropostaEve]? = nil) {
         self.autore = autore
@@ -24,7 +26,7 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
         data = Appuntamento.alMinuto(Date())
     }
 
-    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte }
+    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -35,7 +37,17 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
         motore = try c.decodeIfPresent(String.self, forKey: .motore)
         data = try c.decodeIfPresent(Date.self, forKey: .data) ?? Date()
         proposte = try? c.decodeIfPresent([PropostaEve].self, forKey: .proposte)
+        azione = try? c.decodeIfPresent(AzioneEve.self, forKey: .azione)
     }
+}
+
+/// Una cosa fatta da Eve su richiesta: cosa ha creato e se l'hai annullata.
+struct AzioneEve: Codable, Equatable {
+    enum Tipo: String, Codable { case appuntamento, attivita, nota }
+
+    var tipo: Tipo
+    var id: String
+    var annullata = false
 }
 
 /// Un'azione che Eve propone per il cliente, ricavata dai motori di analisi: diventa un'attività

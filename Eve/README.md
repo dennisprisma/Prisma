@@ -56,6 +56,16 @@ Eve ascolta e risponde a voce (`Sources/Prisma/Eve/VoceEve.swift`, `AscoltoEve.s
 - **Conversazione**: pulsante del microfono o ⌥⌘E. La frase finisce da sola dopo una breve pausa e segue la stessa strada delle domande scritte. La risposta resta scritta; a voce Eve ne dice l'inizio (o tutta, se si sceglie). A conversazione continua, finita la risposta Eve torna ad ascoltare finché non le si dice «basta così».
 - Permessi: microfono e riconoscimento vocale (testi in `Info.plist`).
 
+## Eve fa le cose
+Quando le chiedi qualcosa da fare, a voce o per scritto, Eve lo fa e te lo conferma («Va bene, te lo preparo»). I comandi li riconosce l'app con regole sulle parole (`Sources/Prisma/Eve/ComandiEve.swift`, giorni e orari in `DateItaliane.swift`), così funzionano con ogni motore e anche senza modello; li esegue `Sources/Prisma/Shell/ComandiShell.swift`.
+- **Documenti**: «preparami il report della prova di resistenza di Marco», «fammi il prospetto dei costi», «il fascicolo per l'incontro con Laura» (con il prossimo appuntamento del cliente, i report adatti già scelti). «Prospetto» = per te, altrimenti il report per il cliente.
+- **Appuntamenti**: «fissa un incontro con Giulia giovedì alle 15», «una telefonata con Laura domani alle tre e mezza». Se manca il giorno o l'ora Eve lo chiede e la frase dopo completa l'appuntamento; avvisa se a quell'ora c'è già un impegno.
+- **Promemoria**: «ricordami di chiamare Laura venerdì» → un'attività del cliente.
+- **Note**: «prendi nota che Marco vuole cambiare casa nel 2028» → una nota nel taccuino del cliente.
+- **Agenda**: «cosa ho domani?».
+- **Aprire**: «apri l'agenda», «vai alle posizioni», «passa a Sofia», «apri Marco Bianchi».
+Quello che Eve crea si apre o si annulla dalla risposta. Le domande («quanto pesano i costi?») restano domande. In modalità cliente Eve non esce dal dossier del cliente davanti a te. Il solo cognome vale come cliente dopo «con», «per», «di»… («i conti correnti» non è Andrea Conti).
+
 ## Contenuto della cartella
 - `Istruzioni/` — istruzioni di sistema e prompt per ogni compito (chat, estrazione, commento ai report).
 - `Schemi/` — schemi dei dati da estrarre (es. polizza, KID, estratto conto, proposta).

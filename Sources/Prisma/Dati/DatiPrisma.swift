@@ -218,6 +218,8 @@ struct ImpostazioniEve: Codable, Equatable {
         /// Il modello Apple se disponibile, altrimenti la sintesi locale.
         case automatico
         case apple
+        /// Un modello aperto (Qwen) che gira sul Mac con Ollama.
+        case locale
         case sintesi
 
         var id: String { rawValue }
@@ -226,6 +228,7 @@ struct ImpostazioniEve: Codable, Equatable {
             switch self {
             case .automatico: return "Automatico"
             case .apple: return "Modello Apple"
+            case .locale: return "Qwen sul Mac"
             case .sintesi: return "Sintesi dai dati"
             }
         }
@@ -261,11 +264,14 @@ struct ImpostazioniEve: Codable, Equatable {
     var leggiTutto = false
     /// Dopo aver risposto a voce, Eve torna ad ascoltare finché non le dici «basta».
     var conversazioneContinua = true
+    /// Il modello aperto sul Mac (Ollama): solo indirizzi locali, il nome del modello da usare.
+    var indirizzoLocale = MotoreLocale.indirizzoPredefinito
+    var modelloLocale = MotoreLocale.modelloPredefinito
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case motore, conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua
+        case motore, conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale
     }
 
     init(from decoder: Decoder) throws {
@@ -277,6 +283,8 @@ struct ImpostazioniEve: Codable, Equatable {
         risposteAVoce = (try? c.decodeIfPresent(RisposteAVoce.self, forKey: .risposteAVoce)) ?? .quandoParli
         leggiTutto = (try? c.decodeIfPresent(Bool.self, forKey: .leggiTutto)) ?? false
         conversazioneContinua = (try? c.decodeIfPresent(Bool.self, forKey: .conversazioneContinua)) ?? true
+        indirizzoLocale = (try? c.decodeIfPresent(String.self, forKey: .indirizzoLocale)) ?? MotoreLocale.indirizzoPredefinito
+        modelloLocale = (try? c.decodeIfPresent(String.self, forKey: .modelloLocale)) ?? MotoreLocale.modelloPredefinito
     }
 }
 

@@ -261,6 +261,15 @@ enum Istantanee {
             s.voceIstantanea = StatoVoce(ascolta: true, trascritto: "Va bene, e quanto pesano i costi del suo piano pensione")
             s.apri(.eve)
         }),
+        ("86-eve-comandi", { s in
+            // Eve fa le cose: un appuntamento, un promemoria e l'agenda di domani, dalla conversazione
+            s.dati.impostazioni.eve.motore = .sintesi
+            s.clienteAttivoId = "marco"
+            s.chiediEve("Fissa una telefonata con Marco domani alle 15")
+            s.chiediEve("Ricordami di mandargli il KID del PIP venerdì")
+            s.chiediEve("Cosa ho domani?")
+            s.apri(.eve)
+        }),
         ("85-impostazioni-voce", { s in
             s.schedaImpostazioni = .esperienza
             s.apri(.impostazioni)

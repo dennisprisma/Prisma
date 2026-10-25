@@ -749,6 +749,126 @@ enum ProvaEve {
         v.fraseDetta("basta così")
         controlla(!v.conversazioneAVoce, "Voce: «basta così» chiude la conversazione a voce")
 
+        // Comandi: Eve capisce cosa fare (martedì 27 ottobre 2026, ore 10)
+        let cal = Calendar.current
+        let martedi = cal.date(from: DateComponents(year: 2026, month: 10, day: 27, hour: 10)) ?? Date()
+        func giorno(_ d: Int, _ m: Int = 10, _ h: Int? = nil, _ min: Int = 0) -> Date? {
+            cal.date(from: DateComponents(year: 2026, month: m, day: d, hour: h ?? 0, minute: h == nil ? 0 : min))
+        }
+        let noti = stato.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        func capisce(_ frase: String, attivo: String? = "giulia") -> ComandoEve? {
+            InterpreteComandi.interpreta(frase, clienti: noti, attivo: attivo, oggi: martedi)
+        }
+        controlla(capisce("Ok Eve, preparami il report della prova di resistenza per Marco Bianchi") == .documento(.resistenza(report: true), cliente: "marco"),
+                  "Comandi: «preparami il report della prova di resistenza per Marco Bianchi»")
+        controlla(capisce("mi prepari il prospetto dei costi per favore") == .documento(.costi(report: false), cliente: nil), "Comandi: «mi prepari il prospetto dei costi» (cliente aperto)")
+        controlla(capisce("Fammi il fascicolo per l'incontro con Laura") == .documento(.fascicolo, cliente: "laura"), "Comandi: il fascicolo per l'incontro con Laura")
+        if case .chiedi? = capisce("preparami un report") {
+            controlla(true, "Comandi: «preparami un report» senza dire quale: Eve chiede")
+        } else {
+            controlla(false, "Comandi: «preparami un report» senza dire quale: Eve chiede")
+        }
+        controlla(capisce("Fissa un appuntamento con Giulia giovedì alle 15")
+                  == .appuntamento(.init(cliente: "giulia", giorno: giorno(29), ora: 15, minuti: 0, tipo: .altro, titolo: "")),
+                  "Comandi: «fissa un appuntamento con Giulia giovedì alle 15»")
+        controlla(capisce("metti una telefonata con Laura domani alle tre e mezza")
+                  == .appuntamento(.init(cliente: "laura", giorno: giorno(28), ora: 15, minuti: 30, tipo: .telefonata, titolo: "")),
+                  "Comandi: «una telefonata con Laura domani alle tre e mezza»")
+        controlla(capisce("Ricordami di chiamare Laura venerdì") == .attivita(cliente: "laura", titolo: "Chiamare Laura", scadenza: giorno(30)!),
+                  "Comandi: «ricordami di chiamare Laura venerdì» (\(String(describing: capisce("Ricordami di chiamare Laura venerdì"))))")
+        controlla(capisce("ricordami di mandare il KID il 3 novembre") == .attivita(cliente: "giulia", titolo: "Mandare il KID", scadenza: giorno(3, 11)!),
+                  "Comandi: «ricordami di mandare il KID il 3 novembre»")
+        controlla(capisce("Prendi nota che Marco vuole cambiare casa nel 2028") == .nota(cliente: "marco", testo: "Marco vuole cambiare casa nel 2028"),
+                  "Comandi: «prendi nota che Marco vuole cambiare casa nel 2028»")
+        controlla(capisce("Apri l'agenda") == .apri(.agenda) && capisce("vai alle posizioni") == .apri(.posizioni), "Comandi: apri l'agenda, vai alle posizioni")
+        controlla(capisce("passa a Sofia") == .cliente("sofia") && capisce("apri Marco Bianchi") == .cliente("marco"), "Comandi: passa a Sofia, apri Marco Bianchi")
+        controlla(capisce("cosa ho domani?") == .agenda(giorno(28)!), "Comandi: «cosa ho domani?»")
+        controlla(capisce("preparami il report della liquidità sui conti correnti") == .documento(.liquidita(report: true), cliente: nil),
+                  "Comandi: «i conti correnti» non è il cliente Andrea Conti")
+        for domanda in ["Cosa proporre al cliente?", "Quanto pesano i costi?", "Fammi un riepilogo del cliente", "Prepara il prossimo incontro",
+                        "Conviene restare o cambiare?", "Come stanno andando le posizioni di Marco?"] {
+            controlla(capisce(domanda) == nil, "Comandi: «\(domanda)» resta una domanda per Eve")
+        }
+        let quando = DateItaliane.trova("il 3 novembre alle 10:30", oggi: martedi)
+        controlla(quando.data() == giorno(3, 11, 10, 30), "Date: «il 3 novembre alle 10:30»")
+        controlla(DateItaliane.trova("tra due settimane", oggi: martedi).giorno == giorno(10, 11), "Date: «tra due settimane»")
+        controlla(DateItaliane.trova("martedì prossimo alle 9", oggi: martedi).data() == giorno(3, 11, 9), "Date: «martedì prossimo» dal martedì è la settimana dopo")
+        controlla(DateItaliane.trova("a mezzogiorno", oggi: martedi).data() == giorno(27, 10, 12), "Date: «a mezzogiorno» di oggi")
+
+        // Comandi eseguiti: l'appuntamento senza giorno si completa con la frase dopo, e si annulla
+        let e = StatoShell(persistente: false)
+        e.dati.impostazioni.eve.motore = .sintesi
+        e.clienteAttivoId = "giulia"
+        let appuntamentiPrima = e.dati.appuntamenti.count
+        controlla(e.eseguiComandoEve("fissa un incontro con Marco Bianchi", oggi: martedi) && e.appuntamentoInSospeso != nil
+                  && (e.conversazione("giulia").last?.testo ?? "").hasPrefix("Per quando"), "Eseguiti: l'incontro senza giorno, Eve chiede per quando")
+        controlla(e.eseguiComandoEve("giovedì alle 11", oggi: martedi) && e.dati.appuntamenti.count == appuntamentiPrima + 1, "Eseguiti: «giovedì alle 11» completa l'appuntamento")
+        let fissato = e.dati.appuntamenti.last
+        controlla(fissato?.clienteId == "marco" && fissato?.inizio == giorno(29, 10, 11) && fissato?.titolo == "Incontro con Marco Bianchi",
+                  "Eseguiti: incontro con Marco Bianchi giovedì 29 alle 11 (\(fissato?.titolo ?? "-"))")
+        if let m = e.conversazione("giulia").last, let a = m.azione {
+            controlla(a.tipo == .appuntamento && m.testo.contains("giovedì 29 ottobre alle 11:00"), "Eseguiti: la risposta dice quando («\(m.testo)»)")
+            e.annullaAzioneEve(a, messaggio: m.id)
+            controlla(e.dati.appuntamenti.count == appuntamentiPrima && e.conversazione("giulia").last?.azione?.annullata == true, "Eseguiti: annullato, l'appuntamento sparisce")
+        } else {
+            controlla(false, "Eseguiti: la risposta porta l'appuntamento da aprire o annullare")
+        }
+        let attivitaPrima = e.dati.attivita.count
+        controlla(e.eseguiComandoEve("ricordami di mandare il KID a Giulia domani", oggi: martedi) && e.dati.attivita.count == attivitaPrima + 1
+                  && e.dati.attivita.last?.titolo == "Mandare il KID a Giulia" && e.dati.attivita.last?.scadenza == giorno(28),
+                  "Eseguiti: promemoria «Mandare il KID a Giulia» per domani")
+        let notePrima = e.dati.note.count
+        controlla(e.eseguiComandoEve("prendi nota: vuole aumentare il versamento del PIP", oggi: martedi) && e.dati.note.count == notePrima + 1
+                  && e.dati.note.last?.clienteId == "giulia", "Eseguiti: la nota va nel taccuino di Giulia")
+        controlla(e.eseguiComandoEve("Ok Eve, preparami il report del patrimonio di Marco", oggi: martedi)
+                  && e.prospetto == .patrimonio(report: true) && e.clienteAttivoId == "marco" && e.aperta(.presentazioni),
+                  "Eseguiti: il report del patrimonio di Marco aperto in Prospetti e report")
+        e.chiediEve("Apri l'agenda")
+        controlla(e.aperta(.agenda), "Eseguiti: «apri l'agenda» dalla conversazione")
+        controlla(!e.eseguiComandoEve("Quanto pesano i costi?", oggi: martedi), "Eseguiti: una domanda passa a Eve")
+        e.entraModoCliente()
+        _ = e.eseguiComandoEve("passa a Sofia", oggi: martedi)
+        _ = e.eseguiComandoEve("preparami il report dei costi di Giulia Rossi", oggi: martedi)
+        controlla(e.clienteAttivoId == "marco", "Eseguiti: in modalità cliente Eve resta sul cliente davanti a te")
+
+        // Qwen sul Mac: solo indirizzi locali, risposte di Ollama lette bene, scelta del motore
+        controlla(MotoreLocale.indirizzoLocale("http://127.0.0.1:11434") != nil && MotoreLocale.indirizzoLocale("http://localhost:11434") != nil
+                  && MotoreLocale.indirizzoLocale("http://192.168.1.20:11434") == nil && MotoreLocale.indirizzoLocale("https://ollama.example.com") == nil,
+                  "Qwen: Prisma parla solo con il Mac stesso (127.0.0.1), mai con un altro computer")
+        controlla(MotoreLocale.modelli(Data(#"{"models":[{"name":"qwen3:4b","size":1},{"name":"llama3"}]}"#.utf8)) == ["qwen3:4b", "llama3"]
+                  && MotoreLocale.stessoModello("qwen3", "qwen3:latest") && !MotoreLocale.stessoModello("qwen3:4b", "qwen3:8b"),
+                  "Qwen: elenco dei modelli di Ollama")
+        controlla(MotoreLocale.testo(Data(#"{"message":{"role":"assistant","content":"<think>ragiono</think>
+**Ciao**, tutto bene."},"done":true}"#.utf8)) == "Ciao, tutto bene.",
+                  "Qwen: la risposta senza il ragionamento e senza markdown")
+        let corpo = MotoreLocale.corpo(modello: "qwen3:4b", messaggi: [("system", "a"), ("user", "b")])
+        controlla(corpo["think"] as? Bool == false && corpo["stream"] as? Bool == false && (corpo["messages"] as? [[String: String]])?.count == 2,
+                  "Qwen: richiesta senza ragionamento e senza flusso")
+        var qwen = ImpostazioniEve()
+        qwen.motore = .locale
+        controlla(MotoriEve.generativo(qwen, locale: .pronto)?.nome == "Qwen sul Mac" && MotoriEve.generativo(qwen, locale: .nonDisponibile("no")) == nil
+                  && MotoriEve.scelto(qwen, locale: .nonDisponibile("no")) is MotoreSintesi, "Qwen: scelto se è pronto, altrimenti la sintesi")
+        if MotoriEve.apple?.disponibilita.pronto != true {
+            qwen.motore = .automatico
+            controlla(MotoriEve.generativo(qwen, locale: .pronto)?.nome == "Qwen sul Mac", "Qwen: in automatico, senza il modello Apple risponde Qwen")
+        }
+        var lontano = ImpostazioniEve()
+        lontano.indirizzoLocale = "http://10.0.0.5:11434"
+        let attesa = DispatchSemaphore(value: 0)
+        final class Esito: @unchecked Sendable { var d = DisponibilitaEve.pronto }
+        let esito = Esito()
+        let altroComputer = lontano
+        Task.detached {
+            esito.d = await MotoreLocale.verifica(altroComputer)
+            let qui = await MotoreLocale.verifica(ImpostazioniEve())
+            print("INFO Qwen sul Mac (Ollama) su questo server: \(qui.motivo ?? "pronto")")
+            attesa.signal()
+        }
+        attesa.wait()
+        controlla(!esito.d.pronto && (esito.d.motivo ?? "").contains("127.0.0.1"), "Qwen: un indirizzo di un altro computer è rifiutato senza collegarsi")
+        let vecchieQwen = try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"motore":"apple"}"#.utf8))
+        controlla(vecchieQwen?.modelloLocale == "qwen3:4b" && vecchieQwen?.indirizzoLocale == "http://127.0.0.1:11434", "Qwen: impostazioni di prima con i valori predefiniti")
+
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")
