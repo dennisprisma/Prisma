@@ -595,6 +595,27 @@ enum ProvaEve {
             sala.presenta(d)
             sala.chiudiPresentazione()
             controlla(sala.inModoCliente, "Presentazione: se la modalità cliente era già accesa, resta")
+            sala.esciModoCliente()
+        }
+        // Annotazioni durante la presentazione: negli appunti dell'incontro, con la pagina; come attività
+        let annota = StatoShell(persistente: false)
+        if let a = annota.appuntamenti.first(where: { $0.clienteId == "marco" && $0.stato == .pianificato }) {
+            annota.preparaFascicolo(per: a)
+            if let d = annota.documentoProspetto(.fascicolo) {
+                annota.presenta(d)
+                annota.paginaSeguente()
+                annota.annotaPresentazione("Vuole ridurre il rischio")
+                let incontro = annota.dati.incontri.first { $0.appuntamentoId == a.id }
+                controlla(incontro?.appunti.contains("pagina 2: Vuole ridurre il rischio") == true, "Annotazione: negli appunti dell'incontro dell'appuntamento, con la pagina")
+                let prima = annota.dati.attivita.count
+                annota.annotaPresentazione("Portare il KID del fondo pensione", comeAttivita: true)
+                controlla(annota.dati.attivita.count == prima + 1 && annota.dati.attivita.contains { $0.titolo == "Portare il KID del fondo pensione" && $0.clienteId == "marco" },
+                          "Annotazione come attività: tra le cose da fare del cliente")
+                controlla(annota.presentazione?.annotazioni == 2 && annota.dati.incontri.filter { $0.appuntamentoId == a.id }.count == 1,
+                          "Annotazioni: contate, sempre nello stesso incontro")
+                annota.annotaPresentazione("   ")
+                controlla(annota.presentazione?.annotazioni == 2, "Annotazione vuota: ignorata")
+            }
         }
         let cache = StatoShell(persistente: false)
         let primo = cache.analisiDossier("marco")
