@@ -64,6 +64,10 @@ enum ContestoEve {
             righe.append("POSIZIONI IN ESSERE:")
             righe.append(contentsOf: inEssere.prefix(12).map { "- " + riga($0) })
         }
+        let nelTempo = MotorePatrimonio.calcola(f.posizioni, obiettivi: f.obiettivi, oggi: f.oggi)
+        if !nelTempo.vuoto {
+            righe.append("PATRIMONIO NEL TEMPO (proiezione di Prisma, prima delle imposte): " + MotorePatrimonio.sintesi(nelTempo).prefix(2).joined(separator: " "))
+        }
         let successione = MotoreSuccessione.calcola(cliente: c, posizioni: f.posizioni, oggi: f.oggi)
         if !successione.vuota {
             let eredi = successione.eredi.isEmpty ? "nessun erede registrato" : successione.eredi.map { "\($0.nome) \(MotoreSuccessione.frazione($0.quota))" }.joined(separator: ", ")

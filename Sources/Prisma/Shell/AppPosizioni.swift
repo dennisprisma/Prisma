@@ -156,7 +156,7 @@ struct AppPosizioni: View {
             if !stato.portafoglio {
                 EtichettaRail(testo: "Analisi")
                 VStack(spacing: 0) {
-                    ForEach([("Prova di resistenza", "resistenza"), ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
+                    ForEach([("Il patrimonio nel tempo", "patrimonio"), ("Prova di resistenza", "resistenza"), ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
                         // Chiusa la scheda di una posizione, il dossier è visibile e l'ancora si consuma
                         VoceNavigazione(titolo: voce.0, attiva: false) {
                             stato.posizioneInDettaglio = nil
@@ -228,6 +228,9 @@ struct AppPosizioni: View {
 
                     // Calcolate una volta e riusate finché posizioni, cliente e catalogo non cambiano
                     let analisi = stato.analisiDossier(stato.clienteAttivoId)
+                    if !analisi.patrimonio.vuoto {
+                        PannelloPatrimonio(p: analisi.patrimonio).id("patrimonio")
+                    }
                     if !analisi.prova.vuota {
                         PannelloResistenza(prova: analisi.prova).id("resistenza")
                     }

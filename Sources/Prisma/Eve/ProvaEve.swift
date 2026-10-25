@@ -226,6 +226,7 @@ enum ProvaEve {
             controlla(r.titolo == "Il passaggio generazionale di Marco Bianchi" && MotoreSuccessione.sintesi(su).allSatisfy { r.testo.contains($0) },
                       "Passaggio generazionale di Marco: Eve riporta le cifre del motore")
             controlla(ContestoEve.scheda(f).contains("SUCCESSIONE (stima di Prisma"), "La scheda per il modello riporta la successione")
+            controlla(ContestoEve.scheda(f).contains("PATRIMONIO NEL TEMPO"), "La scheda per il modello riporta il patrimonio nel tempo")
         }
         // Peso dei costi: le stesse cifre del pannello in Posizioni
         if let f = stato.fonteEve("marco") {
