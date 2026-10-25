@@ -133,6 +133,7 @@ struct AppProspetti: View {
         case .patrimonio:
             stato.prospetto = .patrimonio(report: false)
         case .fascicolo:
+            stato.fascicoloAppuntamento = nil
             stato.prospetto = .fascicolo
         case .posizione:
             let elenco = posizioniOrdinate

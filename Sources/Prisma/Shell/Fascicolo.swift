@@ -10,6 +10,27 @@ extension TipoProspetto {
     /// Quelli spuntati all'inizio: il quadro e le tre analisi nuove.
     static let fascicoloPredefinito: Set<TipoProspetto> = [.resoconto, .patrimonio, .resistenza, .costi, .successione]
 
+    /// I report adatti a un appuntamento: dal tipo d'incontro e dalla posizione di cui si parla.
+    static func perIncontro(_ a: Appuntamento, posizione: Posizione?, oggi: Date = Date()) -> Set<TipoProspetto> {
+        var scelti: Set<TipoProspetto>
+        switch a.tipo {
+        case .primoIncontro: scelti = [.checkUp, .patrimonio]
+        case .analisi: scelti = [.resoconto, .patrimonio, .resistenza, .costi]
+        case .revisione: scelti = [.resoconto, .patrimonio, .resistenza, .costi, .successione]
+        case .proposta: scelti = [.resoconto, .patrimonio, .costi]
+        case .firma: scelti = [.resoconto]
+        case .telefonata, .altro: scelti = fascicoloPredefinito
+        }
+        if let p = posizione {
+            // Una scadenza vicina: il capitale da destinare e chi lo riceverebbe
+            let fraUnAnno = Calendar.current.date(byAdding: .month, value: 12, to: oggi) ?? oggi
+            if let s = p.scadenza, s <= fraUnAnno { scelti.formUnion([.liquidita, .successione]) }
+            if p.area == .previdenza { scelti.insert(.previdenza) }
+            if p.area == .protezione { scelti.insert(.protezione) }
+        }
+        return scelti
+    }
+
     /// La scelta del report per il cliente di questo tipo (nil se non ha un report).
     var report: SceltaProspetto? {
         switch self {
@@ -55,13 +76,34 @@ extension StatoShell {
         }
         let canali = Canale.allCases.filter { k in posizioniCliente(c.id).contains { $0.canale == k && $0.stato != .chiusa } }
         let ruolo = canali == [.alleanza] ? "Consulente Alleanza Assicurazioni" : (canali == [.indipendente] ? "Consulenza finanziaria" : "Consulente Alleanza Assicurazioni e consulenza finanziaria")
+        // Per un appuntamento: la data e il tipo d'incontro
+        let incontro = fascicoloAppuntamento.flatMap { id in appuntamenti.first { $0.id == id && $0.clienteId == c.id } }
+        let data = incontro?.inizio ?? Date()
         let copertina = CopertinaReport(occhiello: "Fascicolo dell'incontro", titolo: "Il punto insieme",
-                                        sottotitolo: "I documenti che abbiamo visto oggi, in un solo fascicolo",
-                                        nomi: c.nome, ruolo: ruolo, data: Date(), canali: canali.isEmpty ? [.indipendente] : canali,
+                                        sottotitolo: incontro.map { "\($0.tipo.nome) del \(CifreDoc.data($0.inizio)): i documenti che abbiamo visto insieme" }
+                                            ?? "I documenti che abbiamo visto oggi, in un solo fascicolo",
+                                        nomi: c.nome, ruolo: ruolo, data: data, canali: canali.isEmpty ? [.indipendente] : canali,
                                         cartellini: [("Documenti", ["\(parti.count)"]), ("Pagine", ["\(pagina - 1)"])])
         let apertura = ImpaginaReport.pagine(copertina: AnyView(copertina), interne: [AnyView(IndiceFascicolo(voci: voci))],
                                              intestazione: "Fascicolo dell'incontro · \(c.nome)")
-        return DocumentoStampabile(report: "Fascicolo dell'incontro", cliente: c.nome, pagine: apertura + parti.flatMap(\.1.pagine))
+        return DocumentoStampabile(report: Self.titoloFascicolo(data), cliente: c.nome, pagine: apertura + parti.flatMap(\.1.pagine))
+    }
+
+    /// «Fascicolo dell'incontro del 28/10/2026»: con la data, l'archivio in Documenti tiene un fascicolo per incontro.
+    static func titoloFascicolo(_ data: Date) -> String { "Fascicolo dell'incontro del \(CifreDoc.dataBreve(data))" }
+
+    /// Dall'Agenda: i report adatti all'appuntamento, già spuntati, nel fascicolo del cliente.
+    func preparaFascicolo(per a: Appuntamento) {
+        clienteAttivoId = a.clienteId
+        sceltaFascicolo = TipoProspetto.perIncontro(a, posizione: a.posizioneId.flatMap { id in posizioni.first { $0.id == id } })
+        fascicoloAppuntamento = a.id
+        apriProspetto(.fascicolo)
+    }
+
+    /// Il fascicolo già archiviato nei Documenti del cliente per questo appuntamento.
+    func fascicoloArchiviato(per a: Appuntamento) -> Documento? {
+        let titolo = "Report · " + Self.titoloFascicolo(a.inizio)
+        return dati.documenti.first { $0.clienteId == a.clienteId && $0.titolo == titolo }
     }
 }
 

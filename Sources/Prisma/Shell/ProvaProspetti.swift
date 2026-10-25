@@ -449,6 +449,21 @@ enum ProvaProspetti {
             } else {
                 verifica("fascicolo-marco: PDF creato", false)
             }
+            // Dall'Agenda: i report adatti all'incontro, la data nel titolo, l'archivio per appuntamento
+            if let a = stato.appuntamenti.first(where: { $0.clienteId == "marco" && $0.stato == .pianificato }) {
+                stato.preparaFascicolo(per: a)
+                verifica("Fascicolo dall'Agenda: report scelti dal tipo d'incontro",
+                         stato.sceltaFascicolo == TipoProspetto.perIncontro(a, posizione: a.posizioneId.flatMap { id in stato.posizioni.first { $0.id == id } })
+                         && stato.prospetto == .fascicolo)
+                if let d = stato.documentoFascicolo(), let pdf = StampaCarta.pdf(d) {
+                    verifica("Fascicolo dall'Agenda: la data dell'incontro nel titolo", d.titolo == StatoShell.titoloFascicolo(a.inizio))
+                    stato.archiviaProspetto(pdf, documento: d)
+                    verifica("Fascicolo dall'Agenda: archiviato e ritrovato per l'appuntamento", stato.fascicoloArchiviato(per: a) != nil)
+                }
+            }
+            var primo = Appuntamento.nuovo(clienteId: "laura", giorno: Date())
+            primo.tipo = .primoIncontro
+            verifica("Fascicolo del primo incontro: c'è il check-up", TipoProspetto.perIncontro(primo, posizione: nil).contains(.checkUp))
             stato.sceltaFascicolo = []
             verifica("Fascicolo vuoto: nessun documento", stato.documentoFascicolo() == nil)
         }

@@ -240,6 +240,10 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.apriProspetto(.fascicolo)
         }),
+        ("82-agenda-fascicolo", { s in
+            // Dall'appuntamento di Marco: il fascicolo con i report adatti alla revisione
+            if let a = s.appuntamenti.first(where: { $0.clienteId == "marco" && $0.stato == .pianificato }) { s.preparaFascicolo(per: a) }
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"
