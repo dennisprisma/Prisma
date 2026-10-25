@@ -6,6 +6,8 @@ import SwiftUI
 /// I numeri li calcola sempre Prisma: Eve li legge e li spiega.
 struct AppEve: View {
     @EnvironmentObject var stato: StatoShell
+    /// Il campo della domanda in primo piano: serve alla dettatura di macOS, che scrive dove c'è il cursore.
+    @FocusState private var campoAttivo: Bool
 
     private var cliente: Cliente? { stato.clienteAttivo }
     private var messaggi: [MessaggioEve] { stato.conversazione(stato.evePortafoglio ? EvePortafoglio.chiave : stato.clienteAttivoId) }
@@ -24,6 +26,14 @@ struct AppEve: View {
                 conversazione
             }
         }
+        .onChange(of: stato.richiestaDettatura) { _ in
+            // La dettatura di macOS scrive dove c'è il cursore: prima il campo, poi «Avvia dettatura»
+            campoAttivo = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                NSApp.sendAction(Selector(("startDictation:")), to: nil, from: nil)
+            }
+        }
+
     }
 
     // MARK: - Testata
@@ -247,12 +257,13 @@ struct AppEve: View {
     /// Display scuro con l'onda: Eve pronta, al lavoro, in ascolto o mentre parla.
     private var display: some View {
         conVoce { v in
-            let attiva = stato.eveInCorso || v.ascolta || v.parla
-            let scritta = v.ascolta ? "EVE · TI ASCOLTA" : (stato.eveInCorso ? "EVE · STA PENSANDO" : (v.parla ? "EVE · TI RISPONDE" : "EVE · PRONTA"))
+            let ascolta = v.ascolta || stato.dettaturaAttiva
+            let attiva = stato.eveInCorso || ascolta || v.parla
+            let scritta = ascolta ? "EVE · TI ASCOLTA" : (stato.eveInCorso ? "EVE · STA PENSANDO" : (v.parla ? "EVE · TI RISPONDE" : "EVE · PRONTA"))
             HStack(spacing: 10) {
-                if v.ascolta || v.parla {
-                    Circle().fill(v.ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).frame(width: 7, height: 7)
-                        .shadow(color: (v.ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).opacity(0.9), radius: 3)
+                if ascolta || v.parla {
+                    Circle().fill(ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).frame(width: 7, height: 7)
+                        .shadow(color: (ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).opacity(0.9), radius: 3)
                 }
                 OndaEve(attiva: attiva, livello: v.ascolta ? v.livello : nil)
                     .frame(height: 26)
@@ -402,19 +413,22 @@ struct AppEve: View {
                             .textFieldStyle(.plain)
                             .font(Tipo.eveCampo)
                             .lineLimit(1...4)
+                            .focused($campoAttivo)
                             .onSubmit { invia(stato.domandaEve) }
                             .padding(8)
                             .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Eve.campo))
-                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Eve.campoBordo, lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 5)
+                                .strokeBorder(stato.dettaturaAttiva ? Colori.Eve.spiaAscolto : Colori.Eve.campoBordo, lineWidth: stato.dettaturaAttiva ? 1.5 : 1))
                     }
                 }
                 conVoce { v in
+                    let acceso = v.ascolta || stato.dettaturaAttiva
                     Button { stato.alternaAscolto() } label: {
-                        Image(systemName: v.ascolta ? "waveform" : "mic.fill").frame(width: 18)
+                        Image(systemName: acceso ? "waveform" : "mic.fill").frame(width: 18)
                     }
-                    .buttonStyle(StileMicrofono(acceso: v.ascolta))
-                    .disabled(stato.eveInCorso && !v.ascolta)
-                    .help(v.ascolta ? "Ho finito di parlare" : "Parla con Eve (⌥⌘E)")
+                    .buttonStyle(StileMicrofono(acceso: acceso))
+                    .disabled(stato.eveInCorso && !acceso)
+                    .help(acceso ? "Ho finito di parlare" : "Parla con Eve (⌥⌘E)")
                 }
                 Button { invia(stato.domandaEve) } label: {
                     Text("↑").font(Tipo.eveTitoloRisposta).frame(width: 18)

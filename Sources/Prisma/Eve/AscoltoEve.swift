@@ -26,6 +26,8 @@ final class AscoltoEve: ObservableObject {
     var concluso: ((String) -> Void)?
     /// Perché Eve non ha potuto ascoltare o capire: chi ha avviato l'ascolto lo fa vedere bene.
     var problema: ((String) -> Void)?
+    /// L'ultimo problema: il microfono ti ha sentito ma il riconoscimento non ha dato parole (allora conviene la dettatura di macOS).
+    private(set) var senzaParole = false
 
     /// Silenzio dopo cui la frase si considera finita.
     static let pausa: TimeInterval = 1.5
@@ -125,6 +127,7 @@ final class AscoltoEve: ObservableObject {
         let dettaglio = "(\(trascrizione?.nome ?? "nessun riconoscimento"), \(risposte) \(risposte == 1 ? "risposta" : "risposte"), voce \(String(format: "%.2f", piccoMassimo)))"
         DiagnosticaVoce.annota("Frase conclusa: \(frase.count) caratteri \(dettaglio)")
         lasciaPerdere()
+        senzaParole = frase.isEmpty && piccoMassimo >= 0.01
         if !frase.isEmpty {
             concluso?(frase)
         } else if let e = ultimoErrore {

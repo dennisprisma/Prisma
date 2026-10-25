@@ -18,6 +18,8 @@ protocol TrascrizioneEve: AnyObject {
 /// Quale riconoscimento usare (dalle impostazioni di Eve).
 enum SceltaRiconoscimento: String, Codable, CaseIterable, Identifiable {
     case automatico, nuovo, classico
+    /// La dettatura di macOS (quella del tasto microfono / fn): scrive nel campo di Eve, che manda la frase alla pausa.
+    case dettatura
 
     var id: String { rawValue }
 
@@ -26,6 +28,7 @@ enum SceltaRiconoscimento: String, Codable, CaseIterable, Identifiable {
         case .automatico: return "Automatico"
         case .nuovo: return "Nuovo (macOS 26+)"
         case .classico: return "Dettatura classica"
+        case .dettatura: return "Dettatura di macOS"
         }
     }
 }
@@ -36,7 +39,7 @@ enum Trascrizioni {
     static func prepara(_ scelta: SceltaRiconoscimento, avviso: @escaping (String) -> Void) async -> Result<TrascrizioneEve, ErroreEve> {
         var motivoNuovo: String?
         #if canImport(FoundationModels)
-        if scelta != .classico, #available(macOS 26.0, *) {
+        if scelta == .automatico || scelta == .nuovo, #available(macOS 26.0, *) {
             do {
                 if let t = try await TrascrizioneNuova.prepara(avviso: avviso) { return .success(t) }
                 motivoNuovo = "l'italiano non è tra le lingue del riconoscimento nuovo"
@@ -47,6 +50,9 @@ enum Trascrizioni {
             if scelta == .nuovo { return .failure(ErroreEve(messaggio: "Il riconoscimento nuovo non è partito: \(motivoNuovo ?? "motivo sconosciuto").")) }
         }
         #endif
+        if scelta == .dettatura {
+            return .failure(ErroreEve(messaggio: "La dettatura di macOS scrive nel campo di Eve: non si prova qui."))
+        }
         if scelta == .nuovo, motivoNuovo == nil {
             return .failure(ErroreEve(messaggio: "Il riconoscimento nuovo richiede macOS 26 o successivo."))
         }
