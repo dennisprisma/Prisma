@@ -20,8 +20,7 @@ extension StatoShell {
         h.combine(c)
         h.combine(dati.prodotti)
         let obiettivi = obiettiviCliente(id)
-        h.combine(obiettivi.map(\.id))
-        h.combine(obiettivi.map(\.scadenza))
+        h.combine(obiettivi)
         h.combine(Calendar.current.startOfDay(for: Date()))
         let chiave = h.finalize()
         if let cache = cacheDossier, cache.chiave == chiave { return cache.valore }

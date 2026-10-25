@@ -86,11 +86,14 @@ extension StatoShell {
                                         cartellini: [("Documenti", ["\(parti.count)"]), ("Pagine", ["\(pagina - 1)"])])
         let apertura = ImpaginaReport.pagine(copertina: AnyView(copertina), interne: [AnyView(IndiceFascicolo(voci: voci))],
                                              intestazione: "Fascicolo dell'incontro · \(c.nome)")
-        return DocumentoStampabile(report: Self.titoloFascicolo(data), cliente: c.nome, pagine: apertura + parti.flatMap(\.1.pagine))
+        return DocumentoStampabile(report: Self.titoloFascicolo(data, conOra: incontro != nil), cliente: c.nome, pagine: apertura + parti.flatMap(\.1.pagine))
     }
 
-    /// «Fascicolo dell'incontro del 28/10/2026»: con la data, l'archivio in Documenti tiene un fascicolo per incontro.
-    static func titoloFascicolo(_ data: Date) -> String { "Fascicolo dell'incontro del \(CifreDoc.dataBreve(data))" }
+    /// «Fascicolo dell'incontro del 28/10/2026 ore 10:00»: con data e ora dell'appuntamento l'archivio in Documenti
+    /// tiene un fascicolo per incontro, anche con due incontri nello stesso giorno.
+    static func titoloFascicolo(_ data: Date, conOra: Bool = true) -> String {
+        "Fascicolo dell'incontro del \(CifreDoc.dataBreve(data))" + (conOra ? " ore \(Formati.ora.string(from: data))" : "")
+    }
 
     /// Dall'Agenda: i report adatti all'appuntamento, già spuntati, nel fascicolo del cliente.
     func preparaFascicolo(per a: Appuntamento) {

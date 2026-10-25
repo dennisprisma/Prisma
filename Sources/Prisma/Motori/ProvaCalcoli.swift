@@ -1067,6 +1067,21 @@ enum ProvaCalcoli {
             verifica("Patrimonio: il fondo con i versamenti cresce", pn.valore(20) > pn.valore(10) && pn.valore(10) > pn.nettoOggi ? 1 : 0, 1)
             verifica("Patrimonio: versamenti dell'anno", pn.versamentiAnnui, 1_200)
             verifica("Patrimonio: senza proposte nessuna seconda linea", MotorePatrimonio.calcola([casa]).conProposte == nil ? 1 : 0, 1)
+            // Il conto che finanzia la proposta smette di rendere su quella parte; oltre i conti è capitale nuovo
+            let contoRende = pos("Conto", .liquidita, 50_000) { $0.rendimentoAtteso = 2 }
+            var tutto = Posizione(clienteId: "prova", canale: .alleanza, stato: .proposta, area: .risparmio, nome: "Tutto il conto")
+            tutto.versamentoIniziale = 50_000
+            tutto.rendimentoAtteso = 0
+            tutto.tipologia = "Polizza rivalutabile (Ramo I)"
+            let spostato = MotorePatrimonio.calcola([contoRende, tutto], anni: 20)
+            verifica("Patrimonio: il conto spostato non rende più", spostato.valore(20, conProposte: true), 50_000, tolleranza: 1)
+            var grande = tutto
+            grande.versamentoIniziale = 80_000
+            let oltre = MotorePatrimonio.calcola([contoRende, grande], anni: 20)
+            verifica("Patrimonio: oltre i conti è capitale nuovo, dichiarato", oltre.capitaleNuovo, 30_000)
+            let passato = Obiettivo(clienteId: "prova", titolo: "Già passato", area: .casa, importo: 10_000,
+                                    scadenza: Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date())
+            verifica("Patrimonio: un obiettivo già passato non è lungo la strada", MotorePatrimonio.calcola([casa], obiettivi: [passato]).traguardi.isEmpty ? 1 : 0, 1)
         }
 
         if errori == 0 {

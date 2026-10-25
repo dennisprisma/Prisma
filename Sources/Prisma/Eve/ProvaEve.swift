@@ -615,6 +615,26 @@ enum ProvaEve {
                           "Annotazioni: contate, sempre nello stesso incontro")
                 annota.annotaPresentazione("   ")
                 controlla(annota.presentazione?.annotazioni == 2, "Annotazione vuota: ignorata")
+                controlla(annota.dati.attivita.contains { $0.titolo == "Portare il KID del fondo pensione" && $0.appuntamentoId == a.id },
+                          "Annotazione come attività: collegata all'appuntamento")
+                annota.chiudiPresentazione()
+            }
+        }
+        // Un fascicolo preparato per Marco non porta le note di un altro cliente nel suo incontro
+        let altro = StatoShell(persistente: false)
+        if let a = altro.appuntamenti.first(where: { $0.clienteId == "marco" && $0.stato == .pianificato }) {
+            altro.preparaFascicolo(per: a)
+            altro.clienteAttivoId = "giulia"
+            controlla(altro.fascicoloAppuntamento == nil, "Fascicolo: cambiando cliente si scorda l'appuntamento dell'altro")
+            altro.fascicoloAppuntamento = a.id
+            altro.prospetto = .fascicolo
+            if let d = altro.documentoProspetto(.fascicolo) {
+                altro.presenta(d)
+                altro.annotaPresentazione("Nota di Giulia")
+                controlla(!(altro.dati.incontri.first { $0.appuntamentoId == a.id }?.appunti.contains("Nota di Giulia") ?? false)
+                          && altro.dati.incontri.contains { $0.clienteId == "giulia" && $0.appunti.contains("Nota di Giulia") },
+                          "Annotazione: mai nell'incontro di un altro cliente")
+                altro.chiudiPresentazione()
             }
         }
         let cache = StatoShell(persistente: false)
