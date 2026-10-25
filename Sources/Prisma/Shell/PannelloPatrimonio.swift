@@ -3,13 +3,19 @@ import SwiftUI
 /// Il patrimonio nel tempo nel dossier Posizioni: tutte le posizioni insieme, com'è oggi e con le proposte,
 /// con gli obiettivi lungo la strada.
 struct PannelloPatrimonio: View {
+    @EnvironmentObject var stato: StatoShell
     let p: PatrimonioNelTempo
 
     var body: some View {
         PannelloAnalisi(titolo: "Il patrimonio nel tempo",
                         nota: "Tutte le posizioni insieme, con i rendimenti ipotizzati: immobili al valore di oggi, debiti che si estinguono, prima delle imposte finali") {
-            if let d = p.differenzaProposte {
-                Pillola(testo: "Con le proposte \(d >= 0 ? "+" : "")\(Formati.euroBreve(d))", tono: d >= 0 ? .ok : .attenzione)
+            HStack(spacing: 8) {
+                if let d = p.differenzaProposte {
+                    Pillola(testo: "Con le proposte \(d >= 0 ? "+" : "")\(Formati.euroBreve(d))", tono: d >= 0 ? .ok : .attenzione)
+                }
+                Button("Report per il cliente") { stato.apriProspetto(.patrimonio(report: true)) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                    .help("Apre in Prospetti il report del patrimonio nel tempo, da stampare o salvare in PDF")
             }
         } contenuto: {
             VStack(alignment: .leading, spacing: 12) {

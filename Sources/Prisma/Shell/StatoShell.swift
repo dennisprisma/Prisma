@@ -900,6 +900,8 @@ final class StatoShell: ObservableObject {
             return .costi(report: report)
         case .successione(let report)?:
             return .successione(report: report)
+        case .patrimonio(let report)?:
+            return .patrimonio(report: report)
         case .obiettivo(let id, let report)?:
             let elenco = obiettiviCliente(clienteAttivoId)
             return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
@@ -943,6 +945,9 @@ final class StatoShell: ObservableObject {
         if case .liquidita(let report) = scelta {
             return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
+        if case .patrimonio(let report) = scelta {
+            return DocumentoStampabile(testiPatrimonio(clienteAttivoId), report: report, commento: testoCommento(scelta))
+        }
         if case .successione(let report) = scelta {
             return DocumentoStampabile(testiSuccessione(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
@@ -967,6 +972,12 @@ final class StatoShell: ObservableObject {
     /// I testi e i numeri del check-up del primo incontro di un cliente.
     func testiCheckUp(_ id: String) -> TestiCheckUp {
         TestiCheckUp(MotoreCheckUp.calcola(cliente: self.cliente(id), posizioni: posizioniCliente(id), analisi: analisi360(id), obiettivi: obiettiviCliente(id)))
+    }
+
+    /// I testi e i numeri del patrimonio nel tempo di un cliente (lo stesso calcolo del pannello in Posizioni).
+    func testiPatrimonio(_ id: String) -> TestiPatrimonio {
+        let mie = posizioniCliente(id)
+        return TestiPatrimonio(MotorePatrimonio.calcola(mie, obiettivi: obiettiviCliente(id)), posizioni: mie, cliente: cliente(id))
     }
 
     /// I testi e i numeri del passaggio generazionale di un cliente (lo stesso calcolo del pannello in Posizioni).
@@ -1650,6 +1661,10 @@ final class StatoShell: ObservableObject {
         case .protezione:
             let t = testiProtezione(id)
             return CommentoEve.bozza(nome: nome, apertura: "ti lascio il quadro della protezione della tua famiglia: cosa è già coperto e cosa ancora no.",
+                                     punti: t.sintesi, passo: t.prossimiPassi.first)
+        case .patrimonio:
+            let t = testiPatrimonio(id)
+            return CommentoEve.bozza(nome: nome, apertura: "ti lascio il percorso del tuo patrimonio nei prossimi anni: dove ti porta la strada di oggi e dove potresti arrivare con le proposte che abbiamo visto.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .successione:
             let t = testiSuccessione(id)

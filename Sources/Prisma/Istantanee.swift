@@ -232,6 +232,10 @@ enum Istantanee {
             s.apri(.posizioni)
             s.ancoraPosizioni = "patrimonio"
         }),
+        ("80-patrimonio-report", { s in
+            s.clienteAttivoId = "marco"
+            s.apriProspetto(.patrimonio(report: true))
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"
