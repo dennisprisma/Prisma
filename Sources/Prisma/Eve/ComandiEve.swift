@@ -146,7 +146,7 @@ enum InterpreteComandi {
     }
 
     private static func apri(_ t: String, nominato: String?) -> ComandoEve? {
-        guard case let (m, _)? = DateItaliane.cerca(#"^(?:apri(?:mi)?|mostra(?:mi)?|fammi vedere|vai|andiamo|portami|passa|passiamo|torna|torniamo|seleziona|parliamo)\b(?:\s+(?:a|al|alla|alle|ai|agli|allo|in|su|sul|sulla|nel|nella|nelle|negli|di|del|della))?\s*(?:l'|la |il |le |i |gli |lo )?"#, t)
+        guard case let (m, _)? = DateItaliane.cerca(#"^(?:apri(?:mi)?|mostra(?:mi)?|fammi vedere|vai|andiamo|portami|passa|passiamo|torna|torniamo|seleziona|parliamo)\b(?:\s+(?:alla|alle|allo|agli|al|ai|a|in|sulla|sul|su|nella|nelle|negli|nel|della|del|di)\b)?\s*(?:l'|la |il |le |i |gli |lo )?"#, t)
         else { return nil }
         let resto = String((t as NSString).substring(from: m.location + m.length))
         if DateItaliane.cerca(#"^scrivania\b"#, resto) != nil { return .scrivania }
