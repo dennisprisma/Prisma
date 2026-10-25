@@ -112,10 +112,10 @@ struct AppImpostazioni: View {
     /// La voce di Eve e la conversazione a voce: tutto sul Mac (sintesi e dettatura di macOS).
     private var gruppoVoce: some View {
         let voci = VoceEve.vociItaliane()
-        let scelta = VoceEve.voce(stato.dati.impostazioni.eve.voce)
+        let scelta: String = VoceEve.voce(stato.dati.impostazioni.eve.voce).map { " (ora " + VoceEve.nome($0) + ")" } ?? ""
         return GruppoImpostazioni(titolo: "Parlare con Eve") {
             RigaImpostazione(titolo: "Voce di Eve",
-                             sottotitolo: "Automatica: la migliore voce femminile italiana installata\(scelta.map { " (ora \(VoceEve.nome($0)))" } ?? "")",
+                             sottotitolo: "Automatica: la migliore voce femminile italiana installata" + scelta,
                              avvertenza: VoceEve.soloVociStandard
                                 ? "Per una voce più naturale scarica «Federica (Premium)» in Impostazioni di Sistema › Accessibilità › Contenuti letti ad alta voce › Voce di sistema › Gestisci voci › Italiano"
                                 : nil) {

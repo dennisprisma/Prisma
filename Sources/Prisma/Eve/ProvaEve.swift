@@ -731,21 +731,23 @@ enum ProvaEve {
         controlla(breve.count <= TestoParlato.limite && breve.hasSuffix("."), "Voce: senza «leggi tutto» dice solo l'inizio, a fine frase (\(breve.count) caratteri)")
         controlla(TestoParlato.da(titolo: nil, testo: lungo, completo: true).count > TestoParlato.limite, "Voce: con «leggi tutto» dice tutta la risposta")
         controlla(TestoParlato.da(titolo: "Riepilogo", testo: "Riepilogo del cliente: tutto bene", completo: false) == "Riepilogo del cliente: tutto bene.", "Voce: il titolo non si ripete")
-        controlla(CongedoEve.e("Basta così, grazie") && CongedoEve.e("grazie Eve") && CongedoEve.e("Ok, è tutto.") && !CongedoEve.e("Basta con i costi alti: cosa propongo?"),
-                  "Voce: «basta così» chiude la conversazione, una domanda no")
-        let vecchie = try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"motore":"sintesi","conservaConversazioni":false}"#.utf8))
-        controlla(vecchie?.motore == .sintesi && vecchie?.conservaConversazioni == false && vecchie?.risposteAVoce == .quandoParli
-                  && vecchie?.voce == nil && vecchie?.velocitaVoce == 1 && vecchie?.conversazioneContinua == true,
-                  "Voce: le impostazioni di Eve di prima si leggono con i valori predefiniti della voce")
-        let fuori = try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"velocitaVoce":9}"#.utf8))
-        controlla(fuori?.velocitaVoce == 1.4, "Voce: una velocità fuori misura torna nei limiti")
+        let congedi: [Bool] = ["Basta così, grazie", "grazie Eve", "Ok, è tutto.", "Basta con i costi alti: cosa propongo?"].map(CongedoEve.e)
+        controlla(congedi == [true, true, true, false], "Voce: «basta così» chiude la conversazione, una domanda no")
+        let vecchie = (try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"motore":"sintesi","conservaConversazioni":false}"#.utf8))) ?? ImpostazioniEve()
+        let vecchieOk: Bool = vecchie.motore == ImpostazioniEve.Motore.sintesi && !vecchie.conservaConversazioni
+            && vecchie.risposteAVoce == ImpostazioniEve.RisposteAVoce.quandoParli && vecchie.voce == nil
+            && vecchie.velocitaVoce == 1.0 && vecchie.conversazioneContinua
+        controlla(vecchieOk, "Voce: le impostazioni di Eve di prima si leggono con i valori predefiniti della voce")
+        let fuori = (try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"velocitaVoce":9}"#.utf8))) ?? ImpostazioniEve()
+        controlla(fuori.velocitaVoce == 1.4, "Voce: una velocità fuori misura torna nei limiti")
         let voci = VoceEve.vociItaliane()
         print("INFO Voci italiane su questo Mac: \(voci.map(VoceEve.nome).joined(separator: ", "))")
         // Una domanda arrivata a voce: la risposta si dice (nelle prove non c'è audio, ma lo stato si chiude bene)
         let v = StatoShell(persistente: false)
         v.dati.impostazioni.eve.motore = .sintesi
         v.fraseDetta("Fammi un riepilogo del cliente")
-        controlla(v.conversazione(v.clienteAttivoId).last?.autore == .eve && !v.rispostaAVoce, "Voce: la frase detta diventa una domanda e la risposta arriva")
+        let rispostaEve: Bool = v.conversazione(v.clienteAttivoId).last.map { $0.autore == MessaggioEve.Autore.eve } ?? false
+        controlla(rispostaEve && !v.rispostaAVoce, "Voce: la frase detta diventa una domanda e la risposta arriva")
         v.fraseDetta("basta così")
         controlla(!v.conversazioneAVoce, "Voce: «basta così» chiude la conversazione a voce")
 
@@ -800,29 +802,34 @@ enum ProvaEve {
         e.dati.impostazioni.eve.motore = .sintesi
         e.clienteAttivoId = "giulia"
         let appuntamentiPrima = e.dati.appuntamenti.count
-        controlla(e.eseguiComandoEve("fissa un incontro con Marco Bianchi", oggi: martedi) && e.appuntamentoInSospeso != nil
-                  && (e.conversazione("giulia").last?.testo ?? "").hasPrefix("Per quando"), "Eseguiti: l'incontro senza giorno, Eve chiede per quando")
-        controlla(e.eseguiComandoEve("giovedì alle 11", oggi: martedi) && e.dati.appuntamenti.count == appuntamentiPrima + 1, "Eseguiti: «giovedì alle 11» completa l'appuntamento")
+        let chiesto = e.eseguiComandoEve("fissa un incontro con Marco Bianchi", oggi: martedi)
+        let domandaQuando = e.conversazione("giulia").last?.testo ?? ""
+        controlla(chiesto && e.appuntamentoInSospeso != nil && domandaQuando.hasPrefix("Per quando"), "Eseguiti: l'incontro senza giorno, Eve chiede per quando")
+        let completato = e.eseguiComandoEve("giovedì alle 11", oggi: martedi)
+        controlla(completato && e.dati.appuntamenti.count == appuntamentiPrima + 1, "Eseguiti: «giovedì alle 11» completa l'appuntamento")
         let fissato = e.dati.appuntamenti.last
-        controlla(fissato?.clienteId == "marco" && fissato?.inizio == giorno(29, 10, 11) && fissato?.titolo == "Incontro con Marco Bianchi",
-                  "Eseguiti: incontro con Marco Bianchi giovedì 29 alle 11 (\(fissato?.titolo ?? "-"))")
+        let fissatoOk: Bool = fissato.map { $0.clienteId == "marco" && $0.inizio == giorno(29, 10, 11) && $0.titolo == "Incontro con Marco Bianchi" } ?? false
+        controlla(fissatoOk, "Eseguiti: incontro con Marco Bianchi giovedì 29 alle 11 (\(fissato?.titolo ?? "-"))")
         if let m = e.conversazione("giulia").last, let a = m.azione {
             controlla(a.tipo == .appuntamento && m.testo.contains("giovedì 29 ottobre alle 11:00"), "Eseguiti: la risposta dice quando («\(m.testo)»)")
             e.annullaAzioneEve(a, messaggio: m.id)
-            controlla(e.dati.appuntamenti.count == appuntamentiPrima && e.conversazione("giulia").last?.azione?.annullata == true, "Eseguiti: annullato, l'appuntamento sparisce")
+            let annullata: Bool = e.conversazione("giulia").last?.azione?.annullata ?? false
+            controlla(e.dati.appuntamenti.count == appuntamentiPrima && annullata, "Eseguiti: annullato, l'appuntamento sparisce")
         } else {
             controlla(false, "Eseguiti: la risposta porta l'appuntamento da aprire o annullare")
         }
         let attivitaPrima = e.dati.attivita.count
-        controlla(e.eseguiComandoEve("ricordami di mandare il KID a Giulia domani", oggi: martedi) && e.dati.attivita.count == attivitaPrima + 1
-                  && e.dati.attivita.last?.titolo == "Mandare il KID a Giulia" && e.dati.attivita.last?.scadenza == giorno(28),
-                  "Eseguiti: promemoria «Mandare il KID a Giulia» per domani")
+        let promemoria = e.eseguiComandoEve("ricordami di mandare il KID a Giulia domani", oggi: martedi)
+        let nuova = e.dati.attivita.count == attivitaPrima + 1 ? e.dati.attivita.last : nil
+        let promemoriaOk: Bool = promemoria && nuova.map { $0.titolo == "Mandare il KID a Giulia" && $0.scadenza == giorno(28) } ?? false
+        controlla(promemoriaOk, "Eseguiti: promemoria «Mandare il KID a Giulia» per domani")
         let notePrima = e.dati.note.count
-        controlla(e.eseguiComandoEve("prendi nota: vuole aumentare il versamento del PIP", oggi: martedi) && e.dati.note.count == notePrima + 1
-                  && e.dati.note.last?.clienteId == "giulia", "Eseguiti: la nota va nel taccuino di Giulia")
-        controlla(e.eseguiComandoEve("Ok Eve, preparami il report del patrimonio di Marco", oggi: martedi)
-                  && e.prospetto == .patrimonio(report: true) && e.clienteAttivoId == "marco" && e.aperta(.presentazioni),
-                  "Eseguiti: il report del patrimonio di Marco aperto in Prospetti e report")
+        let annotato = e.eseguiComandoEve("prendi nota: vuole aumentare il versamento del PIP", oggi: martedi)
+        let notaOk: Bool = annotato && e.dati.note.count == notePrima + 1 && (e.dati.note.last?.clienteId ?? "") == "giulia"
+        controlla(notaOk, "Eseguiti: la nota va nel taccuino di Giulia")
+        let preparato = e.eseguiComandoEve("Ok Eve, preparami il report del patrimonio di Marco", oggi: martedi)
+        let reportOk: Bool = preparato && e.prospetto == SceltaProspetto.patrimonio(report: true) && e.clienteAttivoId == "marco"
+        controlla(reportOk && e.aperta(.presentazioni), "Eseguiti: il report del patrimonio di Marco aperto in Prospetti e report")
         e.chiediEve("Apri l'agenda")
         controlla(e.aperta(.agenda), "Eseguiti: «apri l'agenda» dalla conversazione")
         controlla(!e.eseguiComandoEve("Quanto pesano i costi?", oggi: martedi), "Eseguiti: una domanda passa a Eve")
@@ -832,22 +839,25 @@ enum ProvaEve {
         controlla(e.clienteAttivoId == "marco", "Eseguiti: in modalità cliente Eve resta sul cliente davanti a te")
 
         // Qwen sul Mac: solo indirizzi locali, risposte di Ollama lette bene, scelta del motore
-        controlla(MotoreLocale.indirizzoLocale("http://127.0.0.1:11434") != nil && MotoreLocale.indirizzoLocale("http://localhost:11434") != nil
-                  && MotoreLocale.indirizzoLocale("http://192.168.1.20:11434") == nil && MotoreLocale.indirizzoLocale("https://ollama.example.com") == nil,
-                  "Qwen: Prisma parla solo con il Mac stesso (127.0.0.1), mai con un altro computer")
-        controlla(MotoreLocale.modelli(Data(#"{"models":[{"name":"qwen3:4b","size":1},{"name":"llama3"}]}"#.utf8)) == ["qwen3:4b", "llama3"]
-                  && MotoreLocale.stessoModello("qwen3", "qwen3:latest") && !MotoreLocale.stessoModello("qwen3:4b", "qwen3:8b"),
+        let locali: [Bool] = ["http://127.0.0.1:11434", "http://localhost:11434", "http://192.168.1.20:11434", "https://ollama.example.com"]
+            .map { MotoreLocale.indirizzoLocale($0) != nil }
+        controlla(locali == [true, true, false, false], "Qwen: Prisma parla solo con il Mac stesso (127.0.0.1), mai con un altro computer")
+        let elenco: [String] = MotoreLocale.modelli(Data(#"{"models":[{"name":"qwen3:4b","size":1},{"name":"llama3"}]}"#.utf8))
+        controlla(elenco == ["qwen3:4b", "llama3"] && MotoreLocale.stessoModello("qwen3", "qwen3:latest") && !MotoreLocale.stessoModello("qwen3:4b", "qwen3:8b"),
                   "Qwen: elenco dei modelli di Ollama")
-        controlla(MotoreLocale.testo(Data(#"{"message":{"role":"assistant","content":"<think>ragiono</think>
-**Ciao**, tutto bene."},"done":true}"#.utf8)) == "Ciao, tutto bene.",
+        controlla(MotoreLocale.testo(Data(#"{"message":{"role":"assistant","content":"<think>ragiono</think>\n**Ciao**, tutto bene."},"done":true}"#.utf8)) == "Ciao, tutto bene.",
                   "Qwen: la risposta senza il ragionamento e senza markdown")
         let corpo = MotoreLocale.corpo(modello: "qwen3:4b", messaggi: [("system", "a"), ("user", "b")])
-        controlla(corpo["think"] as? Bool == false && corpo["stream"] as? Bool == false && (corpo["messages"] as? [[String: String]])?.count == 2,
-                  "Qwen: richiesta senza ragionamento e senza flusso")
+        let pensa: Bool = (corpo["think"] as? Bool) ?? true
+        let flusso: Bool = (corpo["stream"] as? Bool) ?? true
+        let quanti: Int = (corpo["messages"] as? [[String: String]])?.count ?? 0
+        controlla(!pensa && !flusso && quanti == 2, "Qwen: richiesta senza ragionamento e senza flusso")
         var qwen = ImpostazioniEve()
         qwen.motore = .locale
-        controlla(MotoriEve.generativo(qwen, locale: .pronto)?.nome == "Qwen sul Mac" && MotoriEve.generativo(qwen, locale: .nonDisponibile("no")) == nil
-                  && MotoriEve.scelto(qwen, locale: .nonDisponibile("no")) is MotoreSintesi, "Qwen: scelto se è pronto, altrimenti la sintesi")
+        let sceltoPronto: String = MotoriEve.generativo(qwen, locale: .pronto)?.nome ?? ""
+        let sceltoAssente = MotoriEve.generativo(qwen, locale: .nonDisponibile("no")) == nil
+        let ripiego = MotoriEve.scelto(qwen, locale: .nonDisponibile("no")) is MotoreSintesi
+        controlla(sceltoPronto == "Qwen sul Mac" && sceltoAssente && ripiego, "Qwen: scelto se è pronto, altrimenti la sintesi")
         if MotoriEve.apple?.disponibilita.pronto != true {
             qwen.motore = .automatico
             controlla(MotoriEve.generativo(qwen, locale: .pronto)?.nome == "Qwen sul Mac", "Qwen: in automatico, senza il modello Apple risponde Qwen")
@@ -867,7 +877,8 @@ enum ProvaEve {
         attesa.wait()
         controlla(!esito.d.pronto && (esito.d.motivo ?? "").contains("127.0.0.1"), "Qwen: un indirizzo di un altro computer è rifiutato senza collegarsi")
         let vecchieQwen = try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"motore":"apple"}"#.utf8))
-        controlla(vecchieQwen?.modelloLocale == "qwen3:4b" && vecchieQwen?.indirizzoLocale == "http://127.0.0.1:11434", "Qwen: impostazioni di prima con i valori predefiniti")
+        let qwenPrima = vecchieQwen ?? ImpostazioniEve()
+        controlla(qwenPrima.modelloLocale == "qwen3:4b" && qwenPrima.indirizzoLocale == "http://127.0.0.1:11434", "Qwen: impostazioni di prima con i valori predefiniti")
 
         print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {

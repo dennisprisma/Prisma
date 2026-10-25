@@ -133,7 +133,9 @@ enum TestoParlato {
         guard let t else { return corpo }
         // Il titolo si dice solo se non è già l'inizio del testo
         if corpo.lowercased().hasPrefix(t.lowercased()) { return corpo }
-        return (t.last.map { ".!?:".contains($0) } ?? false ? t : t + ".") + " " + corpo
+        let chiuso: Bool = t.last.map { ".!?:".contains($0) } ?? false
+        let testa: String = chiuso ? t : t + "."
+        return testa + " " + corpo
     }
 
     /// Toglie simboli, elenchi e markdown: «• **Oggi**: € 1.200 → …» diventa «Oggi: € 1.200 …».
