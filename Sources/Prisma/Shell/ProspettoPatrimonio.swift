@@ -95,7 +95,7 @@ private struct PaginaComposizione: View {
                                         ColonnaDoc(titolo: "Versamento iniziale", peso: 1.1), ColonnaDoc(titolo: "Versamenti", sottotitolo: "all'anno", peso: 1),
                                         ColonnaDoc(titolo: "Tra \(p.anni) anni", sottotitolo: "valore stimato", peso: 1.1)],
                               gruppi: Canale.allCases.compactMap { c in
-                                  let mie = p.proposte.prefix(Misure.Documento.righeTabellaFissa).filter { $0.canale == c }
+                                  let mie = p.proposte.prefix(Misure.Documento.schedeReport).filter { $0.canale == c }
                                   guard !mie.isEmpty else { return nil }
                                   return GruppoCanale(canale: c, righe: mie.map { x in
                                       let fine = MotorePatrimonio.andamento(x, anni: p.anni).last?.valore ?? 0
@@ -105,6 +105,7 @@ private struct PaginaComposizione: View {
                                                              CellaDoc(CifreDoc.euro(fine), font: T.pTabellaForte)], altezza: 22)
                                   }, nota: "")
                               })
+                Altre(numero: p.proposte.count - Misure.Documento.schedeReport, cosa: "proposte")
             }
             SezioneProspetto(titolo: "Gli obiettivi lungo la strada")
             if p.traguardi.isEmpty {
@@ -112,12 +113,13 @@ private struct PaginaComposizione: View {
             } else {
                 TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Obiettivo", peso: 2.2, destra: false), ColonnaDoc(titolo: "Quando", peso: 0.8),
                                                            ColonnaDoc(titolo: "Importo", peso: 1), ColonnaDoc(titolo: "Patrimonio allora", peso: 1.2)],
-                           righe: p.traguardi.prefix(Misure.Documento.righeTabellaFissa).map { o in
+                           righe: p.traguardi.prefix(Misure.Documento.schedeReport).map { o in
                                RigaDoc(celle: [CellaDoc(o.obiettivo.titolo, font: T.pTabellaForte),
                                                CellaDoc(o.anno == 0 ? "quest'anno" : "\(o.anno)° anno", font: T.pTabella),
                                                CellaDoc(CifreDoc.euro(o.obiettivo.importo), font: T.pTabella),
                                                CellaDoc(CifreDoc.euro(p.valore(o.anno, conProposte: p.conProposte != nil)), font: T.pTabellaForte)], altezza: 18)
                            }, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 18, margine: 4)
+                Altre(numero: p.traguardi.count - Misure.Documento.schedeReport, cosa: "obiettivi")
             }
             RiquadroBarra(titolo: "In sintesi") {
                 VStack(alignment: .leading, spacing: 4) {

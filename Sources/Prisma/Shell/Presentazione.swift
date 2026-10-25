@@ -44,6 +44,8 @@ extension StatoShell {
             p.finestra = finestra
         }
         pannelloNotifiche = false
+        // Nessun campo sotto il velo deve ricevere i tasti: il commento o la chat di Eve resterebbero scrivibili
+        if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
         presentazione = p
     }
 

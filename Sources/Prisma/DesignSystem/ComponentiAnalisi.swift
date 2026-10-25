@@ -267,14 +267,16 @@ struct GraficoProiezione: View {
             let h = max(1, geo.size.height - basso - 6)
             let tutti = serie.flatMap(\.punti)
             let massimo = max(tutti.map { max($0.valore, $0.versato) }.max() ?? 1, 1) * 1.08
+            // Un patrimonio negativo (debiti oltre le attività) resta dentro il grafico
+            let minimo = min(tutti.map { min($0.valore, $0.versato) }.min() ?? 0, 0) * 1.08
             let anni = max(tutti.map(\.anno).max() ?? 1, 1)
             let x: (Int) -> CGFloat = { sinistra + CGFloat($0) / CGFloat(anni) * w }
-            let y: (Double) -> CGFloat = { 6 + h - CGFloat($0 / massimo) * h }
+            let y: (Double) -> CGFloat = { 6 + h - CGFloat(($0 - minimo) / (massimo - minimo)) * h }
             let divisioni = 4
             ZStack(alignment: .topLeading) {
                 // Griglia orizzontale ed etichette dell'asse dei valori
                 ForEach(0...divisioni, id: \.self) { i in
-                    let v = massimo * Double(i) / Double(divisioni)
+                    let v = minimo + (massimo - minimo) * Double(i) / Double(divisioni)
                     Path { p in
                         p.move(to: CGPoint(x: sinistra, y: y(v)))
                         p.addLine(to: CGPoint(x: sinistra + w, y: y(v)))

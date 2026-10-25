@@ -115,6 +115,9 @@ struct IndiceFascicolo: View {
     @Environment(\.paletteDocumento) private var C
     let voci: [(String, Int)]
 
+    /// Con molti documenti le righe si stringono, per restare nella pagina.
+    private var fitto: Bool { voci.count > Misure.Documento.schedeReport + 2 }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             TestaReport(occhiello: "Indice", titolo: "Cosa trovi in questo fascicolo",
@@ -122,12 +125,12 @@ struct IndiceFascicolo: View {
             VStack(spacing: 0) {
                 ForEach(Array(voci.enumerated()), id: \.offset) { i, v in
                     HStack(alignment: .firstTextBaseline, spacing: 14) {
-                        Text(verbatim: String(format: "%02d", i + 1)).font(T.sintesiNumero).foregroundColor(C.occhiello).frame(width: 40, alignment: .leading)
+                        Text(verbatim: String(format: "%02d", i + 1)).font(fitto ? T.titoloRiquadro : T.sintesiNumero).foregroundColor(C.occhiello).frame(width: 40, alignment: .leading)
                         Text(verbatim: v.0).font(T.titoloRiquadro).foregroundColor(C.titolo)
                         Spacer(minLength: 10)
                         Text(verbatim: "pagina \(v.1)").font(T.piccolo).foregroundColor(C.tenue)
                     }
-                    .padding(.vertical, 9)
+                    .padding(.vertical, fitto ? 4 : 9)
                     Rectangle().fill(C.filetto).frame(height: 0.6)
                 }
             }
