@@ -695,6 +695,13 @@ struct AppProspetti: View {
                     .disabled(stato.eveInCorso)
                     .help("Eve spiega le cifre di questo documento, per te")
             }
+            // Il portafoglio parla di tutti i clienti: non si mostra a un cliente
+            if scelta.tipo != .portafoglio {
+                Button("▶ Presenta") { stato.presenta(d) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .fixedSize()
+                    .help("Mostra il documento a tutto schermo, una pagina alla volta (← → per sfogliare, esc per uscire), in modalità cliente")
+            }
             // I pulsanti non vanno a capo: in una finestra stretta si accorcia il titolo
             Button("Stampa…") { if let dati = pdf(d) { StampaCarta.stampa(dati, formato: d.formato) } }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))

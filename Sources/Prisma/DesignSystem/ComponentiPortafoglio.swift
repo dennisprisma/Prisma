@@ -55,3 +55,21 @@ extension Colori.Analisi {
         }
     }
 }
+
+// MARK: - Presentazione all'incontro
+
+extension Colori {
+    enum Presentazione {
+        /// Il velo dietro la pagina: scuro come la sala di Keynote, perché la carta risalti.
+        static let sfondo = Color(hex: "#16191d")
+        static let ombra = Color(r: 0, g: 0, b: 0, a: 0.6)
+        static let testo = Color(r: 255, g: 255, b: 255, a: 0.62)
+    }
+}
+
+extension Misure {
+    enum Presentazione {
+        static let margine: CGFloat = 28
+        static let barra: CGFloat = 40
+    }
+}

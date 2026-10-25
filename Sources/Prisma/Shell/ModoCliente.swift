@@ -13,7 +13,8 @@ extension StatoShell {
 
     var inModoCliente: Bool { modoCliente != nil }
 
-    func entraModoCliente() {
+    /// `avviso`: falso quando la accende la presentazione, per non coprire la pagina davanti al cliente.
+    func entraModoCliente(avviso: Bool = true) {
         guard let c = dati.clienti.first(where: { $0.id == clienteAttivoId }) else {
             mostraAvviso("Scegli prima il cliente in Clienti: la modalità cliente mostra solo il suo dossier.")
             return
@@ -29,7 +30,7 @@ extension StatoShell {
         evePortafoglio = false
         filtroClienteAgenda = nil
         filtroClienteAttivita = nil
-        mostraAvviso("Modalità cliente: si vede solo il dossier di \(c.nome).")
+        if avviso { mostraAvviso("Modalità cliente: si vede solo il dossier di \(c.nome).") }
     }
 
     func esciModoCliente() {
