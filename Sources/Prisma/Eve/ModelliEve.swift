@@ -187,7 +187,7 @@ extension SceltaProspetto {
         case .successione: return .successione
         case .patrimonio: return .riepilogo
         case .riesame: return .incontro
-        case .posizione, .confronto, .valutazione, .portafoglio: return nil
+        case .posizione, .confronto, .valutazione, .portafoglio, .fascicolo: return nil
         }
     }
 }

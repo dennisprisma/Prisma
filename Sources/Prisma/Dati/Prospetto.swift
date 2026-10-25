@@ -26,6 +26,8 @@ enum SceltaProspetto: Hashable {
     case successione(report: Bool)
     /// Il patrimonio nei prossimi anni: prospetto (A4 verticale) o report per il cliente (A4 orizzontale).
     case patrimonio(report: Bool)
+    /// Il fascicolo dell'incontro: i report scelti in un solo PDF, con copertina e indice.
+    case fascicolo
     /// Una posizione o una proposta, in ogni dettaglio.
     case posizione(String)
     /// Due voci del dossier fianco a fianco.
@@ -50,6 +52,7 @@ enum SceltaProspetto: Hashable {
         case .costi: return .costi
         case .successione: return .successione
         case .patrimonio: return .patrimonio
+        case .fascicolo: return .fascicolo
         case .posizione: return .posizione
         case .confronto: return .confronto
         case .valutazione: return .valutazione
@@ -60,7 +63,7 @@ enum SceltaProspetto: Hashable {
 }
 
 enum TipoProspetto: String, CaseIterable, Identifiable {
-    case valutazione, resoconto, sostituzione, previdenza, protezione, obiettivo, liquidita, checkUp, resistenza, costi, successione, patrimonio, posizione, confronto, portafoglio, riesame
+    case valutazione, resoconto, sostituzione, previdenza, protezione, obiettivo, liquidita, checkUp, resistenza, costi, successione, patrimonio, fascicolo, posizione, confronto, portafoglio, riesame
 
     var id: String { rawValue }
 
@@ -77,6 +80,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
         case .costi: return "Il costo degli investimenti"
         case .successione: return "Passaggio generazionale"
         case .patrimonio: return "Il patrimonio nel tempo"
+        case .fascicolo: return "Fascicolo dell'incontro"
         case .posizione: return "Posizione o proposta"
         case .confronto: return "Confronto"
         case .valutazione: return "Valutazione di un investimento"
@@ -93,6 +97,7 @@ enum TipoProspetto: String, CaseIterable, Identifiable {
         case .obiettivo: return "Un obiettivo del cliente: importo rivalutato alla scadenza, posizioni collegate portate a quella data, quota raggiunta, quattro strade per arrivarci, scenari, quadro di tutti gli obiettivi. Prospetto per te, report per il cliente."
         case .liquidita: return "Capitali in scadenza nei prossimi 12 mesi al netto delle imposte, liquidità, riserva di emergenza, quattro salvadanai per orizzonte legati agli obiettivi, costo di lasciare fermi i soldi. Prospetto per te, report per il cliente."
         case .checkUp: return "Chi è il cliente, la fotografia del patrimonio, il semaforo di sette aree (riserva, famiglia, invalidità, pensione, risparmi, debiti, obiettivi), i bisogni rilevati e da dove partire. Prospetto per te, report per il cliente."
+        case .fascicolo: return "I report da consegnare al cliente in un solo PDF: copertina, indice e i documenti scelti, ciascuno con il suo commento. Con la password del cliente, se attiva."
         case .patrimonio: return "Tutte le posizioni insieme per 20 anni: il percorso di oggi e con le proposte, anno per anno e per area, gli obiettivi lungo la strada. Prospetto per te, report per il cliente."
         case .successione: return "Se mancasse oggi, senza testamento: cosa va ai beneficiari (polizze, coperture, previdenza) e cosa agli eredi, con quali tempi, le quote, le imposte e cosa sistemare (beneficiari, convivente, minorenni). Prospetto per te, report per il cliente."
         case .costi: return "Quanto costano le posizioni finanziarie: costo annuo e d'ingresso, costi di quest'anno, quanto tolgono in 10 e 20 anni con il grafico con e senza costi, cosa offrono in cambio, alternative a parità di rischio. Prospetto per te, report per il cliente."
@@ -222,7 +227,7 @@ extension SceltaProspetto {
         switch self {
         case .resoconto(let r), .previdenza(let r), .protezione(let r), .liquidita(let r), .checkUp(let r), .resistenza(let r), .costi(let r), .successione(let r), .patrimonio(let r): return r
         case .sostituzione(_, _, let r), .obiettivo(_, let r): return r
-        case .posizione, .confronto, .valutazione, .portafoglio, .riesame: return false
+        case .posizione, .confronto, .valutazione, .portafoglio, .riesame, .fascicolo: return false
         }
     }
 
@@ -240,7 +245,7 @@ extension SceltaProspetto {
         case .patrimonio: return "patrimonio·\(cliente)"
         case .sostituzione(let a, let b, _): return a.isEmpty || b.isEmpty ? nil : "sostituzione·\(a)·\(b)"
         case .obiettivo(let id, _): return id.isEmpty ? nil : "obiettivo·\(id)"
-        case .posizione, .confronto, .valutazione, .portafoglio, .riesame: return nil
+        case .posizione, .confronto, .valutazione, .portafoglio, .riesame, .fascicolo: return nil
         }
     }
 }

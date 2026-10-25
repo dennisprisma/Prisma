@@ -98,7 +98,7 @@ enum ProvaProspetti {
                          dati.clienti.allSatisfy { testo.contains($0.nome) } && Canale.allCases.allSatisfy { testo.contains($0.nomeBreve) })
             case .riesame:
                 verifica("\(nome): ordine del giorno e domande nel PDF", testo.contains("Ordine del giorno") && testo.contains("Domande da fare"))
-            case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp, .resistenza, .costi, .successione, .patrimonio:
+            case .valutazione, .resoconto, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita, .checkUp, .resistenza, .costi, .successione, .patrimonio, .fascicolo:
                 break
             }
         }
@@ -432,6 +432,25 @@ enum ProvaProspetti {
                 }
                 if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
             }
+        }
+
+        // Fascicolo dell'incontro: copertina, indice e i report scelti, in ordine
+        do {
+            let stato = StatoShell(persistente: false)
+            stato.clienteAttivoId = "marco"
+            stato.sceltaFascicolo = [.resoconto, .patrimonio, .successione]
+            let parti = [SceltaProspetto.resoconto(report: true), .patrimonio(report: true), .successione(report: true)].compactMap { stato.documentoProspetto($0) }
+            if let d = stato.documentoFascicolo(), let pdf = StampaCarta.pdf(d), let documento = PDFDocument(data: pdf) {
+                let attese = 2 + parti.reduce(0) { $0 + $1.pagine.count }
+                verifica("fascicolo-marco: \(attese) pagine (copertina, indice, tre report)", documento.pageCount == attese, "\(documento.pageCount) pagine")
+                let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
+                verifica("fascicolo-marco: l'indice elenca i documenti", parti.allSatisfy { testo.contains(spazi($0.titolo)) })
+                if let cartella { try? pdf.write(to: cartella.appendingPathComponent("fascicolo-marco.pdf")) }
+            } else {
+                verifica("fascicolo-marco: PDF creato", false)
+            }
+            stato.sceltaFascicolo = []
+            verifica("Fascicolo vuoto: nessun documento", stato.documentoFascicolo() == nil)
         }
 
         // Sostituzione o confronto: prospetto e report per ogni cliente con una coppia da confrontare

@@ -40,6 +40,8 @@ final class StatoShell: ObservableObject {
     @Published var posizioneInDettaglio: String?
     /// Il pannello del dossier Posizioni a cui scorrere ("resistenza", "costi"); si consuma appena raggiunto.
     @Published var ancoraPosizioni: String?
+    /// I report spuntati per il fascicolo dell'incontro (per la sessione).
+    @Published var sceltaFascicolo: Set<TipoProspetto> = TipoProspetto.fascicoloPredefinito
     /// Le analisi del dossier dell'ultimo cliente mostrato (vedi `analisiDossier`): non pubblicate, è solo una cache.
     var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
@@ -902,6 +904,8 @@ final class StatoShell: ObservableObject {
             return .successione(report: report)
         case .patrimonio(let report)?:
             return .patrimonio(report: report)
+        case .fascicolo?:
+            return .fascicolo
         case .obiettivo(let id, let report)?:
             let elenco = obiettiviCliente(clienteAttivoId)
             return .obiettivo(elenco.contains { $0.id == id } ? id : (elenco.first?.id ?? ""), report: report)
@@ -945,6 +949,7 @@ final class StatoShell: ObservableObject {
         if case .liquidita(let report) = scelta {
             return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
+        if case .fascicolo = scelta { return documentoFascicolo() }
         if case .patrimonio(let report) = scelta {
             return DocumentoStampabile(testiPatrimonio(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
@@ -1692,7 +1697,7 @@ final class StatoShell: ObservableObject {
             return CommentoEve.bozza(nome: nome, apertura: t.e.sostituzione ? "ti lascio il confronto tra restare in \(t.a.nome) e passare a \(t.b.nome), con quello che costa uscire e quello che rende ciascuna strada."
                                                                             : "ti lascio il confronto tra \(t.a.nome) e \(t.b.nome), al netto di costi e imposte.",
                                      punti: punti, passo: t.prossimiPassi.first)
-        case .posizione, .confronto, .valutazione, .portafoglio, .riesame:
+        case .posizione, .confronto, .valutazione, .portafoglio, .riesame, .fascicolo:
             return nil
         }
     }

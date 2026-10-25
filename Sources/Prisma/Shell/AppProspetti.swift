@@ -86,6 +86,8 @@ struct AppProspetti: View {
         ForEach([TipoProspetto.checkUp, .valutazione, .resoconto, .patrimonio, .resistenza, .costi, .successione, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
         }
+        EtichettaRail(testo: "Per l'incontro")
+        VoceNavigazione(titolo: TipoProspetto.fascicolo.nome, attiva: scelta.tipo == .fascicolo) { scegli(.fascicolo) }
         EtichettaRail(testo: "Prospetti di dettaglio")
         ForEach([TipoProspetto.riesame, .posizione, .confronto]) { t in
             VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
@@ -129,6 +131,8 @@ struct AppProspetti: View {
             stato.prospetto = .successione(report: false)
         case .patrimonio:
             stato.prospetto = .patrimonio(report: false)
+        case .fascicolo:
+            stato.prospetto = .fascicolo
         case .posizione:
             let elenco = posizioniOrdinate
             if let p = elenco.first(where: { $0.stato == .proposta }) ?? elenco.first { stato.prospetto = .posizione(p.id) }
@@ -171,6 +175,7 @@ struct AppProspetti: View {
                     case .costi(let report): sceltaCosti(report: report)
                     case .successione(let report): sceltaSuccessione(report: report)
                     case .patrimonio(let report): sceltaPatrimonio(report: report)
+                    case .fascicolo: sceltaFascicolo
                     case .posizione(let id): sceltaPosizione(id)
                     case .confronto(let a, let b): sceltaConfronto(a, b)
                     case .valutazione(let id, let report): sceltaValutazione(id, report: report)
@@ -199,6 +204,7 @@ struct AppProspetti: View {
         case .costi: return "COSTI DEL CLIENTE"
         case .successione: return "PASSAGGIO GENERAZIONALE"
         case .patrimonio: return "PATRIMONIO DEL CLIENTE"
+        case .fascicolo: return "DOCUMENTI DA UNIRE"
         case .posizione: return "SCEGLI LA POSIZIONE"
         case .confronto: return "LE DUE VOCI"
         case .valutazione: return "VALUTAZIONI DEL CLIENTE"
@@ -304,6 +310,26 @@ struct AppProspetti: View {
                         : "Prospetto per te: anagrafica e profilo, fotografia per area e canale, semaforo di sette aree, bisogni rilevati, prossimi passi e firme.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
             Text("Dopo il primo incontro: anagrafica e famiglia dal dossier, patrimonio dalle Posizioni, ipotesi dall'Analisi 360, bisogni dal profilo dei bisogni. Più dati si raccolgono, meno semafori restano grigi.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+    }
+
+    private var sceltaFascicolo: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Spunta i report da consegnare: Prisma li unisce nell'ordine qui sotto, dopo una copertina e un indice.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+            ForEach(TipoProspetto.inFascicolo) { t in
+                Toggle(isOn: Binding(get: { stato.sceltaFascicolo.contains(t) },
+                                     set: { si in
+                                         if si { stato.sceltaFascicolo.insert(t) } else { stato.sceltaFascicolo.remove(t) }
+                                         archiviato = nil
+                                     })) {
+                    Text(t.nome).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
+                }
+                .toggleStyle(.checkbox)
+            }
+            Text("Ogni report porta il suo commento, se l'hai scritto. Salvando il PDF vale la password del cliente, come per ogni documento.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
