@@ -258,7 +258,7 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.chiediEve(SpuntoEve.resistenza.domanda, spunto: .resistenza)
             s.conversazioneAVoce = true
-            s.voceIstantanea = StatoVoce(ascolta: true, trascritto: "Va bene, e quanto pesano i costi del suo piano pensione")
+            s.voceIstantanea = StatoVoce(ascolta: true, trascritto: "Va bene, e quanto pesano i costi del suo piano pensione", livello: 0.6)
             s.apri(.eve)
         }),
         ("86-eve-comandi", { s in

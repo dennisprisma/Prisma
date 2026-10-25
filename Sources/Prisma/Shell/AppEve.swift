@@ -254,7 +254,7 @@ struct AppEve: View {
                     Circle().fill(v.ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).frame(width: 7, height: 7)
                         .shadow(color: (v.ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).opacity(0.9), radius: 3)
                 }
-                OndaEve(attiva: attiva)
+                OndaEve(attiva: attiva, livello: v.ascolta ? v.livello : nil)
                     .frame(height: 26)
                 Text(scritta)
                     .font(Tipo.eveDisplay)
@@ -465,6 +465,8 @@ struct StatoVoce {
     var parla = false
     var trascritto = ""
     var errore: String?
+    /// Quanto suona il microfono (0…1) mentre Eve ascolta.
+    var livello: Float = 0
 }
 
 /// Segue l'ascolto e la voce di Eve e ridisegna solo il pezzo che ne dipende.
@@ -476,7 +478,7 @@ private struct OsservaVoce<C: View>: View {
     var body: some View {
         var errore: String?
         if case .nonDisponibile(let m) = ascolto.stato { errore = m }
-        return contenuto(StatoVoce(ascolta: ascolto.ascolta, parla: voce.parla, trascritto: ascolto.trascritto, errore: errore))
+        return contenuto(StatoVoce(ascolta: ascolto.ascolta, parla: voce.parla, trascritto: ascolto.trascritto, errore: errore, livello: ascolto.livello))
     }
 }
 
@@ -608,6 +610,8 @@ struct SferaEve: View {
 /// Onda sonora fissa (nessuna animazione continua: niente consumi inutili sul Mac).
 struct OndaEve: View {
     let attiva: Bool
+    /// Mentre Eve ascolta, l'onda segue il microfono: ferma vuol dire che il microfono non sente.
+    var livello: Float? = nil
     private static let altezze: [CGFloat] = [4, 7, 12, 18, 10, 22, 14, 24, 16, 20, 9, 13, 6, 10, 4, 8, 14, 19, 11, 6, 9, 15, 7, 4]
 
     var body: some View {
@@ -615,10 +619,15 @@ struct OndaEve: View {
             ForEach(Array(Self.altezze.enumerated()), id: \.offset) { i, h in
                 Capsule()
                     .fill(Gradienti.onda)
-                    .frame(width: 3, height: attiva ? h : max(3, h * 0.35))
+                    .frame(width: 3, height: altezza(h))
                     .opacity(attiva ? 1 : 0.6 + Double(i % 3) * 0.1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func altezza(_ h: CGFloat) -> CGFloat {
+        if let livello { return max(3, h * (0.15 + 0.85 * CGFloat(livello))) }
+        return attiva ? h : max(3, h * 0.35)
     }
 }

@@ -25,7 +25,18 @@ extension StatoShell {
         voceEve.zitta()
         ascoltoEve.azzera()
         ascoltoEve.concluso = { [weak self] frase in self?.fraseDetta(frase) }
+        ascoltoEve.problema = { [weak self] motivo in self?.problemaAscolto(motivo) }
         ascoltoEve.avvia()
+    }
+
+    /// Eve non ha potuto ascoltare o capire: lo scrive nella conversazione, dove si vede, con cosa fare.
+    func problemaAscolto(_ motivo: String) {
+        conversazioneAVoce = false
+        rispostaAVoce = false
+        let chiave = evePortafoglio ? EvePortafoglio.chiave : clienteAttivoId
+        // Lo stesso avviso due volte di fila non serve
+        guard conversazione(chiave).last?.testo != motivo else { return }
+        aggiungiMessaggio(MessaggioEve(autore: .eve, testo: motivo, titolo: "Non riesco ad ascoltarti", motore: "Voce"), cliente: chiave)
     }
 
     /// Chiude la conversazione a voce: Eve smette di ascoltare e di parlare.
