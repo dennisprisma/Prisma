@@ -42,6 +42,8 @@ final class StatoShell: ObservableObject {
     @Published var ancoraPosizioni: String?
     /// I report spuntati per il fascicolo dell'incontro (per la sessione).
     @Published var sceltaFascicolo: Set<TipoProspetto> = TipoProspetto.fascicoloPredefinito
+    /// L'appuntamento per cui si prepara il fascicolo (dà la data e il tipo d'incontro alla copertina).
+    @Published var fascicoloAppuntamento: String?
     /// Le analisi del dossier dell'ultimo cliente mostrato (vedi `analisiDossier`): non pubblicate, è solo una cache.
     var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
