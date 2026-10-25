@@ -752,9 +752,8 @@ enum ProvaEve {
         controlla(!v.conversazioneAVoce, "Voce: «basta così» chiude la conversazione a voce")
 
         // Comandi: Eve capisce cosa fare (martedì 27 ottobre 2026, ore 10)
-        let cal = Calendar.current
         let martedi = cal.date(from: DateComponents(year: 2026, month: 10, day: 27, hour: 10)) ?? Date()
-        func giorno(_ d: Int, _ m: Int = 10, _ h: Int? = nil, _ min: Int = 0) -> Date? {
+        func dataProva(_ d: Int, _ m: Int = 10, _ h: Int? = nil, _ min: Int = 0) -> Date? {
             cal.date(from: DateComponents(year: 2026, month: m, day: d, hour: h ?? 0, minute: h == nil ? 0 : min))
         }
         let noti = stato.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
@@ -771,20 +770,20 @@ enum ProvaEve {
             controlla(false, "Comandi: «preparami un report» senza dire quale: Eve chiede")
         }
         controlla(capisce("Fissa un appuntamento con Giulia giovedì alle 15")
-                  == .appuntamento(.init(cliente: "giulia", giorno: giorno(29), ora: 15, minuti: 0, tipo: .altro, titolo: "")),
+                  == .appuntamento(.init(cliente: "giulia", giorno: dataProva(29), ora: 15, minuti: 0, tipo: .altro, titolo: "")),
                   "Comandi: «fissa un appuntamento con Giulia giovedì alle 15»")
         controlla(capisce("metti una telefonata con Laura domani alle tre e mezza")
-                  == .appuntamento(.init(cliente: "laura", giorno: giorno(28), ora: 15, minuti: 30, tipo: .telefonata, titolo: "")),
+                  == .appuntamento(.init(cliente: "laura", giorno: dataProva(28), ora: 15, minuti: 30, tipo: .telefonata, titolo: "")),
                   "Comandi: «una telefonata con Laura domani alle tre e mezza»")
-        controlla(capisce("Ricordami di chiamare Laura venerdì") == .attivita(cliente: "laura", titolo: "Chiamare Laura", scadenza: giorno(30)!),
+        controlla(capisce("Ricordami di chiamare Laura venerdì") == .attivita(cliente: "laura", titolo: "Chiamare Laura", scadenza: dataProva(30)!),
                   "Comandi: «ricordami di chiamare Laura venerdì» (\(String(describing: capisce("Ricordami di chiamare Laura venerdì"))))")
-        controlla(capisce("ricordami di mandare il KID il 3 novembre") == .attivita(cliente: "giulia", titolo: "Mandare il KID", scadenza: giorno(3, 11)!),
+        controlla(capisce("ricordami di mandare il KID il 3 novembre") == .attivita(cliente: "giulia", titolo: "Mandare il KID", scadenza: dataProva(3, 11)!),
                   "Comandi: «ricordami di mandare il KID il 3 novembre»")
         controlla(capisce("Prendi nota che Marco vuole cambiare casa nel 2028") == .nota(cliente: "marco", testo: "Marco vuole cambiare casa nel 2028"),
                   "Comandi: «prendi nota che Marco vuole cambiare casa nel 2028»")
         controlla(capisce("Apri l'agenda") == .apri(.agenda) && capisce("vai alle posizioni") == .apri(.posizioni), "Comandi: apri l'agenda, vai alle posizioni")
         controlla(capisce("passa a Sofia") == .cliente("sofia") && capisce("apri Marco Bianchi") == .cliente("marco"), "Comandi: passa a Sofia, apri Marco Bianchi")
-        controlla(capisce("cosa ho domani?") == .agenda(giorno(28)!), "Comandi: «cosa ho domani?»")
+        controlla(capisce("cosa ho domani?") == .agenda(dataProva(28)!), "Comandi: «cosa ho domani?»")
         controlla(capisce("preparami il report della liquidità sui conti correnti") == .documento(.liquidita(report: true), cliente: nil),
                   "Comandi: «i conti correnti» non è il cliente Andrea Conti")
         for domanda in ["Cosa proporre al cliente?", "Quanto pesano i costi?", "Fammi un riepilogo del cliente", "Prepara il prossimo incontro",
@@ -792,10 +791,10 @@ enum ProvaEve {
             controlla(capisce(domanda) == nil, "Comandi: «\(domanda)» resta una domanda per Eve")
         }
         let quando = DateItaliane.trova("il 3 novembre alle 10:30", oggi: martedi)
-        controlla(quando.data() == giorno(3, 11, 10, 30), "Date: «il 3 novembre alle 10:30»")
-        controlla(DateItaliane.trova("tra due settimane", oggi: martedi).giorno == giorno(10, 11), "Date: «tra due settimane»")
-        controlla(DateItaliane.trova("martedì prossimo alle 9", oggi: martedi).data() == giorno(3, 11, 9), "Date: «martedì prossimo» dal martedì è la settimana dopo")
-        controlla(DateItaliane.trova("a mezzogiorno", oggi: martedi).data() == giorno(27, 10, 12), "Date: «a mezzogiorno» di oggi")
+        controlla(quando.data() == dataProva(3, 11, 10, 30), "Date: «il 3 novembre alle 10:30»")
+        controlla(DateItaliane.trova("tra due settimane", oggi: martedi).giorno == dataProva(10, 11), "Date: «tra due settimane»")
+        controlla(DateItaliane.trova("martedì prossimo alle 9", oggi: martedi).data() == dataProva(3, 11, 9), "Date: «martedì prossimo» dal martedì è la settimana dopo")
+        controlla(DateItaliane.trova("a mezzogiorno", oggi: martedi).data() == dataProva(27, 10, 12), "Date: «a mezzogiorno» di oggi")
 
         // Comandi eseguiti: l'appuntamento senza giorno si completa con la frase dopo, e si annulla
         let e = StatoShell(persistente: false)
@@ -808,7 +807,7 @@ enum ProvaEve {
         let completato = e.eseguiComandoEve("giovedì alle 11", oggi: martedi)
         controlla(completato && e.dati.appuntamenti.count == appuntamentiPrima + 1, "Eseguiti: «giovedì alle 11» completa l'appuntamento")
         let fissato = e.dati.appuntamenti.last
-        let fissatoOk: Bool = fissato.map { $0.clienteId == "marco" && $0.inizio == giorno(29, 10, 11) && $0.titolo == "Incontro con Marco Bianchi" } ?? false
+        let fissatoOk: Bool = fissato.map { $0.clienteId == "marco" && $0.inizio == dataProva(29, 10, 11) && $0.titolo == "Incontro con Marco Bianchi" } ?? false
         controlla(fissatoOk, "Eseguiti: incontro con Marco Bianchi giovedì 29 alle 11 (\(fissato?.titolo ?? "-"))")
         if let m = e.conversazione("giulia").last, let a = m.azione {
             controlla(a.tipo == .appuntamento && m.testo.contains("giovedì 29 ottobre alle 11:00"), "Eseguiti: la risposta dice quando («\(m.testo)»)")
@@ -821,7 +820,7 @@ enum ProvaEve {
         let attivitaPrima = e.dati.attivita.count
         let promemoria = e.eseguiComandoEve("ricordami di mandare il KID a Giulia domani", oggi: martedi)
         let nuova = e.dati.attivita.count == attivitaPrima + 1 ? e.dati.attivita.last : nil
-        let promemoriaOk: Bool = promemoria && nuova.map { $0.titolo == "Mandare il KID a Giulia" && $0.scadenza == giorno(28) } ?? false
+        let promemoriaOk: Bool = promemoria && nuova.map { $0.titolo == "Mandare il KID a Giulia" && $0.scadenza == dataProva(28) } ?? false
         controlla(promemoriaOk, "Eseguiti: promemoria «Mandare il KID a Giulia» per domani")
         let notePrima = e.dati.note.count
         let annotato = e.eseguiComandoEve("prendi nota: vuole aumentare il versamento del PIP", oggi: martedi)
