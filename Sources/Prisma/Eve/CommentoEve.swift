@@ -29,14 +29,14 @@ enum CommentoEve {
 
     /// Scrive il commento con il motore scelto: il modello Apple riscrive la bozza, altrimenti resta la bozza.
     /// Restituisce il testo e il nome di chi l'ha scritto.
-    static func scrivi(bozza: String, preferenza: ImpostazioniEve.Motore) async -> (testo: String, motore: String) {
-        guard preferenza != .sintesi else { return (bozza, MotoriEve.sintesi.nome) }
+    static func scrivi(bozza: String, modello: MotoreGenerativo?) async -> (testo: String, motore: String) {
+        guard let modello else { return (bozza, MotoriEve.sintesi.nome) }
         let richiesta = "BOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n" + bozza
             + "\n\nRiscrivi la lettera in modo naturale e personale, con le stesse cifre. Inizia con «Gentile» e il nome."
-        if let testo = try? await MotoriEve.generaConApple(istruzioni: istruzioni, richiesta: richiesta) {
+        if let testo = try? await modello.genera(istruzioni: istruzioni, richiesta: richiesta) {
             let pulito = testo.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             if !pulito.isEmpty, numeriConservati(bozza: bozza, testo: pulito) {
-                return (String(pulito.prefix(limite)), "Modello Apple")
+                return (String(pulito.prefix(limite)), modello.nome)
             }
         }
         return (bozza, MotoriEve.sintesi.nome)

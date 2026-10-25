@@ -171,6 +171,7 @@ enum Gradienti {
     static let conversazioneEve = LinearGradient.verticale(Colori.Eve.conversazioneAlto, Colori.Eve.conversazioneBasso)
     static let barraEve = LinearGradient.verticale(Colori.Eve.barraAlto, Colori.Eve.barraBasso)
     static let displayEve = LinearGradient.verticale(Colori.Eve.displayAlto, Colori.Eve.displayBasso)
+    static let microfonoAcceso = LinearGradient.lucido(Colori.Eve.microfonoAcceso, salto: (0.49, 0.50))
     static let nuvolaEve = LinearGradient.verticale(Colori.Eve.nuvolaEveAlto, Colori.Eve.nuvolaEveBasso)
     static let nuvolaTua = LinearGradient.lucido(Colori.Eve.nuvolaTuoi, salto: (0.48, 0.49))
     static let azioneEve = LinearGradient.verticale(Colori.Eve.azioneAlto, Colori.Eve.azioneBasso)

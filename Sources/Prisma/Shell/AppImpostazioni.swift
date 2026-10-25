@@ -69,6 +69,7 @@ struct AppImpostazioni: View {
         VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
             gruppoProfilo
             gruppoEve
+            gruppoVoce
             gruppoPDF
         }
     }
@@ -76,7 +77,7 @@ struct AppImpostazioni: View {
     private var gruppoEve: some View {
         let motivo = MotoriEve.motivoAppleNonDisponibile
         return GruppoImpostazioni(titolo: "Eve") {
-            RigaImpostazione(titolo: "Chi risponde", sottotitolo: "Il modello Apple lavora sul Mac; la sintesi compone le risposte dai dati del dossier") {
+            RigaImpostazione(titolo: "Chi risponde", sottotitolo: "Il modello Apple e Qwen lavorano sul Mac; la sintesi compone le risposte dai dati del dossier. Automatico: Apple, poi Qwen, poi la sintesi") {
                 Picker("", selection: $stato.dati.impostazioni.eve.motore) {
                     ForEach(ImpostazioniEve.Motore.allCases) { m in Text(m.nome).tag(m) }
                 }
@@ -89,8 +90,65 @@ struct AppImpostazioni: View {
                     .font(Tipo.rigaValore)
                     .foregroundColor(Colori.Impostazioni.rigaTitolo)
             }
+            RigaImpostazione(titolo: "Qwen sul Mac",
+                             sottotitolo: stato.disponibilitaLocale.motivo ?? "Pronto: \(stato.dati.impostazioni.eve.modelloLocale) con Ollama, solo su questo Mac",
+                             avvertenza: stato.disponibilitaLocale.pronto ? nil : "Facoltativo: serve l'app gratuita Ollama con il modello qwen3:4b (circa 2,5 GB di memoria mentre risponde)") {
+                HStack(spacing: 8) {
+                    TextField("qwen3:4b", text: $stato.dati.impostazioni.eve.modelloLocale)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 110)
+                        .onSubmit { stato.verificaMotoreLocale() }
+                    Button("Verifica") { stato.verificaMotoreLocale() }
+                }
+            }
             RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier del cliente, sul Mac e nei backup", ultima: true) {
                 Toggle("", isOn: $stato.dati.impostazioni.eve.conservaConversazioni)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
+        }
+    }
+
+    /// La voce di Eve e la conversazione a voce: tutto sul Mac (sintesi e dettatura di macOS).
+    private var gruppoVoce: some View {
+        let voci = VoceEve.vociItaliane()
+        let scelta: String = VoceEve.voce(stato.dati.impostazioni.eve.voce).map { " (ora " + VoceEve.nome($0) + ")" } ?? ""
+        return GruppoImpostazioni(titolo: "Parlare con Eve") {
+            RigaImpostazione(titolo: "Voce di Eve",
+                             sottotitolo: "Automatica: la migliore voce femminile italiana installata" + scelta,
+                             avvertenza: VoceEve.soloVociStandard
+                                ? "Per una voce più naturale scarica «Federica (Premium)» in Impostazioni di Sistema › Accessibilità › Contenuti letti ad alta voce › Voce di sistema › Gestisci voci › Italiano"
+                                : nil) {
+                HStack(spacing: 8) {
+                    Picker("", selection: $stato.dati.impostazioni.eve.voce) {
+                        Text("Automatica").tag(String?.none)
+                        ForEach(voci, id: \.identifier) { v in Text(VoceEve.nome(v)).tag(String?.some(v.identifier)) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 190)
+                    Button("Ascolta") { stato.provaVoce() }
+                }
+            }
+            RigaImpostazione(titolo: "Velocità della voce", sottotitolo: "Al centro il ritmo naturale") {
+                Slider(value: $stato.dati.impostazioni.eve.velocitaVoce, in: 0.7...1.4)
+                    .frame(width: 170)
+            }
+            RigaImpostazione(titolo: "Risposte a voce", sottotitolo: "Il testo resta comunque scritto nella conversazione") {
+                Picker("", selection: $stato.dati.impostazioni.eve.risposteAVoce) {
+                    ForEach(ImpostazioniEve.RisposteAVoce.allCases) { r in Text(r.nome).tag(r) }
+                }
+                .labelsHidden()
+                .frame(width: 170)
+            }
+            RigaImpostazione(titolo: "Leggi tutta la risposta", sottotitolo: "Altrimenti Eve dice l'inizio e il resto lo trovi scritto") {
+                Toggle("", isOn: $stato.dati.impostazioni.eve.leggiTutto)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
+            RigaImpostazione(titolo: "Conversazione continua",
+                             sottotitolo: "Dopo aver risposto Eve torna ad ascoltarti, finché non le dici «basta così» · ⌥⌘E per parlarle",
+                             ultima: true) {
+                Toggle("", isOn: $stato.dati.impostazioni.eve.conversazioneContinua)
                     .toggleStyle(StileInterruttore())
                     .labelsHidden()
             }
@@ -309,6 +367,7 @@ struct AppImpostazioni: View {
     private var scorciatoie: some View {
         GruppoImpostazioni {
             RigaImpostazione(titolo: "Scrivania", sottotitolo: "Riduce tutte le finestre") { tasto("⌥ 0") }
+            RigaImpostazione(titolo: "Parla con Eve", sottotitolo: "Eve ti ascolta; di nuovo per mandare subito la frase") { tasto("⌥ ⌘ E") }
             ForEach(Array(AppPrisma.allCases.prefix(9).enumerated()), id: \.element) { i, app in
                 RigaImpostazione(titolo: app.titolo, sottotitolo: app.sottotitolo, ultima: i == 8) { tasto("⌥ \(i + 1)") }
             }

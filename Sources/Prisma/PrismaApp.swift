@@ -55,6 +55,8 @@ struct PrismaApp: App {
                 Button("Spazi di lavoro…") { stato.pannelloSpazi = true }
                     .disabled(stato.inModoCliente)
                 Button("Le tue app aperte…") { stato.pannelloAppAperte = true }
+                Button(stato.conversazioneAVoce ? "Chiudi la conversazione con Eve" : "Parla con Eve") { stato.alternaAscolto(daMenu: true) }
+                    .keyboardShortcut("e", modifiers: [.command, .option])
                 Divider()
                 Button("Scrivania") { stato.mostraScrivania() }
                     .keyboardShortcut("0", modifiers: .option)

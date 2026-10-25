@@ -40,6 +40,27 @@ struct StileBlu: ButtonStyle {
     }
 }
 
+/// Il pulsante del microfono di Eve: blu come gli altri, rosso lucido mentre Eve ascolta.
+struct StileMicrofono: ButtonStyle {
+    let acceso: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Tipo.pulsanteBlu)
+            .foregroundColor(.white)
+            .incisione(acceso ? Colori.Eve.microfonoIncisione : Colori.Pulsante.bluIncisione, y: -1)
+            .padding(Misure.Pulsante.bluMargine)
+            .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu)
+                .fill(acceso ? Gradienti.microfonoAcceso : Gradienti.pulsanteBlu))
+            .luceInterna(Colori.Pulsante.bluLuce, raggio: Misure.Pulsante.raggioBlu)
+            .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu)
+                .strokeBorder(acceso ? Colori.Eve.microfonoBordo : Colori.Pulsante.bluBordo, lineWidth: 1))
+            .shadow(color: acceso ? Colori.Eve.spiaAscolto.opacity(0.6) : Colori.Pulsante.bluRiflesso, radius: acceso ? 4 : 0, x: 0, y: acceso ? 0 : 1)
+            .brightness(configuration.isPressed ? -0.1 : 0)
+            .contentShape(Rectangle())
+    }
+}
+
 /// Pulsante senza decorazioni che si scurisce appena alla pressione.
 struct StileSemplice: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
