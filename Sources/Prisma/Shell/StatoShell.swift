@@ -164,6 +164,9 @@ final class StatoShell: ObservableObject {
     @Published var disponibilitaLocale = DisponibilitaEve.nonDisponibile("Ollama non ancora verificato.")
     /// L'appuntamento chiesto a Eve a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
     var appuntamentoInSospeso: Appuntamento.Bozza?
+    /// L'esito dell'ultima prova del riconoscimento (dalle impostazioni) e la prova in corso.
+    @Published var esitoProvaRiconoscimento: String?
+    var provaInCorso: ProvaRiconoscimento?
     /// Nelle istantanee: lo stato della voce da mostrare (non c'è microfono).
     var voceIstantanea: StatoVoce?
 

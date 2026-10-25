@@ -3,9 +3,9 @@ import Foundation
 import Speech
 
 /// Eve ti ascolta, solo sul Mac: l'audio non viene mai mandato fuori dal computer.
-/// Su macOS 26 e successivi usa il riconoscimento vocale nuovo di Apple (SpeechAnalyzer, sul dispositivo);
-/// sui sistemi precedenti, o se quello non c'è, la dettatura classica in italiano sul dispositivo.
-/// La frase finisce quando smetti di parlare: Eve chiede al riconoscimento il testo definitivo e lo manda.
+/// Il microfono passa l'audio al riconoscimento scelto (`TrascrizioneEve`): su macOS 26 e successivi quello nuovo
+/// di Apple, altrimenti la dettatura classica sul dispositivo. La frase finisce quando smetti di parlare:
+/// Eve chiede al riconoscimento il testo definitivo e lo manda.
 final class AscoltoEve: ObservableObject {
     enum Stato: Equatable {
         case fermo
@@ -43,32 +43,26 @@ final class AscoltoEve: ObservableObject {
     private var timerLimite: Timer?
     private var timerFinale: Timer?
     private var sessione = 0
+    private var trascrizione: TrascrizioneEve?
     /// Il suono più forte sentito in questa frase: distingue «microfono muto» da «non ho capito le parole».
     private var piccoMassimo: Float = 0
     /// Quando il microfono ha sentito la voce l'ultima volta (nil = non ancora).
     private var ultimaVoce: Date?
     /// L'ultimo errore del riconoscimento, per spiegarlo se non è arrivata nessuna parola.
     private var ultimoErrore: String?
-    /// Quale riconoscimento è in uso e quante risposte ha dato: per capire cosa non va.
-    private var riconoscimento = ""
     private var risposte = 0
-    /// Chiede il testo definitivo (fine dell'audio) e, per lasciar perdere, chiude subito.
-    private var finalizza: (() -> Void)?
-    private var annulla: (() -> Void)?
-    /// Nel riconoscimento nuovo le frasi già confermate; quella in corso si aggiunge in coda.
-    private var confermato = ""
 
     var ascolta: Bool { stato == .ascolta || stato == .capisce }
 
-    /// Inizia ad ascoltare, chiedendo prima i permessi (microfono e riconoscimento vocale) se serve.
-    func avvia() {
+    /// Inizia ad ascoltare con il riconoscimento scelto, chiedendo prima i permessi se serve.
+    func avvia(_ scelta: SceltaRiconoscimento = .automatico) {
         guard !ascolta else { return }
         Self.permessi { [weak self] motivo in
             guard let self else { return }
             if let motivo {
                 self.segnala(motivo)
             } else {
-                self.inizia()
+                self.inizia(scelta)
             }
         }
     }
@@ -79,16 +73,17 @@ final class AscoltoEve: ObservableObject {
         switch stato {
         case .ascolta:
             spegniMicrofono()
-            guard invia else {
-                lasciaPerdere()
+            guard invia, let t = trascrizione else {
+                if invia { concludi() } else { lasciaPerdere() }
                 return
             }
             stato = .capisce
             nota = "Un attimo…"
-            finalizza?()
-            finalizza = nil
+            DiagnosticaVoce.annota("Fine della frase: chiedo il testo definitivo (\(risposte) risposte finora)")
+            t.finisci()
             timerFinale?.invalidate()
             timerFinale = Timer.scheduledTimer(withTimeInterval: Self.attesaFinale, repeats: false) { [weak self] _ in
+                DiagnosticaVoce.annota("Il testo definitivo non è arrivato in tempo")
                 self?.concludi()
             }
         case .capisce:
@@ -114,30 +109,30 @@ final class AscoltoEve: ObservableObject {
     private func lasciaPerdere() {
         sessione += 1
         timerFinale?.invalidate()
-        annulla?()
-        annulla = nil
-        finalizza = nil
+        trascrizione?.aggiornamento = nil
+        trascrizione?.annulla()
+        trascrizione = nil
         stato = .fermo
         nota = nil
         trascritto = ""
-        confermato = ""
     }
 
     /// La frase è finita: la manda, oppure spiega perché non c'è.
     private func concludi() {
-        guard stato == .capisce || stato == .ascolta else { return }
+        guard ascolta else { return }
         if stato == .ascolta { spegniMicrofono() }
         let frase = trascritto.trimmingCharacters(in: .whitespacesAndNewlines)
-        let dettaglio = "(\(riconoscimento), \(risposte) \(risposte == 1 ? "risposta" : "risposte"), voce \(String(format: "%.2f", piccoMassimo)))"
+        let dettaglio = "(\(trascrizione?.nome ?? "nessun riconoscimento"), \(risposte) \(risposte == 1 ? "risposta" : "risposte"), voce \(String(format: "%.2f", piccoMassimo)))"
+        DiagnosticaVoce.annota("Frase conclusa: \(frase.count) caratteri \(dettaglio)")
         lasciaPerdere()
         if !frase.isEmpty {
             concluso?(frase)
         } else if let e = ultimoErrore {
-            segnala("Non sono riuscita a capirti: \(e). Se capita sempre, controlla che la dettatura in italiano sia attiva in Impostazioni di Sistema › Tastiera › Dettatura. \(dettaglio)")
+            segnala("Non sono riuscita a capirti: \(e). \(dettaglio)")
         } else if piccoMassimo < 0.01 {
             segnala("Non arriva nessun suono dal microfono. Controlla in Impostazioni di Sistema › Suono › Ingresso quale microfono è scelto, e in Privacy e sicurezza › Microfono che Prisma sia attivo. \(dettaglio)")
         } else {
-            segnala("Ho sentito la tua voce ma il riconoscimento non mi ha restituito parole. Riprova; se succede ancora, mandami questo messaggio. \(dettaglio)")
+            segnala("Ti ho sentito ma il riconoscimento non mi ha restituito parole. Prova «Prova il riconoscimento» in Impostazioni › Parlare con Eve e mandami il risultato. \(dettaglio)")
         }
     }
 
@@ -147,22 +142,48 @@ final class AscoltoEve: ObservableObject {
         problema?(motivo)
     }
 
-    private func inizia() {
+    private func inizia(_ scelta: SceltaRiconoscimento) {
         sessione += 1
+        let questa = sessione
         piccoMassimo = 0
         ultimaVoce = nil
         ultimoErrore = nil
         risposte = 0
         trascritto = ""
-        confermato = ""
-        #if canImport(FoundationModels)
-        // L'SDK di macOS 26 porta anche il riconoscimento vocale nuovo
-        if #available(macOS 26.0, *) {
-            iniziaNuovo(sessione)
+        stato = .ascolta
+        nota = "Mi preparo ad ascoltarti…"
+        DiagnosticaVoce.annota("Ascolto: inizio (scelta \(scelta.rawValue))")
+        Task {
+            let esito = await Trascrizioni.prepara(scelta) { avviso in
+                DispatchQueue.main.async { if self.sessione == questa { self.nota = avviso } }
+            }
+            DispatchQueue.main.async {
+                guard self.sessione == questa, self.stato == .ascolta else {
+                    if case .success(let t) = esito { t.annulla() }
+                    return
+                }
+                switch esito {
+                case .failure(let e):
+                    self.stato = .fermo
+                    self.nota = nil
+                    self.segnala(e.messaggio)
+                case .success(let t):
+                    self.avviaCon(t, sessione: questa)
+                }
+            }
+        }
+    }
+
+    private func avviaCon(_ t: TrascrizioneEve, sessione questa: Int) {
+        trascrizione = t
+        t.aggiornamento = { [weak self] testo, fine, errore in
+            DispatchQueue.main.async { self?.ricevi(testo, fine: fine, errore: errore, sessione: questa) }
+        }
+        DiagnosticaVoce.annota("Ascolto con \(t.nome)")
+        guard accendiMicrofono({ t.aggiungi($0) }) else {
+            lasciaPerdere()
             return
         }
-        #endif
-        iniziaClassico()
     }
 
     // MARK: - Microfono
@@ -172,6 +193,7 @@ final class AscoltoEve: ObservableObject {
     private func accendiMicrofono(_ consegna: @escaping (AVAudioPCMBuffer) -> Void) -> Bool {
         let ingresso = motoreAudio.inputNode
         let formato = ingresso.outputFormat(forBus: 0)
+        DiagnosticaVoce.annota("Microfono: \(DiagnosticaVoce.descrivi(formato))")
         guard formato.sampleRate > 0, formato.channelCount > 0 else {
             segnala("Non trovo nessun microfono: controlla Impostazioni di Sistema › Suono › Ingresso.")
             return false
@@ -185,6 +207,7 @@ final class AscoltoEve: ObservableObject {
             try motoreAudio.start()
         } catch {
             ingresso.removeTap(onBus: 0)
+            DiagnosticaVoce.annota("Microfono non avviato: \(DiagnosticaVoce.descrivi(error))")
             segnala("Il microfono non si è avviato: \(error.localizedDescription)")
             return false
         }
@@ -232,171 +255,16 @@ final class AscoltoEve: ObservableObject {
         }
     }
 
-    /// Un pezzo di testo riconosciuto. `finale`: il riconoscimento ha finito, la frase si manda.
-    private func ricevi(_ testo: String?, finale: Bool, errore: String?, sessione questa: Int) {
+    /// Un aggiornamento del riconoscimento: il testo finora, la fine, l'errore.
+    private func ricevi(_ testo: String?, fine: Bool, errore: String?, sessione questa: Int) {
         guard questa == sessione, ascolta else { return }
-        risposte += 1
+        if testo != nil { risposte += 1 }
         if let errore { ultimoErrore = errore }
         if let testo, !testo.trimmingCharacters(in: .whitespaces).isEmpty {
             trascritto = testo
             if stato == .ascolta { ultimaVoce = Date() }
         }
-        if finale || errore != nil { concludi() }
-    }
-
-    // MARK: - Riconoscimento classico (macOS 13–15)
-
-    private func iniziaClassico() {
-        riconoscimento = "dettatura classica"
-        guard let riconoscitore = SFSpeechRecognizer(locale: Locale(identifier: "it-IT")), riconoscitore.isAvailable else {
-            segnala("Il riconoscimento vocale in italiano non è disponibile adesso. Controlla che la dettatura sia attiva in Impostazioni di Sistema › Tastiera › Dettatura e riprova.")
-            return
-        }
-        guard riconoscitore.supportsOnDeviceRecognition else {
-            segnala("Per ascoltarti senza mandare l'audio fuori dal Mac serve la dettatura in italiano sul dispositivo: attivala in Impostazioni di Sistema › Tastiera › Dettatura, lingua Italiano, e aspetta che finisca di scaricarsi.")
-            return
-        }
-        let r = SFSpeechAudioBufferRecognitionRequest()
-        r.requiresOnDeviceRecognition = true
-        r.shouldReportPartialResults = true
-        r.taskHint = .dictation
-        r.addsPunctuation = true
-        guard accendiMicrofono({ r.append($0) }) else { return }
-        let questa = sessione
-        let compito = Self.riconosci(riconoscitore, r) { [weak self] testo, finale, errore in
-            DispatchQueue.main.async { self?.ricevi(testo, finale: finale, errore: errore, sessione: questa) }
-        }
-        finalizza = { r.endAudio() }
-        annulla = {
-            r.endAudio()
-            compito.cancel()
-        }
-    }
-
-    private static func riconosci(_ riconoscitore: SFSpeechRecognizer, _ r: SFSpeechAudioBufferRecognitionRequest,
-                                  _ ricevi: @escaping (String?, Bool, String?) -> Void) -> SFSpeechRecognitionTask {
-        riconoscitore.recognitionTask(with: r) { risultato, errore in
-            ricevi(risultato?.bestTranscription.formattedString, risultato?.isFinal ?? false, errore?.localizedDescription)
-        }
-    }
-
-    // MARK: - Riconoscimento nuovo (macOS 26 e successivi)
-
-    #if canImport(FoundationModels)
-    @available(macOS 26.0, *)
-    private func iniziaNuovo(_ questa: Int) {
-        riconoscimento = "riconoscimento nuovo"
-        stato = .ascolta
-        nota = "Mi preparo ad ascoltarti…"
-        Task {
-            do {
-                let italiano = Locale(identifier: "it-IT")
-                let supportate = await SpeechTranscriber.supportedLocales
-                guard let lingua = supportate.first(where: { $0.identifier(.bcp47) == italiano.identifier(.bcp47) })
-                        ?? supportate.first(where: { $0.language.languageCode == italiano.language.languageCode }) else {
-                    // L'italiano qui non c'è: si torna alla dettatura classica
-                    DispatchQueue.main.async { self.ripiegaSuClassico(questa) }
-                    return
-                }
-                let trascrittore = SpeechTranscriber(locale: lingua, transcriptionOptions: [], reportingOptions: [.volatileResults], attributeOptions: [])
-                if let scarica = try await AssetInventory.assetInstallationRequest(supporting: [trascrittore]) {
-                    DispatchQueue.main.async { if self.sessione == questa { self.nota = "Preparo l'italiano sul Mac (solo la prima volta, un minuto)…" } }
-                    try await scarica.downloadAndInstall()
-                }
-                let analizzatore = SpeechAnalyzer(modules: [trascrittore])
-                guard let formato = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [trascrittore]) else {
-                    throw ErroreEve(messaggio: "formato audio non disponibile")
-                }
-                let (flusso, ingresso) = AsyncStream<AnalyzerInput>.makeStream()
-                try await analizzatore.start(inputSequence: flusso)
-                let partito: Bool = await withCheckedContinuation { c in
-                    DispatchQueue.main.async {
-                        guard self.sessione == questa, self.stato == .ascolta else {
-                            c.resume(returning: false)
-                            return
-                        }
-                        var convertitore: AVAudioConverter?
-                        let ok = self.accendiMicrofono { buffer in
-                            if convertitore == nil || convertitore?.inputFormat != buffer.format {
-                                convertitore = AVAudioConverter(from: buffer.format, to: formato)
-                            }
-                            if let convertitore, let pronto = Self.converti(buffer, con: convertitore, in: formato) {
-                                ingresso.yield(AnalyzerInput(buffer: pronto))
-                            }
-                        }
-                        if ok {
-                            // Finita la frase: fine dell'audio e testo definitivo; per lasciar perdere: chiude subito
-                            self.finalizza = {
-                                ingresso.finish()
-                                Task { try? await analizzatore.finalizeAndFinishThroughEndOfInput() }
-                            }
-                            self.annulla = {
-                                ingresso.finish()
-                                Task { await analizzatore.cancelAndFinishNow() }
-                            }
-                        }
-                        c.resume(returning: ok)
-                    }
-                }
-                guard partito else {
-                    ingresso.finish()
-                    await analizzatore.cancelAndFinishNow()
-                    return
-                }
-                for try await risultato in trascrittore.results {
-                    let testo = String(risultato.text.characters)
-                    let definitivo = risultato.isFinal
-                    DispatchQueue.main.async {
-                        guard self.sessione == questa else { return }
-                        // Le frasi confermate restano; quella provvisoria si sostituisce a ogni aggiornamento
-                        let tutto = (self.confermato + " " + testo).trimmingCharacters(in: .whitespaces)
-                        if definitivo { self.confermato = tutto }
-                        self.ricevi(tutto, finale: false, errore: nil, sessione: questa)
-                    }
-                }
-                // Il riconoscimento ha consegnato tutto: la frase è pronta
-                DispatchQueue.main.async { if self.sessione == questa { self.concludi() } }
-            } catch {
-                let motivo = error.localizedDescription
-                DispatchQueue.main.async {
-                    guard self.sessione == questa else { return }
-                    if self.motoreAudio.isRunning || self.stato == .capisce {
-                        self.ultimoErrore = motivo
-                        self.concludi()
-                    } else {
-                        // Il riconoscimento nuovo non è partito: si prova con la dettatura classica
-                        self.ripiegaSuClassico(questa)
-                    }
-                }
-            }
-        }
-    }
-
-    /// Converte l'audio del microfono nel formato che vuole il riconoscimento nuovo.
-    private static func converti(_ buffer: AVAudioPCMBuffer, con convertitore: AVAudioConverter, in formato: AVAudioFormat) -> AVAudioPCMBuffer? {
-        let rapporto = formato.sampleRate / buffer.format.sampleRate
-        let capacita = AVAudioFrameCount(Double(buffer.frameLength) * rapporto) + 32
-        guard let uscita = AVAudioPCMBuffer(pcmFormat: formato, frameCapacity: capacita) else { return nil }
-        var consegnato = false
-        var errore: NSError?
-        convertitore.convert(to: uscita, error: &errore) { _, stato in
-            if consegnato {
-                stato.pointee = .noDataNow
-                return nil
-            }
-            consegnato = true
-            stato.pointee = .haveData
-            return buffer
-        }
-        return errore == nil && uscita.frameLength > 0 ? uscita : nil
-    }
-    #endif
-
-    private func ripiegaSuClassico(_ questa: Int) {
-        guard sessione == questa else { return }
-        stato = .fermo
-        nota = nil
-        iniziaClassico()
+        if fine { concludi() }
     }
 
     // MARK: - Permessi

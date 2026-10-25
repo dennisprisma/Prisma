@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 /// Parlare con Eve: il microfono, la risposta a voce e la conversazione che continua finché non le dici «basta».
@@ -26,7 +27,7 @@ extension StatoShell {
         ascoltoEve.azzera()
         ascoltoEve.concluso = { [weak self] frase in self?.fraseDetta(frase) }
         ascoltoEve.problema = { [weak self] motivo in self?.problemaAscolto(motivo) }
-        ascoltoEve.avvia()
+        ascoltoEve.avvia(dati.impostazioni.eve.riconoscimento)
     }
 
     /// Eve non ha potuto ascoltare o capire: lo scrive nella conversazione, dove si vede, con cosa fare.
@@ -37,6 +38,37 @@ extension StatoShell {
         // Lo stesso avviso due volte di fila non serve
         guard conversazione(chiave).last?.testo != motivo else { return }
         aggiungiMessaggio(MessaggioEve(autore: .eve, testo: motivo, titolo: "Non riesco ad ascoltarti", motore: "Voce"), cliente: chiave)
+        // Detto anche a voce, in breve: chi parla a Eve non sempre guarda lo schermo
+        let eve = dati.impostazioni.eve
+        if persistente, eve.risposteAVoce != .mai {
+            voceEve.finito = nil
+            voceEve.di("Scusa, non sono riuscita a capirti. Ti ho scritto il motivo.", voce: eve.voce, velocita: eve.velocitaVoce)
+        }
+    }
+
+    /// Prova il riconoscimento senza microfono: la voce di Eve dice una frase e si vede cosa capisce,
+    /// prima con il riconoscimento nuovo, poi con la dettatura classica.
+    func provaRiconoscimento() {
+        guard persistente, esitoProvaRiconoscimento != "In prova…" else { return }
+        esitoProvaRiconoscimento = "In prova…"
+        let prima = ProvaRiconoscimento()
+        provaInCorso = prima
+        prima.esegui(.nuovo) { [weak self] nuovo in
+            let seconda = ProvaRiconoscimento()
+            self?.provaInCorso = seconda
+            seconda.esegui(.classico) { classico in
+                self?.esitoProvaRiconoscimento = nuovo + "\n" + classico
+                self?.provaInCorso = nil
+            }
+        }
+    }
+
+    /// Copia la diagnostica dell'ascolto, da mandare a chi sistema Prisma (niente audio né frasi dette).
+    func copiaDiagnosticaVoce() {
+        let testo = DiagnosticaVoce.testo + (esitoProvaRiconoscimento.map { "\n\nProva: " + $0 } ?? "")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(testo, forType: .string)
+        mostraAvviso("Diagnostica copiata: incollala nel messaggio")
     }
 
     /// Chiude la conversazione a voce: Eve smette di ascoltare e di parlare.
