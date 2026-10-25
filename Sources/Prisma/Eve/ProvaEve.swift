@@ -246,7 +246,7 @@ enum ProvaEve {
         }
         // Ogni documento di analisi ha il suo spunto
         for scelta in [SceltaProspetto.resoconto(report: false), .previdenza(report: true), .protezione(report: false),
-                       .liquidita(report: false), .checkUp(report: true), .resistenza(report: true), .costi(report: true), .successione(report: true), .obiettivo("", report: false), .sostituzione("", "", report: false)] {
+                       .liquidita(report: false), .checkUp(report: true), .resistenza(report: true), .costi(report: true), .successione(report: true), .patrimonio(report: true), .obiettivo("", report: false), .sostituzione("", "", report: false)] {
             controlla(scelta.spuntoEve != nil, "Spunto di Eve per «\(scelta.tipo.nome)»")
         }
         // Le bozze passate al modello restano nello spazio previsto (avviso, non errore: si tagliano)
@@ -270,7 +270,7 @@ enum ProvaEve {
         for c in stato.clienti {
             stato.clienteAttivoId = c.id
             for scelta in [SceltaProspetto.checkUp(report: true), .resoconto(report: true), .previdenza(report: true),
-                           .protezione(report: true), .liquidita(report: true), .resistenza(report: true), .costi(report: true), .successione(report: true)] {
+                           .protezione(report: true), .liquidita(report: true), .resistenza(report: true), .costi(report: true), .successione(report: true), .patrimonio(report: true)] {
                 guard let b = stato.bozzaCommento(scelta) else {
                     controlla(false, "Bozza del commento «\(scelta.tipo.nome)» per \(c.nome)")
                     continue
