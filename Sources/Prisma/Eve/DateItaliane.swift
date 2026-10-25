@@ -41,7 +41,7 @@ enum DateItaliane {
            let giorno = Int(g[1]), (1...31).contains(giorno) {
             let mese = Int(g[2]) ?? ((mesi.firstIndex(of: g[2]) ?? -1) + 1)
             if (1...12).contains(mese) {
-                var c = DateComponents(day: giorno, month: mese)
+                var c = DateComponents(month: mese, day: giorno)
                 if let anno = Int(g[3]) {
                     c.year = anno
                     r.giorno = cal.date(from: c)
