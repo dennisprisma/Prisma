@@ -110,9 +110,6 @@ enum Misure {
         /// La cucitura della pelle (.os-desk-client:before).
         static let cucituraRientro: CGFloat = 6
         static let cucituraRaggio: CGFloat = 3
-        /// Altezze del widget del cliente per mostrare tutto o le due righe di numeri.
-        static let clienteCompleto: CGFloat = 250
-        static let clienteDueRighe: CGFloat = 196
         /// La casella delle attività (.os-desk-check) e la barra del portafoglio (.os-progress).
         static let casella: CGFloat = 14
         static let casellaRaggio: CGFloat = 3

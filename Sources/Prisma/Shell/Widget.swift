@@ -180,17 +180,20 @@ struct WidgetCliente: View {
     @State var sceltaCliente = false
 
     var body: some View {
-        // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri:
-        // prima toglie la nota e i canali, poi la seconda riga di numeri.
-        GeometryReader { geo in
-            contenuto(dettaglio: geo.size.height >= Misure.Widget.clienteCompleto ? 2
-                      : geo.size.height >= Misure.Widget.clienteDueRighe ? 1 : 0)
-                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+        // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri: ViewThatFits
+        // misura l'altezza che serve a ogni variante e prende la prima che ci sta, in quest'ordine:
+        // tutto; senza la nota; senza i pulsanti; una sola riga di numeri con i pulsanti; solo quella.
+        ViewThatFits(in: .vertical) {
+            contenuto(righe: 2, nota: true, pulsanti: true)
+            contenuto(righe: 2, nota: false, pulsanti: true)
+            contenuto(righe: 2, nota: false, pulsanti: false)
+            contenuto(righe: 1, nota: false, pulsanti: true)
+            contenuto(righe: 1, nota: false, pulsanti: false)
         }
         .corniceWidget(Colori.Colonna.sfondo)
     }
 
-    private func contenuto(dettaglio: Int) -> some View {
+    private func contenuto(righe: Int, nota: Bool, pulsanti: Bool) -> some View {
         let id = stato.clienteAttivoId
         let r = RiepilogoPosizioni(stato.posizioniCliente(id))
         let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == id }
@@ -205,14 +208,14 @@ struct WidgetCliente: View {
                         dato("Prossimo incontro", prossimo.map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—")
                         dato("Da fare", "\(aperte) attività")
                     }
-                    if dettaglio >= 1 {
+                    if righe >= 2 {
                         HStack(alignment: .top, spacing: 0) {
                             dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
                             dato("Premi annui", Formati.euro(r.premiAnnui))
                             dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
                         }
                     }
-                    if dettaglio >= 2, let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
+                    if nota, let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
                         Text(nota)
                             .font(Tipo.rigaSecondario)
                             .foregroundColor(Colori.Colonna.rigaSecondario)
@@ -227,18 +230,21 @@ struct WidgetCliente: View {
                 .overlay(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).strokeBorder(Colori.Widget.pannelloBordo, lineWidth: 1))
                 .ombraCSS(Colori.Widget.pannelloOmbra, y: 2, sfocatura: 6)
                 Spacer(minLength: 0)
-                HStack(spacing: 8) {
-                    Button("Apri la scheda") { stato.apri(.clienti) }
-                    Button("Posizioni") {
-                        stato.portafoglio = false
-                        stato.apri(.posizioni)
+                if pulsanti {
+                    HStack(spacing: 8) {
+                        Button("Apri la scheda") { stato.apri(.clienti) }
+                        Button("Posizioni") {
+                            stato.portafoglio = false
+                            stato.apri(.posizioni)
+                        }
+                        Button("Chiedi a Eve") { stato.apri(.eve) }
                     }
-                    Button("Chiedi a Eve") { stato.apri(.eve) }
+                    .buttonStyle(StileCuoioChiaro())
                 }
-                .buttonStyle(StileCuoioChiaro())
             }
             .padding(EdgeInsets(top: 12, leading: 13, bottom: 12, trailing: 13))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     /// La testata in pelle con la cucitura (.os-desk-client): avatar, etichetta, nome, tema, canali.
@@ -450,23 +456,36 @@ struct WidgetPortafoglio: View {
                 .font(Tipo.colonnaCollegamento)
                 .foregroundColor(Colori.Colonna.collegamento)
             }
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(Formati.euro(r.attivita))
-                        .font(Tipo.portafoglioTotale)
-                        .tracking(-0.7)
-                        .foregroundColor(Colori.Widget.kpiValore)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    Text("seguiti in essere · \(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti")")
-                        .font(Tipo.rigaSecondario)
-                        .foregroundColor(Colori.Colonna.rigaSecondario)
-                }
-                if r.attivita > 0 {
-                    canale(.alleanza, importo: r.perCanale[.alleanza] ?? 0, quota: r.quota(.alleanza))
-                    canale(.indipendente, importo: r.perCanale[.indipendente] ?? 0, quota: r.quota(.indipendente))
-                }
-                Spacer(minLength: 0)
+            // Dove l'altezza non basta sparisce prima la riga delle proposte, poi le barre dei canali:
+            // il widget non deve mai sporgere sul piede della scrivania
+            ViewThatFits(in: .vertical) {
+                numeri(r, canali: true, proposte: true)
+                numeri(r, canali: true, proposte: false)
+                numeri(r, canali: false, proposte: false)
+            }
+        }
+        .corniceWidget(Colori.Colonna.sfondo)
+    }
+
+    private func numeri(_ r: RiepilogoPosizioni, canali: Bool, proposte: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Formati.euro(r.attivita))
+                    .font(Tipo.portafoglioTotale)
+                    .tracking(-0.7)
+                    .foregroundColor(Colori.Widget.kpiValore)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text("seguiti in essere · \(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti")")
+                    .font(Tipo.rigaSecondario)
+                    .foregroundColor(Colori.Colonna.rigaSecondario)
+            }
+            if canali, r.attivita > 0 {
+                canale(.alleanza, importo: r.perCanale[.alleanza] ?? 0, quota: r.quota(.alleanza))
+                canale(.indipendente, importo: r.perCanale[.indipendente] ?? 0, quota: r.quota(.indipendente))
+            }
+            Spacer(minLength: 0)
+            if proposte {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Proposte aperte")
                         .font(Tipo.widgetMetricaEtichetta)
@@ -479,10 +498,9 @@ struct WidgetPortafoglio: View {
                 .padding(.top, 10)
                 .bordoAlto(Colori.Colonna.rigaBordo)
             }
-            .padding(EdgeInsets(top: 2, leading: Misure.Widget.margineElenco, bottom: 12, trailing: Misure.Widget.margineElenco))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .corniceWidget(Colori.Colonna.sfondo)
+        .padding(EdgeInsets(top: 2, leading: Misure.Widget.margineElenco, bottom: 12, trailing: Misure.Widget.margineElenco))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     /// Un canale con l'importo e la barra (.os-progress).
