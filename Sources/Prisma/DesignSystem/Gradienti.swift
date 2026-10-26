@@ -43,6 +43,14 @@ enum Gradienti {
     static let data = LinearGradient.verticale(Colori.Colonna.dataAlto, Colori.Colonna.dataBasso)
     static let dataMese = LinearGradient.verticale(Colori.Colonna.dataMeseAlto, Colori.Colonna.dataMeseBasso)
     static let lino = LinearGradient.verticale(Colori.Lino.alto, Colori.Lino.basso)
+    /// --prisma-leather: la base della pelle; sopra vanno la puntinatura, il riflesso e la grana.
+    static let pelle = LinearGradient.verticale([
+        (Colori.Colonna.pelleAlto, 0), (Colori.Colonna.pelleMezzo, 0.46), (Colori.Colonna.pelleBasso, 1),
+    ])
+    static let pelleRiflesso = RadialGradient(colors: [Colori.Colonna.pelleRiflesso, .clear],
+                                              center: UnitPoint(x: 0.2, y: 0.05), startRadius: 0, endRadius: 320)
+    static let pannelloWidget = LinearGradient.verticale(Colori.Widget.pannelloAlto, Colori.Widget.pannelloBasso)
+    static let casella = LinearGradient.verticale(Colori.Colonna.casellaAlto, Colori.Colonna.casellaBasso)
 
     /// Ripiano del dock.
     static let ripiano = LinearGradient.verticale([

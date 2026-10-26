@@ -53,7 +53,7 @@ enum Risorse {
         }
         let necessarie = ["Icone/Prisma.png", "Icone/Agenda_base.png", "Icone/Agenda_vetro.png",
                           "Sfondi/Gocce.jpg", "Materiali/Grana.png", "Materiali/Lino_trama.png",
-                          "Materiali/Pelle.png", "Loghi/Alleanza_simbolo.png"]
+                          "Materiali/Pelle.png", "Materiali/Pelle_punti.png", "Loghi/Alleanza_simbolo.png"]
         for p in necessarie where immagine(p) == nil {
             print("ERRORE: \(p) non caricabile dal bundle \(bundle.bundlePath)")
             return 1

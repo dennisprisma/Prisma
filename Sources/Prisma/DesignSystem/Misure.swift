@@ -86,21 +86,37 @@ enum Misure {
 
     enum Widget {
         /// La striscia della guida «Comincia con i tuoi dati» e il suo elenco.
-        static let striscia: CGFloat = 50
+        static let striscia: CGFloat = 34
         static let elencoGuida: CGFloat = 480
-        static let raggio: CGFloat = 10
-        static let spazio: CGFloat = 16
+        // Pannello del template (.os-desk-sidebar): raggio 6, bordo 1 px, una sola ombra
+        static let raggio: CGFloat = 6
+        static let spazio: CGFloat = 20
         static let intestazione: CGFloat = 40
-        /// Quota d'altezza della fila alta (Oggi, Cliente in primo piano).
+        /// Quota d'altezza della fila alta (Agenda, Cliente in primo piano con la barra di Eve).
         static let quotaAlta: CGFloat = 0.56
         static let margine = EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
-        static let paginaCalendario: CGFloat = 210
-        static let rigaFoglietto: CGFloat = 26
-        static let rilegatura: CGFloat = 26
-        static let avatarCliente: CGFloat = 54
+        /// La piastrella grande del giorno nel widget Agenda.
+        static let piastrellaGrande = CGSize(width: 72, height: 96)
+        static let colonnaGiorno: CGFloat = 132
+        /// Intestazione dei pannelli (.os-desk-panel-heading) e righe (.os-desk-event).
+        static let intestazionePannello = EdgeInsets(top: 12, leading: 13, bottom: 7, trailing: 13)
+        static let margineElenco: CGFloat = 15
+        /// Il pannello carta dentro il cliente (.os-panel) e i suoi numeri.
+        static let pannelloMargine: CGFloat = 14
+        static let pannelloRaggio: CGFloat = 6
+        /// La barra di Eve sotto il cliente (.os-desk-eve).
+        static let barraEve: CGFloat = 60
+        static let avatarCliente: CGFloat = 39
+        /// La cucitura della pelle (.os-desk-client:before).
+        static let cucituraRientro: CGFloat = 6
+        static let cucituraRaggio: CGFloat = 3
         /// Altezze del widget del cliente per mostrare tutto o le due righe di numeri.
-        static let clienteCompleto: CGFloat = 325
-        static let clienteDueRighe: CGFloat = 240
+        static let clienteCompleto: CGFloat = 250
+        static let clienteDueRighe: CGFloat = 196
+        /// La casella delle attività (.os-desk-check) e la barra del portafoglio (.os-progress).
+        static let casella: CGFloat = 14
+        static let casellaRaggio: CGFloat = 3
+        static let progresso: CGFloat = 7
     }
 
     enum Agenda {

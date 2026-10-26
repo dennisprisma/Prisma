@@ -121,13 +121,12 @@ struct StrisciaGuida: View {
         let fatti = passi.filter(\.fatto).count
         let prossimo = passi.first { !$0.fatto }
         HStack(spacing: 12) {
-            Text("✦").font(Tipo.contenuto(15, .bold)).foregroundColor(Colori.Widget.guidaSimbolo)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Comincia con i tuoi dati · \(fatti) di \(passi.count)")
-                    .font(Tipo.contenuto(12.5, .semibold)).foregroundColor(Colori.Colonna.rigaNome)
-                Text(prossimo.map { "Prossimo passo: \($0.titolo.prefix(1).lowercased() + $0.titolo.dropFirst())." } ?? "Fatto tutto.")
-                    .font(Tipo.chip).foregroundColor(Colori.Widget.secondario)
-            }
+            Text("✦").font(Tipo.contenuto(14, .bold)).foregroundColor(Colori.Widget.guidaSimbolo)
+            Text("Comincia con i tuoi dati · \(fatti) di \(passi.count)")
+                .font(Tipo.sistema(11, .semibold)).foregroundColor(Colori.Pulsante.testo)
+            Text(prossimo.map { "Prossimo passo: \($0.titolo.prefix(1).lowercased() + $0.titolo.dropFirst())." } ?? "Fatto tutto.")
+                .font(Tipo.sistema(11)).foregroundColor(Colori.Widget.secondario)
+                .lineLimit(1)
             Spacer(minLength: 8)
             if let p = prossimo {
                 Button(p.pulsante) { stato.eseguiPasso(p.azione) }
@@ -143,10 +142,15 @@ struct StrisciaGuida: View {
             .buttonStyle(StileSemplice())
             .help("Nascondi la guida (torna da Impostazioni → Esperienza)")
         }
-        .padding(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 12))
-        .corniceWidget(Colori.Widget.cartaBianca)
-        // La cornice dei widget si allarga in altezza: la striscia resta bassa
+        .incisione(Color.white.opacity(0.6))
+        .padding(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 8))
+        // Una barra di bezel, come i pulsanti di vetro: non una banda bianca che spezza la scrivania
+        .frame(maxWidth: .infinity)
         .frame(height: Misure.Widget.striscia)
+        .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).fill(Gradienti.vetro))
+        .luceInterna(.white, raggio: Misure.Pulsante.raggio)
+        .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).strokeBorder(Colori.Pulsante.vetroBordo, lineWidth: 1))
+        .ombraCSS(Colori.Pulsante.vetroOmbra, y: 1, sfocatura: 2)
         .popover(isPresented: $elenco, arrowEdge: .bottom) { ElencoGuida().environmentObject(stato) }
     }
 }
