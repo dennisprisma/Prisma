@@ -112,6 +112,12 @@ struct TabellaDoc: View {
     /// Colonne con fondo grigio chiaro (per esempio i totali).
     var colonneEvidenziate: Set<Int> = []
 
+    /// Con le testate a due righe (titolo e sottotitolo) serve almeno lo spazio per entrambe:
+    /// altrimenti la prima riga si rimpicciolisce.
+    private var altezzaTestaEffettiva: CGFloat {
+        colonne.contains(where: { !$0.sottotitolo.isEmpty }) ? max(altezzaTesta, Misure.Documento.altezzaTestaDoppia) : altezzaTesta
+    }
+
     private var larghezze: [CGFloat] {
         let somma = colonne.reduce(0) { $0 + $1.peso }
         return colonne.map { larghezza * $0.peso / max(somma, 0.01) }
@@ -132,7 +138,7 @@ struct TabellaDoc: View {
                     .frame(width: w[i], alignment: c.destra ? .bottomTrailing : .bottomLeading)
                 }
             }
-            .frame(height: altezzaTesta, alignment: .bottom)
+            .frame(height: altezzaTestaEffettiva, alignment: .bottom)
             .padding(.bottom, 4)
             .overlay(Rectangle().fill(filettoTesta ?? p.filettoForte).frame(height: 0.8), alignment: .bottom)
             ForEach(Array(righe.enumerated()), id: \.offset) { _, r in
@@ -144,7 +150,7 @@ struct TabellaDoc: View {
                                 .lineLimit(cella.righe).minimumScaleFactor(cella.righe > 1 ? 0.9 : 0.65)
                                 .fixedSize(horizontal: false, vertical: cella.righe > 1)
                             if !cella.sotto.isEmpty {
-                                Text(verbatim: cella.sotto).font(cella.fontSotto).foregroundColor(cella.coloreSotto ?? p.tenue).lineLimit(1).minimumScaleFactor(0.7)
+                                Text(verbatim: cella.sotto).font(cella.fontSotto).foregroundColor(cella.coloreSotto ?? p.tenue).lineLimit(1).truncationMode(.tail)
                             }
                         }
                         .padding(.horizontal, margine)
@@ -297,7 +303,8 @@ struct GraficoLineeDoc: View {
             let sinistra: CGFloat = 54
             let destra: CGFloat = 86
             let basso: CGFloat = 18
-            let alto: CGFloat = 12
+            // Con l'anno di pareggio serve spazio sopra il grafico per la sua scritta
+            let alto: CGFloat = pareggio == nil ? 12 : 18
             let w = max(1, geo.size.width - sinistra - destra)
             let h = max(1, geo.size.height - basso - alto)
             let valori = serie.flatMap(\.valori)
@@ -331,7 +338,7 @@ struct GraficoLineeDoc: View {
                     }
                     .stroke(p.tenue, style: StrokeStyle(lineWidth: 0.8, dash: [2, 3]))
                     Text(verbatim: "pareggio").font(fontValori).foregroundColor(p.tenue).fixedSize()
-                        .position(x: x(pareggio), y: alto + 4)
+                        .position(x: x(pareggio), y: alto - 7)
                 }
                 ForEach(Array(serie.enumerated()), id: \.offset) { indice, s in
                     Path { q in

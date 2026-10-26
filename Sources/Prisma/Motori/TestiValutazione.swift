@@ -1,15 +1,15 @@
 import Foundation
 
-/// Cifre nello stile dei documenti per i clienti: "€ 50.000", "− € 200", "+4,5%", "3,10%".
+/// Cifre nello stile dei documenti per i clienti: "50.000 €", "− 200 €", "+4,5%", "3,10%".
 enum CifreDoc {
     static let meno = "−"
 
     static func euro(_ v: Double) -> String {
         let n = Formati.numeroFormatter.string(from: NSNumber(value: abs(v).rounded())) ?? "\(Int(abs(v)))"
-        return (v.rounded() < 0 ? "\(meno) " : "") + "€ \(n)"
+        return (v.rounded() < 0 ? "\(meno) " : "") + "\(n) €"
     }
 
-    /// Al centesimo: "€ 4.212,35".
+    /// Al centesimo: "4.212,35 €".
     static func euroCentesimi(_ v: Double) -> String {
         let f = NumberFormatter()
         f.locale = Formati.localeImporti
@@ -17,16 +17,19 @@ enum CifreDoc {
         f.minimumFractionDigits = 2
         f.maximumFractionDigits = 2
         let n = f.string(from: NSNumber(value: abs(v))) ?? "\(abs(v))"
-        return ((v * 100).rounded() < 0 ? "\(meno) " : "") + "€ \(n)"
+        return ((v * 100).rounded() < 0 ? "\(meno) " : "") + "\(n) €"
     }
 
-    /// Con il segno esplicito: "+ € 3.521", "− € 1.160".
+    /// Con il segno esplicito: "+ 3.521 €", "− 1.160 €".
     static func euroSegno(_ v: Double) -> String {
         v.rounded() < 0 ? euro(v) : "+ \(euro(v))"
     }
 
-    /// Una sottrazione: "− € 200" anche se l'importo è positivo.
+    /// Una sottrazione: "− 200 €" anche se l'importo è positivo.
     static func togli(_ v: Double) -> String { "\(meno) \(euro(abs(v)))" }
+
+    /// Una sottrazione al centesimo: "− 1.074,00 €", per le tabelle con gli importi al centesimo.
+    static func togliCentesimi(_ v: Double) -> String { "\(meno) \(euroCentesimi(abs(v)))" }
 
     /// Percentuale con il numero di decimali voluto: "3,10%", "2,5%".
     /// Un formattatore per numero di decimali (0–4), creato una volta sola.

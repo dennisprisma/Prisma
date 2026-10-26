@@ -63,9 +63,9 @@ private struct SlidePercorso: View {
                                     nota: "\(CifreDoc.euro(p.reale(p.valore(p.anni), anno: p.anni))) in euro di oggi")
                 }
                 .frame(width: 200)
-                GraficoLineeDoc(serie: serie, etichetteAsse: t.etichetteAsse, fontAssi: T.minimo, fontValori: T.minimo)
+                GraficoLineeDoc(serie: serie, etichetteAsse: t.etichetteAsse, fontAssi: T.piccolo, fontValori: T.minimo)
                     .frame(maxWidth: .infinity)
-                    .frame(height: D.graficoCostiReport)
+                    .frame(height: D.graficoPatrimonioReport)
             }
             Text(verbatim: "Rendimenti ipotizzati, non garantiti, prima delle imposte; la casa resta al valore di oggi e il mutuo si estingue.")
                 .font(T.minimo).foregroundColor(C.tenue)

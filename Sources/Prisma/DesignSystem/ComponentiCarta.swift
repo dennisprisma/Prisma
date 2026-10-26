@@ -337,7 +337,7 @@ struct TabellaCarta: View {
             HStack(spacing: 0) {
                 ForEach(Array(tabella.colonne.enumerated()), id: \.offset) { i, c in
                     Text(verbatim: c.titolo.uppercased()).font(Tipo.Carta.tabellaTesta).tracking(0.5)
-                        .foregroundColor(Colori.Carta.intestazione).lineLimit(1).minimumScaleFactor(0.7)
+                        .foregroundColor(Colori.Carta.intestazione).lineLimit(1).truncationMode(.tail)
                         .frame(width: max(0, w[i] - 8), alignment: c.destra ? .trailing : .leading)
                         .padding(.horizontal, 4)
                 }
@@ -375,14 +375,16 @@ struct TabellaCarta: View {
 
     @ViewBuilder private func cella(_ c: CellaProspetto, destra: Bool) -> some View {
         if let canale = c.canale {
+            // fixedSize: l'etichetta tiene la sua misura e la scala la riduce senza invadere la colonna accanto
             EtichettaCanale(canale: canale, compatta: true)
+                .fixedSize()
                 .scaleEffect(M.scalaEtichetta, anchor: destra ? .trailing : .leading)
         } else {
             Text(verbatim: c.testo)
                 .font(c.forte ? Tipo.Carta.tabellaForte : Tipo.Carta.tabella)
                 .foregroundColor(c.tenue ? Colori.Carta.testoTenue : Colori.Carta.testo)
+                // Stessa grandezza in ogni riga: il testo troppo lungo si tronca, non si rimpicciolisce
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
                 .truncationMode(.tail)
         }
     }

@@ -315,7 +315,7 @@ enum ProvaEve {
             if let i = polizza.campi.firstIndex(where: { $0.chiave == .capitaleAssicurato }) {
                 polizza.campi[i].valore = "1.234.567,00"
                 let diff = MotoriEve.sintesi.confronta(polizza, fonte: f)
-                controlla(diff.contains { $0.contains("capitale assicurato € 1.234.567") }, "Polizza di Marco: un capitale diverso dalla posizione viene segnalato")
+                controlla(diff.contains { $0.contains("capitale assicurato 1.234.567 €") }, "Polizza di Marco: un capitale diverso dalla posizione viene segnalato")
             }
             stato.dati.impostazioni.eve.motore = .sintesi
             let prima = stato.conversazione("marco").count

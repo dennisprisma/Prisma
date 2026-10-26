@@ -20,14 +20,14 @@ struct TestiPrevidenza {
         let canali = Set(e.piani.map(\.posizione.canale))
         if canali == [.alleanza] { return "Consulente Alleanza Assicurazioni" }
         if canali == [.indipendente] { return "Consulenza finanziaria" }
-        return "Consulente Alleanza Assicurazioni e consulenza finanziaria"
+        return "Alleanza Assicurazioni · consulenza finanziaria"
     }
 
     var canali: [Canale] { Canale.allCases.filter { c in e.piani.contains { $0.posizione.canale == c } } }
 
     var anniAllaPensione: String { e.anniAccumulo == 1 ? "1 anno" : "\(e.anniAccumulo) anni" }
 
-    /// Euro al mese: "€ 1.400 al mese".
+    /// Euro al mese: "1.400 € al mese".
     static func mese(_ v: Double) -> String { "\(CifreDoc.euro(v)) al mese" }
 
     var titoloDivario: String {

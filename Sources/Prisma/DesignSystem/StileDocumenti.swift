@@ -260,6 +260,8 @@ extension Misure {
         static let spazio: CGFloat = 12
         static let rigaTabellaReport: CGFloat = 22
         static let rigaTabellaProspetto: CGFloat = 13.5
+        /// Testata di tabella con titolo e sottotitolo: l'altezza minima per le due righe.
+        static let altezzaTestaDoppia: CGFloat = 20
         static let tracciatoOcchiello: CGFloat = 1.6
         /// Prova di resistenza: la barra della perdita sui mercati nel prospetto e nel report.
         static let barraResistenza: CGFloat = 12
@@ -267,6 +269,8 @@ extension Misure {
         /// Il grafico con e senza costi nel prospetto e nel report.
         static let graficoCosti: CGFloat = 190
         static let graficoCostiReport: CGFloat = 270
+        /// Il percorso del patrimonio nel report: il grafico occupa quasi tutta l'altezza della pagina.
+        static let graficoPatrimonioReport: CGFloat = 360
         /// Righe al massimo nelle tabelle dei documenti a pagina fissa (oltre: «…e altre N», l'elenco intero è in Posizioni).
         static let righeTabellaFissa = 9
         static let schedeReport = 4

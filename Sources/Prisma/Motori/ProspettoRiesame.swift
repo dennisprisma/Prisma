@@ -37,8 +37,8 @@ extension CompositoreProspetti {
             b.append(.testo("Nessun punto da trattare: posizioni in linea, niente in scadenza, dati aggiornati."))
         } else {
             b.append(.tabella(TabellaProspetto(
-                colonne: [ColonnaProspetto(titolo: "#", peso: 0.35), ColonnaProspetto(titolo: "Tema", peso: 0.9),
-                          ColonnaProspetto(titolo: "Punto", peso: 2.1), ColonnaProspetto(titolo: "Da sapere", peso: 4),
+                colonne: [ColonnaProspetto(titolo: "#", peso: 0.35), ColonnaProspetto(titolo: "Tema", peso: 1.15),
+                          ColonnaProspetto(titolo: "Punto", peso: 2.1), ColonnaProspetto(titolo: "Da sapere", peso: 3.75),
                           ColonnaProspetto(titolo: "Priorità", peso: 0.8)],
                 righe: r.punti.enumerated().map { i, p in
                     [.n("\(i + 1)"), p.canale.map { CellaProspetto.c($0) } ?? .t(p.tema.nome), .f(p.titolo), .t(p.dettaglio),

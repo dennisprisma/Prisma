@@ -75,7 +75,7 @@ extension StatoShell {
             pagina += d.pagine.count
         }
         let canali = Canale.allCases.filter { k in posizioniCliente(c.id).contains { $0.canale == k && $0.stato != .chiusa } }
-        let ruolo = canali == [.alleanza] ? "Consulente Alleanza Assicurazioni" : (canali == [.indipendente] ? "Consulenza finanziaria" : "Consulente Alleanza Assicurazioni e consulenza finanziaria")
+        let ruolo = canali == [.alleanza] ? "Consulente Alleanza Assicurazioni" : (canali == [.indipendente] ? "Consulenza finanziaria" : "Alleanza Assicurazioni · consulenza finanziaria")
         // Per un appuntamento: la data e il tipo d'incontro
         let incontro = fascicoloAppuntamento.flatMap { id in appuntamenti.first { $0.id == id && $0.clienteId == c.id } }
         let data = incontro?.inizio ?? Date()

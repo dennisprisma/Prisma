@@ -30,7 +30,7 @@ struct TestiSostituzione {
         let canali = Set([a.canale, b.canale])
         if canali == [.alleanza] { return "Consulente Alleanza Assicurazioni" }
         if canali == [.indipendente] { return "Consulenza finanziaria" }
-        return "Consulente Alleanza Assicurazioni e consulenza finanziaria"
+        return "Alleanza Assicurazioni · consulenza finanziaria"
     }
 
     var periodo: String { e.anni == 1 ? "1 anno" : "\(e.anni) anni" }

@@ -135,7 +135,7 @@ enum ProvaProspetti {
                 let orizzontale = (documento.page(at: 0)?.bounds(for: .mediaBox).width ?? 0) > (documento.page(at: 0)?.bounds(for: .mediaBox).height ?? 0)
                 verifica("\(nome): \(report ? "A4 orizzontale" : "A4 verticale")", orizzontale == report)
                 let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
-                for cifra in ["€ 52.227", "€ 50.178", "€ 47.168"] {
+                for cifra in ["52.227 €", "50.178 €", "47.168 €"] {
                     verifica("\(nome): incasso al 13° mese \(cifra) nel PDF", testo.contains(cifra))
                 }
                 verifica("\(nome): intestatari e consulente", testo.contains(v.intestatari) && testo.contains(TestiValutazione.consulente))

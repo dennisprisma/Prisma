@@ -30,7 +30,7 @@ struct TestiResistenza {
     var ruoloConsulente: String {
         if canali == [.alleanza] { return "Consulente Alleanza Assicurazioni" }
         if canali == [.indipendente] { return "Consulenza finanziaria" }
-        return "Consulente Alleanza Assicurazioni e consulenza finanziaria"
+        return "Alleanza Assicurazioni · consulenza finanziaria"
     }
 
     /// La perdita di uno scenario in euro e in percentuale, per i titoli.

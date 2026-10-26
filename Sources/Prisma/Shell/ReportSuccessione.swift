@@ -11,7 +11,7 @@ enum ReportSuccessione {
     }
 
     private static func copertina(_ t: TestiSuccessione) -> CopertinaReport {
-        CopertinaReport(occhiello: "Passaggio generazionale", titolo: "Proteggere chi ami",
+        CopertinaReport(occhiello: "Passaggio generazionale", titolo: "Il passaggio ai tuoi cari",
                         sottotitolo: "Cosa riceverebbe la tua famiglia, quando e come, e cosa conviene sistemare oggi",
                         nomi: t.cliente, ruolo: t.ruoloConsulente, data: t.data,
                         canali: t.canali.isEmpty ? [.indipendente] : t.canali,

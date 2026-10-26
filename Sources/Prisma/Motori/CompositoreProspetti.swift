@@ -301,8 +301,8 @@ enum CompositoreProspetti {
             forte ? [.f(nome), .f(euro(x)), .f(euro(y)), .f(segno(y - x))] : [.t(nome), .t(euro(x)), .t(euro(y)), .t(segno(y - x))]
         }
         bl.append(.tabella(TabellaProspetto(
-            colonne: [ColonnaProspetto(titolo: "Voce", peso: 1.8), ColonnaProspetto(titolo: "A · \(a.titolo)", peso: 1.2, destra: true),
-                      ColonnaProspetto(titolo: "B · \(b.titolo)", peso: 1.2, destra: true), ColonnaProspetto(titolo: "Differenza B − A", peso: 1.2, destra: true)],
+            colonne: [ColonnaProspetto(titolo: "Voce", peso: 1.8), ColonnaProspetto(titolo: "A", peso: 1.2, destra: true),
+                      ColonnaProspetto(titolo: "B", peso: 1.2, destra: true), ColonnaProspetto(titolo: "Differenza B − A", peso: 1.2, destra: true)],
             righe: [
                 riga("Totale versato", ea.versato, eb.versato),
                 riga("Costi nel periodo", ea.costi, eb.costi),
