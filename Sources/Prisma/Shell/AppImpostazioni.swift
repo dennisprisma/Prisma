@@ -398,8 +398,7 @@ struct AppImpostazioni: View {
 
     private var informazioni: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ImmagineRisorsa(percorso: "Icone/Prisma.png")
-                .frame(width: Misure.Impostazioni.iconaInformazioni, height: Misure.Impostazioni.iconaInformazioni)
+            ImmagineNitida(percorso: "Icone/Prisma.png", lato: Misure.Impostazioni.iconaInformazioni)
                 .padding(.bottom, 20)
             Text("CLASSIC EDITION")
                 .font(Tipo.informazioniOcchiello)

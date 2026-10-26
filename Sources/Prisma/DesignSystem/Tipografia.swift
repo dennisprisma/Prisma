@@ -266,7 +266,10 @@ enum Tipo {
 
     // Icona Agenda (proporzioni ricavate dai tracciati dell'SVG originale)
     static func agendaGiorno(_ lato: CGFloat) -> Font {
-        Font.custom("HelveticaNeue-CondensedBold", fixedSize: lato * 0.64)
+        // Se il nome del font non si risolve, il numero non deve finire fuori posto con il font di sistema
+        NSFont(name: "HelveticaNeue-CondensedBold", size: lato * 0.64) != nil
+            ? Font.custom("HelveticaNeue-CondensedBold", fixedSize: lato * 0.64)
+            : Font.system(size: lato * 0.64, weight: .bold)
     }
 
     static func agendaMese(_ lato: CGFloat) -> Font {

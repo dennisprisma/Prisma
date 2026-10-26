@@ -248,9 +248,7 @@ struct EtichettaCanale: View {
         let raggio: CGFloat = compatta ? 3 : Misure.Pulsante.raggioBlu
         HStack(spacing: compatta ? 4 : 6) {
             if canale == .alleanza {
-                ImmagineRisorsa(percorso: "Loghi/Alleanza_simbolo.png", scala: 2)
-                    .scaledToFit()
-                    .frame(height: compatta ? 11 : 15)
+                ImmagineNitida(percorso: "Loghi/Alleanza_simbolo.png", altezza: compatta ? 11 : 15)
             }
             Text(compatta ? canale.nomeBreve : canale.nome)
                 .font(compatta ? Tipo.etichettaCanalePiccola : Tipo.etichettaCanale)
@@ -279,13 +277,15 @@ struct EtichettaCanale: View {
 struct IconaApp: View {
     let app: AppPrisma
     let lato: CGFloat
+    /// 1,13 nel dock: l'icona resta nitida anche ingrandita al passaggio del mouse.
+    var riservaIngrandimento: CGFloat = 1
 
     var body: some View {
         Group {
             if app == .agenda {
-                IconaAgenda(lato: lato)
+                IconaAgenda(lato: lato, riservaIngrandimento: riservaIngrandimento)
             } else {
-                ImmagineRisorsa(percorso: "Icone/\(app.icona).png")
+                ImmagineNitida(percorso: "Icone/\(app.icona).png", lato: lato, riservaIngrandimento: riservaIngrandimento)
             }
         }
         .frame(width: lato, height: lato)
@@ -296,13 +296,14 @@ struct IconaApp: View {
 /// Posizioni e proporzioni ricavate dai tracciati di Design/Icone/Agenda.svg (viewBox 256).
 struct IconaAgenda: View {
     let lato: CGFloat
+    var riservaIngrandimento: CGFloat = 1
 
     var body: some View {
         TimelineView(.everyMinute) { contesto in
             let oggi = contesto.date
             let u = lato / 256
             ZStack {
-                ImmagineRisorsa(percorso: "Icone/Agenda_base.png")
+                ImmagineNitida(percorso: "Icone/Agenda_base.png", lato: lato, riservaIngrandimento: riservaIngrandimento)
                 Text(Formati.meseBreve.string(from: oggi).uppercased())
                     .font(Tipo.agendaMese(lato))
                     .foregroundColor(Colori.Agenda.mese)
@@ -315,7 +316,7 @@ struct IconaAgenda: View {
                     .shadow(color: Color.black.opacity(0.2), radius: 0.25 * u, x: 0, y: 0.9 * u)
                     .fixedSize()
                     .position(x: 128.5 * u, y: 157.5 * u + lato * 0.058)
-                ImmagineRisorsa(percorso: "Icone/Agenda_vetro.png")
+                ImmagineNitida(percorso: "Icone/Agenda_vetro.png", lato: lato, riservaIngrandimento: riservaIngrandimento)
             }
             .frame(width: lato, height: lato)
         }
