@@ -226,7 +226,7 @@ enum InterpreteComandi {
         return r
     }
 
-    private static func maiuscola(_ s: String) -> String {
+    static func maiuscola(_ s: String) -> String {
         guard let p = s.first else { return s }
         return p.uppercased() + s.dropFirst()
     }

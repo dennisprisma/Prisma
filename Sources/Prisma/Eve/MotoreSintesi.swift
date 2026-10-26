@@ -100,7 +100,7 @@ struct MotoreSintesi: MotoreEve {
                                testo: quando + "\n\nOrdine del giorno:\n" + r.punti.prefix(6).map { "• \($0.titolo): \($0.dettaglio)" }.joined(separator: "\n")
                                    + "\n\nIl prospetto completo, con le domande da fare, è in Prospetti e report → Riesame annuale: da lì fissi anche l'incontro.")
         }
-        var parti = ["\(Formati.dataLunga.string(from: e.inizio).capitalized), ore \(Formati.ora.string(from: e.inizio)) · \(e.luogo.isEmpty ? "luogo da definire" : e.luogo) · \(e.durataMinuti) minuti · \(e.tipo.nome.lowercased())."]
+        var parti = ["\(InterpreteComandi.maiuscola(Formati.dataLunga.string(from: e.inizio))), ore \(Formati.ora.string(from: e.inizio)) · \(e.luogo.isEmpty ? "luogo da definire" : e.luogo) · \(e.durataMinuti) minuti · \(e.tipo.nome.lowercased())."]
         if !e.note.isEmpty { parti.append("Le tue note: \(e.note)") }
         var punti: [String] = []
         let rilevati = MotoreBisogni.rileva(cliente: f.cliente, posizioni: f.posizioni, analisi: f.analisi, oggi: f.oggi)

@@ -70,6 +70,42 @@ struct StileSemplice: ButtonStyle {
     }
 }
 
+// MARK: - Campo di testo
+
+/// Campo di testo del template (.os-input): bianco velato, bordo grigio-azzurro, ombra interna in alto.
+/// Al posto di `.roundedBorder`, che sullo stile iOS 5 stona.
+///
+///     TextField("Nome", text: $nome).campoTesto()
+struct CampoTesto: ViewModifier {
+    func body(content: Content) -> some View {
+        let forma = RoundedRectangle(cornerRadius: Misure.Campo.raggio)
+        return content
+            .textFieldStyle(.plain)
+            .foregroundColor(Colori.Campo.testo)
+            .padding(Misure.Campo.margine)
+            .background(
+                ZStack {
+                    forma.fill(Colori.Campo.riflesso).offset(y: 1)
+                    forma.fill(Colori.Campo.fondo)
+                }
+            )
+            .overlay(
+                // inset 0 1px 3px: l'ombra interna, solo dentro il bordo
+                forma.stroke(Colori.Campo.ombraInterna, lineWidth: 3)
+                    .blur(radius: Misure.Campo.ombraSfocatura)
+                    .offset(y: 1)
+                    .mask { forma }
+                    .allowsHitTesting(false)
+            )
+            .overlay(forma.strokeBorder(Colori.Campo.bordo, lineWidth: 1).allowsHitTesting(false))
+    }
+}
+
+extension View {
+    /// Il campo di testo di Prisma (.os-input).
+    func campoTesto() -> some View { modifier(CampoTesto()) }
+}
+
 // MARK: - Controllo a segmenti
 
 /// Controllo a segmenti grafite (Lion), come le schede della colonna della scrivania.
@@ -387,12 +423,16 @@ enum Formati {
     /// quelle tedesche sì, con gli stessi separatori e il simbolo dopo l'importo.
     static let localeImporti = Locale(identifier: "de_DE")
 
+    /// Il segno meno tipografico (−), come nei prospetti: mai il trattino accanto a "− 130.000 €".
+    static let meno = "\u{2212}"
+
     static let euroFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.locale = localeImporti
         f.numberStyle = .currency
         f.currencyCode = "EUR"
         f.maximumFractionDigits = 0
+        f.minusSign = meno
         return f
     }()
 
@@ -401,6 +441,7 @@ enum Formati {
         f.locale = localeImporti
         f.numberStyle = .decimal
         f.maximumFractionDigits = 2
+        f.minusSign = meno
         return f
     }()
 
@@ -416,6 +457,7 @@ enum Formati {
         f.currencyCode = "EUR"
         f.minimumFractionDigits = 2
         f.maximumFractionDigits = 2
+        f.minusSign = meno
         return f
     }()
 
@@ -424,9 +466,12 @@ enum Formati {
         euroDecimaliFormatter.string(from: NSNumber(value: valore)) ?? euro(valore)
     }
 
-    /// "12,3k €" per gli assi dei grafici.
+    /// "12k €", "1,12 mln €" per gli assi dei grafici.
     static func euroBreve(_ valore: Double) -> String {
-        abs(valore) >= 1000 ? "\(numeroFormatter.string(from: NSNumber(value: (valore / 1000).rounded())) ?? "")k €" : euro(valore)
+        if abs(valore) >= 1_000_000 {
+            return "\(numeroFormatter.string(from: NSNumber(value: valore / 1_000_000)) ?? "") mln €"
+        }
+        return abs(valore) >= 1000 ? "\(numeroFormatter.string(from: NSNumber(value: (valore / 1000).rounded())) ?? "")k €" : euro(valore)
     }
 
     /// "2,5%"

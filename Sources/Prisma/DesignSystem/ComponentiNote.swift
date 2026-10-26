@@ -108,10 +108,11 @@ extension Misure {
         static let carta = EdgeInsets(top: 15, leading: 45, bottom: 12, trailing: 29)
         static let margine: CGFloat = 32
         static let riga: CGFloat = 30
-        /// Altezza di una riga di testo in Noteworthy 16: con l'interlinea ogni riga è alta `riga`.
+        /// Altezza di una riga di testo in Noteworthy 16 come la misura l'editor (NSLayoutManager):
+        /// con l'interlinea ogni riga è alta `riga` e il testo resta sulle righe della pagina.
         static let altezzaTesto: CGFloat = {
             let f = NSFont(name: "Noteworthy-Light", size: 16) ?? .systemFont(ofSize: 16)
-            return ceil(f.ascender - f.descender + f.leading)
+            return NSLayoutManager().defaultLineHeight(for: f)
         }()
         static let interlinea: CGFloat = max(0, riga - altezzaTesto)
         /// La prima riga della pagina, appena sotto la prima riga di testo.

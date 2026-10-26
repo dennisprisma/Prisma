@@ -98,9 +98,11 @@ extension MotoreSintesi {
             return RispostaEve(titolo: "Niente da mettere alla prova",
                                testo: "\(f.cliente.nome) non ha posizioni in essere con un valore: la prova di resistenza parte dagli investimenti, dalla liquidità e dagli immobili registrati in Posizioni.")
         }
-        var parti = MotoreResistenza.sintesi(r).map { "• " + $0 }
+        // I punti della sintesi stanno in un solo blocco, uno per riga (senza righe vuote fra l'uno e l'altro)
+        let punti = MotoreResistenza.sintesi(r).map { "• " + $0 }
+        var parti: [String] = punti.isEmpty ? [] : [punti.joined(separator: "\n")]
         if let m = r.scenario(.mercati), !m.voci.isEmpty {
-            parti.append("Le più esposte ai mercati:\n" + m.voci.prefix(3).map { "• \($0.posizione.nome) (\($0.posizione.canale.nomeBreve)): \(CifreDoc.togli($0.perdita)), \($0.motivo.hasPrefix("SRI") ? $0.motivo : $0.motivo.prefix(1).lowercased() + $0.motivo.dropFirst())" }.joined(separator: "\n"))
+            parti.append("Le più esposte ai mercati:\n" + m.voci.prefix(3).map { "• \($0.posizione.nome) (\($0.posizione.canale.nomeBreve)): \(Formati.meno + Formati.euro(abs($0.perdita))), \($0.motivo.hasPrefix("SRI") ? $0.motivo : $0.motivo.prefix(1).lowercased() + $0.motivo.dropFirst())" }.joined(separator: "\n"))
         }
         switch r.giudizio {
         case .oltre?:

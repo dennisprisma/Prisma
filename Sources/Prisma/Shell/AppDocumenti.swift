@@ -186,11 +186,8 @@ struct AppDocumenti: View {
                     Text(meta(d)).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 }
                 Spacer()
-                Picker("", selection: Binding(get: { d.tipo }, set: { stato.rinominaDocumento(d.id, titolo: d.titolo, tipo: $0) })) {
-                    ForEach(Documento.Tipo.allCases) { Text($0.nome).tag($0) }
-                }
-                .labelsHidden()
-                .frame(width: 210)
+                MenuTendina(selezione: Binding(get: { d.tipo }, set: { stato.rinominaDocumento(d.id, titolo: d.titolo, tipo: $0) }),
+                            opzioni: Documento.Tipo.allCases.map { ($0, $0.nome) }, larghezza: 210)
                 if !d.tipo.creatoDaPrisma {
                     Button("✦ Chiedi a Eve") { stato.spiegaDocumentoConEve(d.id) }
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
@@ -287,8 +284,8 @@ struct AppDocumenti: View {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 4) {
                                 TextField("", text: Binding(get: { c.valore }, set: { stato.modificaCampo(d.id, c.chiave, valore: $0) }))
-                                    .textFieldStyle(.roundedBorder)
                                     .font(Tipo.tabellaCella)
+                                    .campoTesto()
                                 if !c.chiave.unita.isEmpty {
                                     Text(c.chiave.unita).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                                 }
@@ -330,11 +327,8 @@ struct AppDocumenti: View {
                     .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
             } else {
                 HStack(spacing: 10) {
-                    Picker("", selection: Binding(get: { scelta?.id ?? "" }, set: { posizioneValore[d.id] = $0 })) {
-                        ForEach(candidate) { p in Text("\(p.nome) · \(p.canale.nomeBreve)").tag(p.id) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 280)
+                    MenuTendina(selezione: Binding(get: { scelta?.id ?? "" }, set: { posizioneValore[d.id] = $0 }),
+                                opzioni: candidate.map { ($0.id, "\($0.nome) · \($0.canale.nomeBreve)") }, larghezza: 280)
                     if let v = valore {
                         Text("\(Formati.euro(v.valore)) al \(Formati.dataEstesa.string(from: v.data))" + (v.versato.map { " · versato \(Formati.euro($0))" } ?? ""))
                             .font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
@@ -372,10 +366,9 @@ struct AppDocumenti: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("CANALE E AREA").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Strumenti.occhiello)
                 SegmentiAnalisi(opzioni: [(Canale.alleanza, "Alleanza"), (.indipendente, "Indipendente")], selezione: $canale)
-                Picker("", selection: $area) {
-                    ForEach(AreaPosizione.allCases.filter { $0 != .immobili && $0 != .debiti }) { Text($0.nome).tag($0) }
-                }
-                .labelsHidden()
+                MenuTendina(selezione: $area,
+                            opzioni: AreaPosizione.allCases.filter { $0 != .immobili && $0 != .debiti }.map { ($0, $0.nome) },
+                            larghezza: 240)
             }
             .frame(width: 240)
             .onAppear { proponiCanaleEArea(d) }

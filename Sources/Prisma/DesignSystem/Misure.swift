@@ -292,6 +292,19 @@ enum Misure {
     enum Pannello {
         static let raggio: CGFloat = 4
     }
+
+    /// Campi di testo (.os-input del template).
+    enum Campo {
+        static let raggio: CGFloat = 5
+        static let margine = EdgeInsets(top: 4, leading: 7, bottom: 4, trailing: 7)
+        /// Ombra interna in alto (inset 0 1px 3px).
+        static let ombraSfocatura: CGFloat = 1.5
+    }
+
+    /// Spunti di Eve: la sfumatura sul bordo destro della riga che scorre.
+    enum SpuntiEve {
+        static let sfumatura: CGFloat = 24
+    }
 }
 
 /// Durate e curve delle animazioni del template.

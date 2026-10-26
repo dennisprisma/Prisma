@@ -37,6 +37,7 @@ struct PannelloNotifiche: View {
                             .padding(.top, 6)
                             .padding(.bottom, 14)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Misure.Notifiche.margine)
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Notifica.Gruppo.allCases) { g in
@@ -53,12 +54,14 @@ struct PannelloNotifiche: View {
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     Text("Calcolate sul Mac dai dati di Prisma")
                         .font(Tipo.notifichePiede)
                         .foregroundColor(Colori.Notifiche.piede)
                         .frame(maxWidth: .infinity)
                         .padding(20)
                 }
+                .scrollIndicators(.hidden)
             }
             .frame(width: Misure.Notifiche.larghezza)
             .frame(maxHeight: .infinity)

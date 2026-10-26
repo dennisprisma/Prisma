@@ -32,6 +32,8 @@ struct AppImpostazioni: View {
                         }
                         .padding(EdgeInsets(top: 2, leading: 2, bottom: 12, trailing: 2))
                     }
+                    // Senza barra di scorrimento: i gruppi restano larghi uguali in tutte le schede
+                    .scrollIndicators(.hidden)
                     .frame(width: geo.size.width * (1 - Misure.Impostazioni.informazioniLarghezza))
                     informazioni
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -63,6 +65,9 @@ struct AppImpostazioni: View {
         }
     }
 
+    /// I pulsanti di vetro nelle righe (come «Crea backup»).
+    private var margineVetro: EdgeInsets { EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10) }
+
     // MARK: Esperienza
 
     private var esperienza: some View {
@@ -78,11 +83,8 @@ struct AppImpostazioni: View {
         let motivo = MotoriEve.motivoAppleNonDisponibile
         return GruppoImpostazioni(titolo: "Eve") {
             RigaImpostazione(titolo: "Chi risponde", sottotitolo: "Il modello Apple e Qwen lavorano sul Mac; la sintesi compone le risposte dai dati del dossier. Automatico: Apple, poi Qwen, poi la sintesi") {
-                Picker("", selection: $stato.dati.impostazioni.eve.motore) {
-                    ForEach(ImpostazioniEve.Motore.allCases) { m in Text(m.nome).tag(m) }
-                }
-                .labelsHidden()
-                .frame(width: 170)
+                MenuTendina(selezione: $stato.dati.impostazioni.eve.motore,
+                            opzioni: ImpostazioniEve.Motore.allCases.map { ($0, $0.nome) }, larghezza: 170)
             }
             RigaImpostazione(titolo: "Modello Apple", sottotitolo: motivo ?? "Pronto: Apple Intelligence è attiva su questo Mac",
                              avvertenza: motivo == nil ? nil : "Senza il modello Apple, Eve risponde agli spunti con la sintesi dai dati") {
@@ -95,10 +97,11 @@ struct AppImpostazioni: View {
                              avvertenza: stato.disponibilitaLocale.pronto ? nil : "Facoltativo: serve l'app gratuita Ollama con il modello qwen3:4b (circa 2,5 GB di memoria mentre risponde)") {
                 HStack(spacing: 8) {
                     TextField("qwen3:4b", text: $stato.dati.impostazioni.eve.modelloLocale)
-                        .textFieldStyle(.roundedBorder)
+                        .campoTesto()
                         .frame(width: 110)
                         .onSubmit { stato.verificaMotoreLocale() }
                     Button("Verifica") { stato.verificaMotoreLocale() }
+                        .buttonStyle(StileVetro(margine: margineVetro))
                 }
             }
             RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier del cliente, sul Mac e nei backup", ultima: true) {
@@ -120,13 +123,11 @@ struct AppImpostazioni: View {
                                 ? "Per una voce più naturale scarica «Federica (Premium)» in Impostazioni di Sistema › Accessibilità › Contenuti letti ad alta voce › Voce di sistema › Gestisci voci › Italiano"
                                 : nil) {
                 HStack(spacing: 8) {
-                    Picker("", selection: $stato.dati.impostazioni.eve.voce) {
-                        Text("Automatica").tag(String?.none)
-                        ForEach(voci, id: \.identifier) { v in Text(VoceEve.nome(v)).tag(String?.some(v.identifier)) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 190)
+                    MenuTendina(selezione: $stato.dati.impostazioni.eve.voce,
+                                opzioni: [(String?.none, "Automatica")] + voci.map { (String?.some($0.identifier), VoceEve.nome($0)) },
+                                larghezza: 190)
                     Button("Ascolta") { stato.provaVoce() }
+                        .buttonStyle(StileVetro(margine: margineVetro))
                 }
             }
             RigaImpostazione(titolo: "Velocità della voce", sottotitolo: "Al centro il ritmo naturale") {
@@ -134,11 +135,8 @@ struct AppImpostazioni: View {
                     .frame(width: 170)
             }
             RigaImpostazione(titolo: "Risposte a voce", sottotitolo: "Il testo resta comunque scritto nella conversazione") {
-                Picker("", selection: $stato.dati.impostazioni.eve.risposteAVoce) {
-                    ForEach(ImpostazioniEve.RisposteAVoce.allCases) { r in Text(r.nome).tag(r) }
-                }
-                .labelsHidden()
-                .frame(width: 170)
+                MenuTendina(selezione: $stato.dati.impostazioni.eve.risposteAVoce,
+                            opzioni: ImpostazioniEve.RisposteAVoce.allCases.map { ($0, $0.nome) }, larghezza: 170)
             }
             RigaImpostazione(titolo: "Leggi tutta la risposta", sottotitolo: "Altrimenti Eve dice l'inizio e il resto lo trovi scritto") {
                 Toggle("", isOn: $stato.dati.impostazioni.eve.leggiTutto)
@@ -147,24 +145,24 @@ struct AppImpostazioni: View {
             }
             RigaImpostazione(titolo: "Riconoscimento della voce",
                              sottotitolo: "Sempre sul Mac. Automatico: quello nuovo di Apple su macOS 26 e successivi, altrimenti la dettatura classica") {
-                Picker("", selection: $stato.dati.impostazioni.eve.riconoscimento) {
-                    ForEach(SceltaRiconoscimento.allCases) { r in Text(r.nome).tag(r) }
-                }
-                .labelsHidden()
-                .frame(width: 190)
+                MenuTendina(selezione: $stato.dati.impostazioni.eve.riconoscimento,
+                            opzioni: SceltaRiconoscimento.allCases.map { ($0, $0.nome) }, larghezza: 190)
                 .onChange(of: stato.dati.impostazioni.eve.riconoscimento) { _ in stato.azzeraRipieghiAscolto() }
             }
             RigaImpostazione(titolo: "Prova il microfono",
                              sottotitolo: stato.esitoProvaMicrofono ?? "Tre secondi di ascolto senza riconoscimento: dice se il microfono sente") {
                 Button("Prova") { stato.provaMicrofono() }
+                    .buttonStyle(StileVetro(margine: margineVetro))
                     .disabled(stato.esitoProvaMicrofono == "In prova… parla per tre secondi")
             }
             RigaImpostazione(titolo: "Prova il riconoscimento",
                              sottotitolo: stato.esitoProvaRiconoscimento ?? "Senza microfono: Eve dice una frase e la fa capire a ogni riconoscimento (nuovo, dettatura di sistema, classico). Poi «Copia» e mandami il risultato") {
                 HStack(spacing: 8) {
                     Button("Prova") { stato.provaRiconoscimento() }
+                        .buttonStyle(StileVetro(margine: margineVetro))
                         .disabled(stato.esitoProvaRiconoscimento == "In prova…")
                     Button("Copia") { stato.copiaDiagnosticaVoce() }
+                        .buttonStyle(StileVetro(margine: margineVetro))
                 }
             }
             RigaImpostazione(titolo: "Mostra i passaggi dell'ascolto",
@@ -191,11 +189,8 @@ struct AppImpostazioni: View {
                     .labelsHidden()
             }
             RigaImpostazione(titolo: "Password proposta", sottotitolo: "Dai dati del cliente; Prisma non conserva nessuna password", ultima: true) {
-                Picker("", selection: $stato.dati.impostazioni.pdf.regola) {
-                    ForEach(ImpostazioniPDF.Regola.allCases) { r in Text(r.nome).tag(r) }
-                }
-                .labelsHidden()
-                .frame(width: 210)
+                MenuTendina(selezione: $stato.dati.impostazioni.pdf.regola,
+                            opzioni: ImpostazioniPDF.Regola.allCases.map { ($0, $0.nome) }, larghezza: 210)
             }
         }
     }
@@ -208,7 +203,7 @@ struct AppImpostazioni: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Il tuo nome").font(Tipo.rigaTitolo)
                             TextField("Nome", text: $stato.dati.impostazioni.nomeUtente)
-                                .textFieldStyle(.roundedBorder)
+                                .campoTesto()
                                 .frame(width: 200)
                                 .onSubmit { modificaNome = false }
                         }
@@ -219,11 +214,8 @@ struct AppImpostazioni: View {
                              sottotitolo: "Testi e cifre di tutte le app; prospetti e report restano come sulla carta",
                              avvertenza: stato.dati.impostazioni.dimensioneTesto.fattore == Tipo.fattore ? nil : "Si applica riaprendo Prisma") {
                 HStack(spacing: 8) {
-                    Picker("", selection: $stato.dati.impostazioni.dimensioneTesto) {
-                        ForEach(DimensioneTesto.allCases) { d in Text(d.nome).tag(d) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 140)
+                    MenuTendina(selezione: $stato.dati.impostazioni.dimensioneTesto,
+                                opzioni: DimensioneTesto.allCases.map { ($0, $0.nome) }, larghezza: 140)
                     if stato.dati.impostazioni.dimensioneTesto.fattore != Tipo.fattore {
                         Button("Riapri ora") { stato.riapri() }
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))

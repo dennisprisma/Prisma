@@ -561,8 +561,8 @@ enum Colori {
         static let informazioniTesto = Color(hex: "#657f92")
         static let informazioniOcchiello = Color(hex: "#879da9")
         static let informazioniTitolo = Color(hex: "#4c5c72")
-        static let numero = Color(hex: "#657f92")
-        static let numeroEtichetta = Color(hex: "#8a9eae")
+        static let numero = Color(hex: "#4c5c72")
+        static let numeroEtichetta = Color(hex: "#5f718b")
         static let interruttoreSpento = [Color(hex: "#aaa"), Color(hex: "#f7f7f7"), Color(hex: "#eee")]
         static let interruttoreSpentoBordo = Color(hex: "#8a8a8a")
         static let interruttoreAcceso = [Color(hex: "#0b58a8"), Color(hex: "#247bcf"), Color(hex: "#58a0e3"), Color(hex: "#7bb7ec")]
@@ -940,5 +940,14 @@ enum Colori {
         static let scuroBordo = Color(hex: "#bbd2df47")
         static let scuroTesto = Color.white
         static let scuroFreccia = Color(hex: "#ffffffb0")
+    }
+
+    /// Campi di testo (.os-input del template).
+    enum Campo {
+        static let testo = Color(hex: "#445f74")
+        static let fondo = Color(hex: "#ffffffde")
+        static let bordo = Color(hex: "#b4c2cb")
+        static let ombraInterna = Color(hex: "#3d5e7521")
+        static let riflesso = Color(hex: "#ffffffbc")
     }
 }
