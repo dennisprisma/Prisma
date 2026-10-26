@@ -8,11 +8,19 @@ final class VoceEve: NSObject, ObservableObject {
     @Published private(set) var parla = false
     /// Chiamata quando Eve finisce di parlare da sola (non quando la si interrompe).
     var finito: (() -> Void)?
+    /// Nelle prove: non parla davvero (sul server non c'è audio), lo stato si comporta uguale.
+    let muta: Bool
 
     private let sintetizzatore = AVSpeechSynthesizer()
-    private var interrotta = false
+    /// La frase che Eve sta dicendo: i messaggi del sintetizzatore su frasi vecchie (interrotte) si ignorano,
+    /// perché il didCancel arriva dopo che è già partita la frase nuova.
+    private(set) var corrente: AVSpeechUtterance?
+    private var inizioFrase = Date()
+    /// Se il sintetizzatore non dice mai di aver finito, Eve non resta bloccata: la frase si considera finita.
+    private var sorveglianza: Timer?
 
-    override init() {
+    init(muta: Bool = false) {
+        self.muta = muta
         super.init()
         sintetizzatore.delegate = self
     }
@@ -20,32 +28,54 @@ final class VoceEve: NSObject, ObservableObject {
     /// Fa dire un testo a Eve; interrompe quello che stava dicendo.
     func di(_ testo: String, voce id: String?, velocita: Double) {
         let t = testo.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
-        if sintetizzatore.isSpeaking {
-            interrotta = true
-            sintetizzatore.stopSpeaking(at: .immediate)
+        guard !t.isEmpty else {
+            // Niente da dire: chi aspetta la fine va avvisato comunque (la conversazione non si blocca)
+            DispatchQueue.main.async { [weak self] in self?.finito?() }
+            return
         }
+        corrente = nil   // il didCancel (o didFinish) della frase vecchia non riguarda più nessuno
+        if sintetizzatore.isSpeaking { sintetizzatore.stopSpeaking(at: .immediate) }
         let frase = AVSpeechUtterance(string: t)
-        frase.voice = Self.voce(id)
+        let voce = Self.voce(id)
+        frase.voice = voce
         frase.rate = Self.velocita(velocita)
         frase.pitchMultiplier = 1
         frase.postUtteranceDelay = 0.05
-        interrotta = false
+        corrente = frase
+        inizioFrase = Date()
         parla = true
-        sintetizzatore.speak(frase)
+        DiagnosticaVoce.annota("Voce: dico \(t.count) caratteri con \(voce.map(Self.nome) ?? "la voce di sistema")")
+        // Rete di sicurezza: il doppio del tempo stimato (10 caratteri al secondo alla velocità minima), almeno 4 s
+        armaSorveglianza(frase, secondi: max(4, Double(t.count) / 10 * 2 + 2))
+        if !muta { sintetizzatore.speak(frase) }
     }
 
     func zitta() {
-        guard sintetizzatore.isSpeaking else { return }
-        interrotta = true
-        sintetizzatore.stopSpeaking(at: .word)
+        guard corrente != nil || sintetizzatore.isSpeaking else { return }
+        DiagnosticaVoce.annota("Voce: interrotta")
+        corrente = nil
+        sorveglianza?.invalidate()
+        if sintetizzatore.isSpeaking { sintetizzatore.stopSpeaking(at: .word) }
         parla = false
     }
 
-    fileprivate func concluso(annullato: Bool) {
+    private func armaSorveglianza(_ frase: AVSpeechUtterance, secondi: TimeInterval) {
+        sorveglianza?.invalidate()
+        sorveglianza = Timer.scheduledTimer(withTimeInterval: secondi, repeats: false) { [weak self] _ in
+            guard let self, frase === self.corrente else { return }
+            DiagnosticaVoce.annota("Voce: il sintetizzatore non ha segnalato la fine in \(Int(secondi)) s, vado avanti")
+            if self.sintetizzatore.isSpeaking { self.sintetizzatore.stopSpeaking(at: .immediate) }
+            self.concluso(frase, daSola: true)
+        }
+    }
+
+    /// Il sintetizzatore ha finito o annullato una frase: conta solo se è quella corrente.
+    fileprivate func concluso(_ frase: AVSpeechUtterance, daSola: Bool) {
+        guard frase === corrente else { return }
+        corrente = nil
+        sorveglianza?.invalidate()
         parla = false
-        let daSola = !annullato && !interrotta
-        interrotta = false
+        DiagnosticaVoce.annota("Voce: \(daSola ? "finita" : "annullata") dopo \(String(format: "%.1f", Date().timeIntervalSince(inizioFrase))) s")
         if daSola { finito?() }
     }
 
@@ -102,12 +132,16 @@ final class VoceEve: NSObject, ObservableObject {
 }
 
 extension VoceEve: AVSpeechSynthesizerDelegate {
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async { if utterance === self.corrente { DiagnosticaVoce.annota("Voce: il sintetizzatore ha iniziato") } }
+    }
+
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        DispatchQueue.main.async { self.concluso(annullato: false) }
+        DispatchQueue.main.async { self.concluso(utterance, daSola: true) }
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        DispatchQueue.main.async { self.concluso(annullato: true) }
+        DispatchQueue.main.async { self.concluso(utterance, daSola: false) }
     }
 }
 

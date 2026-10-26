@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 
 /// Prova automatica di Eve (`Prisma --prova-eve`), eseguita dal workflow.
@@ -879,13 +880,143 @@ enum ProvaEve {
         let qwenPrima = vecchieQwen ?? ImpostazioniEve()
         controlla(qwenPrima.modelloLocale == "qwen3:4b" && qwenPrima.indirizzoLocale == "http://127.0.0.1:11434", "Qwen: impostazioni di prima con i valori predefiniti")
 
+        // Ascolto e voce con riconoscimento e microfono finti: tempi brevi, niente audio
+        func attendi(_ secondi: TimeInterval, finche condizione: () -> Bool = { false }) {
+            let fine = Date().addingTimeInterval(secondi)
+            while !condizione() && Date() < fine { RunLoop.main.run(until: Date().addingTimeInterval(0.02)) }
+        }
+        let tempiBrevi = AscoltoEve.Tempi(pausa: 0.2, attesaMassima: 2, durataMassima: 5, attesaFinale: 1.5, attesaPreparazione: 1, attesaScaricamento: 2)
+
+        // Ascolto 1: lo stato «si prepara», la pausa che aspetta il riconoscimento, il testo arrivato tardi
+        let mic1 = MicrofonoFinto(), finta1 = TrascrizioneFinta()
+        finta1.risposta = "che appuntamenti ho domani"
+        finta1.ritardo = 0.3
+        let a1 = AscoltoEve(prepara: { _, _ in .success(finta1) }, microfono: mic1, permessi: { $0(nil) })
+        a1.tempi = tempiBrevi
+        var frase1: String?
+        var problema1: String?
+        a1.concluso = { frase1 = $0 }
+        a1.problema = { problema1 = $0 }
+        a1.avvia(.automatico)
+        controlla(a1.siPrepara, "Ascolto: prima del microfono lo stato è «si prepara»")
+        attendi(1) { mic1.acceso }
+        controlla(mic1.acceso && a1.stato == .ascolta, "Ascolto: microfono acceso dopo la preparazione")
+        mic1.suona(0.5); attendi(0.1)
+        mic1.suona(0); attendi(0.3); mic1.suona(0); attendi(0.05)
+        controlla(a1.stato == .ascolta, "Ascolto: senza risposte la pausa breve non chiude la frase")
+        attendi(0.5); mic1.suona(0); attendi(0.05)
+        controlla(a1.stato == .capisce && finta1.finita, "Ascolto: alla pausa lunga chiede il testo definitivo")
+        attendi(2) { frase1 != nil }
+        controlla(frase1 == "che appuntamenti ho domani" && problema1 == nil && a1.stato == .fermo, "Ascolto: il testo arrivato dopo la pausa viene mandato")
+
+        // Ascolto 2: riconoscimento muto
+        let mic2 = MicrofonoFinto(), finta2 = TrascrizioneFinta()
+        let a2 = AscoltoEve(prepara: { _, _ in .success(finta2) }, microfono: mic2, permessi: { $0(nil) })
+        a2.tempi = tempiBrevi
+        var problema2: String?
+        a2.problema = { problema2 = $0 }
+        a2.avvia(.nuovo)
+        attendi(1) { mic2.acceso }
+        mic2.suona(0.5); attendi(0.1)
+        a2.ferma(invia: true)   // come il pulsante
+        attendi(3) { problema2 != nil }
+        controlla((problema2 ?? "").hasPrefix("Ti ho sentito ma") && a2.fallimento == .senzaParole && finta2.annullata,
+                  "Ascolto: riconoscimento muto → «ti ho sentito ma…» dopo l'attesa finale")
+
+        // Ascolto 3: preparazione che non torna
+        let mic3 = MicrofonoFinto()
+        let a3 = AscoltoEve(prepara: { _, _ in
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
+            return .failure(ErroreEve(messaggio: "troppo tardi"))
+        }, microfono: mic3, permessi: { $0(nil) })
+        a3.tempi = tempiBrevi
+        var problema3: String?
+        a3.problema = { problema3 = $0 }
+        a3.avvia(.automatico)
+        attendi(2.5) { problema3 != nil }
+        controlla(a3.fallimento == .nonPronto && !mic3.acceso && (problema3 ?? "").hasPrefix("Il riconoscimento non è pronto"),
+                  "Ascolto: se il riconoscimento non è pronto in tempo lo si dice, senza accendere il microfono")
+
+        // Ascolto 4: il pulsante durante la preparazione annulla e basta
+        let a4 = AscoltoEve(prepara: { _, _ in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            return .success(TrascrizioneFinta())
+        }, microfono: MicrofonoFinto(), permessi: { $0(nil) })
+        var problema4: String?
+        a4.problema = { problema4 = $0 }
+        a4.avvia()
+        attendi(0.1)
+        a4.ferma(invia: true)
+        controlla(a4.stato == .fermo && problema4 == nil, "Ascolto: il pulsante durante la preparazione annulla senza parlare di microfono")
+
+        // Ascolto 5: microfono che non si accende → la riga rossa resta
+        let mic5 = MicrofonoFinto()
+        mic5.guasto = "Il microfono non si è avviato: prova"
+        let a5 = AscoltoEve(prepara: { _, _ in .success(TrascrizioneFinta()) }, microfono: mic5, permessi: { $0(nil) })
+        var problema5: String?
+        a5.problema = { problema5 = $0 }
+        a5.avvia()
+        attendi(1) { problema5 != nil }
+        controlla(a5.stato == .nonDisponibile(mic5.guasto ?? "") && a5.fallimento == .microfono, "Ascolto: microfono guasto → stato «non disponibile» con il motivo")
+
+        // Voce: le frasi vecchie non spengono quella nuova; con niente da dire «finito» parte comunque
+        let voce = VoceEve(muta: true)
+        var finiti = 0
+        voce.finito = { finiti += 1 }
+        voce.di("Ciao, sono Eve.", voce: nil, velocita: 1)
+        voce.speechSynthesizer(AVSpeechSynthesizer(), didCancel: AVSpeechUtterance(string: "vecchia"))
+        attendi(0.05)
+        controlla(voce.parla && finiti == 0, "Voce: l'annullamento di una frase vecchia non spegne quella nuova")
+        if let c = voce.corrente { voce.speechSynthesizer(AVSpeechSynthesizer(), didFinish: c) }
+        attendi(0.05)
+        controlla(!voce.parla && finiti == 1, "Voce: la fine della frase corrente spegne «parla» e chiama «finito»")
+        voce.di("", voce: nil, velocita: 1)
+        attendi(0.05)
+        controlla(finiti == 2, "Voce: con niente da dire «finito» parte comunque")
+
+        // Dettatura e domande: inviare spegne la dettatura, i comandi contano come domande partite
+        let d = StatoShell(persistente: false)
+        d.dati.impostazioni.eve.motore = .sintesi
+        d.dettaturaAttiva = true
+        controlla(d.chiediEve("Fammi un riepilogo del cliente") && !d.dettaturaAttiva, "Dettatura: inviare da tastiera la spegne e la domanda parte")
+        controlla(!d.chiediEve("   "), "Eve: una domanda vuota non parte")
+        d.dettaturaAttiva = true
+        d.dettaturaNonPartita()
+        let titoloNonPartita: String = d.conversazione(d.clienteAttivoId).last?.titolo ?? ""
+        controlla(!d.dettaturaAttiva && !d.usaDettatura && titoloNonPartita == "La dettatura del Mac non è partita",
+                  "Dettatura: se non parte, Eve lo scrive subito")
+        d.clienteAttivoId = "giulia"
+        controlla(d.chiediEve("parliamo di Marco Bianchi") && d.clienteAttivoId == "marco", "Eve: un comando che cambia cliente conta come domanda partita")
+        d.ripiegoAscolto = .classico
+        d.usaDettatura = true
+        d.azzeraRipieghiAscolto()
+        controlla(d.ripiegoAscolto == nil && !d.usaDettatura, "Ascolto: cambiare riconoscimento azzera i ripieghi")
+        controlla(SceltaRiconoscimento.catenaAutomatica.last == .classico, "Ascolto: la catena automatica finisce con la dettatura classica")
+        let scelteVecchie = (try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"riconoscimento":"sconosciuto"}"#.utf8))) ?? ImpostazioniEve()
+        controlla(scelteVecchie.riconoscimento == .automatico && !scelteVecchie.mostraPassaggiVoce, "Impostazioni: un riconoscimento sconosciuto torna ad automatico")
+
+        // Diagnostica: tempi, ambiente, impostazioni
+        DiagnosticaVoce.inizia("Prova diagnostica")
+        DiagnosticaVoce.annota("seconda riga")
+        let riepilogo = DiagnosticaVoce.riepilogo(d.dati.impostazioni.eve)
+        let testoDiagnostica = DiagnosticaVoce.testo
+        controlla(testoDiagnostica.contains("+ 0.") && testoDiagnostica.contains("seconda riga") && riepilogo.contains("riconoscimento automatico") && riepilogo.contains("Permessi"),
+                  "Voce: la diagnostica riporta i tempi dei passaggi, l'ambiente e le impostazioni")
+
+        // Prova del riconoscimento: finisce sempre con un esito, anche se la voce non chiude
+        let provaDettatura = ProvaRiconoscimento()
+        var esitoDettatura: String?
+        provaDettatura.esegui(.dettatura) { esitoDettatura = $0 }
+        attendi(ProvaRiconoscimento.attesaVoce + 10) { esitoDettatura != nil }
+        controlla((esitoDettatura ?? "").contains("non si prova qui"), "Prova del riconoscimento: dà sempre un esito (\(esitoDettatura ?? "nessuno"))")
+
         // Prova del riconoscimento senza microfono (sul server di build solo informativa: niente permessi)
         let provaVoce = ProvaRiconoscimento()
         var esitoVoce: String?
         provaVoce.esegui(.classico) { esitoVoce = $0 }
-        let scadenza = Date().addingTimeInterval(25)
+        let scadenza = Date().addingTimeInterval(50)
         while esitoVoce == nil && Date() < scadenza { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
-        print("INFO Prova del riconoscimento sul server: \(esitoVoce ?? "nessun esito in 25 secondi")")
+        print("INFO Prova del riconoscimento sul server: \(esitoVoce ?? "nessun esito in 50 secondi")")
         let diagnostica = DiagnosticaVoce.testo
         controlla(diagnostica.hasPrefix("Prisma · diagnostica dell'ascolto"), "Voce: la diagnostica dell'ascolto si può copiare")
 
@@ -897,4 +1028,48 @@ enum ProvaEve {
         print("ERRORE: \(errori) verifiche di Eve non riuscite")
         return 1
     }
+}
+
+// MARK: - Finti per le prove dell'ascolto
+
+/// Un riconoscimento che risponde a comando: dopo `finisci` consegna `risposta` con `ritardo` (nil: resta muto).
+private final class TrascrizioneFinta: TrascrizioneEve {
+    let nome = "riconoscimento finto"
+    let scelta = SceltaRiconoscimento.classico
+    var aggiornamento: ((String?, Bool, String?) -> Void)?
+    var pezzi = 0
+    var finita = false
+    var annullata = false
+    var risposta: String?
+    var ritardo: TimeInterval = 0
+
+    func aggiungi(_ buffer: AVAudioPCMBuffer) { pezzi += 1 }
+
+    func finisci() {
+        finita = true
+        guard let r = risposta else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + ritardo) { [weak self] in
+            self?.aggiornamento?(r, false, nil)
+            self?.aggiornamento?(nil, true, nil)
+        }
+    }
+
+    func annulla() { annullata = true }
+}
+
+/// Un microfono senza audio: `suona` manda un picco come farebbe il tap.
+private final class MicrofonoFinto: MicrofonoEve {
+    var acceso = false
+    var guasto: String?
+    private var livello: ((Float) -> Void)?
+
+    func accendi(consegna: @escaping (AVAudioPCMBuffer) -> Void, livello: @escaping (Float) -> Void) -> String? {
+        if let guasto { return guasto }
+        acceso = true
+        self.livello = livello
+        return nil
+    }
+
+    func spegni() { acceso = false }
+    func suona(_ picco: Float) { livello?(picco) }
 }

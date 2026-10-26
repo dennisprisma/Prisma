@@ -152,14 +152,26 @@ struct AppImpostazioni: View {
                 }
                 .labelsHidden()
                 .frame(width: 190)
+                .onChange(of: stato.dati.impostazioni.eve.riconoscimento) { _ in stato.azzeraRipieghiAscolto() }
+            }
+            RigaImpostazione(titolo: "Prova il microfono",
+                             sottotitolo: stato.esitoProvaMicrofono ?? "Tre secondi di ascolto senza riconoscimento: dice se il microfono sente") {
+                Button("Prova") { stato.provaMicrofono() }
+                    .disabled(stato.esitoProvaMicrofono == "In prova… parla per tre secondi")
             }
             RigaImpostazione(titolo: "Prova il riconoscimento",
-                             sottotitolo: stato.esitoProvaRiconoscimento ?? "Senza microfono: Eve dice una frase e si vede se il riconoscimento la capisce. Poi «Copia» e mandami il risultato") {
+                             sottotitolo: stato.esitoProvaRiconoscimento ?? "Senza microfono: Eve dice una frase e la fa capire a ogni riconoscimento (nuovo, dettatura di sistema, classico). Poi «Copia» e mandami il risultato") {
                 HStack(spacing: 8) {
                     Button("Prova") { stato.provaRiconoscimento() }
                         .disabled(stato.esitoProvaRiconoscimento == "In prova…")
                     Button("Copia") { stato.copiaDiagnosticaVoce() }
                 }
+            }
+            RigaImpostazione(titolo: "Mostra i passaggi dell'ascolto",
+                             sottotitolo: "Sotto il campo di Eve compare l'ultimo passaggio (preparazione, microfono, risultati, voce, dettatura): si vede dove si ferma") {
+                Toggle("", isOn: $stato.dati.impostazioni.eve.mostraPassaggiVoce)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
             }
             RigaImpostazione(titolo: "Conversazione continua",
                              sottotitolo: "Dopo aver risposto Eve torna ad ascoltarti, finché non le dici «basta così» · ⌥⌘E per parlarle",
