@@ -22,7 +22,9 @@ enum ClientiFittizi {
         for (n, p) in profili.enumerated() {
             let id = prefisso + p.chiave
             d.clienti.append(cliente(p, id: id, tinta: tinte[n % tinte.count], indice: n))
-            let posizioni = DatiDemo.conRilevazioni(p.voci.enumerated().map { i, v in posizione(v, cliente: id, nome: p.nomeCompleto, indice: i) })
+            let posizioni = DatiDemo.conRilevazioni(p.voci.enumerated().map { i, v in
+                posizione(v, cliente: id, nome: p.nomeCompleto, indice: i, canaleBeni: p.canali == [.alleanza] ? .alleanza : .indipendente)
+            })
             d.posizioni.append(contentsOf: posizioni)
             d.appuntamenti.append(contentsOf: appuntamenti(p, id: id, indice: n, posizioni: posizioni))
             d.attivita.append(contentsOf: attivita(p, id: id, indice: n))
@@ -116,7 +118,8 @@ enum ClientiFittizi {
 
     private static let alleanza = "Alleanza Assicurazioni"
 
-    private static func posizione(_ v: Voce, cliente: String, nome: String, indice: Int) -> Posizione {
+    /// `canaleBeni`: il canale di conti, casa e debiti (quello del cliente se ne ha uno solo, come nei dati del template).
+    private static func posizione(_ v: Voce, cliente: String, nome: String, indice: Int, canaleBeni: Canale) -> Posizione {
         var proposta = false
         var esito: EsitoProposta?
         var voce = v
@@ -132,7 +135,7 @@ enum ClientiFittizi {
             x.creataIl = giorno(-30 - indice)
             x.dataValore = giorno(-5)
             x.esito = esito
-            if canale == .alleanza {
+            if canale == .alleanza, [.risparmio, .previdenza, .protezione, .investimento].contains(area) {
                 x.emittente = alleanza
                 x.contraente = nome
                 x.assicurato = nome
@@ -155,7 +158,9 @@ enum ClientiFittizi {
             p = nuova(.alleanza, .risparmio, "Polizza rivalutabile a premio unico")
             p.tipologia = "Polizza rivalutabile a premio unico (Ramo I)"
             p.versamentoIniziale = importo
-            p.decorrenza = anni(-da); p.scadenza = anni(durata - da)
+            p.decorrenza = anni(-da)
+            // A fine durata: in scadenza tra qualche settimana, da reinvestire
+            p.scadenza = durata > da ? anni(durata - da) : giorno(25)
             p.beneficiari = "Eredi legittimi"
             p.rendimentoAtteso = 2.6; p.trattenuto = 1.3; p.quotaTitoliStato = 60; p.aliquotaFiscale = 20
             valori(&p, versato: importo, crescita: 0.019, anni: da)
@@ -229,17 +234,17 @@ enum ClientiFittizi {
             p.prodottoId = "prodotto-fondo-pensione"
             valori(&p, versato: mensile * 12 * Double(da), crescita: 0.035, anni: da)
         case .liquidita(let importo):
-            p = nuova(.indipendente, .liquidita, "Conto corrente e deposito")
+            p = nuova(canaleBeni, .liquidita, "Conto corrente e deposito")
             p.emittente = "Banca"; p.controvalore = importo
         case .casa(let valore):
-            p = nuova(.indipendente, .immobili, "Casa di abitazione")
+            p = nuova(canaleBeni, .immobili, "Casa di abitazione")
             p.controvalore = valore
         case .mutuo(let residuo, let rata, let n):
-            p = nuova(.indipendente, .debiti, "Mutuo casa")
+            p = nuova(canaleBeni, .debiti, "Mutuo casa")
             p.tipologia = "Mutuo a tasso fisso"; p.emittente = "Banca"
             p.premio = rata; p.frequenza = .mensile; p.scadenza = anni(n); p.controvalore = residuo
         case .prestito(let residuo, let rata, let n):
-            p = nuova(.indipendente, .debiti, "Prestito personale")
+            p = nuova(canaleBeni, .debiti, "Prestito personale")
             p.emittente = "Finanziaria"
             p.premio = rata; p.frequenza = .mensile; p.scadenza = anni(n); p.controvalore = residuo
         case .proposta:
