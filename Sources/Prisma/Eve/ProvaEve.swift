@@ -896,7 +896,8 @@ enum ProvaEve {
         finta1.risposta = "che appuntamenti ho domani"
         finta1.ritardo = 0.3
         let a1 = AscoltoEve(prepara: { _, _ in .success(finta1) }, microfono: mic1, permessi: { $0(nil) })
-        a1.tempi = tempiBrevi
+        // Pausa più lunga: sul server di build un rallentamento di qualche decimo non deve cambiare l'esito
+        a1.tempi = AscoltoEve.Tempi(pausa: 0.5, attesaMassima: 4, durataMassima: 8, attesaFinale: 1.5, attesaPreparazione: 1, attesaScaricamento: 2)
         var frase1: String?
         var problema1: String?
         a1.concluso = { frase1 = $0 }
@@ -908,7 +909,8 @@ enum ProvaEve {
         mic1.suona(0.5); attendi(0.1)
         mic1.suona(0); attendi(0.3); mic1.suona(0); attendi(0.05)
         controlla(a1.stato == .ascolta, "Ascolto: senza risposte la pausa breve non chiude la frase")
-        attendi(0.5); mic1.suona(0); attendi(0.05)
+        // Senza risposte la frase si chiude dopo tre pause (1,5 s): qui ne sono passate più di 2
+        attendi(2); mic1.suona(0); attendi(0.05)
         controlla(a1.stato == .capisce && finta1.finita, "Ascolto: alla pausa lunga chiede il testo definitivo")
         attendi(2) { frase1 != nil }
         controlla(frase1 == "che appuntamenti ho domani" && problema1 == nil && a1.stato == .fermo, "Ascolto: il testo arrivato dopo la pausa viene mandato")
