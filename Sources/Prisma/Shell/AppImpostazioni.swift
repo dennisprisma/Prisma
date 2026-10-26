@@ -8,6 +8,7 @@ struct AppImpostazioni: View {
     @State var daRipristinare: VoceBackup?
     @State var fileDaRipristinare: URL?
     @State var confermaDatiProva = false
+    @State var confermaClientiCompleti = false
     @State var confermaTogliProva = false
     @State var modificaNome = false
 
@@ -55,7 +56,13 @@ struct AppImpostazioni: View {
             Button("Annulla", role: .cancel) {}
             Button("Togli i clienti di prova", role: .destructive) { stato.togliDatiDiProva() }
         } message: {
-            Text("Giulia, Marco, Laura, Andrea e Sofia vengono tolti con posizioni, agenda, documenti e conversazioni. I tuoi clienti restano. Prima Prisma salva un backup dello stato attuale.")
+            Text("I clienti di prova (Giulia, Marco, Laura, Andrea, Sofia e quelli inventati) vengono tolti con posizioni, agenda, documenti e conversazioni. I tuoi clienti restano. Prima Prisma salva un backup dello stato attuale.")
+        }
+        .alert("Caricare i 35 clienti di prova?", isPresented: $confermaClientiCompleti) {
+            Button("Annulla", role: .cancel) {}
+            Button("Carica i clienti di prova", role: .destructive) { stato.ripristinaDatiDiProva(completi: true) }
+        } message: {
+            Text("Clienti, posizioni, agenda e attività vengono sostituiti da 35 clienti inventati. Prima Prisma salva un backup dello stato attuale: i tuoi dati si recuperano da lì.")
         }
         .alert("Tornare ai dati di prova?", isPresented: $confermaDatiProva) {
             Button("Annulla", role: .cancel) {}
@@ -305,14 +312,19 @@ struct AppImpostazioni: View {
 
             GruppoImpostazioni(titolo: "Dati di prova") {
                 if stato.haDatiDiProva {
-                    RigaImpostazione(titolo: "Togli i 5 clienti di prova",
+                    RigaImpostazione(titolo: "Togli i clienti di prova",
                                      sottotitolo: "Per lavorare solo con i tuoi clienti: restano i clienti che hai inserito tu. Prima viene salvato un backup.") {
                         ValoreRiga(testo: "Togli") { confermaTogliProva = true }
                     }
                 }
                 RigaImpostazione(titolo: "Ripristina i 5 clienti di prova",
-                                 sottotitolo: "Utile per provare i motori di calcolo. Prima viene salvato un backup.", ultima: true) {
+                                 sottotitolo: "Utile per provare i motori di calcolo. Prima viene salvato un backup.") {
                     ValoreRiga(testo: "Ripristina") { confermaDatiProva = true }
+                }
+                RigaImpostazione(titolo: "Carica 35 clienti di prova completi",
+                                 sottotitolo: "I 5 del template più 30 clienti inventati, con polizze Alleanza, investimenti, famiglia, agenda e note: per vedere Prisma piena e fare domande a Eve. Prima viene salvato un backup.",
+                                 ultima: true) {
+                    ValoreRiga(testo: "Carica") { confermaClientiCompleti = true }
                 }
             }
         }
