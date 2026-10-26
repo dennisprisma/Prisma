@@ -469,11 +469,11 @@ struct WidgetPortafoglio: View {
                 Spacer(minLength: 0)
                 HStack(alignment: .firstTextBaseline) {
                     Text("Proposte aperte")
-                        .font(Tipo.metricaEtichetta)
+                        .font(Tipo.widgetMetricaEtichetta)
                         .foregroundColor(Colori.Colonna.metricaEtichetta)
                     Spacer()
                     Text(r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
-                        .font(Tipo.metricaValore)
+                        .font(Tipo.widgetMetricaValore)
                         .foregroundColor(Colori.Colonna.metricaValore)
                 }
                 .padding(.top, 10)
