@@ -87,11 +87,10 @@ struct AppNote: View {
                 .frame(height: Misure.Note.campoAltezza)
                 .background(Capsule().fill(Colori.Note.campo))
                 .overlay(Capsule().strokeBorder(Colori.Note.campoBordo, lineWidth: 1))
-                Picker("", selection: $stato.filtroClienteNote) {
-                    Text("Tutti i clienti").tag(String?.none)
-                    ForEach(stato.clienti) { c in Text(c.nome).tag(Optional(c.id)) }
-                }
-                .labelsHidden()
+                MenuTendina(selezione: $stato.filtroClienteNote,
+                            opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
+                            stile: .carta)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(EdgeInsets(top: 11, leading: 12, bottom: 11, trailing: 12))
 
@@ -185,6 +184,7 @@ struct AppNote: View {
                         .textFieldStyle(.plain)
                         .font(Tipo.noteTitolo)
                         .foregroundColor(Colori.Note.titolo)
+                        .padding(.leading, 5)
                         .padding(.top, 14)
                         .padding(.bottom, 10)
                     ZStack(alignment: .topLeading) {
@@ -225,11 +225,9 @@ struct AppNote: View {
     private func rigaCliente(_ n: Nota) -> some View {
         HStack(spacing: 9) {
             Text("PER").font(Tipo.notePer).tracking(1.5).foregroundColor(Colori.Note.etichetta)
-            Picker("", selection: Binding(get: { n.clienteId }, set: { v in stato.modificaNota(n.id) { $0.clienteId = v } })) {
-                ForEach(stato.clienti) { c in Text(c.nome).tag(c.id) }
-            }
-            .labelsHidden()
-            .frame(maxWidth: 220)
+            MenuTendina(selezione: Binding(get: { n.clienteId }, set: { v in stato.modificaNota(n.id) { $0.clienteId = v } }),
+                        opzioni: stato.clienti.map { ($0.id, $0.nome) }, stile: .carta)
+                .frame(maxWidth: 220, alignment: .leading)
             Spacer()
             Button("Apri dossier ↗") { stato.apriCliente(n.clienteId) }
                 .buttonStyle(StileSemplice())

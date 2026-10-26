@@ -39,14 +39,14 @@ extension CompositoreProspetti {
                       ColonnaProspetto(titolo: "Quota delle attività", peso: 1, destra: true)],
             righe: aree.map { a in
                 let v = r.perArea[a] ?? 0
-                return [.t(a.nome), .t(a.passivo ? "−\(euro(v))" : euro(v)), .n(a.passivo ? "—" : quota(r.attivita > 0 ? v / r.attivita : 0))]
+                return [.t(a.nome), .t(a.passivo ? "−\(euro(v))" : euro(v)), a.passivo ? CellaProspetto.n("—") : CellaProspetto.t(quota(r.attivita > 0 ? v / r.attivita : 0))]
             })))
 
         sezione("Per cliente")
         b.append(.tabella(TabellaProspetto(
             colonne: [ColonnaProspetto(titolo: "Cliente", peso: 2), ColonnaProspetto(titolo: "Canali", peso: 1.5),
                       ColonnaProspetto(titolo: "Attività", peso: 1.2, destra: true), ColonnaProspetto(titolo: "Premi annui", peso: 1.1, destra: true),
-                      ColonnaProspetto(titolo: "Capitale assicurato", peso: 1.3, destra: true), ColonnaProspetto(titolo: "Proposte", peso: 0.9, destra: true),
+                      ColonnaProspetto(titolo: "Assicurato", peso: 1.3, destra: true), ColonnaProspetto(titolo: "Proposte", peso: 0.9, destra: true),
                       ColonnaProspetto(titolo: "Quota", peso: 0.7, destra: true)],
             righe: p.clienti.map { v in
                 [.f(v.cliente.nome), .t(v.canali.map(\.nomeBreve).joined(separator: " · ")), .t(euro(v.attivita)),

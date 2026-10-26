@@ -181,7 +181,8 @@ enum EstrattoreDocumento {
 
     /// "1,25" → 1.25; "1.250,50" → 1250.5
     static func numero(_ s: String?) -> Double? {
-        guard let s else { return nil }
+        // Il segno meno tipografico (−) di Formati e dei documenti vale come il trattino
+        guard let s = s?.replacingOccurrences(of: "\u{2212}", with: "-") else { return nil }
         // "1200.50" o "1.20" (punto decimale, senza virgola): non sono migliaia
         let compatto = s.replacingOccurrences(of: "€", with: "").replacingOccurrences(of: "%", with: "").replacingOccurrences(of: " ", with: "")
         if !compatto.contains(","), let r = compatto.range(of: #"^-?\d+\.\d{1,2}$"#, options: .regularExpression), r == compatto.startIndex..<compatto.endIndex {

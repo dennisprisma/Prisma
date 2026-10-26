@@ -36,7 +36,8 @@ extension Misure {
         static let larghezza: CGFloat = 360
         static let destra: CGFloat = 12
         static let alto: CGFloat = 46
-        static let basso: CGFloat = 24
+        /// Sopra il dock (.os-notification-panel{bottom:98px}).
+        static let basso: CGFloat = 98
         static let raggio: CGFloat = 9
         static let raggioVoce: CGFloat = 6
         static let margine: CGFloat = 20

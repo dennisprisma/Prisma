@@ -209,12 +209,8 @@ struct AppConfronti: View {
                 Spacer(minLength: 4)
                 if let c = e.canale { EtichettaCanale(canale: c, compatta: true) }
             }
-            Picker("", selection: Binding(get: { e.voce }, set: { scegli($0) })) {
-                ForEach(voci) { v in
-                    Text("\(v.titolo) — \(v.sottotitolo)").tag(v.voce)
-                }
-            }
-            .labelsHidden()
+            MenuTendina(selezione: Binding(get: { e.voce }, set: { scegli($0) }),
+                        opzioni: voci.map { v in (v.voce, "\(v.titolo) — \(v.sottotitolo)") })
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -307,7 +303,7 @@ struct AppConfronti: View {
     }
 
     private func testoScarto(_ v: Double?) -> String {
-        guard let v else { return "" }
+        guard let v else { return "—" }
         guard abs(v) >= 1 else { return "=" }
         return "\(v > 0 ? "+" : "−")\(Formati.euro(abs(v)))"
     }

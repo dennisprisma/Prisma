@@ -121,6 +121,8 @@ struct SchermataBenvenuto: View {
 /// «Le tue app aperte»: le finestre aperte, in primo piano o ridotte, con un clic per tornarci.
 struct PannelloAppAperte: View {
     @EnvironmentObject var stato: StatoShell
+    /// Altezza misurata delle schede: il riquadro si adatta, fino all'altezza massima.
+    @State private var altezzaContenuto: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -140,6 +142,9 @@ struct PannelloAppAperte: View {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: Misure.Benvenuto.colonne), spacing: 14) {
                         ForEach(aperte) { f in scheda(f, inPrimoPiano: f.app == stato.appAttiva) }
                     }
+                    .background(GeometryReader { g in
+                        Color.clear.preference(key: AltezzaAppAperte.self, value: g.size.height)
+                    })
                 }
             } piede: {
                 Spacer()
@@ -152,10 +157,18 @@ struct PannelloAppAperte: View {
                     .buttonStyle(StileBlu())
                     .keyboardShortcut(.cancelAction)
             }
-            .frame(width: Misure.Benvenuto.riepilogo.width, height: Misure.Benvenuto.riepilogo.height)
+            .onPreferenceChange(AltezzaAppAperte.self) { altezzaContenuto = $0 }
+            .frame(width: Misure.Benvenuto.riepilogo.width, height: altezzaRiquadro(vuoto: stato.finestre.isEmpty))
             .clipShape(RoundedRectangle(cornerRadius: Misure.Finestra.raggio))
             .ombraCSS(Colori.Spazi.schedaOmbra, y: 12, sfocatura: 40)
         }
+    }
+
+    /// Alto quanto le schede più la cornice, mai oltre il massimo (poi le schede scorrono).
+    private func altezzaRiquadro(vuoto: Bool) -> CGFloat {
+        let massimo = Misure.Benvenuto.riepilogo.height
+        guard !vuoto, altezzaContenuto > 0 else { return vuoto ? min(massimo, Misure.Benvenuto.corniceModulo + Misure.Benvenuto.vuotoAltezza) : massimo }
+        return min(massimo, altezzaContenuto + Misure.Benvenuto.corniceModulo)
     }
 
     private func scheda(_ f: StatoShell.Finestra, inPrimoPiano: Bool) -> some View {
@@ -183,4 +196,10 @@ struct PannelloAppAperte: View {
         }
         .buttonStyle(StileSemplice())
     }
+}
+
+/// L'altezza delle schede delle app aperte, misurata per adattare il riquadro.
+private struct AltezzaAppAperte: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }

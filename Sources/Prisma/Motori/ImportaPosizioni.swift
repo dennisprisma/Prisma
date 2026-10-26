@@ -6,12 +6,16 @@ struct PosizioneImportata: Identifiable {
     var posizione: Posizione
     /// Il nome del cliente come scritto nel file.
     var clienteNelFile: String
-    /// Il cliente della rubrica abbinato (nil se non trovato: va importato prima).
+    /// Il cliente della rubrica abbinato (nil se non trovato).
     var cliente: Cliente?
+    /// Se il cliente non è in rubrica: quello da creare con il nome e il codice fiscale del file.
+    var nuovoCliente: ClienteImportato?
     /// Canale e area ricavati dal file (se no, scelti da Prisma: si possono correggere dopo).
     var canaleDalFile: Bool
     var areaDalFile: Bool
-    /// Perché non si importa così com'è: cliente non trovato, posizione già presente, riga ripetuta.
+    /// La scheda prodotto riconosciuta dal nome: costi, rendimento e rischio vengono da lì.
+    var prodotto: String?
+    /// Perché non si importa così com'è: cliente mancante, posizione già presente, riga ripetuta.
     var problema: String?
 }
 
@@ -85,16 +89,37 @@ enum ImportaPosizioni {
         }
     }
 
-    static func leggi(_ url: URL, clienti: [Cliente], posizioni: [Posizione], canale: Canale = .alleanza) -> ImportazionePosizioni? {
-        guard let dati = try? Data(contentsOf: url), let t = ImportaClienti.testo(dati) else { return nil }
-        let letto = daCSV(t, clienti: clienti, posizioni: posizioni, canale: canale)
-        guard !letto.posizioni.isEmpty else { return nil }
-        return ImportazionePosizioni(file: url.lastPathComponent, colonne: letto.colonne, posizioni: letto.posizioni)
+    /// Legge un CSV o una cartella di lavoro Excel (.xlsx).
+    static func leggi(_ url: URL, clienti: [Cliente], posizioni: [Posizione], prodotti: [Prodotto] = [],
+                      canale: Canale = .alleanza) -> ImportazionePosizioni? {
+        guard let righe = ImportaClienti.righe(url) else { return nil }
+        return importazione(daRighe(righe, clienti: clienti, posizioni: posizioni, prodotti: prodotti, canale: canale), file: url.lastPathComponent)
     }
 
-    static func daCSV(_ testo: String, clienti: [Cliente], posizioni esistenti: [Posizione], canale predefinito: Canale = .alleanza,
-                      oggi: Date = Date()) -> (colonne: [Colonna], posizioni: [PosizioneImportata]) {
-        let righe = ImportaClienti.righeCSV(testo)
+    /// Righe copiate da Excel o Numbers (testo a tabulazioni negli appunti), con l'intestazione nella prima.
+    static func incollate(_ testo: String, clienti: [Cliente], posizioni: [Posizione], prodotti: [Prodotto] = [],
+                          canale: Canale = .alleanza) -> ImportazionePosizioni? {
+        importazione(daCSV(testo, clienti: clienti, posizioni: posizioni, prodotti: prodotti, canale: canale), file: "appunti")
+    }
+
+    private static func importazione(_ letto: (colonne: [Colonna], posizioni: [PosizioneImportata]), file: String) -> ImportazionePosizioni? {
+        guard !letto.posizioni.isEmpty else { return nil }
+        return ImportazionePosizioni(file: file, colonne: letto.colonne, posizioni: letto.posizioni)
+    }
+
+    /// Una tabella sembra di posizioni (e non di contatti) se ha il prodotto, il contratto o un importo.
+    static func sembraPosizioni(_ righe: [[String]]) -> Bool {
+        let colonne = Set((righe.first ?? []).compactMap(Colonna.da))
+        return !colonne.isDisjoint(with: [.prodotto, .numeroContratto, .premio, .controvalore, .capitale, .versato, .tipologia])
+    }
+
+    static func daCSV(_ testo: String, clienti: [Cliente], posizioni esistenti: [Posizione], prodotti: [Prodotto] = [],
+                      canale predefinito: Canale = .alleanza, oggi: Date = Date()) -> (colonne: [Colonna], posizioni: [PosizioneImportata]) {
+        daRighe(ImportaClienti.righeCSV(testo), clienti: clienti, posizioni: esistenti, prodotti: prodotti, canale: predefinito, oggi: oggi)
+    }
+
+    static func daRighe(_ righe: [[String]], clienti: [Cliente], posizioni esistenti: [Posizione], prodotti: [Prodotto] = [],
+                        canale predefinito: Canale = .alleanza, oggi: Date = Date()) -> (colonne: [Colonna], posizioni: [PosizioneImportata]) {
         guard let testa = righe.first else { return ([], []) }
         var usate: [Colonna: Int] = [:]
         for (i, h) in testa.enumerated() { if let c = Colonna.da(h), usate[c] == nil { usate[c] = i } }
@@ -139,25 +164,76 @@ enum ImportaPosizioni {
             if p.area == .protezione { p.rischio = rischio(testoProdotto) }
             if p.versamentoIniziale == 0, p.premio == 0, let versato = p.totaleVersato { p.versamentoIniziale = versato }
             p.note = "Importata da file il \(Formati.dataEstesa.string(from: oggi))."
+            let scheda = prodottoPer(p, tra: prodotti)
+            if let scheda {
+                applica(scheda, a: &p)
+                // La scheda sa canale e area meglio delle parole del nome
+                if canaleLetto == nil { p.canale = scheda.canale }
+                if areaLetta == nil {
+                    p.area = scheda.area
+                    p.rischio = p.area == .protezione ? (p.rischio ?? rischio(testoProdotto)) : nil
+                }
+            }
 
             var x = PosizioneImportata(posizione: p, clienteNelFile: nomeCliente.isEmpty ? cf : nomeCliente, cliente: cliente,
-                                       canaleDalFile: canaleLetto != nil, areaDalFile: areaLetta != nil)
-            let chiave = "\(cliente?.id ?? nomeCliente)|\(p.numeroContratto.isEmpty ? p.nome.lowercased() : compatto(p.numeroContratto))"
+                                       canaleDalFile: canaleLetto != nil || scheda != nil, areaDalFile: areaLetta != nil || scheda != nil)
+            x.prodotto = scheda?.nome
+            let chiave = "\(cliente?.id ?? (cf.isEmpty ? piega(nomeCliente) : cf))|\(p.numeroContratto.isEmpty ? p.nome.lowercased() : compatto(p.numeroContratto))"
             if cliente == nil {
-                x.problema = nomeCliente.isEmpty && cf.isEmpty ? "manca il cliente" : "cliente non in rubrica: importalo prima"
-            } else if let c = cliente, esistenti.contains(where: { e in
-                e.clienteId == c.id && (p.numeroContratto.isEmpty ? e.nome.lowercased() == p.nome.lowercased()
-                                                                  : compatto(e.numeroContratto) == compatto(p.numeroContratto))
-            }) {
-                x.problema = "già in Posizioni"
-            } else if viste.contains(chiave) {
-                x.problema = "ripetuta nel file"
+                if nomeCliente.isEmpty {
+                    x.problema = "manca il nome del cliente"
+                } else {
+                    var nuovo = ClienteImportato(nome: nomeCliente)
+                    nuovo.codiceFiscale = cf
+                    x.nuovoCliente = nuovo
+                }
+            }
+            if x.problema == nil {
+                if let c = cliente, esistenti.contains(where: { e in
+                    e.clienteId == c.id && (p.numeroContratto.isEmpty ? e.nome.lowercased() == p.nome.lowercased()
+                                                                      : compatto(e.numeroContratto) == compatto(p.numeroContratto))
+                }) {
+                    x.problema = "già in Posizioni"
+                } else if viste.contains(chiave) {
+                    x.problema = "ripetuta nel file"
+                }
             }
             viste.insert(chiave)
             return x
         }
         let colonne = usate.keys.sorted { (usate[$0] ?? 0) < (usate[$1] ?? 0) }
         return (colonne, elenco)
+    }
+
+    /// La scheda prodotto con lo stesso nome (o il cui nome è contenuto in quello della riga), dello stesso canale se lo si sa.
+    static func prodottoPer(_ p: Posizione, tra prodotti: [Prodotto]) -> Prodotto? {
+        let nome = piega(p.nome)
+        guard !nome.isEmpty else { return nil }
+        if let uguale = prodotti.first(where: { piega($0.nome) == nome }) { return uguale }
+        let contenuti = prodotti.filter { s in
+            let n = piega(s.nome)
+            return n.count >= 6 && Set(n.split(separator: " ")).isSubset(of: Set(nome.split(separator: " ")))
+        }
+        return contenuti.count == 1 ? contenuti.first : nil
+    }
+
+    /// Le ipotesi della scheda prodotto che il file non dice: costi, rendimento, rischio, garanzie.
+    static func applica(_ s: Prodotto, a p: inout Posizione) {
+        p.prodottoId = s.id
+        if p.tipologia.isEmpty { p.tipologia = s.tipologia }
+        if p.emittente.isEmpty { p.emittente = s.emittente }
+        p.rendimentoAtteso = p.rendimentoAtteso ?? s.rendimentoAtteso
+        p.costoIngresso = p.costoIngresso ?? s.costoIngresso
+        p.costoAnnuo = p.costoAnnuo ?? s.costoAnnuo
+        p.aliquotaFiscale = p.aliquotaFiscale ?? s.aliquotaFiscale
+        p.sri = p.sri ?? s.sri
+        if p.garanzie.isEmpty { p.garanzie = s.garanzie }
+    }
+
+    /// Il segnaposto di un cliente nuovo in `clienteId`, finché l'importazione non gli dà il suo id:
+    /// lo stesso per le righe con lo stesso codice fiscale o lo stesso nome (anche invertito).
+    static func segnapostoNuovo(_ c: ClienteImportato) -> String {
+        "nuovo:" + (c.codiceFiscale.isEmpty ? piega(c.nome) : c.codiceFiscale.uppercased())
     }
 
     /// Il cliente della rubrica: prima il codice fiscale, poi il nome (anche con cognome e nome invertiti).
@@ -169,7 +245,7 @@ enum ImportaPosizioni {
         return trovati.count == 1 ? trovati.first : nil
     }
 
-    private static func piega(_ s: String) -> String {
+    static func piega(_ s: String) -> String {
         s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Formati.italiano)
             .split { !$0.isLetter }.sorted().joined(separator: " ")
     }

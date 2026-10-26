@@ -8,7 +8,7 @@ struct StileAqua: ButtonStyle {
             .foregroundColor(Colori.Rubrica.aquaTesto)
             .incisione(Colori.Rubrica.aquaIncisione)
             .padding(.horizontal, 12)
-            .frame(height: 28)
+            .frame(height: Misure.Pulsante.altezzaAqua)
             .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu).fill(Gradienti.aqua))
             .luceInterna(Colori.Rubrica.aquaLuce, raggio: Misure.Pulsante.raggioBlu)
             .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu).strokeBorder(Colori.Rubrica.aquaBordo, lineWidth: 1))
@@ -19,13 +19,17 @@ struct StileAqua: ButtonStyle {
 
 /// Pulsante piccolo in cuoio chiaro ("Modifica" del dossier).
 struct StileCuoioChiaro: ButtonStyle {
+    /// Altezza fissa, per affiancarlo a un pulsante aqua (nil: quanto il testo più il margine).
+    var altezza: CGFloat? = nil
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Tipo.pulsanteCuoio)
             .foregroundColor(Colori.Rubrica.pulsanteTesto)
             .incisione(Colori.Rubrica.pulsanteIncisione)
             .padding(.horizontal, 9)
-            .padding(.vertical, 5)
+            .padding(.vertical, altezza == nil ? 5 : 0)
+            .frame(height: altezza)
             .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).fill(Gradienti.pulsanteCuoio))
             .luceInterna(Colori.Rubrica.pulsanteLuce, raggio: Misure.Pulsante.raggio)
             .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).strokeBorder(Colori.Rubrica.pulsanteBordo, lineWidth: 1))
@@ -40,43 +44,61 @@ struct SchedeRubrica<Valore: Hashable>: View {
     @Binding var selezione: Valore
 
     var body: some View {
-        HStack(spacing: Misure.Rubrica.spazioSchede) {
-            ForEach(Array(opzioni.enumerated()), id: \.offset) { _, opzione in
-                let attiva = opzione.0 == selezione
-                Button {
-                    selezione = opzione.0
-                } label: {
-                    Text(opzione.1)
-                        .font(Tipo.schedaRubrica)
-                        .foregroundColor(attiva ? Colori.Rubrica.schedaAttivaTesto : Colori.Rubrica.schedaTesto)
-                        .incisione(attiva ? Colori.Rubrica.schedaAttivaIncisione : Color.white.opacity(0.4))
-                        .padding(.horizontal, Misure.Rubrica.schedaMargine)
-                        .frame(height: Misure.Rubrica.schedaAltezza)
-                        .background(
-                            RoundedRectangle(cornerRadius: Misure.Pulsante.raggio)
-                                .fill(attiva ? Gradienti.schedaRubricaAttiva : Gradienti.schedaRubrica)
-                        )
-                        .overlay(alignment: .top) {
-                            if attiva {
-                                LinearGradient(colors: [Colori.Rubrica.schedaAttivaOmbra, .clear], startPoint: .top, endPoint: .bottom)
-                                    .frame(height: 3)
-                                    .clipShape(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio))
-                            }
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Misure.Pulsante.raggio)
-                                .strokeBorder(attiva ? Colori.Rubrica.schedaAttivaBordo : Colori.Rubrica.schedaBordo, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(StileSemplice())
+        // Nelle finestre strette le schede si stringono (come il template sotto i 700 px)
+        // e, se ancora non bastano, scorrono di lato: mai una parola spezzata a metà.
+        ViewThatFits(in: .horizontal) {
+            riga(spazio: Misure.Rubrica.spazioSchede, margine: Misure.Rubrica.schedaMargine, font: Tipo.schedaRubrica)
+            riga(spazio: Misure.Rubrica.spazioSchedeStretto, margine: Misure.Rubrica.schedaMargineStretto, font: Tipo.schedaRubricaStretta)
+            ScrollView(.horizontal, showsIndicators: false) {
+                riga(spazio: Misure.Rubrica.spazioSchedeStretto, margine: Misure.Rubrica.schedaMargineStretto, font: Tipo.schedaRubricaStretta)
             }
-            Spacer(minLength: 0)
         }
         .padding(.horizontal, 17)
         .frame(height: Misure.Rubrica.schedaAltezza + 1)
         .background(Gradienti.schedeRubrica)
         .luceInterna(Colori.Rubrica.schedeLuce)
         .bordoBasso(Colori.Rubrica.schedeBordo)
+    }
+
+    private func riga(spazio: CGFloat, margine: CGFloat, font: Font) -> some View {
+        HStack(spacing: spazio) {
+            ForEach(Array(opzioni.enumerated()), id: \.offset) { _, opzione in
+                scheda(opzione, margine: margine, font: font)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func scheda(_ opzione: (Valore, String), margine: CGFloat, font: Font) -> some View {
+        let attiva = opzione.0 == selezione
+        return Button {
+            selezione = opzione.0
+        } label: {
+            Text(opzione.1)
+                .font(font)
+                .lineLimit(1)
+                .fixedSize()
+                .foregroundColor(attiva ? Colori.Rubrica.schedaAttivaTesto : Colori.Rubrica.schedaTesto)
+                .incisione(attiva ? Colori.Rubrica.schedaAttivaIncisione : Color.white.opacity(0.4))
+                .padding(.horizontal, margine)
+                .frame(height: Misure.Rubrica.schedaAltezza)
+                .background(
+                    RoundedRectangle(cornerRadius: Misure.Pulsante.raggio)
+                        .fill(attiva ? Gradienti.schedaRubricaAttiva : Gradienti.schedaRubrica)
+                )
+                .overlay(alignment: .top) {
+                    if attiva {
+                        LinearGradient(colors: [Colori.Rubrica.schedaAttivaOmbra, .clear], startPoint: .top, endPoint: .bottom)
+                            .frame(height: 3)
+                            .clipShape(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio))
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: Misure.Pulsante.raggio)
+                        .strokeBorder(attiva ? Colori.Rubrica.schedaAttivaBordo : Colori.Rubrica.schedaBordo, lineWidth: 1)
+                )
+        }
+        .buttonStyle(StileSemplice())
     }
 }
 
@@ -183,7 +205,7 @@ struct SchedaAppCollegata: View {
             HStack(spacing: 10) {
                 IconaApp(app: app, lato: Misure.Rubrica.iconaApp)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(app.titolo).font(Tipo.schedaAppTitolo).foregroundColor(Colori.Rubrica.testo)
+                    Text(app.titolo).font(Tipo.schedaAppTitolo).foregroundColor(Colori.Rubrica.testo).lineLimit(1)
                     Text(sottotitolo).font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario).lineLimit(1)
                 }
                 Spacer(minLength: 4)

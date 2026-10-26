@@ -114,7 +114,7 @@ private struct SlidePartenza: View {
                             if let d = t.fondoDalLancio { cifra(CifreDoc.variazione(d), "dal lancio") }
                             if let d = t.fondoDaInizioAnno { cifra(CifreDoc.variazione(d), "da inizio \(annoUltimo(f))") }
                             if let q = t.fondoUltimaQuota, let valore = q.valore {
-                                cifra("€ " + quota(valore), "valore quota al \(q.etichetta)")
+                                cifra(quota(valore) + " €", "valore quota al \(q.etichetta)")
                             }
                         }
                         if !t.v.notaScenarioCentrale.isEmpty {

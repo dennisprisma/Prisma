@@ -64,7 +64,12 @@ extension Misure {
         static let alto: CGFloat = 0.07
         static let basso: CGFloat = 0.05
         // Riepilogo delle app aperte
+        /// Larghezza fissa e altezza massima: sotto il massimo il riquadro è alto quanto le schede.
         static let riepilogo = CGSize(width: 620, height: 470)
+        /// Titolo (44), piede (52) e margini (2 × 24) della cornice dei moduli, oltre al contenuto.
+        static let corniceModulo: CGFloat = 144
+        /// Il messaggio "La scrivania è tutta tua." quando non ci sono app aperte.
+        static let vuotoAltezza: CGFloat = 140
         static let iconaApp: CGFloat = 57
         static let colonne = 3
     }

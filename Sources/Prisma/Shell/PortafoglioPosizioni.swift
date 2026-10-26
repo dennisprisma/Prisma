@@ -180,7 +180,7 @@ extension AppPosizioni {
                             .lineLimit(1)
                             Spacer()
                             EtichettaCanale(canale: pos.canale, compatta: true)
-                            Text(pos.area == .protezione ? "copertura" : Formati.euro(pos.valore))
+                            Text(pos.area == .protezione ? (pos.capitaleAssicurato.map { Formati.euro($0) } ?? "—") : Formati.euro(pos.valore))
                                 .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
                                 .frame(width: Misure.Portafoglio.colonnaImporto, alignment: .trailing)
                         }

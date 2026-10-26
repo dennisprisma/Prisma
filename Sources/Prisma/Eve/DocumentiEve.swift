@@ -189,7 +189,7 @@ extension MotoreSintesi {
 
     private func cifra(_ c: CampoEstratto) -> String {
         switch c.chiave.unita {
-        case "€": return "€ \(c.valore)"
+        case "€": return "\(c.valore) €"
         case "%": return "\(c.valore)%"
         case "": return c.valore
         default: return "\(c.valore) \(c.chiave.unita)"

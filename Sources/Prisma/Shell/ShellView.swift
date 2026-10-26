@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// L'unica finestra di Prisma: sfondo, scrivania, finestre interne, dock e barra superiore.
 struct ShellView: View {
@@ -9,6 +10,8 @@ struct ShellView: View {
     @Environment(\.modoIstantanea) var modoIstantanea
     /// Il puntatore è sul dock (o sul bordo in basso) mentre è nascosto: si mostra sopra le finestre.
     @State private var dockRichiamato = false
+    /// Un file trascinato sopra Prisma: si mostra dove va.
+    @State private var fileSopra = false
 
     /// Area delle finestre interne: sotto la barra superiore, sopra il dock. Con il dock nascosto
     /// (almeno una finestra aperta) le finestre arrivano fino in fondo.
@@ -87,12 +90,29 @@ struct ShellView: View {
                         .transition(.opacity)
                 }
 
+                if fileSopra {
+                    RoundedRectangle(cornerRadius: Misure.Avvisi.rilascioRaggio)
+                        .strokeBorder(Colori.Analisi.navBasso, style: StrokeStyle(lineWidth: 3, dash: [8, 5]))
+                        .background(Colori.Analisi.navBasso.opacity(0.06))
+                        .padding(Misure.Avvisi.rilascioMargine)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .allowsHitTesting(false)
+                    VistaAvviso(testo: "Rilascia per importare: Excel o CSV di clienti e posizioni, vCard, PDF e foto di documenti.")
+                        .frame(width: geo.size.width, height: geo.size.height - Misure.Avvisi.distanzaBasso, alignment: .bottom)
+                        .allowsHitTesting(false)
+                }
+
                 if let testo = stato.avviso {
                     VistaAvviso(testo: testo)
                         .frame(width: geo.size.width, height: geo.size.height - Misure.Avvisi.distanzaBasso, alignment: .bottom)
                         .transition(.opacity.combined(with: .offset(y: 15)))
                         .allowsHitTesting(false)
                 }
+            }
+            .onDrop(of: [.fileURL], isTargeted: Binding(get: { fileSopra }, set: { fileSopra = $0 && puoRicevereFile })) { fornitori in
+                guard puoRicevereFile else { return false }
+                raccogliURL(fornitori) { stato.importaFileTrascinati($0) }
+                return true
             }
             .onAppear { aggiornaArea(geo.size) }
             // La dimensione nuova, non l'area calcolata nel disegno precedente
@@ -113,6 +133,26 @@ struct ShellView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
             stato.schermoIntero = false
         }
+    }
+
+    /// Niente importazioni a schermo bloccato, in modalità cliente o in sola lettura.
+    private var puoRicevereFile: Bool { !stato.bloccato && !stato.inModoCliente && !stato.solaLettura && stato.presentazione == nil }
+
+    /// Gli indirizzi dei file trascinati, tutti insieme, sul thread principale.
+    private func raccogliURL(_ fornitori: [NSItemProvider], poi: @escaping ([URL]) -> Void) {
+        let gruppo = DispatchGroup()
+        let coda = DispatchQueue(label: "prisma.rilascio")
+        var urls: [URL] = []
+        for f in fornitori {
+            gruppo.enter()
+            _ = f.loadObject(ofClass: URL.self) { url, _ in
+                coda.async {
+                    if let url { urls.append(url) }
+                    gruppo.leave()
+                }
+            }
+        }
+        gruppo.notify(queue: .main) { if !urls.isEmpty { poi(urls) } }
     }
 
     private func aggiornaArea(_ dimensione: CGSize) {

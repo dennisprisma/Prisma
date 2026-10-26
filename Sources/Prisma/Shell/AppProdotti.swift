@@ -240,7 +240,8 @@ struct AppProdotti: View {
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                         }
                     }
-                    .frame(width: 280, alignment: .leading)
+                    .frame(minWidth: Misure.SchedaProdotto.fonteMinima, idealWidth: Misure.SchedaProdotto.fonte,
+                           maxWidth: Misure.SchedaProdotto.fonte, alignment: .leading)
                 }
                 condizioni(p)
                 PannelloAnalisi(titolo: "Dove è usata", nota: usi.isEmpty ? "Nessuna posizione o proposta collegata" : nil) { EmptyView() } contenuto: {
@@ -304,10 +305,9 @@ struct ModuloProdotto: View {
                     .labelsHidden().pickerStyle(.segmented).frame(width: 240)
                 }
                 CampoModulo(etichetta: "Area") {
-                    Picker("", selection: $bozza.area) {
-                        ForEach([AreaPosizione.investimento, .risparmio, .previdenza, .protezione]) { Text($0.nome).tag($0) }
-                    }
-                    .labelsHidden().frame(width: 200)
+                    MenuTendina(selezione: $bozza.area,
+                                opzioni: [AreaPosizione.investimento, .risparmio, .previdenza, .protezione].map { ($0, $0.nome) },
+                                larghezza: 200)
                 }
                 CampoModulo(etichetta: "Compagnia o emittente") { TextField("", text: $bozza.emittente).textFieldStyle(.roundedBorder) }
                 CampoModulo(etichetta: "Tipologia") { TextField("", text: $bozza.tipologia).textFieldStyle(.roundedBorder) }
@@ -316,11 +316,9 @@ struct ModuloProdotto: View {
                 CampoModulo(etichetta: "Costo annuo") { percento($bozza.costoAnnuo, "% all'anno") }
                 CampoModulo(etichetta: "Fiscalità") { percento($bozza.aliquotaFiscale, "% sul rendimento") }
                 CampoModulo(etichetta: "Rischio (SRI)") {
-                    Picker("", selection: $bozza.sri) {
-                        Text("Non indicato").tag(Int?.none)
-                        ForEach(1...7, id: \.self) { Text("\($0)").tag(Optional($0)) }
-                    }
-                    .labelsHidden().frame(width: 140)
+                    MenuTendina(selezione: $bozza.sri,
+                                opzioni: [(Int?.none, "Non indicato")] + (1...7).map { (Optional($0), "\($0)") },
+                                larghezza: 140)
                 }
                 CampoModulo(etichetta: "Garanzie") { TextField("", text: $bozza.garanzie).textFieldStyle(.roundedBorder) }
                 CampoModulo(etichetta: "Riscatto e liquidabilità") { TextField("", text: $bozza.liquidabilita).textFieldStyle(.roundedBorder) }

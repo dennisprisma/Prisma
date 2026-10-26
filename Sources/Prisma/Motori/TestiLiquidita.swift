@@ -23,7 +23,7 @@ struct TestiLiquidita {
     var ruoloConsulente: String {
         if canali == [.alleanza] { return "Consulente Alleanza Assicurazioni" }
         if canali == [.indipendente] { return "Consulenza finanziaria" }
-        return "Consulente Alleanza Assicurazioni e consulenza finanziaria"
+        return "Alleanza Assicurazioni · consulenza finanziaria"
     }
 
     var titoloArrivo: String {

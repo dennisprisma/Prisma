@@ -127,12 +127,9 @@ struct AppAgenda: View {
             Segmentato(opzioni: [(VistaAgenda.settimana, "Settimana"), (VistaAgenda.mese, "Mese")], selezione: $stato.vistaAgenda)
                 .frame(width: 170)
             Spacer(minLength: 0)
-            Picker("", selection: $stato.filtroClienteAgenda) {
-                Text("Tutti i clienti").tag(String?.none)
-                ForEach(stato.clienti) { c in Text(c.nome).tag(Optional(c.id)) }
-            }
-            .labelsHidden()
-            .frame(width: 190)
+            MenuTendina(selezione: $stato.filtroClienteAgenda,
+                        opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
+                        larghezza: 190)
             Button("＋ Appuntamento") { nuovoAppuntamento() }
                 .buttonStyle(StileBlu())
         }
@@ -294,8 +291,12 @@ struct AppAgenda: View {
         let daSvolgere = eventi.filter { $0.stato != .concluso }
         let minuti = daSvolgere.reduce(0) { $0 + $1.durataMinuti }
         let scadenze = giorni.reduce(0) { $0 + indice.scadenze($1).count }
+        // Il periodo dei conteggi: la settimana del giorno scelto, anche nella vista del mese
+        let corrente = giorni.contains { cal.isDateInToday($0) }
+        let periodo = corrente ? "QUESTA SETTIMANA"
+            : "SETTIMANA DEL \(giorni.first.map { Formati.giornoMeseBreve.string(from: $0) } ?? "")".uppercased()
         return HStack(spacing: 6) {
-            Text("QUESTA SETTIMANA")
+            Text(periodo)
                 .font(Tipo.paginaOcchiello)
                 .tracking(1.2)
                 .padding(.trailing, 5)
@@ -679,43 +680,88 @@ struct DettaglioAppuntamento: View {
                 .padding(.trailing, 4)
             }
 
-            Grid(horizontalSpacing: 6, verticalSpacing: 6) {
-                GridRow {
-                    PulsanteAzione(titolo: "✦ Prepara con Eve", principale: true) {
-                        stato.clienteAttivoId = evento.clienteId
-                        stato.apri(.eve)
+            // Nelle finestre strette le azioni passano da tre a due colonne, senza troncare i titoli.
+            ViewThatFits(in: .horizontal) {
+                Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+                    GridRow {
+                        azioneEve.gridCellColumns(2)
+                        azioneModifica
                     }
-                    .gridCellColumns(2)
-                    PulsanteAzione(titolo: "Modifica", azione: modifica)
-                }
-                GridRow {
-                    PulsanteAzione(titolo: concluso ? "Riapri incontro" : "✓ Segna concluso") { stato.alternaConcluso(evento.id) }
-                    PulsanteAzione(titolo: "＋ Attività collegata", azione: nuovaAttivita)
-                    PulsanteAzione(titolo: "Scheda cliente") { stato.apriCliente(evento.clienteId) }
-                }
-                GridRow {
-                    PulsanteAzione(titolo: stato.fascicoloArchiviato(per: evento) == nil ? "▤ Prepara il fascicolo da consegnare"
-                                                                                       : "▤ Fascicolo consegnato: aprilo in Documenti") {
-                        if let d = stato.fascicoloArchiviato(per: evento) {
-                            stato.clienteAttivoId = evento.clienteId
-                            stato.documentoSelezionato = d.id
-                            stato.apri(.documenti)
-                        } else {
-                            stato.preparaFascicolo(per: evento)
-                        }
+                    GridRow {
+                        azioneConcluso(concluso)
+                        azioneAttivita
+                        azioneScheda
                     }
-                    .gridCellColumns(3)
+                    GridRow { azioneFascicolo.gridCellColumns(3) }
+                    GridRow { azioneIncontro.gridCellColumns(3) }
                 }
-                GridRow {
-                    PulsanteAzione(titolo: stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
-                                   ? "◷ Apri l'incontro: appunti e decisioni" : "◷ Prepara l'incontro: temi, ascolto, prossimi passi") {
-                        stato.apriIncontro(per: evento)
+                Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+                    GridRow {
+                        azioneEve
+                        azioneModifica
                     }
-                    .gridCellColumns(3)
+                    GridRow {
+                        azioneConcluso(concluso)
+                        azioneAttivita
+                    }
+                    GridRow {
+                        azioneScheda
+                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                    }
+                    GridRow { azioneFascicolo.gridCellColumns(2) }
+                    GridRow { azioneIncontro.gridCellColumns(2) }
                 }
             }
             .padding(.top, 7)
             .bordoAlto(Colori.Agenda.azioniBordo)
+        }
+    }
+
+    // MARK: - Azioni del dettaglio
+
+    private var azioneEve: some View {
+        PulsanteAzione(titolo: "✦ Prepara con Eve", principale: true) {
+            stato.clienteAttivoId = evento.clienteId
+            stato.apri(.eve)
+        }
+    }
+
+    private var azioneModifica: some View {
+        PulsanteAzione(titolo: "Modifica", azione: modifica)
+    }
+
+    private func azioneConcluso(_ concluso: Bool) -> some View {
+        PulsanteAzione(titolo: concluso ? "Riapri incontro" : "✓ Segna concluso") { stato.alternaConcluso(evento.id) }
+    }
+
+    private var azioneAttivita: some View {
+        PulsanteAzione(titolo: "＋ Attività collegata", azione: nuovaAttivita)
+    }
+
+    private var azioneScheda: some View {
+        PulsanteAzione(titolo: "Scheda cliente") { stato.apriCliente(evento.clienteId) }
+    }
+
+    private var azioneFascicolo: some View {
+        let archiviato = stato.fascicoloArchiviato(per: evento)
+        return PulsanteAzione(titolo: archiviato == nil ? "Prepara il fascicolo da consegnare"
+                                                        : "Fascicolo consegnato: aprilo in Documenti",
+                              simbolo: "doc.text") {
+            if let d = stato.fascicoloArchiviato(per: evento) {
+                stato.clienteAttivoId = evento.clienteId
+                stato.documentoSelezionato = d.id
+                stato.apri(.documenti)
+            } else {
+                stato.preparaFascicolo(per: evento)
+            }
+        }
+    }
+
+    private var azioneIncontro: some View {
+        PulsanteAzione(titolo: stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
+                       ? "Apri l'incontro: appunti e decisioni" : "Prepara l'incontro: temi, ascolto, prossimi passi",
+                       simbolo: "clock") {
+            stato.apriIncontro(per: evento)
         }
     }
 

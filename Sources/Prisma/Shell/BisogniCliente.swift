@@ -76,7 +76,7 @@ struct BisogniCliente: View {
                                 Text(o.nome).font(Tipo.bisognoNota).foregroundColor(Colori.Rubrica.secondario)
                             }
                         }
-                        Text(motivo.map { "\($0.titolo): \($0.motivo)" } ?? "Indicato dal cliente.")
+                        Text(motivo.map { "\($0.titolo): \(Self.minuscola($0.motivo))" } ?? "Indicato dal cliente.")
                             .font(Tipo.bisognoTesto)
                             .foregroundColor(Colori.Rubrica.secondario)
                             .fixedSize(horizontal: false, vertical: true)
@@ -160,7 +160,7 @@ struct BisogniCliente: View {
             } else {
                 HStack(spacing: 6) {
                     Button("Scarta") { stato.aggiornaBisogni(cliente.id) { $0.esiti[b.id] = false } }
-                        .buttonStyle(StileCuoioChiaro())
+                        .buttonStyle(StileCuoioChiaro(altezza: Misure.Pulsante.altezzaAqua))
                     Button("Conferma") { stato.aggiornaBisogni(cliente.id) { $0.esiti[b.id] = true } }
                         .buttonStyle(StileAqua())
                 }
@@ -222,6 +222,13 @@ struct BisogniCliente: View {
                 .bordoBasso(Colori.Rubrica.filo)
             }
         }
+    }
+
+    /// Il motivo dopo i due punti comincia in minuscolo, salvo le sigle ("SRI", "TFR").
+    static func minuscola(_ s: String) -> String {
+        let due = Array(s.prefix(2))
+        if due.count == 2, due[1].isUppercase { return s }
+        return s.prefix(1).lowercased() + s.dropFirst()
     }
 }
 

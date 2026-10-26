@@ -27,8 +27,16 @@ struct Nota: Identifiable, Codable, Hashable {
     /// Le prime parole del testo, su una riga.
     var anteprima: String {
         let compatto = testo.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-        return compatto.isEmpty ? "Una pagina pronta per le tue idee." : String(compatto.prefix(95))
+        guard !compatto.isEmpty else { return "Una pagina pronta per le tue idee." }
+        guard compatto.count > Nota.limiteAnteprima else { return compatto }
+        // Si taglia all'ultimo spazio, mai a metà parola
+        let inizio = compatto.prefix(Nota.limiteAnteprima)
+        let taglio = inizio.lastIndex(of: " ").map { String(inizio[..<$0]) } ?? String(inizio)
+        return taglio.trimmingCharacters(in: CharacterSet(charactersIn: " ,;:.")) + "…"
     }
+
+    /// Caratteri dell'anteprima su una riga.
+    static let limiteAnteprima = 95
 
     /// Il testo su una riga, fino a `n` caratteri (per Eve).
     func estratto(_ n: Int) -> String {

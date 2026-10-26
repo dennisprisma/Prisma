@@ -313,7 +313,7 @@ private struct PaginaBasi: View {
                 let d = CifreDoc.variazione((v / prima - 1) * 100)
                 variazione = i == f.storico.count - 1 ? "\(d) da inizio anno" : "\(d) fino a fine \(p.etichetta.suffix(4))"
             }
-            righe.append(RigaDoc(celle: [CellaDoc(p.etichetta, font: T.pTabella), CellaDoc(p.valore.map { "€ " + quota($0) } ?? "n.d.", font: T.pTabella),
+            righe.append(RigaDoc(celle: [CellaDoc(p.etichetta, font: T.pTabella), CellaDoc(p.valore.map { quota($0) + " €" } ?? "n.d.", font: T.pTabella),
                                          CellaDoc(variazione, font: T.pTabella)], altezza: 13))
             if let v = p.valore { precedente = v }
         }

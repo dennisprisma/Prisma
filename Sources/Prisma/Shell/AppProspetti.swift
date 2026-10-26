@@ -793,7 +793,8 @@ private struct PannelloCommento: View {
                         Text(PannelloCommento.nota(s)).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                     }
                     Spacer()
-                    Text("\(testo.count) / \(CommentoEve.limite)")
+                    // Cifre all'italiana ("1.400"), non con la virgola delle migliaia inglese
+                    Text(verbatim: "\(Formati.numeroFormatter.string(from: NSNumber(value: testo.count)) ?? "\(testo.count)") / \(Formati.numeroFormatter.string(from: NSNumber(value: CommentoEve.limite)) ?? "\(CommentoEve.limite)")")
                         .font(Tipo.kpiNota)
                         .foregroundColor(testo.count > CommentoEve.limite ? Colori.Analisi.erroreTesto : Colori.Analisi.kpiNota)
                 }

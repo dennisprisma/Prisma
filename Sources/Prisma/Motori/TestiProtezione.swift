@@ -19,7 +19,7 @@ struct TestiProtezione {
     var ruoloConsulente: String {
         if e.canali == [.alleanza] { return "Consulente Alleanza Assicurazioni" }
         if e.canali == [.indipendente] { return "Consulenza finanziaria" }
-        return "Consulente Alleanza Assicurazioni e consulenza finanziaria"
+        return "Alleanza Assicurazioni · consulenza finanziaria"
     }
 
     /// "Luca (convivente), Anna (figlia, 9 anni)".

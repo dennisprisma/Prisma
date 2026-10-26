@@ -188,6 +188,8 @@ struct EtichettaStato: View {
 struct PulsanteAzione: View {
     let titolo: String
     var principale = false
+    /// Simbolo SF davanti al titolo (i glifi come "▤" nel font di sistema diventano quadratini).
+    var simbolo: String? = nil
     let azione: () -> Void
 
     var body: some View {
@@ -198,7 +200,11 @@ struct PulsanteAzione: View {
             .buttonStyle(StileBlu())
         } else {
             Button(action: azione) {
-                Text(titolo).font(Tipo.pulsantePiccolo).lineLimit(1).frame(maxWidth: .infinity)
+                HStack(spacing: Misure.Agenda.spazioSimbolo) {
+                    if let simbolo { Image(systemName: simbolo) }
+                    Text(titolo).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 6)))
         }

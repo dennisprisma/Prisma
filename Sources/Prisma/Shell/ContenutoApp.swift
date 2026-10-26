@@ -86,9 +86,13 @@ struct AzioneNuovoCliente: View {
     var body: some View {
         HStack(spacing: 8) {
             Button("Importa…") { stato.importaClientiDaFile() }
-                .buttonStyle(StileAqua())
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                 .disabled(stato.solaLettura)
-                .help("Importa clienti da un file vCard (app Contatti) o CSV (Excel, Numbers)")
+                .help("Importa clienti da un file vCard (app Contatti), Excel o CSV. Puoi anche trascinare il file sulla finestra.")
+            Button("Incolla da Excel") { stato.incollaDaExcel(posizioni: false) }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                .disabled(stato.solaLettura)
+                .help("Copia in Excel le righe dei clienti con l'intestazione (⌘C), poi premi qui")
             Button("＋ Nuovo cliente") { stato.richiestaNuovoCliente = true }
                 .buttonStyle(StileAqua())
         }
@@ -167,7 +171,11 @@ struct AzioniPosizioni: View {
             Button("Importa…") { stato.importaPosizioniDaFile() }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                 .disabled(stato.solaLettura)
-                .help("Importa posizioni da un CSV (elenco delle polizze, portafoglio esportato da Excel)")
+                .help("Importa posizioni da Excel o CSV (elenco delle polizze, portafoglio). Puoi anche trascinare il file sulla finestra.")
+            Button("Incolla da Excel") { stato.incollaDaExcel(posizioni: true) }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                .disabled(stato.solaLettura)
+                .help("Copia in Excel le righe delle polizze con l'intestazione (⌘C), poi premi qui")
             Button("＋ Proposta") { stato.richiestaNuovaPosizione = .proposta }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
             Button("＋ Posizione") { stato.richiestaNuovaPosizione = .inEssere }

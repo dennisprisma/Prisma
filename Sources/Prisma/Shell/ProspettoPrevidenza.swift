@@ -39,7 +39,7 @@ private struct PaginaDivario: View {
             }
             HStack(spacing: 6) {
                 CifraProspetto("Reddito desiderato", TestiPrevidenza.mese(e.redditoDesiderato), "netto, in euro di oggi")
-                CifraProspetto("Pensione pubblica", TestiPrevidenza.mese(e.pensionePubblica), "stima, da verificare con l'INPS")
+                CifraProspetto("Pensione pubblica", TestiPrevidenza.mese(e.pensionePubblica), "stima INPS da verificare")
                 CifraProspetto("Divario", TestiPrevidenza.mese(e.divario), "da integrare", colore: e.divario > 0.5 ? C.negativo : nil)
                 CifraProspetto("Dai piani di oggi", TestiPrevidenza.mese(e.renditaInEssere), "per \(e.anniIntegrazione) anni")
                 CifraProspetto("Resta da coprire", TestiPrevidenza.mese(e.divarioResiduo), "senza le proposte",
@@ -54,6 +54,8 @@ private struct PaginaDivario: View {
                                "al \(CifreDoc.condizione(e.rendimentoReale)) reale annuo")
                 CifraProspetto("Risparmio IRPEF", e.aliquotaMarginale == nil ? "—" : CifreDoc.euro(e.risparmioConProposte),
                                e.aliquotaMarginale.map { "l'anno, aliquota \(CifreDoc.condizione($0))" } ?? "reddito non indicato")
+                // Quinto posto vuoto: le schede restano larghe e allineate a quelle della riga sopra
+                Color.clear.frame(maxWidth: .infinity)
             }
             SezioneProspetto(titolo: "I piani alla pensione",
                              testo: Text(verbatim: "Ogni piano portato fino a \(e.etaPensione) anni con i suoi versamenti, il rendimento netto dell'imposta sui rendimenti e i suoi costi. Alla prestazione si tassano solo i contributi dedotti, con l'aliquota che spetterà allora."))

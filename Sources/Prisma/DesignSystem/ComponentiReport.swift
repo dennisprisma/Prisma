@@ -141,7 +141,9 @@ struct CopertinaReport: View {
                         Text(verbatim: titolo).font(T.copertinaTitolo).foregroundColor(.white)
                             .shadow(color: Color.black.opacity(0.4), radius: 0, x: 0, y: -1)
                             .lineLimit(3).minimumScaleFactor(0.7).padding(.top, 12)
+                        // Larghezza limitata: le righe del sottotitolo vanno a capo bilanciate
                         Text(verbatim: sottotitolo).font(T.copertinaSottotitolo).italic().foregroundColor(C.copertinaTesto)
+                            .frame(maxWidth: 440, alignment: .leading)
                             .padding(.top, 10)
                         Text(verbatim: nomi).font(T.copertinaNomi).foregroundColor(.white).padding(.top, 22)
                         Spacer(minLength: 0)
@@ -149,6 +151,7 @@ struct CopertinaReport: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(verbatim: TestiValutazione.consulente).font(T.copertinaConsulente).foregroundColor(.white)
                                 Text(verbatim: ruolo).font(T.copertinaRuolo).foregroundColor(C.copertinaTesto)
+                                    .fixedSize(horizontal: true, vertical: false)
                                 Text(verbatim: CifreDoc.data(data)).font(T.copertinaRuolo).foregroundColor(C.copertinaTesto)
                             }
                             VStack(alignment: .leading, spacing: 4) {

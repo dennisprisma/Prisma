@@ -177,8 +177,11 @@ struct DettaglioPosizione: View {
                         .foregroundColor(Colori.Analisi.kpiNota)
                         .frame(width: 118, alignment: .leading)
                     ScalaRischio(valore: p.sri)
+                    Spacer(minLength: 0)
                 }
                 .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
     }
@@ -192,20 +195,20 @@ struct DettaglioPosizione: View {
                 if f.regime == .previdenza {
                     RigaDato("Partecipazione", "\(f.anniPartecipazione ?? 0) anni", larghezza: 118)
                     ForEach(f.uscite.filter(\.possibile)) { u in
-                        RigaDato(u.causa.nomeBreve, "\(CifreDoc.euroCentesimi(u.netto)) netti · \(CifreDoc.percento(u.aliquota, decimali: 2))", larghezza: 118)
+                        RigaDato(u.causa.nomeBreve, "\(Formati.euroDecimali(u.netto)) netti · \(CifreDoc.percento(u.aliquota, decimali: 2))", larghezza: 118)
                     }
                     if let g = f.gradini.first {
                         RigaDato("Prossimo calo", "dal \(Formati.dataBreve.string(from: g.dal)) al \(CifreDoc.percento(g.aliquota, decimali: 2))", larghezza: 118)
                     }
                 } else {
                     if f.penale + f.bolloMaturato > 0.005 {
-                        RigaDato("Penale e bollo", CifreDoc.euroCentesimi(f.penale + f.bolloMaturato), larghezza: 118)
+                        RigaDato("Penale e bollo", Formati.euroDecimali(f.penale + f.bolloMaturato), larghezza: 118)
                     }
-                    RigaDato("Imposta", f.imposta > 0.005 ? "\(CifreDoc.euroCentesimi(f.imposta)) (\(CifreDoc.percento(f.aliquota, decimali: 2)))" : "nessuna", larghezza: 118)
-                    RigaDato("Netto", CifreDoc.euroCentesimi(f.netto), larghezza: 118)
+                    RigaDato("Imposta", f.imposta > 0.005 ? "\(Formati.euroDecimali(f.imposta)) (\(CifreDoc.percento(f.aliquota, decimali: 2)))" : "nessuna", larghezza: 118)
+                    RigaDato("Netto", Formati.euroDecimali(f.netto), larghezza: 118)
                 }
                 if f.costoTotale > 0.005 {
-                    RigaDato("Costi in un anno", CifreDoc.euroCentesimi(f.costoTotale), larghezza: 118)
+                    RigaDato("Costi in un anno", Formati.euroDecimali(f.costoTotale), larghezza: 118)
                 }
             }
         }
@@ -240,7 +243,7 @@ struct DettaglioPosizione: View {
                 }
                 let voce = MotoreResoconto.voce(posizione)
                 if let v = voce.variazione12, let q = voce.variazione12Percento {
-                    RigaDato("Ultimi 12 mesi", "\(CifreDoc.euroSegno(v)) (\(CifreDoc.variazione(q))), tolti i versamenti", larghezza: 118)
+                    RigaDato("Ultimi 12 mesi", "\(v.rounded() > 0 ? "+" : "")\(Formati.euro(v)) (\(CifreDoc.variazione(q))), tolti i versamenti", larghezza: 118)
                 }
                 Text(punti.count < 2 ? "Quando aggiorni il controvalore, il valore precedente resta qui: serve al resoconto per gli ultimi 12 mesi."
                                      : "Il valore precedente resta qui a ogni aggiornamento del controvalore.")

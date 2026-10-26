@@ -215,7 +215,7 @@ struct AppAnalisi360: View {
                 .font(Tipo.chip)
                 .foregroundColor(Colori.Strumenti.piedeTesto)
                 .padding(.horizontal, 12)
-                .frame(height: 28)
+                .frame(height: Misure.Strumenti.piede)
                 .background(Colori.Strumenti.piede)
                 .bordoAlto(Colori.Strumenti.piedeBordo)
             }
@@ -330,7 +330,7 @@ struct AppAnalisi360: View {
             }
             .foregroundColor(Colori.Strumenti.ipotesiTesto)
             .padding(.horizontal, 12)
-            .frame(height: 38)
+            .frame(height: Misure.Strumenti.piede)
             .background(Gradienti.testaIpotesi)
             .bordoAlto(Colori.Strumenti.ipotesiBordo)
         }

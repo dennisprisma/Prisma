@@ -57,19 +57,15 @@ struct AppIncontri: View {
 
     private var barra: some View {
         HStack(spacing: 10) {
-            Picker("", selection: $stato.clienteAttivoId) {
-                ForEach(stato.clienti) { c in Text(c.nome).tag(c.id) }
-            }
-            .labelsHidden()
-            .frame(width: 190)
+            MenuTendina(selezione: $stato.clienteAttivoId,
+                        opzioni: stato.clienti.map { ($0.id, $0.nome) },
+                        larghezza: 190)
             if !elenco.isEmpty {
-                Picker("", selection: Binding(get: { corrente?.id ?? "" }, set: { stato.incontroAperto = $0 })) {
-                    ForEach(elenco) { i in
-                        Text("\(Formati.dataBreve.string(from: i.data)) · \(i.titolo)\(i.stato == .concluso ? " ✓" : "")").tag(i.id)
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 330)
+                MenuTendina(selezione: Binding(get: { corrente?.id ?? "" }, set: { stato.incontroAperto = $0 }),
+                            opzioni: elenco.map { i in
+                                (i.id, "\(Formati.dataBreve.string(from: i.data)) · \(i.titolo)\(i.stato == .concluso ? " ✓" : "")")
+                            },
+                            larghezza: 330)
             }
             if let i = corrente {
                 Text(i.stato == .concluso ? "Concluso" : "In preparazione · \(Formati.dataOra.string(from: i.data))")
@@ -310,10 +306,9 @@ struct AppIncontri: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("IL PROSSIMO PASSO").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Incontri.citazione)
                 TextField("Attività concordata (facoltativa)", text: b.prossimaAttivita).textFieldStyle(.roundedBorder)
-                HStack {
-                    Text("Entro").font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
-                    CampoDataFacoltativa(data: b.scadenzaAttivita, predefinita: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date())
-                }
+                CampoDataFacoltativa(data: b.scadenzaAttivita,
+                                     predefinita: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date(),
+                                     etichetta: "Entro una data", font: Tipo.incontroNota)
                 Text("PROSSIMO INCONTRO").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Incontri.citazione).padding(.top, 6)
                 HStack(spacing: 8) {
                     Toggle("Da fissare", isOn: Binding(get: { i.prossimoIncontro != nil }, set: { si in

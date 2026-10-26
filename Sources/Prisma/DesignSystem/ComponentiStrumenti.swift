@@ -249,8 +249,8 @@ struct CampoIpotesi: View {
                 .font(Tipo.ipotesiNota)
                 .foregroundColor(Colori.Strumenti.ipotesiNota)
                 .lineLimit(1)
-                .fixedSize()
-                .frame(minWidth: 30, alignment: .leading)
+                .minimumScaleFactor(0.8)
+                .frame(width: Misure.Strumenti.unita, alignment: .leading)
         }
         .padding(.vertical, 6)
         .bordoBasso(Colori.Strumenti.ipotesiRiga)

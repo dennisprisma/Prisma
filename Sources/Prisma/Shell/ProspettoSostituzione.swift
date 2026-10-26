@@ -120,17 +120,17 @@ private struct PaginaDueStrade: View {
         }
         let f = e.uscita
         riga("Valore di \(t.a.nome) oggi", CifreDoc.euroCentesimi(e.valoreOggi), "controvalore dichiarato" + (t.a.dataValore.map { " al \(CifreDoc.dataBreve($0))" } ?? ""))
-        if e.penaleUscita > 0.005 { riga("Penale di riscatto", CifreDoc.togli(e.penaleUscita), "dalle condizioni del contratto", colore: C.negativo) }
-        if e.bolloUscita > 0.005 { riga("Bollo maturato", CifreDoc.togli(e.bolloUscita), "0,20% l'anno, si paga al riscatto", colore: C.negativo) }
+        if e.penaleUscita > 0.005 { riga("Penale di riscatto", CifreDoc.togliCentesimi(e.penaleUscita), "dalle condizioni del contratto", colore: C.negativo) }
+        if e.bolloUscita > 0.005 { riga("Bollo maturato", CifreDoc.togliCentesimi(e.bolloUscita), "0,20% l'anno, si paga al riscatto", colore: C.negativo) }
         if let r = e.riscattoPrevidenza {
-            riga("Imposta sul riscatto", "\(CifreDoc.meno) " + CifreDoc.euroCentesimi(r.imposta), "23% su \(CifreDoc.euroCentesimi(r.imponibile)) di contributi dedotti", colore: C.negativo)
+            riga("Imposta sul riscatto", CifreDoc.togliCentesimi(r.imposta), "23% su \(CifreDoc.euroCentesimi(r.imponibile)) di contributi dedotti", colore: C.negativo)
         } else if e.impostaUscita > 0.005, let f {
-            riga("Imposta sul guadagno", "\(CifreDoc.meno) " + CifreDoc.euroCentesimi(e.impostaUscita),
+            riga("Imposta sul guadagno", CifreDoc.togliCentesimi(e.impostaUscita),
                  "\(CifreDoc.percento(f.aliquota, decimali: 2)) su \(CifreDoc.euroCentesimi(f.imponibile)) (valore − penale − versato \(CifreDoc.euro(f.versato)))", colore: C.negativo)
         }
         riga("Netto reinvestito", CifreDoc.euroCentesimi(e.reinvestito), "quanto passa al nuovo prodotto", forte: true)
         if e.ingressoCambio > 0.005 {
-            riga("Costo d'ingresso di \(t.b.nome)", CifreDoc.togli(e.ingressoCambio), "\(CifreDoc.condizione(e.cambio.costoIngresso)) del capitale", colore: C.negativo)
+            riga("Costo d'ingresso di \(t.b.nome)", CifreDoc.togliCentesimi(e.ingressoCambio), "\(CifreDoc.condizione(e.cambio.costoIngresso)) del capitale", colore: C.negativo)
             riga("Investito nel nuovo prodotto", CifreDoc.euroCentesimi(e.investitoCambio), "capitale che lavora dal primo giorno", forte: true)
         }
         return righe

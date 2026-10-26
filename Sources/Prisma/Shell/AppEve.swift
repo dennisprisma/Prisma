@@ -66,7 +66,9 @@ struct AppEve: View {
                 Text("Mettiamo in ordine le idee.").font(Tipo.eveSottotitolo).foregroundColor(Colori.Eve.testataTesto)
             }
             .incisione(Colori.Eve.testataIncisione, y: -1)
-            Spacer()
+            .fixedSize()
+            .layoutPriority(1)
+            Spacer(minLength: 0)
             if !stato.inModoCliente {
                 SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.evePortafoglio)
                     .frame(width: 170)
@@ -74,13 +76,11 @@ struct AppEve: View {
             }
             if stato.evePortafoglio {
                 Text("Tutti i clienti").font(Tipo.eveAvviso).foregroundColor(Colori.Eve.testataTitolo)
-                    .frame(width: 200, alignment: .leading)
+                    .lineLimit(1)
+                    .frame(minWidth: 120, maxWidth: 200, alignment: .leading)
             } else {
-                Picker("", selection: $stato.clienteAttivoId) {
-                    ForEach(stato.clienti) { c in Text(c.nome).tag(c.id) }
-                }
-                .labelsHidden()
-                .frame(width: 200)
+                MenuTendina(selezione: $stato.clienteAttivoId, opzioni: stato.clienti.map { ($0.id, $0.nome) }, stile: .scuro)
+                    .frame(minWidth: 120, maxWidth: 200, alignment: .trailing)
             }
         }
         .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
@@ -109,11 +109,8 @@ struct AppEve: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
-            Picker("", selection: $stato.dati.impostazioni.eve.motore) {
-                ForEach(ImpostazioniEve.Motore.allCases) { m in Text(m.nome).tag(m) }
-            }
-            .labelsHidden()
-            .frame(width: 160)
+            MenuTendina(selezione: $stato.dati.impostazioni.eve.motore,
+                        opzioni: ImpostazioniEve.Motore.allCases.map { ($0, $0.nome) }, larghezza: 160)
             .help("Chi risponde: il modello Apple o Qwen sul Mac, se disponibili, oppure la sintesi dai dati del dossier")
         }
         .foregroundColor(Colori.Eve.avvisoTesto)
@@ -141,7 +138,7 @@ struct AppEve: View {
                 HStack {
                     Text("La giornata").font(Tipo.eveOcchiello).tracking(1)
                     Spacer()
-                    Text(Formati.dataLunga.string(from: Date()).capitalized).font(Tipo.eveGiornataData)
+                    Text(InterpreteComandi.maiuscola(Formati.dataLunga.string(from: Date()))).font(Tipo.eveGiornataData)
                 }
                 .foregroundColor(Colori.Eve.cuoioTesto)
                 .incisione(Colori.Agenda.cuoioIncisione)
@@ -248,7 +245,7 @@ struct AppEve: View {
         VStack(spacing: 0) {
             HStack {
                 Circle().fill(Colori.Eve.spiaPronta).frame(width: 6, height: 6)
-                Text("Conversazione con Eve").font(Tipo.eveIntestazione)
+                Text("Conversazione con Eve").font(Tipo.eveIntestazione).lineLimit(1)
                 Spacer()
                 Button("Nuova conversazione") { stato.nuovaConversazione() }
                     .buttonStyle(StileSemplice())
@@ -299,12 +296,18 @@ struct AppEve: View {
                         .fixedSize()
                 }
                 if stato.conversazioneAVoce {
-                    Button("■ Chiudi la conversazione a voce") { stato.fermaVoce() }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.eveAzione)
-                        .foregroundColor(Colori.Eve.displayTesto)
-                        .fixedSize()
-                        .help("Oppure di' a Eve «basta così»")
+                    Button { stato.fermaVoce() } label: {
+                        Text("■ Chiudi la conversazione a voce")
+                            .font(Tipo.eveAzione)
+                            .foregroundColor(Colori.Eve.azioneTesto)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.azioneEve))
+                            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.azioneBordo, lineWidth: 1))
+                            .fixedSize()
+                    }
+                    .buttonStyle(StileSemplice())
+                    .help("Oppure di' a Eve «basta così»")
                 }
             }
             .padding(.horizontal, 12)
@@ -395,23 +398,21 @@ struct AppEve: View {
                                 .disabled(stato.eveInCorso)
                         }
                     } else {
-                    ForEach(SpuntoEve.allCases) { s in
-                        Button { stato.chiediEve(s.domanda, spunto: s) } label: {
-                            HStack(spacing: 5) {
-                                Text(s.simbolo).foregroundColor(Colori.Analisi.navBasso)
-                                Text(s.domanda)
-                            }
-                            .font(Tipo.eveSpunto)
-                            .foregroundColor(Colori.Eve.azioneTesto)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Gradienti.azioneEve))
-                            .overlay(Capsule().strokeBorder(Colori.Eve.azioneBordo, lineWidth: 1))
+                        ForEach(SpuntoEve.allCases) { s in
+                            Button { stato.chiediEve(s.domanda, spunto: s) } label: { spunto(s.simbolo, s.domanda) }
+                                .buttonStyle(StileSemplice())
+                                .disabled(stato.eveInCorso)
                         }
-                        .buttonStyle(StileSemplice())
-                        .disabled(stato.eveInCorso)
                     }
-                    }
+                }
+                .padding(.trailing, Misure.SpuntiEve.sfumatura)
+            }
+            // Gli spunti che non stanno nella riga sfumano sul bordo destro: si capisce che continuano
+            .mask {
+                HStack(spacing: 0) {
+                    Rectangle()
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: Misure.SpuntiEve.sfumatura)
                 }
             }
             HStack(alignment: .bottom, spacing: 8) {

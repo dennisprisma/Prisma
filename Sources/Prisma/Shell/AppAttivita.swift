@@ -178,18 +178,12 @@ struct AppAttivita: View {
                        selezione: $stato.filtroStatoAttivita)
                 .frame(width: 260)
             Spacer(minLength: 0)
-            Picker("", selection: $stato.filtroClienteAttivita) {
-                Text("Tutti i clienti").tag(String?.none)
-                ForEach(stato.clienti) { c in Text(c.nome).tag(Optional(c.id)) }
-            }
-            .labelsHidden()
-            .frame(width: 180)
-            Picker("", selection: $stato.filtroPrioritaAttivita) {
-                Text("Tutte le priorità").tag(Attivita.Priorita?.none)
-                ForEach(Attivita.Priorita.allCases) { p in Text(p.nome).tag(Optional(p)) }
-            }
-            .labelsHidden()
-            .frame(width: 150)
+            MenuTendina(selezione: $stato.filtroClienteAttivita,
+                        opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
+                        larghezza: 180)
+            MenuTendina(selezione: $stato.filtroPrioritaAttivita,
+                        opzioni: [(Attivita.Priorita?.none, "Tutte le priorità")] + Attivita.Priorita.allCases.map { (Optional($0), $0.nome) },
+                        larghezza: 150)
         }
         .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
         .background(Gradienti.metalloAttivita)

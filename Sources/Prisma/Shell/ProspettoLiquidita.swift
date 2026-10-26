@@ -60,9 +60,9 @@ private struct PaginaCapitali: View {
                         return RigaDoc(celle: [CellaDoc(s.posizione.nome, sotto: s.posizione.tipologia, font: T.pTabellaForte),
                                                CellaDoc(CifreDoc.dataBreve(s.data), colore: s.scaduto ? C.negativo : nil, font: T.pTabella),
                                                CellaDoc(CifreDoc.euroCentesimi(f.valore), sotto: "versato \(CifreDoc.euro(f.versato))", font: T.pTabella),
-                                               CellaDoc(f.imposta > 0.005 ? CifreDoc.togli(f.imposta) : "—", sotto: f.imposta > 0.005 ? CifreDoc.percento(f.aliquota, decimali: 2) : "",
+                                               CellaDoc(f.imposta > 0.005 ? CifreDoc.togliCentesimi(f.imposta) : "—", sotto: f.imposta > 0.005 ? CifreDoc.percento(f.aliquota, decimali: 2) : "",
                                                         colore: C.negativo, font: T.pTabella),
-                                               CellaDoc(f.bolloMaturato > 0.005 ? CifreDoc.togli(f.bolloMaturato) : "—", font: T.pTabella),
+                                               CellaDoc(f.bolloMaturato > 0.005 ? CifreDoc.togliCentesimi(f.bolloMaturato) : "—", font: T.pTabella),
                                                CellaDoc(CifreDoc.euroCentesimi(f.netto), font: T.pTabellaForte)], altezza: 22)
                     }, nota: mie.count == 1 ? "1 posizione" : "\(mie.count) posizioni")
                 })
@@ -78,7 +78,7 @@ private struct PaginaCapitali: View {
                                   guard !mie.isEmpty else { return nil }
                                   return GruppoCanale(canale: c, righe: mie.map { p in
                                       let bollo = MotoreFiscale.bolloAnnuo(p, valore: p.valore)
-                                      return RigaDoc(celle: [CellaDoc(p.nome, sotto: p.emittente, font: T.pTabellaForte), CellaDoc(CifreDoc.euro(p.valore), font: T.pTabella),
+                                      return RigaDoc(celle: [CellaDoc(p.nome, sotto: p.emittente, font: T.pTabellaForte), CellaDoc(CifreDoc.euroCentesimi(p.valore), font: T.pTabella),
                                                              CellaDoc(bollo > 0.005 ? CifreDoc.euroCentesimi(bollo) : "—", font: T.pTabella)], altezza: 20)
                                   }, nota: "")
                               })

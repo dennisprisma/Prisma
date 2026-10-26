@@ -54,8 +54,8 @@ private struct PaginaChiE: View {
             }
             if let c = e.cliente {
                 SezioneProspetto(titolo: "Chi è")
-                TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Voce", peso: 1.4, destra: false), ColonnaDoc(titolo: "", peso: 3.6, destra: false)],
-                           righe: anagrafica(c), fontTesta: T.pTabellaTesta, altezzaTesta: 4, margine: 4)
+                TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Voce", peso: 1.4, destra: false), ColonnaDoc(titolo: "Cosa sappiamo", peso: 3.6, destra: false)],
+                           righe: anagrafica(c), fontTesta: T.pTabellaTesta, altezzaTesta: 12, margine: 4)
                 if !c.famiglia.isEmpty {
                     TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Familiare", peso: 2, destra: false), ColonnaDoc(titolo: "Relazione", peso: 1.2, destra: false),
                                                                ColonnaDoc(titolo: "Età", peso: 0.6), ColonnaDoc(titolo: "A carico", peso: 0.8)],
