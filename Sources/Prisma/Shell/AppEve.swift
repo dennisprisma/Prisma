@@ -30,8 +30,6 @@ struct AppEve: View {
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
         .onChange(of: stato.dettaturaAttiva) { attiva in if !attiva { campoAttivo = false } }
-        }
-
     }
 
     /// La dettatura di macOS scrive dove c'è il cursore: prima il campo (riaffermato, con qualche tentativo),

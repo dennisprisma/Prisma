@@ -74,7 +74,7 @@ enum Risorse {
                 return 1
             }
         }
-        if immagineNitida("Loghi/Alleanza_simbolo.png", in: CGSize(width: .infinity, height: 15), scala: 2) == nil {
+        if immagineNitida("Loghi/Alleanza_simbolo.png", in: CGSize(width: CGFloat.infinity, height: 15), scala: 2) == nil {
             print("ERRORE: logo Alleanza non ridotto")
             return 1
         }
@@ -184,7 +184,7 @@ struct ImmagineNitida: View {
 
     init(percorso: String, altezza: CGFloat) {
         self.percorso = percorso
-        misura = CGSize(width: .infinity, height: altezza)
+        misura = CGSize(width: CGFloat.infinity, height: altezza)
     }
 
     var body: some View {
