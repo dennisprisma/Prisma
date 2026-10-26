@@ -257,6 +257,15 @@ enum Misure {
         static let bluMargine = EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)
     }
 
+    /// Il menu a tendina: margini come i pulsanti di vetro piccoli, altezza come un campo.
+    enum Tendina {
+        static let margine = EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 8)
+        static let altezza: CGFloat = 24
+        static let raggio: CGFloat = 5
+        static let freccia: CGFloat = 8
+        static let spazio: CGFloat = 8
+    }
+
     enum Avvisi {
         static let raggio: CGFloat = 7
         static let distanzaBasso: CGFloat = 100

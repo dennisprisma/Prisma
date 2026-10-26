@@ -929,4 +929,16 @@ enum Colori {
         static let vuotoTitolo = Color(hex: "#85988b")
         static let vuotoTesto = Color(hex: "#97a69f")
     }
+
+    /// I menu a tendina (.os-select del template): vetro come i pulsanti, carta gialla nelle Note, scuro nelle testate di Eve.
+    enum Tendina {
+        static let freccia = Color(hex: "#5d6b78")
+        static let cartaFondo = Color(hex: "#fff9df")
+        static let cartaBordo = Color(hex: "#d7c794")
+        static let cartaTesto = Color(hex: "#625a4a")
+        static let scuroFondo = Color(hex: "#1734482e")
+        static let scuroBordo = Color(hex: "#bbd2df47")
+        static let scuroTesto = Color.white
+        static let scuroFreccia = Color(hex: "#ffffffb0")
+    }
 }
