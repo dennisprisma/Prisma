@@ -40,7 +40,7 @@ Tutto resta in locale sul Mac: niente server, niente cloud.
 - Backup: manuale (pulsante "Crea backup") + automatico settimanale, con rotazione (ultime 8 copie), cartella di destinazione scelta dall'utente (es. iCloud Drive o disco esterno) e funzione di ripristino. Il backup comprende clienti, agenda, posizioni, documenti e impostazioni di Eve.
 
 ## Eve (assistente AI)
-- Motore intercambiabile tramite un protocollo Swift: primo motore il modello Apple integrato (framework FoundationModels, sul dispositivo), con verifica di disponibilità a runtime e messaggio chiaro se non disponibile. In futuro eventualmente un modello Qwen 3-4B in locale.
+- Unico motore di intelligenza artificiale: **Qwen** sul Mac (Ollama su 127.0.0.1, modello qwen3:4b), dietro il protocollo Swift `MotoreEve`. Niente modello Apple. Se Qwen non è pronto Eve lo dice e non risponde; i calcoli di Prisma preparano le cifre esatte che Qwen racconta.
 - Eve estrae dati strutturati e spiega; calcoli e impaginazione di report e prospetti li fa l'app con modelli grafici fissi coerenti col template.
 - Prompt, istruzioni e configurazioni di Eve stanno nel repository, cartella Eve/.
 

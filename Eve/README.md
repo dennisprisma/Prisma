@@ -19,14 +19,11 @@ Protocollo Swift unico, così il motore si cambia senza riscrivere l'app. Capaci
 - estrazione strutturata secondo uno schema
 - uso di strumenti dell'app (vedi sotto)
 
-1. **Modello Apple integrato** (framework FoundationModels, sul dispositivo) — primo motore.
-   - Zero spazio su disco, zero costi, memoria gestita dal sistema.
-   - Generazione guidata: restituisce dati strutturati garantiti secondo lo schema.
-   - Richiede macOS 26 o successivo e Apple Intelligence attiva: l'app resta compatibile con macOS 13 e su sistemi più vecchi Eve mostra un messaggio chiaro.
-   - Finestra di contesto limitata (circa 4.000 token): i documenti lunghi vanno letti a pezzi (pagina o sezione), estraendo da ciascun pezzo e poi unendo i risultati nell'app.
-2. **Qwen 3-4B in locale** — eventuale, solo per i compiti dove il modello Apple non basta.
-   - Circa 2-3 GB di RAM: è la taglia massima sensata sul MacBook Pro M1 da 8 GB. Un 7-8B (circa 5 GB) metterebbe il Mac in affanno.
-   - Richiede una libreria esterna per l'esecuzione: va chiesto prima di aggiungerla.
+1. **Qwen 3-4B sul Mac** (Ollama, solo all'indirizzo 127.0.0.1) — unico motore di intelligenza artificiale.
+   - Circa 2,5 GB di RAM mentre risponde, poi la memoria torna libera (keep_alive 3 minuti): è la taglia giusta sul MacBook Pro M1 da 8 GB.
+   - Finestra di contesto piccola: la scheda del cliente resta sotto `ContestoEve.limite` e le cifre arrivano già calcolate da Prisma.
+   - Se Ollama è spento o manca il modello, Eve lo dice («Qwen non è pronto») e non risponde: nessuna risposta di riserva.
+   - Il modello Apple (FoundationModels) non si usa più.
 
 ## Lettura dei documenti (strumenti nativi, nessuna dipendenza)
 - PDF con testo: PDFKit.
@@ -41,10 +38,10 @@ Eve non calcola da sola: chiede all'app. Esempi:
 - lanciare un calcolo dei motori di Prisma (proiezioni, gap previdenziale, gap di protezione, confronti) e commentarne il risultato
 
 ## Eve e i documenti di analisi
-Gli spunti di Eve (check-up, resoconto, pensione, protezione, liquidità, obiettivi, restare o cambiare) usano gli stessi motori dei prospetti e dei report (`Sources/Prisma/Eve/AnalisiEve.swift`): le cifre in chat e sui documenti coincidono. Da Prospetti e report il pulsante «Chiedi a Eve» apre la spiegazione del documento aperto. Con il modello Apple le cifre arrivano come bozza (spunti) o come calcoli pertinenti (domande libere riconosciute dalle parole chiave); senza modello risponde la sintesi dai dati.
+Gli spunti di Eve (check-up, resoconto, pensione, protezione, liquidità, obiettivi, restare o cambiare) usano gli stessi motori dei prospetti e dei report (`Sources/Prisma/Eve/AnalisiEve.swift`): le cifre in chat e sui documenti coincidono. Da Prospetti e report il pulsante «Chiedi a Eve» apre la spiegazione del documento aperto. A Qwen le cifre arrivano come bozza (spunti) o come calcoli pertinenti (domande libere riconosciute dalle parole chiave); se nella risposta cambia una cifra, restano le cifre di Prisma.
 
 ## Eve e i documenti del cliente
-Da Documenti, «Chiedi a Eve» spiega un KID, una polizza o un estratto conto (`Sources/Prisma/Eve/DocumentiEve.swift`): i dati trovati con la pagina, il rischio e il periodo raccomandato letti con il profilo del cliente, i costi, cosa non torna con la posizione collegata, i dati ancora da confermare e quelli da verificare nelle condizioni. Lo spunto «Cosa dicono i documenti?» riassume tutti i documenti del cliente. Con il modello Apple la spiegazione diventa discorsiva, sulle stesse cifre.
+Da Documenti, «Chiedi a Eve» spiega un KID, una polizza o un estratto conto (`Sources/Prisma/Eve/DocumentiEve.swift`): i dati trovati con la pagina, il rischio e il periodo raccomandato letti con il profilo del cliente, i costi, cosa non torna con la posizione collegata, i dati ancora da confermare e quelli da verificare nelle condizioni. Lo spunto «Cosa dicono i documenti?» riassume tutti i documenti del cliente. Qwen rende la spiegazione discorsiva, sulle stesse cifre.
 
 ## Le proposte di Eve
 Lo spunto «Cosa proporre al cliente?» (`Sources/Prisma/Eve/ProposteEve.swift`) ricava dalle analisi le azioni da fare, in ordine di urgenza: copertura caso morte, tutela per invalidità, riserva di emergenza, piano previdenziale (con il risparmio IRPEF), piani di accumulo per gli obiettivi, capitale da far lavorare, capitali in scadenza. Salta ciò che ha già una proposta aperta. Ogni azione diventa, con un tocco, un'attività o una bozza di proposta in Posizioni con area e cifre: prodotto e canale li sceglie il consulente.

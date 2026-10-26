@@ -216,7 +216,7 @@ struct CommentoReport: Codable, Equatable, Identifiable {
     var id: String
     var clienteId: String
     var testo: String
-    /// Chi ha scritto la prima stesura ("Modello Apple", "Sintesi dai dati"); nil se scritto a mano.
+    /// Chi ha scritto la prima stesura ("Qwen sul Mac", "Calcoli di Prisma"); nil se scritto a mano.
     var bozzaDi: String?
     var aggiornatoIl = Date()
 }

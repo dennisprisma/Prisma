@@ -80,21 +80,10 @@ struct AppImpostazioni: View {
     }
 
     private var gruppoEve: some View {
-        let motivo = MotoriEve.motivoAppleNonDisponibile
-        return GruppoImpostazioni(titolo: "Eve") {
-            RigaImpostazione(titolo: "Chi risponde", sottotitolo: "Il modello Apple e Qwen lavorano sul Mac; la sintesi compone le risposte dai dati del dossier. Automatico: Apple, poi Qwen, poi la sintesi") {
-                MenuTendina(selezione: $stato.dati.impostazioni.eve.motore,
-                            opzioni: ImpostazioniEve.Motore.allCases.map { ($0, $0.nome) }, larghezza: 170)
-            }
-            RigaImpostazione(titolo: "Modello Apple", sottotitolo: motivo ?? "Pronto: Apple Intelligence è attiva su questo Mac",
-                             avvertenza: motivo == nil ? nil : "Senza il modello Apple, Eve risponde agli spunti con la sintesi dai dati") {
-                Text(motivo == nil ? "Disponibile" : "Non disponibile")
-                    .font(Tipo.rigaValore)
-                    .foregroundColor(Colori.Impostazioni.rigaTitolo)
-            }
+        GruppoImpostazioni(titolo: "Eve") {
             RigaImpostazione(titolo: "Qwen sul Mac",
                              sottotitolo: stato.disponibilitaLocale.motivo ?? "Pronto: \(stato.dati.impostazioni.eve.modelloLocale) con Ollama, solo su questo Mac",
-                             avvertenza: stato.disponibilitaLocale.pronto ? nil : "Facoltativo: serve l'app gratuita Ollama con il modello qwen3:4b (circa 2,5 GB di memoria mentre risponde)") {
+                             avvertenza: stato.disponibilitaLocale.pronto ? nil : "Eve risponde solo con Qwen: serve l'app gratuita Ollama aperta, con il modello qwen3:4b (circa 2,5 GB di memoria mentre risponde)") {
                 HStack(spacing: 8) {
                     TextField("qwen3:4b", text: $stato.dati.impostazioni.eve.modelloLocale)
                         .campoTesto()

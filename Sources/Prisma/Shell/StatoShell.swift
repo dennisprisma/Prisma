@@ -162,6 +162,8 @@ final class StatoShell: ObservableObject {
     @Published var conversazioneAVoce = false
     /// Qwen sul Mac (Ollama): pronto o perché no. Si aggiorna con `verificaMotoreLocale()`.
     @Published var disponibilitaLocale = DisponibilitaEve.nonDisponibile("Ollama non ancora verificato.")
+    /// Nelle istantanee e nelle prove, dove Qwen non c'è: Eve risponde subito con i calcoli di Prisma.
+    var rispostePreparate = false
     /// L'appuntamento chiesto a Eve a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
     var appuntamentoInSospeso: Appuntamento.Bozza?
     /// La dettatura di macOS nel campo di Eve: ogni richiesta la avvia; la frase parte da sola alla pausa.
@@ -791,7 +793,7 @@ final class StatoShell: ObservableObject {
 
     private static let codaLettura = DispatchQueue(label: "prisma.lettura-documenti", qos: .userInitiated)
 
-    /// Legge il testo (PDFKit, poi Vision per le scansioni) e cerca i dati; il modello Apple completa.
+    /// Legge il testo (PDFKit, poi Vision per le scansioni) e cerca i dati; Qwen completa.
     func leggiDocumento(_ id: String) {
         guard !solaLettura, let d = documento(id), let url = urlDocumento(d), let testo = urlTesto(d) else { return }
         documentiInLettura.insert(id)
@@ -828,7 +830,7 @@ final class StatoShell: ObservableObject {
         }
     }
 
-    /// Il modello Apple legge le prime pagine e propone i campi che le regole non hanno trovato.
+    /// Qwen legge le prime pagine e propone i campi che le regole non hanno trovato.
     private func completaConModello(_ id: String, pagine: [String], trovati: [CampoEstratto]) {
         guard let modello = generativo, trovati.count < CampoDocumento.allCases.count else {
             documentiInLettura.remove(id)
@@ -1404,7 +1406,7 @@ final class StatoShell: ObservableObject {
         apri(.incontri)
     }
 
-    /// Legge gli appunti: regole di Prisma subito, il modello Apple (se c'è) si aggiunge.
+    /// Legge gli appunti: regole di Prisma subito, Qwen (se è pronto) si aggiunge.
     func estraiProposte(_ i: Incontro) {
         let altro = [i.progetti, i.esperienza, i.appunti, i.decisioni].filter { !$0.isEmpty }.joined(separator: "\n")
         let regole = EstrattoreIncontro.conRegole(altro, preoccupazioni: i.preoccupazioni)
@@ -1564,9 +1566,34 @@ final class StatoShell: ObservableObject {
     /// Messaggi conservati per cliente.
     static let massimoMessaggi = 60
 
-    var motoreEve: MotoreEve { MotoriEve.scelto(dati.impostazioni.eve, locale: disponibilitaLocale) }
-    /// Il modello che scrive (Apple o Qwen sul Mac) se è pronto; nil = risponde la sintesi dai dati.
+    /// Qwen sul Mac, pronto o no: nome, descrizione e stato per la striscia di Eve.
+    var qwen: MotoreLocale { MotoriEve.qwen(dati.impostazioni.eve, locale: disponibilitaLocale) }
+    /// Qwen se è pronto; nil se Ollama è spento o manca il modello.
     var generativo: (MotoreEve & MotoreGenerativo)? { MotoriEve.generativo(dati.impostazioni.eve, locale: disponibilitaLocale) }
+
+    /// Eve risponde con Qwen. Se l'ultima verifica non l'ha trovato pronto, prima chiede di nuovo a Ollama
+    /// (magari è stato appena aperto); se ancora non c'è, Eve lo dice e non risponde.
+    private func conQwen(cliente id: String, _ poi: @escaping ((MotoreEve & MotoreGenerativo)) -> Void) {
+        if let m = generativo {
+            poi(m)
+            return
+        }
+        let eve = dati.impostazioni.eve
+        eveInCorso = true
+        Task { @MainActor in
+            let d = await MotoreLocale.verifica(eve)
+            if self.disponibilitaLocale != d { self.disponibilitaLocale = d }
+            self.eveInCorso = false
+            if let m = self.generativo { poi(m) } else { self.qwenNonPronto(cliente: id) }
+        }
+    }
+
+    /// Il messaggio di Eve quando Qwen non c'è: il motivo e cosa fare.
+    func qwenNonPronto(cliente id: String) {
+        let motivo = disponibilitaLocale.motivo ?? "Qwen non risponde."
+        aggiungiMessaggio(MessaggioEve(autore: .eve, testo: motivo + " Eve risponde solo con Qwen: quando è pronto, rifai la domanda.",
+                                       titolo: "Qwen non è pronto", motore: "Prisma"), cliente: id)
+    }
 
     /// Chiede a Ollama, sul Mac, se Qwen è pronto (all'avvio, aprendo Eve e dalle impostazioni).
     func verificaMotoreLocale() {
@@ -1601,7 +1628,7 @@ final class StatoShell: ObservableObject {
     }
 
     /// Una domanda a Eve sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
-    /// il modello Apple, se c'è, riscrive la risposta senza cambiarle (altrimenti resta la sintesi).
+    /// Qwen le racconta senza cambiarle (se cambia una cifra restano quelle di Prisma).
     @discardableResult
     func chiediEvePortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1614,27 +1641,29 @@ final class StatoShell: ObservableObject {
         domandaEve = ""
         let argomento = spunto ?? SpuntoPortafoglio.da(testo)
         let bozza = EvePortafoglio.risposta(argomento, domanda: testo, dati: dati)
-        guard let modello = generativo else {
+        if rispostePreparate {
             aggiungiMessaggio(MessaggioEve(autore: .eve, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriEve.sintesi.nome), cliente: id)
             return true
         }
         let scheda = EvePortafoglio.scheda(dati)
         let istruzioni = (IstruzioniEve.testo("chat") ?? "") + "\nQui parli del portafoglio del consulente (tutti i clienti), non di un singolo cliente."
         let richiesta = "SCHEDA DEL PORTAFOGLIO (calcolata da Prisma)\n\(scheda)\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n\(bozza.testo)\n\nDOMANDA DEL CONSULENTE: \(testo)"
-        eveInCorso = true
-        Task { @MainActor in
-            var risposta = bozza.testo
-            var motore = MotoriEve.sintesi.nome
-            if let t = try? await modello.genera(istruzioni: istruzioni, richiesta: richiesta) {
-                let pulito = t.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-                // Ogni cifra della risposta deve venire dalla scheda o dalla bozza
-                if !pulito.isEmpty, CommentoEve.numeriConservati(bozza: scheda + "\n" + bozza.testo, testo: pulito) {
-                    risposta = pulito
-                    motore = modello.nome
+        conQwen(cliente: id) { modello in
+            self.eveInCorso = true
+            Task { @MainActor in
+                do {
+                    let t = try await modello.genera(istruzioni: istruzioni, richiesta: richiesta)
+                    let pulito = t.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Ogni cifra della risposta deve venire dalla scheda o dalla bozza: altrimenti restano le cifre di Prisma
+                    let fedele = !pulito.isEmpty && CommentoEve.numeriConservati(bozza: scheda + "\n" + bozza.testo, testo: pulito)
+                    self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: fedele ? pulito : bozza.testo, titolo: bozza.titolo,
+                                                        motore: fedele ? modello.nome : MotoriEve.sintesi.nome), cliente: id)
+                } catch {
+                    self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: error.localizedDescription,
+                                                        titolo: "Eve non ha potuto rispondere", motore: modello.nome), cliente: id)
                 }
+                self.eveInCorso = false
             }
-            self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: risposta, titolo: bozza.titolo, motore: motore), cliente: id)
-            self.eveInCorso = false
         }
         return true
     }
@@ -1657,7 +1686,7 @@ final class StatoShell: ObservableObject {
     }
 
     /// Fa spiegare a Eve un documento del cliente: dati con la pagina, confronto con il dossier,
-    /// cosa resta da verificare. Con il modello Apple la spiegazione diventa discorsiva sulle stesse cifre.
+    /// cosa resta da verificare. Qwen la rende discorsiva sulle stesse cifre.
     func spiegaDocumentoConEve(_ docId: String) {
         guard !eveInCorso, let d = documento(docId) else { return }
         clienteAttivoId = d.clienteId
@@ -1667,7 +1696,7 @@ final class StatoShell: ObservableObject {
         let domanda = "Spiegami il documento «\(d.titolo)»"
         let bozza = MotoriEve.sintesi.documento(d, fonte: fonte)
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: domanda), cliente: id)
-        guard let modello = generativo, !d.campi.isEmpty else {
+        if rispostePreparate {
             aggiungiMessaggio(MessaggioEve(autore: .eve, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriEve.sintesi.nome), cliente: id)
             return
         }
@@ -1676,18 +1705,21 @@ final class StatoShell: ObservableObject {
         let richiesta = "DOMANDA DEL CONSULENTE\n\(domanda)\n\nBOZZA PREPARATA DA PRISMA (dati estratti con la pagina: non cambiarli e non aggiungerne)\n"
             + String(bozza.testo.prefix(ContestoEve.limiteCalcoli))
             + "\n\nESTRATTO DEL DOCUMENTO\n\(estratto)\n\nSpiega il documento al consulente in modo ordinato, con le pagine, e segnala cosa verificare."
-        eveInCorso = true
-        Task { @MainActor in
-            var testo = bozza.testo
-            var nome = MotoriEve.sintesi.nome
-            if let r = try? await modello.genera(istruzioni: IstruzioniEve.chat, richiesta: richiesta),
-               !r.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               CommentoEve.numeriConservati(bozza: bozza.testo + "\n" + estratto, testo: r) {
-                testo = r.trimmingCharacters(in: .whitespacesAndNewlines)
-                nome = modello.nome
+        conQwen(cliente: id) { modello in
+            self.eveInCorso = true
+            Task { @MainActor in
+                do {
+                    let r = try await modello.genera(istruzioni: IstruzioniEve.chat, richiesta: richiesta).trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Cifre diverse da quelle del documento: restano i dati estratti da Prisma, con le pagine
+                    let fedele = !r.isEmpty && CommentoEve.numeriConservati(bozza: bozza.testo + "\n" + estratto, testo: r)
+                    self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: fedele ? r : bozza.testo, titolo: bozza.titolo,
+                                                        motore: fedele ? modello.nome : MotoriEve.sintesi.nome), cliente: id)
+                } catch {
+                    self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: error.localizedDescription,
+                                                        titolo: "Eve non ha potuto rispondere", motore: modello.nome), cliente: id)
+                }
+                self.eveInCorso = false
             }
-            self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: testo, titolo: bozza.titolo, motore: nome), cliente: id)
-            self.eveInCorso = false
         }
     }
 
@@ -1767,8 +1799,13 @@ final class StatoShell: ObservableObject {
     func scriviCommentoConEve(_ scelta: SceltaProspetto) {
         guard !eveInCorso, let bozza = bozzaCommento(scelta) else { return }
         let id = clienteAttivoId
-        guard let modello = generativo else {
+        if rispostePreparate {
             salvaCommento(scelta, testo: bozza, bozzaDi: MotoriEve.sintesi.nome)
+            return
+        }
+        guard let modello = generativo else {
+            verificaMotoreLocale()
+            mostraAvviso((disponibilitaLocale.motivo ?? "Qwen non risponde.") + " Il commento lo scrive Eve con Qwen: quando è pronto, riprova.")
             return
         }
         eveInCorso = true
@@ -1800,26 +1837,25 @@ final class StatoShell: ObservableObject {
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: testo), cliente: id)
         domandaEve = ""
         let richiesta = RichiestaEve(domanda: testo, spunto: spunto ?? SpuntoEve.da(testo), fonte: fonte, storia: storia)
-        let motore = motoreEve
-        if let sintesi = motore as? MotoreSintesi {
-            let r = sintesi.componi(richiesta)
-            aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome, proposte: r.proposte), cliente: id)
+        if rispostePreparate {
+            let r = MotoriEve.sintesi.componi(richiesta)
+            aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: MotoriEve.sintesi.nome, proposte: r.proposte), cliente: id)
             return true
         }
-        // Le azioni proposte restano quelle calcolate da Prisma, anche quando il testo lo scrive il modello
+        // Le azioni proposte restano quelle calcolate da Prisma, anche quando il testo lo scrive Qwen
         let proposte = richiesta.spunto == .proposte ? MotoriEve.sintesi.componi(richiesta).proposte : nil
-        eveInCorso = true
-        Task { @MainActor in
-            do {
-                let r = try await motore.rispondi(richiesta)
-                self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome, proposte: proposte), cliente: id)
-            } catch {
-                // Se il modello non risponde, per gli spunti c'è comunque la sintesi dai dati.
-                let riserva = richiesta.spunto != nil ? "\n\nIntanto, dai dati del dossier:\n\n" + MotoriEve.sintesi.componi(richiesta).testo : ""
-                self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: error.localizedDescription + riserva,
-                                                    titolo: "Eve non ha potuto rispondere", motore: MotoriEve.sintesi.nome, proposte: proposte), cliente: id)
+        conQwen(cliente: id) { modello in
+            self.eveInCorso = true
+            Task { @MainActor in
+                do {
+                    let r = try await modello.rispondi(richiesta)
+                    self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: modello.nome, proposte: proposte), cliente: id)
+                } catch {
+                    self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: error.localizedDescription,
+                                                        titolo: "Eve non ha potuto rispondere", motore: modello.nome, proposte: proposte), cliente: id)
+                }
+                self.eveInCorso = false
             }
-            self.eveInCorso = false
         }
         return true
     }

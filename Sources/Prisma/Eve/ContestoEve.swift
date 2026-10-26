@@ -2,7 +2,7 @@ import Foundation
 
 /// Scheda compatta del cliente che l'app passa a Eve insieme alla domanda.
 ///
-/// Il modello Apple ha una finestra di circa 4.000 token (istruzioni, scheda, storia e risposta
+/// Qwen 3-4B sul Mac da 8 GB lavora con una finestra piccola: circa 4.000 token (istruzioni, scheda, storia e risposta
 /// insieme): la scheda resta sotto `limite` caratteri, con i numeri già calcolati dai motori di
 /// Prisma. Eve non deve rifare i conti: legge e spiega.
 enum ContestoEve {

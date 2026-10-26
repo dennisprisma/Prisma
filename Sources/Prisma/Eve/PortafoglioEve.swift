@@ -2,7 +2,7 @@ import Foundation
 
 /// Eve sul portafoglio: domande su tutti i clienti insieme (chi richiamare, cosa scade, la
 /// settimana, gli emittenti, le proposte). Le risposte usano gli stessi calcoli della vista
-/// Portafoglio di Posizioni; il modello Apple, se c'è, le riscrive senza cambiare i numeri.
+/// Portafoglio di Posizioni; Qwen le racconta senza cambiare i numeri.
 enum SpuntoPortafoglio: String, CaseIterable, Identifiable {
     case quadro, ricontattare, riesami, fineAnno, settimana, scadenze, concentrazione, proposte
 
@@ -199,7 +199,7 @@ enum EvePortafoglio {
         }
     }
 
-    /// La scheda del portafoglio per il modello Apple: le cifre calcolate da Prisma.
+    /// La scheda del portafoglio per Qwen: le cifre calcolate da Prisma.
     static func scheda(_ dati: DatiPrisma, oggi: Date = Date()) -> String {
         [SpuntoPortafoglio.quadro, .ricontattare, .riesami, .scadenze, .concentrazione, .proposte]
             .map { s in let r = risposta(s, domanda: "", dati: dati, oggi: oggi); return "\((r.titolo ?? "").uppercased()):\n\(r.testo)" }

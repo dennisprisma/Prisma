@@ -1,7 +1,7 @@
 import Foundation
 
 /// Il commento del consulente nei report: una lettera breve al cliente che accompagna il documento.
-/// La bozza la compone Prisma con le stesse frasi e cifre del report; il modello Apple, se c'è,
+/// La bozza la compone Prisma con le stesse frasi e cifre del report; Qwen
 /// la rende più discorsiva senza toccare i numeri. Il consulente la rilegge sempre prima di stampare.
 enum CommentoEve {
     /// Limite del testo nella pagina del report.
@@ -27,7 +27,7 @@ enum CommentoEve {
         IstruzioniEve.testo("commento") ?? "Riscrivi in italiano la lettera del consulente al cliente: tono cordiale, dai del tu, al massimo 140 parole, testo semplice. Non cambiare né aggiungere numeri, prodotti o promesse."
     }
 
-    /// Scrive il commento con il motore scelto: il modello Apple riscrive la bozza, altrimenti resta la bozza.
+    /// Scrive il commento con Qwen: riscrive la bozza; se cambia una cifra, resta la bozza.
     /// Restituisce il testo e il nome di chi l'ha scritto.
     static func scrivi(bozza: String, modello: MotoreGenerativo?) async -> (testo: String, motore: String) {
         guard let modello else { return (bozza, MotoriEve.sintesi.nome) }

@@ -9,7 +9,7 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
     var testo: String
     /// Titolo breve delle risposte di Eve.
     var titolo: String?
-    /// Motore che ha prodotto la risposta ("Modello Apple", "Sintesi dai dati").
+    /// Motore che ha prodotto la risposta ("Qwen sul Mac", "Calcoli di Prisma").
     var motore: String?
     var data = Date()
     /// Le azioni proposte da Eve (spunto «Cosa proporre al cliente?»), con quello che ne è stato fatto.

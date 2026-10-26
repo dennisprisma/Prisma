@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Le regole riconoscono le formule standard dei documenti italiani ("classe di rischio 3 su 7",
 /// "periodo di detenzione raccomandato: 10 anni", "costi correnti 1,20%"…) e riportano sempre
-/// la pagina e la riga da cui viene il valore. Il modello Apple, se c'è, completa i campi mancanti.
+/// la pagina e la riga da cui viene il valore. Qwen, se è pronto, completa i campi mancanti.
 /// Nessun dato entra nel dossier senza la conferma del consulente.
 enum EstrattoreDocumento {
 
@@ -127,7 +127,7 @@ enum EstrattoreDocumento {
         return v.trimmingCharacters(in: .whitespaces)
     }
 
-    // MARK: - Modello Apple
+    // MARK: - Qwen
 
     static var istruzioniModello: String {
         IstruzioniEve.testo("documenti") ?? """
@@ -165,7 +165,7 @@ enum EstrattoreDocumento {
             default:
                 break
             }
-            return CampoEstratto(chiave: campo, valore: valore, pagina: pagina, estratto: "", origine: "Modello Apple")
+            return CampoEstratto(chiave: campo, valore: valore, pagina: pagina, estratto: "", origine: "Qwen")
         }
     }
 

@@ -3,7 +3,7 @@ import Foundation
 
 /// Prova automatica di Eve (`Prisma --prova-eve`), eseguita dal workflow.
 /// Controlla le istruzioni nel pacchetto, la scheda del cliente (entro la finestra del modello),
-/// le risposte della sintesi dai dati e riporta la disponibilità del modello Apple sul server.
+/// le bozze calcolate da Prisma, Qwen come unico motore e le prove della voce.
 enum ProvaEve {
     static func esegui() -> Int32 {
         var errori = 0
@@ -261,7 +261,7 @@ enum ProvaEve {
             }
         }
         // «Chiedi a Eve» da Prospetti e report apre Eve e risponde sul documento
-        stato.dati.impostazioni.eve.motore = .sintesi
+        stato.rispostePreparate = true
         stato.clienteAttivoId = "laura"
         stato.prospetto = .previdenza(report: false)
         stato.chiediEveDelDocumento(.previdenza(report: false))
@@ -317,7 +317,7 @@ enum ProvaEve {
                 let diff = MotoriEve.sintesi.confronta(polizza, fonte: f)
                 controlla(diff.contains { $0.contains("capitale assicurato 1.234.567 €") }, "Polizza di Marco: un capitale diverso dalla posizione viene segnalato")
             }
-            stato.dati.impostazioni.eve.motore = .sintesi
+            stato.rispostePreparate = true
             let prima = stato.conversazione("marco").count
             stato.spiegaDocumentoConEve(polizza.id)
             controlla(stato.conversazione("marco").count == prima + 2 && stato.clienteAttivoId == "marco", "«Chiedi a Eve» da Documenti: domanda e spiegazione salvate")
@@ -340,7 +340,7 @@ enum ProvaEve {
         }
 
         // Le proposte di Eve: dalle analisi alle attività e alle bozze di proposta
-        stato.dati.impostazioni.eve.motore = .sintesi
+        stato.rispostePreparate = true
         stato.clienteAttivoId = "giulia"
         if let f = stato.fonteEve("giulia") {
             let elenco = MotoreSintesi.calcolaProposte(f)
@@ -372,7 +372,7 @@ enum ProvaEve {
         }
 
         // La chat in modalità sintesi aggiunge domanda e risposta
-        stato.dati.impostazioni.eve.motore = .sintesi
+        stato.rispostePreparate = true
         stato.clienteAttivoId = "marco"
         let primaChat = stato.conversazione("marco").count
         stato.chiediEve(SpuntoEve.prossimiPassi.domanda, spunto: .prossimiPassi)
@@ -684,7 +684,7 @@ enum ProvaEve {
 
         // Eve sul portafoglio: le stesse cifre del Portafoglio, una conversazione a parte
         let pf = StatoShell(persistente: false)
-        pf.dati.impostazioni.eve.motore = .sintesi
+        pf.rispostePreparate = true
         let quadro = EvePortafoglio.risposta(.quadro, domanda: "", dati: pf.dati)
         let calcolato = EvePortafoglio.portafoglio(pf.dati, oggi: Date())
         controlla(quadro.testo.contains(Formati.euro(calcolato.riepilogo.attivita)), "Eve · portafoglio: il patrimonio seguito come nel Portafoglio")
@@ -737,7 +737,8 @@ enum ProvaEve {
         let congedi: [Bool] = ["Basta così, grazie", "grazie Eve", "Ok, è tutto.", "Basta con i costi alti: cosa propongo?"].map(CongedoEve.e)
         controlla(congedi == [true, true, true, false], "Voce: «basta così» chiude la conversazione, una domanda no")
         let vecchie = (try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"motore":"sintesi","conservaConversazioni":false}"#.utf8))) ?? ImpostazioniEve()
-        let vecchieOk: Bool = vecchie.motore == ImpostazioniEve.Motore.sintesi && !vecchie.conservaConversazioni
+        // «motore» (Apple, sintesi…) non esiste più: la chiave si ignora, il resto si legge
+        let vecchieOk: Bool = !vecchie.conservaConversazioni
             && vecchie.risposteAVoce == ImpostazioniEve.RisposteAVoce.quandoParli && vecchie.voce == nil
             && vecchie.velocitaVoce == 1.0 && vecchie.conversazioneContinua
         controlla(vecchieOk, "Voce: le impostazioni di Eve di prima si leggono con i valori predefiniti della voce")
@@ -747,7 +748,7 @@ enum ProvaEve {
         print("INFO Voci italiane su questo Mac: \(voci.map(VoceEve.nome).joined(separator: ", "))")
         // Una domanda arrivata a voce: la risposta si dice (nelle prove non c'è audio, ma lo stato si chiude bene)
         let v = StatoShell(persistente: false)
-        v.dati.impostazioni.eve.motore = .sintesi
+        v.rispostePreparate = true
         v.fraseDetta("Fammi un riepilogo del cliente")
         let rispostaEve: Bool = v.conversazione(v.clienteAttivoId).last.map { $0.autore == MessaggioEve.Autore.eve } ?? false
         controlla(rispostaEve && !v.rispostaAVoce, "Voce: la frase detta diventa una domanda e la risposta arriva")
@@ -801,7 +802,7 @@ enum ProvaEve {
 
         // Comandi eseguiti: l'appuntamento senza giorno si completa con la frase dopo, e si annulla
         let e = StatoShell(persistente: false)
-        e.dati.impostazioni.eve.motore = .sintesi
+        e.rispostePreparate = true
         e.clienteAttivoId = "giulia"
         let appuntamentiPrima = e.dati.appuntamenti.count
         let chiesto = e.eseguiComandoEve("fissa un incontro con Marco Bianchi", oggi: martedi)
@@ -854,16 +855,17 @@ enum ProvaEve {
         let flusso: Bool = (corpo["stream"] as? Bool) ?? true
         let quanti: Int = (corpo["messages"] as? [[String: String]])?.count ?? 0
         controlla(!pensa && !flusso && quanti == 2, "Qwen: richiesta senza ragionamento e senza flusso")
-        var qwen = ImpostazioniEve()
-        qwen.motore = .locale
+        let qwen = ImpostazioniEve()
         let sceltoPronto: String = MotoriEve.generativo(qwen, locale: .pronto)?.nome ?? ""
         let sceltoAssente = MotoriEve.generativo(qwen, locale: .nonDisponibile("no")) == nil
-        let ripiego = MotoriEve.scelto(qwen, locale: .nonDisponibile("no")) is MotoreSintesi
-        controlla(sceltoPronto == "Qwen sul Mac" && sceltoAssente && ripiego, "Qwen: scelto se è pronto, altrimenti la sintesi")
-        if MotoriEve.apple?.disponibilita.pronto != true {
-            qwen.motore = .automatico
-            controlla(MotoriEve.generativo(qwen, locale: .pronto)?.nome == "Qwen sul Mac", "Qwen: in automatico, senza il modello Apple risponde Qwen")
-        }
+        controlla(sceltoPronto == "Qwen sul Mac" && sceltoAssente, "Qwen: l'unico motore di Eve, se è pronto")
+        // Senza Qwen Eve non risponde con i calcoli: dice che non è pronto
+        let spento = StatoShell(persistente: false)
+        spento.disponibilitaLocale = .nonDisponibile("Ollama non è aperto.")
+        spento.qwenNonPronto(cliente: spento.clienteAttivoId)
+        let avvisoQwen = spento.conversazione(spento.clienteAttivoId).last
+        controlla(avvisoQwen?.titolo == "Qwen non è pronto" && (avvisoQwen?.testo ?? "").hasPrefix("Ollama non è aperto."),
+                  "Qwen spento: Eve lo dice, con il motivo")
         var lontano = ImpostazioniEve()
         lontano.indirizzoLocale = "http://10.0.0.5:11434"
         let attesa = DispatchSemaphore(value: 0)
@@ -978,7 +980,7 @@ enum ProvaEve {
 
         // Dettatura e domande: inviare spegne la dettatura, i comandi contano come domande partite
         let d = StatoShell(persistente: false)
-        d.dati.impostazioni.eve.motore = .sintesi
+        d.rispostePreparate = true
         d.dettaturaAttiva = true
         controlla(d.chiediEve("Fammi un riepilogo del cliente") && !d.dettaturaAttiva, "Dettatura: inviare da tastiera la spegne e la domanda parte")
         controlla(!d.chiediEve("   "), "Eve: una domanda vuota non parte")
@@ -1022,7 +1024,6 @@ enum ProvaEve {
         let diagnostica = DiagnosticaVoce.testo
         controlla(diagnostica.hasPrefix("Prisma · diagnostica dell'ascolto"), "Voce: la diagnostica dell'ascolto si può copiare")
 
-        print("INFO Modello Apple su questo Mac: \(MotoriEve.motivoAppleNonDisponibile ?? "disponibile")")
         if errori == 0 {
             print("OK: Eve verificata")
             return 0

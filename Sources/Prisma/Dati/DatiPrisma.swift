@@ -214,26 +214,6 @@ struct ImpostazioniPDF: Codable, Equatable {
 
 /// Impostazioni di Eve (comprese nel backup).
 struct ImpostazioniEve: Codable, Equatable {
-    enum Motore: String, Codable, CaseIterable, Identifiable {
-        /// Il modello Apple se disponibile, altrimenti la sintesi locale.
-        case automatico
-        case apple
-        /// Un modello aperto (Qwen) che gira sul Mac con Ollama.
-        case locale
-        case sintesi
-
-        var id: String { rawValue }
-
-        var nome: String {
-            switch self {
-            case .automatico: return "Automatico"
-            case .apple: return "Modello Apple"
-            case .locale: return "Qwen sul Mac"
-            case .sintesi: return "Sintesi dai dati"
-            }
-        }
-    }
-
     /// Quando Eve risponde anche a voce.
     enum RisposteAVoce: String, Codable, CaseIterable, Identifiable {
         /// Solo quando le parli tu.
@@ -252,7 +232,6 @@ struct ImpostazioniEve: Codable, Equatable {
         }
     }
 
-    var motore = Motore.automatico
     /// Le conversazioni restano nel dossier del cliente (sul Mac, nel backup).
     var conservaConversazioni = true
     /// La voce di sistema scelta (identificatore); nil = la migliore voce femminile italiana installata.
@@ -275,12 +254,11 @@ struct ImpostazioniEve: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case motore, conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale, riconoscimento, mostraPassaggiVoce
+        case conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale, riconoscimento, mostraPassaggiVoce
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        motore = (try? c.decodeIfPresent(Motore.self, forKey: .motore)) ?? .automatico
         conservaConversazioni = (try? c.decodeIfPresent(Bool.self, forKey: .conservaConversazioni)) ?? true
         voce = try? c.decodeIfPresent(String.self, forKey: .voce)
         velocitaVoce = min(1.4, max(0.7, (try? c.decodeIfPresent(Double.self, forKey: .velocitaVoce)) ?? 1))

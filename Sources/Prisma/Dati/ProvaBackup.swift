@@ -23,7 +23,6 @@ enum ProvaBackup {
                 MessaggioEve(autore: .utente, testo: "Fammi un riepilogo del cliente"),
                 MessaggioEve(autore: .eve, testo: "Il quadro…", titolo: "Il quadro", motore: "Sintesi dai dati"),
             ]
-            originale.impostazioni.eve.motore = .sintesi
             // E il commento del consulente in un report
             originale.commenti = [CommentoReport(id: "checkUp·giulia", clienteId: "giulia", testo: "Gentile Giulia, …", bozzaDi: "Sintesi dai dati",
                                                  aggiornatoIl: Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down)))]
