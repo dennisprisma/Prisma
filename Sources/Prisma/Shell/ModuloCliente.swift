@@ -55,11 +55,16 @@ struct CampoModulo<Controllo: View>: View {
 struct CampoDataFacoltativa: View {
     @Binding var data: Date?
     var predefinita: Date
+    /// Il testo accanto alla casella ("Indicata" nei moduli, "Entro una data" negli incontri).
+    var etichetta = "Indicata"
+    /// Il carattere della casella (nil: quello del contesto).
+    var font: Font? = nil
 
     var body: some View {
         HStack(spacing: 10) {
-            Toggle("Indicata", isOn: Binding(get: { data != nil }, set: { data = $0 ? (data ?? predefinita) : nil }))
+            Toggle(etichetta, isOn: Binding(get: { data != nil }, set: { data = $0 ? (data ?? predefinita) : nil }))
                 .toggleStyle(.checkbox)
+                .font(font)
             if data != nil {
                 DatePicker("", selection: Binding(get: { data ?? predefinita }, set: { data = $0 }), displayedComponents: .date)
                     .labelsHidden()
@@ -102,12 +107,9 @@ struct ModuloCliente: View {
                         TextField("", text: $bozza.professione).textFieldStyle(.roundedBorder)
                     }
                     CampoModulo(etichetta: "Stato civile") {
-                        Picker("", selection: $bozza.statoCivile) {
-                            Text("Non indicato").tag(StatoCivile?.none)
-                            ForEach(StatoCivile.allCases) { Text($0.nome).tag(Optional($0)) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
+                        MenuTendina(selezione: $bozza.statoCivile,
+                                    opzioni: [(StatoCivile?.none, "Non indicato")] + StatoCivile.allCases.map { (Optional($0), $0.nome) },
+                                    larghezza: 220)
                     }
                 }
                 sezione("Contatti") {
@@ -145,12 +147,10 @@ struct ModuloCliente: View {
                 }
                 sezione("Profilo dell'investitore") {
                     CampoModulo(etichetta: "Propensione al rischio") {
-                        Picker("", selection: $bozza.profilo.propensione) {
-                            Text("Non indicata").tag(ProfiloInvestitore.Propensione?.none)
-                            ForEach(ProfiloInvestitore.Propensione.allCases) { Text($0.nome).tag(Optional($0)) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
+                        MenuTendina(selezione: $bozza.profilo.propensione,
+                                    opzioni: [(ProfiloInvestitore.Propensione?.none, "Non indicata")]
+                                        + ProfiloInvestitore.Propensione.allCases.map { (Optional($0), $0.nome) },
+                                    larghezza: 220)
                     }
                     CampoModulo(etichetta: "Orizzonte (anni)") {
                         TextField("", value: $bozza.profilo.orizzonteAnni, format: .number)
@@ -166,12 +166,10 @@ struct ModuloCliente: View {
                         }
                     }
                     CampoModulo(etichetta: "Esperienza finanziaria") {
-                        Picker("", selection: $bozza.profilo.esperienza) {
-                            Text("Non indicata").tag(ProfiloInvestitore.Esperienza?.none)
-                            ForEach(ProfiloInvestitore.Esperienza.allCases) { Text($0.nome).tag(Optional($0)) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
+                        MenuTendina(selezione: $bozza.profilo.esperienza,
+                                    opzioni: [(ProfiloInvestitore.Esperienza?.none, "Non indicata")]
+                                        + ProfiloInvestitore.Esperienza.allCases.map { (Optional($0), $0.nome) },
+                                    larghezza: 220)
                     }
                     CampoModulo(etichetta: "Obiettivi principali") {
                         TextField("", text: $bozza.profilo.obiettivi).textFieldStyle(.roundedBorder)
@@ -255,11 +253,8 @@ struct ModuloFamiliare: View {
                     TextField("", text: $modifica.familiare.nome).textFieldStyle(.roundedBorder)
                 }
                 CampoModulo(etichetta: "Relazione") {
-                    Picker("", selection: $modifica.familiare.relazione) {
-                        ForEach(Familiare.Relazione.allCases) { Text($0.nome).tag($0) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 220)
+                    MenuTendina(selezione: $modifica.familiare.relazione,
+                                opzioni: Familiare.Relazione.allCases.map { ($0, $0.nome) }, larghezza: 220)
                 }
                 CampoModulo(etichetta: "Data di nascita") {
                     CampoDataFacoltativa(data: $modifica.familiare.dataNascita, predefinita: Formati.dataPredefinitaNascita)

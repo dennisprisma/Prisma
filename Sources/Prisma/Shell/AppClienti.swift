@@ -477,7 +477,7 @@ struct PanoramicaCliente: View {
             }
             riesame
             OcchielloSezione(titolo: "Il dossier collegato")
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: Misure.Rubrica.schedaAppMinima), spacing: 8)], spacing: 8) {
                 collegamento(.posizioni, "In essere e in proposta")
                 collegamento(.analisi360, "Previdenza, protezione, investimenti")
                 collegamento(.incontri, "Appunti, decisioni e seguiti")

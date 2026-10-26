@@ -17,15 +17,8 @@ struct ModuloPosizione: View {
                 if !stato.dati.prodotti.isEmpty {
                     sezione("Dalla scheda prodotto") {
                         CampoModulo(etichetta: "Prodotto") {
-                            Picker("", selection: Binding(get: { bozza.prodottoId }, set: { scegli($0) })) {
-                                Text("Nessuna scheda · compilo a mano").tag(String?.none)
-                                ForEach(schede) { s in
-                                    Text("\(s.nome) · \(s.canale == .alleanza ? "Alleanza" : s.emittente.isEmpty ? "indipendente" : s.emittente)")
-                                        .tag(Optional(s.id))
-                                }
-                            }
-                            .labelsHidden()
-                            .frame(width: 380)
+                            MenuTendina(selezione: Binding(get: { bozza.prodottoId }, set: { scegli($0) }),
+                                        opzioni: opzioniSchede, larghezza: 380)
                         }
                         Text("Nome, canale, area, compagnia, costi, rendimento e rischio vengono dalla scheda: restano da scrivere numero, date e importi.")
                             .font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
@@ -43,11 +36,8 @@ struct ModuloPosizione: View {
                     }
                     if bozza.stato == .proposta {
                         CampoModulo(etichetta: "Esito della proposta") {
-                            Picker("", selection: Binding(get: { bozza.esito ?? .bozza }, set: { bozza.esito = $0 })) {
-                                ForEach(EsitoProposta.allCases) { Text($0.nome).tag($0) }
-                            }
-                            .labelsHidden()
-                            .frame(width: 220)
+                            MenuTendina(selezione: Binding(get: { bozza.esito ?? .bozza }, set: { bozza.esito = $0 }),
+                                        opzioni: EsitoProposta.allCases.map { ($0, $0.nome) }, larghezza: 220)
                         }
                     }
                     CampoModulo(etichetta: "Canale") {
@@ -65,11 +55,8 @@ struct ModuloPosizione: View {
                         }
                     }
                     CampoModulo(etichetta: "Area") {
-                        Picker("", selection: $bozza.area) {
-                            ForEach(AreaPosizione.allCases) { Text($0.nome).tag($0) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 220)
+                        MenuTendina(selezione: $bozza.area,
+                                    opzioni: AreaPosizione.allCases.map { ($0, $0.nome) }, larghezza: 220)
                     }
                     CampoModulo(etichetta: "Nome del prodotto") {
                         TextField("Per esempio Piano di risparmio rivalutabile", text: $bozza.nome).textFieldStyle(.roundedBorder)
@@ -108,11 +95,8 @@ struct ModuloPosizione: View {
                         CampoModulo(etichetta: bozza.area == .debiti ? "Rata" : "Premio periodico") {
                             HStack(spacing: 10) {
                                 campoEuro($bozza.premio)
-                                Picker("", selection: $bozza.frequenza) {
-                                    ForEach(Frequenza.allCases) { Text($0.nome).tag($0) }
-                                }
-                                .labelsHidden()
-                                .frame(width: 220)
+                                MenuTendina(selezione: $bozza.frequenza,
+                                            opzioni: Frequenza.allCases.map { ($0, $0.nome) }, larghezza: 220)
                             }
                         }
                     }
@@ -133,12 +117,9 @@ struct ModuloPosizione: View {
                     if bozza.area == .protezione {
                         CampoModulo(etichetta: "Capitale assicurato") { campoEuroFacoltativo($bozza.capitaleAssicurato) }
                         CampoModulo(etichetta: "Rischio coperto") {
-                            Picker("", selection: $bozza.rischio) {
-                                Text("Non indicato").tag(RischioCoperto?.none)
-                                ForEach(RischioCoperto.allCases) { Text($0.nome).tag(Optional($0)) }
-                            }
-                            .labelsHidden()
-                            .frame(width: 240)
+                            MenuTendina(selezione: $bozza.rischio,
+                                        opzioni: [(RischioCoperto?.none, "Non indicato")] + RischioCoperto.allCases.map { (Optional($0), $0.nome) },
+                                        larghezza: 240)
                         }
                     }
                 }
@@ -150,24 +131,19 @@ struct ModuloPosizione: View {
                         CampoModulo(etichetta: "Trattenuto") { campoPercento($bozza.trattenuto, "punti l'anno sul rendimento (gestione separata)") }
                         CampoModulo(etichetta: "Aliquota") { campoPercento($bozza.aliquotaFiscale, "% sul guadagno (proiezioni)") }
                         CampoModulo(etichetta: "Rischio (SRI)") {
-                            Picker("", selection: $bozza.sri) {
-                                Text("Non indicato").tag(Int?.none)
-                                ForEach(1...7, id: \.self) { Text("\($0)").tag(Optional($0)) }
-                            }
-                            .labelsHidden()
-                            .frame(width: 140)
+                            MenuTendina(selezione: $bozza.sri,
+                                        opzioni: [(Int?.none, "Non indicato")] + (1...7).map { (Optional($0), "\($0)") },
+                                        larghezza: 140)
                         }
                     }
                 }
                 if bozza.area.proiettabile || bozza.area == .liquidita {
                     sezione("Fiscalità (per il netto incassabile)") {
                         CampoModulo(etichetta: "Regime") {
-                            Picker("", selection: $bozza.regimeFiscale) {
-                                Text("Automatico · \(bozza.regime.nome)").tag(RegimeFiscale?.none)
-                                ForEach(RegimeFiscale.allCases) { Text($0.nome).tag(Optional($0)) }
-                            }
-                            .labelsHidden()
-                            .frame(width: 280)
+                            MenuTendina(selezione: $bozza.regimeFiscale,
+                                        opzioni: [(RegimeFiscale?.none, "Automatico · \(bozza.regime.nome)")]
+                                            + RegimeFiscale.allCases.map { (Optional($0), $0.nome) },
+                                        larghezza: 280)
                         }
                         if bozza.regime == .polizza || bozza.regime == .fondo {
                             CampoModulo(etichetta: "Titoli di Stato") { campoPercento($bozza.quotaTitoliStato, "% dell'investimento, tassata al 12,5%") }
@@ -177,13 +153,10 @@ struct ModuloPosizione: View {
                         }
                         if bozza.regime != .previdenza && bozza.regime != .esente {
                             CampoModulo(etichetta: "Bollo 0,20%") {
-                                Picker("", selection: $bozza.conBollo) {
-                                    Text("Automatico · \(bozza.soggettaBollo ? "sì" : "no")").tag(Bool?.none)
-                                    Text("Sì").tag(Optional(true))
-                                    Text("No (per esempio Ramo I)").tag(Optional(false))
-                                }
-                                .labelsHidden()
-                                .frame(width: 220)
+                                MenuTendina(selezione: $bozza.conBollo,
+                                            opzioni: [(Bool?.none, "Automatico · \(bozza.soggettaBollo ? "sì" : "no")"),
+                                                      (Optional(true), "Sì"), (Optional(false), "No (per esempio Ramo I)")],
+                                            larghezza: 220)
                             }
                         }
                         if bozza.regime == .previdenza {
@@ -227,6 +200,15 @@ struct ModuloPosizione: View {
         stato.dati.prodotti.sorted { a, b in
             a.canale == b.canale ? a.nome.localizedCaseInsensitiveCompare(b.nome) == .orderedAscending : a.canale == .alleanza
         }
+    }
+
+    /// Le voci della tendina "Dalla scheda prodotto": prima la compilazione a mano.
+    private var opzioniSchede: [(String?, String)] {
+        let voci: [(String?, String)] = schede.map { s in
+            let fonte = s.canale == .alleanza ? "Alleanza" : (s.emittente.isEmpty ? "indipendente" : s.emittente)
+            return (Optional(s.id), "\(s.nome) · \(fonte)")
+        }
+        return [(nil, "Nessuna scheda · compilo a mano")] + voci
     }
 
     /// Compila la posizione dalla scheda: quello che la scheda sa, il resto resta com'è.

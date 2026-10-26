@@ -86,11 +86,11 @@ struct AzioneNuovoCliente: View {
     var body: some View {
         HStack(spacing: 8) {
             Button("Importa…") { stato.importaClientiDaFile() }
-                .buttonStyle(StileAqua())
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                 .disabled(stato.solaLettura)
                 .help("Importa clienti da un file vCard (app Contatti), Excel o CSV. Puoi anche trascinare il file sulla finestra.")
             Button("Incolla da Excel") { stato.incollaDaExcel(posizioni: false) }
-                .buttonStyle(StileAqua())
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                 .disabled(stato.solaLettura)
                 .help("Copia in Excel le righe dei clienti con l'intestazione (⌘C), poi premi qui")
             Button("＋ Nuovo cliente") { stato.richiestaNuovoCliente = true }

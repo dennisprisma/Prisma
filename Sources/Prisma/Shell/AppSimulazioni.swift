@@ -229,21 +229,25 @@ struct AppSimulazioni: View {
                           (e.guadagnoNetto > 0 ? "+" : "") + Formati.euro(e.guadagnoNetto),
                           colore: e.guadagnoNetto < 0 ? Colori.Strumenti.negativo : Colori.Strumenti.positivo)
                 dettaglio("In euro di oggi", Formati.euro(e.reale))
-                dettaglio("Costi e imposte", Formati.euro(e.costi + e.imposte), nota: "i costi tolgono \(Formati.euro(impatto))")
+                dettaglio("Costi e imposte", Formati.euro(e.costi + e.imposte), nota: "i costi tolgono \(Formati.euro(impatto))", ultimo: true)
             }
+            .fixedSize(horizontal: false, vertical: true)
             .overlay(Rectangle().strokeBorder(Colori.Strumenti.risultatoBordo, lineWidth: 1))
         }
     }
 
-    private func dettaglio(_ etichetta: String, _ valore: String, colore: Color = Colori.Strumenti.risultatoNota, nota: String? = nil) -> some View {
+    private func dettaglio(_ etichetta: String, _ valore: String, colore: Color = Colori.Strumenti.risultatoNota,
+                           nota: String? = nil, ultimo: Bool = false) -> some View {
         VStack(spacing: 3) {
             Text(etichetta).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
             Text(valore).font(Tipo.risultatoDettaglio).foregroundColor(colore).lineLimit(1).minimumScaleFactor(0.7)
             if let nota { Text(nota).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1) }
         }
         .padding(.vertical, 9)
-        .frame(maxWidth: .infinity)
-        .overlay(alignment: .trailing) { Rectangle().fill(Colori.Strumenti.risultatoBordo).frame(width: 1) }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .trailing) {
+            if !ultimo { Rectangle().fill(Colori.Strumenti.risultatoBordo).frame(width: 1) }
+        }
     }
 
     private func scenariRendimento(_ s: Simulazione) -> some View {

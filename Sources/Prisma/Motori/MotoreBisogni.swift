@@ -50,7 +50,7 @@ enum MotoreBisogni {
         let scoperti = [RischioCoperto.invalidita, .ltc, .salute].filter { !prot.rischiCoperti.contains($0) }
         if scoperti.count >= 2 && (eta ?? 0) >= 30 {
             elenco.append(.init(id: "rischi-persona", area: .salute, titolo: "Coprire i rischi della persona",
-                                motivo: "Nessuna copertura per \(scoperti.map { $0.nome.lowercased() }.joined(separator: ", ")).",
+                                motivo: "Nessuna copertura per \(scoperti.map { $0.nome.prefix(1).lowercased() + $0.nome.dropFirst() }.joined(separator: ", ")).",
                                 importanza: (eta ?? 0) >= 45 || !aCarico.isEmpty ? .media : .bassa))
         }
         // Previdenza

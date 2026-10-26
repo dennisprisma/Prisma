@@ -88,7 +88,9 @@ struct PannelloCosti: View {
                 .frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
             VStack(alignment: .trailing, spacing: 1) {
                 Text(Formati.euro(v.perso20)).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
-                Text(v.anni20 < MotoreCosti.orizzonti.1 ? "fino alla scadenza, \(v.anni20) anni" : "").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
+                if v.anni20 < MotoreCosti.orizzonti.1 {
+                    Text("a scadenza · \(v.anni20) anni").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                }
             }
             .frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
             Group {
@@ -102,7 +104,7 @@ struct PannelloCosti: View {
                             .font(Tipo.chip).foregroundColor(Colori.Analisi.okTesto).lineLimit(1)
                     }
                 } else {
-                    Text("—").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
+                    Text("—").font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.kpiNota)
                 }
             }
             .frame(width: Misure.Analisi.colonnaAlternativa, alignment: .leading)

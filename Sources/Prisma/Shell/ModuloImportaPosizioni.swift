@@ -139,11 +139,9 @@ struct ModuloImportaPosizioni: View {
             } else if let scheda = x.prodotto {
                 Text("dalla scheda «\(scheda)»").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
             }
-            Picker("", selection: Binding(get: { aree[x.id] ?? p.area }, set: { aree[x.id] = $0 })) {
-                ForEach(AreaPosizione.allCases) { Text($0.nome).tag($0) }
-            }
-            .labelsHidden()
-            .frame(width: 130)
+            MenuTendina(selezione: Binding(get: { aree[x.id] ?? p.area }, set: { aree[x.id] = $0 }),
+                        opzioni: AreaPosizione.allCases.map { ($0, $0.nome) },
+                        stile: .carta, larghezza: 130)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

@@ -115,8 +115,8 @@ struct Scrivania: View {
                  ?? "Nessun backup ancora · archivio locale")
         }
         .font(Tipo.scrivaniaPiede)
-        .foregroundColor(Colori.Scrivania.piede)
-        .ombraCSS(Colori.Scrivania.piedeOmbra, y: 1, sfocatura: 3)
+        .foregroundColor(Colori.Scrivania.piedeLeggibile)
+        .ombraCSS(Colori.Scrivania.piedeOmbra, y: 1, sfocatura: 2)
         .padding(.horizontal, 3)
         .padding(.top, 4)
     }
