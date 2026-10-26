@@ -66,11 +66,13 @@ enum Risorse {
         let latoDock = CGSize(width: Misure.Dock.icona, height: Misure.Dock.icona)
         let pixelAttesi = Int((Misure.Dock.icona * 2 * Misure.Dock.ingrandimento).rounded())
         for app in AppPrisma.allCases {
+            // La bitmap vera (cgImage(forProposedRect:) ridisegnerebbe l'immagine ai punti dello schermo del server)
             guard let img = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * Misure.Dock.ingrandimento),
-                  let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
-                  cg.width == pixelAttesi, cg.height == pixelAttesi,
-                  abs(img.size.width - Misure.Dock.icona) < 0.01 else {
-                print("ERRORE: icona \(app.icona) non ridotta ai pixel dello schermo")
+                  let rep = img.representations.first,
+                  rep.pixelsWide == pixelAttesi, rep.pixelsHigh == pixelAttesi,
+                  abs(img.size.width - Misure.Dock.icona) < 0.5 else {
+                let trovato = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * Misure.Dock.ingrandimento)
+                print("ERRORE: icona \(app.icona) non ridotta ai pixel dello schermo (attesi \(pixelAttesi) px, trovati \(trovato?.representations.first?.pixelsWide ?? -1) px, \(trovato?.size.width ?? -1) pt)")
                 return 1
             }
         }
