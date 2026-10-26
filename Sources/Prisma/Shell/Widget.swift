@@ -182,27 +182,34 @@ struct WidgetCliente: View {
     var body: some View {
         // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri: ViewThatFits
         // misura l'altezza che serve a ogni variante e prende la prima che ci sta, in quest'ordine:
-        // tutto; senza la nota; senza i pulsanti; una sola riga di numeri con i pulsanti; solo quella.
-        ViewThatFits(in: .vertical) {
-            contenuto(righe: 2, nota: true, pulsanti: true)
-            contenuto(righe: 2, nota: false, pulsanti: true)
-            contenuto(righe: 2, nota: false, pulsanti: false)
-            contenuto(righe: 1, nota: false, pulsanti: true)
-            contenuto(righe: 1, nota: false, pulsanti: false)
+        // tutto; senza la nota; senza i pulsanti; una riga di numeri con i pulsanti; solo quella;
+        // infine la testata compatta del template (senza il tema, margini ridotti).
+        // Il GeometryReader fissa la misura del widget alla sua cella: anche l'ultima variante,
+        // se mai non ci stesse, resta dentro la cornice invece di sporgere sui vicini.
+        GeometryReader { geo in
+            ViewThatFits(in: .vertical) {
+                contenuto(righe: 2, nota: true, pulsanti: true)
+                contenuto(righe: 2, nota: false, pulsanti: true)
+                contenuto(righe: 2, nota: false, pulsanti: false)
+                contenuto(righe: 1, nota: false, pulsanti: true)
+                contenuto(righe: 1, nota: false, pulsanti: false)
+                contenuto(righe: 1, nota: false, pulsanti: false, compatta: true)
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
         .corniceWidget(Colori.Colonna.sfondo)
     }
 
-    private func contenuto(righe: Int, nota: Bool, pulsanti: Bool) -> some View {
+    private func contenuto(righe: Int, nota: Bool, pulsanti: Bool, compatta: Bool = false) -> some View {
         let id = stato.clienteAttivoId
         let r = RiepilogoPosizioni(stato.posizioniCliente(id))
         let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == id }
         let aperte = stato.attivitaAperte.filter { $0.clienteId == id }.count
         return VStack(alignment: .leading, spacing: 0) {
-            testata
-            VStack(alignment: .leading, spacing: 10) {
+            testata(compatta: compatta)
+            VStack(alignment: .leading, spacing: Misure.Widget.clienteSpazio) {
                 // Il pannello carta con i numeri (.os-panel + .os-kpi)
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: Misure.Widget.clienteSpazio) {
                     HStack(alignment: .top, spacing: 0) {
                         dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
                         dato("Prossimo incontro", prossimo.map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—")
@@ -229,8 +236,9 @@ struct WidgetCliente: View {
                 .luceInterna(.white, raggio: Misure.Widget.pannelloRaggio)
                 .overlay(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).strokeBorder(Colori.Widget.pannelloBordo, lineWidth: 1))
                 .ombraCSS(Colori.Widget.pannelloOmbra, y: 2, sfocatura: 6)
-                Spacer(minLength: 0)
                 if pulsanti {
+                    // Lo Spacer solo qui: nelle varianti senza pulsanti costerebbe comunque lo spazio della pila
+                    Spacer(minLength: 0)
                     HStack(spacing: 8) {
                         Button("Apri la scheda") { stato.apri(.clienti) }
                         Button("Posizioni") {
@@ -242,13 +250,14 @@ struct WidgetCliente: View {
                     .buttonStyle(StileCuoioChiaro())
                 }
             }
-            .padding(EdgeInsets(top: 12, leading: 13, bottom: 12, trailing: 13))
+            .padding(Misure.Widget.clienteMargine)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     /// La testata in pelle con la cucitura (.os-desk-client): avatar, etichetta, nome, tema, canali.
-    private var testata: some View {
+    /// Compatta come sugli schermi bassi del template: niente tema e margini ridotti.
+    private func testata(compatta: Bool) -> some View {
         HStack(alignment: .center, spacing: 11) {
             if let c = stato.clienteAttivo {
                 AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: Misure.Widget.avatarCliente)
@@ -269,10 +278,12 @@ struct WidgetCliente: View {
                 }
                 .buttonStyle(StileSemplice())
                 .popover(isPresented: $sceltaCliente, arrowEdge: .bottom) { ElencoClienti(aperto: $sceltaCliente) }
-                Text(stato.clienteAttivo?.tema ?? "")
-                    .font(Tipo.colonnaTema)
-                    .foregroundColor(Colori.Colonna.pelleTema)
-                    .lineLimit(1)
+                if !compatta {
+                    Text(stato.clienteAttivo?.tema ?? "")
+                        .font(Tipo.colonnaTema)
+                        .foregroundColor(Colori.Colonna.pelleTema)
+                        .lineLimit(1)
+                }
             }
             .incisione(Colori.Colonna.pelleBordo, y: -1)
             Spacer(minLength: 0)
@@ -280,7 +291,7 @@ struct WidgetCliente: View {
                 ForEach(stato.clienteAttivo?.canali ?? []) { EtichettaCanale(canale: $0, compatta: true) }
             }
         }
-        .padding(EdgeInsets(top: 13, leading: 14, bottom: 11, trailing: 14))
+        .padding(compatta ? Misure.Widget.clienteTestataCompatta : Misure.Widget.clienteTestata)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Materiale.Pelle())
         .overlay(
@@ -456,19 +467,22 @@ struct WidgetPortafoglio: View {
                 .font(Tipo.colonnaCollegamento)
                 .foregroundColor(Colori.Colonna.collegamento)
             }
-            // Dove l'altezza non basta sparisce prima la riga delle proposte, poi le barre dei canali:
-            // il widget non deve mai sporgere sul piede della scrivania
-            ViewThatFits(in: .vertical) {
-                numeri(r, canali: true, proposte: true)
-                numeri(r, canali: true, proposte: false)
-                numeri(r, canali: false, proposte: false)
+            // Dove l'altezza non basta sparisce prima la riga delle proposte, poi le barre dei canali;
+            // il GeometryReader tiene il widget nella sua cella, mai sopra il piede della scrivania
+            GeometryReader { geo in
+                ViewThatFits(in: .vertical) {
+                    numeri(r, canali: true, proposte: true)
+                    numeri(r, canali: true, proposte: false)
+                    numeri(r, canali: false, proposte: false)
+                }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             }
         }
         .corniceWidget(Colori.Colonna.sfondo)
     }
 
     private func numeri(_ r: RiepilogoPosizioni, canali: Bool, proposte: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Misure.Widget.portafoglioSpazio) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(Formati.euro(r.attivita))
                     .font(Tipo.portafoglioTotale)
@@ -484,8 +498,8 @@ struct WidgetPortafoglio: View {
                 canale(.alleanza, importo: r.perCanale[.alleanza] ?? 0, quota: r.quota(.alleanza))
                 canale(.indipendente, importo: r.perCanale[.indipendente] ?? 0, quota: r.quota(.indipendente))
             }
-            Spacer(minLength: 0)
             if proposte {
+                Spacer(minLength: 0)
                 HStack(alignment: .firstTextBaseline) {
                     Text("Proposte aperte")
                         .font(Tipo.widgetMetricaEtichetta)
