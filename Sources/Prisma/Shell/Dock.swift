@@ -9,7 +9,7 @@ struct Dock: View {
             ElementoDock(titolo: "Scrivania", etichetta: "Scrivania", attivo: stato.appAttiva == nil, inEsecuzione: false) {
                 stato.mostraScrivania()
             } icona: {
-                ImmagineRisorsa(percorso: "Icone/Prisma.png")
+                ImmagineNitida(percorso: "Icone/Prisma.png", lato: Misure.Dock.icona, riservaIngrandimento: Misure.Dock.ingrandimento)
             }
             DivisoreDock()
             ForEach(Array(AppPrisma.allCases.enumerated()), id: \.element) { indice, app in
@@ -23,7 +23,7 @@ struct Dock: View {
                     ) {
                         stato.apri(app)
                     } icona: {
-                        IconaApp(app: app, lato: Misure.Dock.icona)
+                        IconaApp(app: app, lato: Misure.Dock.icona, riservaIngrandimento: Misure.Dock.ingrandimento)
                     }
                 }
             }

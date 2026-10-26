@@ -61,6 +61,8 @@ jobs:
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
           cp "$BIN_DIR/Prisma" "$APP/Contents/MacOS/Prisma"
           cp Info.plist "$APP/Contents/Info.plist"
+          # Il commit nella diagnostica di Eve: si sa quale versione gira sul Mac
+          /usr/libexec/PlistBuddy -c "Add :PrismaCommit string ${GITHUB_SHA::7}" "$APP/Contents/Info.plist"
           if [ -f AppIcon.icns ]; then
             cp AppIcon.icns "$APP/Contents/Resources/"
             /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"

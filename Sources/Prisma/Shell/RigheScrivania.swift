@@ -57,31 +57,23 @@ struct RigaAttivita: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: completa) {
-                ZStack {
-                    Circle().fill(Gradienti.data)
-                    Circle().strokeBorder(Colori.Colonna.dataBordo, lineWidth: 1)
-                    if attivita.completata {
-                        Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundColor(Colori.Colonna.collegamento)
-                    }
-                }
-                .frame(width: 18, height: 18)
-            }
-            .buttonStyle(StileSemplice())
-            .help("Segna come completata")
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(alignment: .top, spacing: 10) {
+            Button(action: completa) { CasellaSpunta(spuntata: attivita.completata) }
+                .buttonStyle(StileSemplice())
+                .padding(.top, 2)
+                .help("Segna come completata")
+            VStack(alignment: .leading, spacing: 4) {
                 Text(attivita.titolo)
                     .font(Tipo.contenuto(12, .medium))
                     .foregroundColor(Colori.Colonna.rigaNome)
                     .lineLimit(2)
                 Text([cliente?.nome, scadenza].compactMap { $0 }.joined(separator: " · "))
                     .font(Tipo.rigaSecondario)
-                    .foregroundColor(Colori.Colonna.rigaSecondario)
+                    .foregroundColor(scadenza == "Scaduta" ? Colori.Analisi.erroreTesto : Colori.Colonna.rigaSecondario)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 13)
         .overlay(alignment: .bottom) {
             if !ultima {
                 VStack(spacing: 0) {
@@ -90,6 +82,26 @@ struct RigaAttivita: View {
                 }
             }
         }
+    }
+}
+
+/// La casella delle attività (.os-desk-check): quadrata, con il gradiente chiaro e l'ombra interna.
+struct CasellaSpunta: View {
+    let spuntata: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Misure.Widget.casellaRaggio).fill(Gradienti.casella)
+            RoundedRectangle(cornerRadius: Misure.Widget.casellaRaggio)
+                .fill(LinearGradient(colors: [Colori.Colonna.casellaOmbra, .clear], startPoint: .top, endPoint: .center))
+                .padding(1)
+            RoundedRectangle(cornerRadius: Misure.Widget.casellaRaggio).strokeBorder(Colori.Colonna.casellaBordo, lineWidth: 1)
+            if spuntata {
+                Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundColor(Colori.Colonna.collegamento)
+            }
+        }
+        .frame(width: Misure.Widget.casella, height: Misure.Widget.casella)
+        .contentShape(Rectangle())
     }
 }
 

@@ -109,7 +109,7 @@ struct Scrivania: View {
 
     private var piede: some View {
         HStack {
-            Text("Le app sono nel dock. Un clic per entrare.")
+            Text("Un clic per entrare. Il dock per cambiare app.")
             Spacer()
             Text(stato.dati.impostazioni.backup.ultimo.map { "Ultimo backup: \(Formati.dataOra.string(from: $0)) · archivio locale" }
                  ?? "Nessun backup ancora · archivio locale")

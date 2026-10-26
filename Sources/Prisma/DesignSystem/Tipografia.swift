@@ -35,7 +35,7 @@ enum Tipo {
     static let scrivaniaKicker = sistema(9)
     static let scrivaniaTitolo = contenuto(26)
     static let scrivaniaSottotitolo = sistema(11)
-    static let scrivaniaSezione = contenuto(13)
+    static let scrivaniaSezione = sistema(12)
     static let scrivaniaPiede = contenuto(9)
     static let pulsanteVetro = sistema(11)
     static let lanciatoreNome = contenuto(12, .bold)
@@ -105,6 +105,13 @@ enum Tipo {
     static let widgetGiornoNome = contenuto(13, .medium)
     static let widgetTesto = contenuto(12)
     static let widgetNumero = contenuto(22, .medium)
+    static let piastrellaGiorno = contenuto(42)
+    static let piastrellaMese = contenuto(11)
+    static let kpiValoreWidget = contenuto(19)
+    static let kpiEtichettaWidget = contenuto(9)
+    static let portafoglioTotale = contenuto(26)
+    static let widgetMetricaValore = contenuto(17)
+    static let widgetMetricaEtichetta = contenuto(10)
     static let calendarioMese = contenuto(13, .bold)
     static let calendarioGiornoSettimana = contenuto(17, .medium)
     static let calendarioNumero = Font.custom("HelveticaNeue-CondensedBold", fixedSize: 96)
@@ -266,7 +273,10 @@ enum Tipo {
 
     // Icona Agenda (proporzioni ricavate dai tracciati dell'SVG originale)
     static func agendaGiorno(_ lato: CGFloat) -> Font {
-        Font.custom("HelveticaNeue-CondensedBold", fixedSize: lato * 0.64)
+        // Se il nome del font non si risolve, il numero non deve finire fuori posto con il font di sistema
+        NSFont(name: "HelveticaNeue-CondensedBold", size: lato * 0.64) != nil
+            ? Font.custom("HelveticaNeue-CondensedBold", fixedSize: lato * 0.64)
+            : Font.system(size: lato * 0.64, weight: .bold)
     }
 
     static func agendaMese(_ lato: CGFloat) -> Font {

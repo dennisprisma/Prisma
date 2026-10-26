@@ -15,11 +15,16 @@ enum Materiale {
         }
     }
 
-    /// Pelle (--prisma-leather): intestazione del cliente in primo piano.
+    /// Pelle (--prisma-leather): la ricetta del template a livelli, senza foto stirate.
+    /// Gradiente caldo, puntinatura fine (tile da 3 pt), riflesso in alto a sinistra e grana.
     struct Pelle: View {
         var body: some View {
-            ImmagineRisorsa(percorso: "Materiali/Pelle.png", scala: 2)
-                .scaledToFill()
+            ZStack {
+                Gradienti.pelle
+                Trama(nome: "Pelle_punti")
+                Gradienti.pelleRiflesso
+                Trama(nome: "Grana").opacity(0.5)
+            }
         }
     }
 

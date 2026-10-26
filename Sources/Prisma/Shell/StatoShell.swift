@@ -167,12 +167,19 @@ final class StatoShell: ObservableObject {
     /// La dettatura di macOS nel campo di Eve: ogni richiesta la avvia; la frase parte da sola alla pausa.
     @Published var richiestaDettatura = 0
     @Published var dettaturaAttiva = false
-    /// In automatico, dopo che il riconoscimento di Prisma non ha dato parole, Eve usa la dettatura di macOS.
+    /// In automatico, dopo un fallimento: il riconoscimento con cui riprovare, quelli ancora da provare, poi la dettatura di macOS.
+    var ripiegoAscolto: SceltaRiconoscimento?
+    var ripieghiRimasti: [SceltaRiconoscimento]?
     var usaDettatura = false
     var lavoroDettatura: DispatchWorkItem?
-    /// L'esito dell'ultima prova del riconoscimento (dalle impostazioni) e la prova in corso.
+    /// La dettatura di macOS ha già scritto qualcosa in questa richiesta (per la diagnostica).
+    var dettaturaHaScritto = false
+    /// L'esito dell'ultima prova del riconoscimento e del microfono (dalle impostazioni), la prova in corso.
     @Published var esitoProvaRiconoscimento: String?
+    @Published var esitoProvaMicrofono: String?
     var provaInCorso: ProvaRiconoscimento?
+    /// Modalità diagnostica: l'ultimo passaggio dell'ascolto o della voce, mostrato sotto il campo di Eve.
+    @Published var passaggioVoce: String?
     /// Nelle istantanee: lo stato della voce da mostrare (non c'è microfono).
     var voceIstantanea: StatoVoce?
 
@@ -216,6 +223,7 @@ final class StatoShell: ObservableObject {
             avviaSalvataggio()
             avviaBackupAutomatico()
             verificaMotoreLocale()
+            DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
             aggiornaElencoBackup()
             // I file rimasti da un'importazione interrotta vanno nel Cestino; solo con l'archivio
             // letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
@@ -309,11 +317,13 @@ final class StatoShell: ObservableObject {
     }
 
     func chiudi(_ app: AppPrisma) {
+        if app == .eve { spegniVoceSeEveSparisce() }
         anima { finestre.removeAll { $0.app == app } }
     }
 
     func riduci(_ app: AppPrisma) {
         guard let i = finestre.firstIndex(where: { $0.app == app }) else { return }
+        if app == .eve { spegniVoceSeEveSparisce() }
         anima { finestre[i].ridotta = true }
     }
 
@@ -1572,7 +1582,7 @@ final class StatoShell: ObservableObject {
         dati.impostazioni.eve.conservaConversazioni ? (dati.conversazioni[id] ?? []) : (conversazioniTemporanee[id] ?? [])
     }
 
-    func aggiungiMessaggio(_ m: MessaggioEve, cliente id: String) {
+    func aggiungiMessaggio(_ m: MessaggioEve, cliente id: String, parla: Bool = true) {
         var elenco = conversazione(id)
         elenco.append(m)
         elenco = Array(elenco.suffix(Self.massimoMessaggi))
@@ -1581,7 +1591,7 @@ final class StatoShell: ObservableObject {
         } else {
             conversazioniTemporanee[id] = elenco
         }
-        if m.autore == .eve { parlaRisposta(m) }
+        if m.autore == .eve, parla { parlaRisposta(m) }
     }
 
     func nuovaConversazione() {
@@ -1592,10 +1602,13 @@ final class StatoShell: ObservableObject {
 
     /// Una domanda a Eve sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
     /// il modello Apple, se c'è, riscrive la risposta senza cambiarle (altrimenti resta la sintesi).
-    func chiediEvePortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil) {
+    @discardableResult
+    func chiediEvePortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !testo.isEmpty, !eveInCorso else { return }
-        if spunto == nil, eseguiComandoEve(testo) { return }
+        guard !testo.isEmpty, !eveInCorso else { return false }
+        // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
+        if dettaturaAttiva { chiudiDettatura() }
+        if spunto == nil, eseguiComandoEve(testo) { return true }
         let id = EvePortafoglio.chiave
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: testo), cliente: id)
         domandaEve = ""
@@ -1603,7 +1616,7 @@ final class StatoShell: ObservableObject {
         let bozza = EvePortafoglio.risposta(argomento, domanda: testo, dati: dati)
         guard let modello = generativo else {
             aggiungiMessaggio(MessaggioEve(autore: .eve, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriEve.sintesi.nome), cliente: id)
-            return
+            return true
         }
         let scheda = EvePortafoglio.scheda(dati)
         let istruzioni = (IstruzioniEve.testo("chat") ?? "") + "\nQui parli del portafoglio del consulente (tutti i clienti), non di un singolo cliente."
@@ -1623,6 +1636,7 @@ final class StatoShell: ObservableObject {
             self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: risposta, titolo: bozza.titolo, motore: motore), cliente: id)
             self.eveInCorso = false
         }
+        return true
     }
 
     /// Ciò che Eve sa del cliente: dati del dossier e risultati dei motori di Prisma.
@@ -1773,12 +1787,15 @@ final class StatoShell: ObservableObject {
     }
 
     /// Manda una domanda a Eve per il cliente attivo.
-    func chiediEve(_ domanda: String, spunto: SpuntoEve? = nil) {
+    @discardableResult
+    func chiediEve(_ domanda: String, spunto: SpuntoEve? = nil) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !testo.isEmpty, !eveInCorso else { return }
-        if spunto == nil, eseguiComandoEve(testo) { return }
+        guard !testo.isEmpty, !eveInCorso else { return false }
+        // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
+        if dettaturaAttiva { chiudiDettatura() }
+        if spunto == nil, eseguiComandoEve(testo) { return true }
         let id = clienteAttivoId
-        guard let fonte = fonteEve(id) else { return }
+        guard let fonte = fonteEve(id) else { return false }
         let storia = conversazione(id)
         aggiungiMessaggio(MessaggioEve(autore: .utente, testo: testo), cliente: id)
         domandaEve = ""
@@ -1787,7 +1804,7 @@ final class StatoShell: ObservableObject {
         if let sintesi = motore as? MotoreSintesi {
             let r = sintesi.componi(richiesta)
             aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: motore.nome, proposte: r.proposte), cliente: id)
-            return
+            return true
         }
         // Le azioni proposte restano quelle calcolate da Prisma, anche quando il testo lo scrive il modello
         let proposte = richiesta.spunto == .proposte ? MotoriEve.sintesi.componi(richiesta).proposte : nil
@@ -1804,6 +1821,7 @@ final class StatoShell: ObservableObject {
             }
             self.eveInCorso = false
         }
+        return true
     }
 
     // MARK: - Proposte di Eve

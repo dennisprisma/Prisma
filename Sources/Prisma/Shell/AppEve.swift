@@ -26,14 +26,33 @@ struct AppEve: View {
                 conversazione
             }
         }
-        .onChange(of: stato.richiestaDettatura) { _ in
-            // La dettatura di macOS scrive dove c'è il cursore: prima il campo, poi «Avvia dettatura»
-            campoAttivo = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                NSApp.sendAction(Selector(("startDictation:")), to: nil, from: nil)
-            }
-        }
+        // Parte sia alla nascita della vista (Eve era chiusa o ridotta) sia a ogni nuova richiesta
+        .task(id: stato.richiestaDettatura) { await accendiDettatura() }
+        // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
+        .onChange(of: stato.dettaturaAttiva) { attiva in if !attiva { campoAttivo = false } }
+    }
 
+    /// La dettatura di macOS scrive dove c'è il cursore: prima il campo (riaffermato, con qualche tentativo),
+    /// poi «Avvia dettatura». `sendAction` risponde sempre true (lo gestisce NSApplication): l'esito si legge
+    /// dal contesto di testo in primo piano.
+    private func accendiDettatura() async {
+        guard stato.richiestaDettatura > 0, stato.dettaturaAttiva else { return }
+        campoAttivo = false
+        for tentativo in 1...4 {
+            try? await Task.sleep(nanoseconds: tentativo == 1 ? 100_000_000 : 300_000_000)
+            guard !Task.isCancelled, stato.dettaturaAttiva else { return }
+            campoAttivo = true
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            guard !Task.isCancelled, stato.dettaturaAttiva else { return }
+            if NSTextInputContext.current != nil {
+                DiagnosticaVoce.annota("Dettatura di macOS: campo pronto al tentativo \(tentativo), mando «Avvia dettatura»")
+                NSApp.sendAction(Selector(("startDictation:")), to: nil, from: nil)
+                return
+            }
+            let primo = NSApp.keyWindow?.firstResponder.map { String(describing: type(of: $0)) } ?? "nessuno"
+            DiagnosticaVoce.annota("Dettatura di macOS: il campo non ha il cursore (tentativo \(tentativo), primo risponditore \(primo))")
+        }
+        stato.dettaturaNonPartita()
     }
 
     // MARK: - Testata
@@ -259,7 +278,7 @@ struct AppEve: View {
         conVoce { v in
             let ascolta = v.ascolta || stato.dettaturaAttiva
             let attiva = stato.eveInCorso || ascolta || v.parla
-            let scritta = ascolta ? "EVE · TI ASCOLTA" : (stato.eveInCorso ? "EVE · STA PENSANDO" : (v.parla ? "EVE · TI RISPONDE" : "EVE · PRONTA"))
+            let scritta = v.prepara ? "EVE · SI PREPARA" : (ascolta ? "EVE · TI ASCOLTA" : (stato.eveInCorso ? "EVE · STA PENSANDO" : (v.parla ? "EVE · TI RISPONDE" : "EVE · PRONTA")))
             HStack(spacing: 10) {
                 if ascolta || v.parla {
                     Circle().fill(ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).frame(width: 7, height: 7)
@@ -428,7 +447,7 @@ struct AppEve: View {
                     }
                     .buttonStyle(StileMicrofono(acceso: acceso))
                     .disabled(stato.eveInCorso && !acceso)
-                    .help(acceso ? "Ho finito di parlare" : "Parla con Eve (⌥⌘E)")
+                    .help(v.prepara ? "Annulla" : (acceso ? "Ho finito di parlare" : "Parla con Eve (⌥⌘E)"))
                 }
                 Button { invia(stato.domandaEve) } label: {
                     Text("↑").font(Tipo.eveTitoloRisposta).frame(width: 18)
@@ -439,10 +458,13 @@ struct AppEve: View {
                 .help("Invia (⌘↩)")
             }
             conVoce { v in
-                Text(v.errore ?? (stato.dati.impostazioni.eve.conservaConversazioni
-                     ? (stato.evePortafoglio ? "Invio per mandare, ⌥⌘E per parlare · la conversazione del portafoglio resta sul Mac"
-                                             : "Invio per mandare, ⌥⌘E per parlare · la conversazione resta nel dossier del cliente, sul Mac")
-                     : "Invio per mandare, ⌥⌘E per parlare · conversazione non conservata"))
+                let suggerimento = stato.dati.impostazioni.eve.conservaConversazioni
+                    ? (stato.evePortafoglio ? "Invio per mandare, ⌥⌘E per parlare · la conversazione del portafoglio resta sul Mac"
+                                            : "Invio per mandare, ⌥⌘E per parlare · la conversazione resta nel dossier del cliente, sul Mac")
+                    : "Invio per mandare, ⌥⌘E per parlare · conversazione non conservata"
+                // In modalità diagnostica: l'ultimo passaggio dell'ascolto, per vedere dove si ferma
+                let passaggio = stato.dati.impostazioni.eve.mostraPassaggiVoce ? stato.passaggioVoce : nil
+                Text(v.errore ?? passaggio ?? suggerimento)
                     .font(Tipo.eveTappaNota)
                     .foregroundColor(v.errore == nil ? Colori.Eve.autore : Colori.Eve.spiaAscolto)
                     .fixedSize(horizontal: false, vertical: true)
@@ -476,6 +498,8 @@ extension AppEve {
 /// Lo stato della voce di Eve in un momento: ascolta, parla, cosa ha capito, perché non può ascoltare.
 struct StatoVoce {
     var ascolta = false
+    /// Eve prepara il riconoscimento (il microfono non è ancora acceso).
+    var prepara = false
     var parla = false
     var trascritto = ""
     var errore: String?
@@ -494,7 +518,7 @@ private struct OsservaVoce<C: View>: View {
     var body: some View {
         var errore: String?
         if case .nonDisponibile(let m) = ascolto.stato { errore = m }
-        return contenuto(StatoVoce(ascolta: ascolto.ascolta, parla: voce.parla, trascritto: ascolto.trascritto, errore: errore, livello: ascolto.livello, nota: ascolto.nota))
+        return contenuto(StatoVoce(ascolta: ascolto.ascolta, prepara: ascolto.siPrepara, parla: voce.parla, trascritto: ascolto.trascritto, errore: errore, livello: ascolto.livello, nota: ascolto.nota))
     }
 }
 

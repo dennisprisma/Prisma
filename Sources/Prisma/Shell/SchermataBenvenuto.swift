@@ -52,9 +52,7 @@ struct SchermataBenvenuto: View {
 
     private var marchio: some View {
         VStack(spacing: 0) {
-            ImmagineRisorsa(percorso: "Icone/Prisma.png", scala: 2)
-                .scaledToFit()
-                .frame(width: Misure.Benvenuto.marchio, height: Misure.Benvenuto.marchio)
+            ImmagineNitida(percorso: "Icone/Prisma.png", lato: Misure.Benvenuto.marchio)
             HStack(spacing: 10) {
                 Text("PRISMA").font(Tipo.benvenutoMarchio)
                 Text("OS").font(Tipo.benvenutoMarchioLeggero)
