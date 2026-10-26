@@ -80,33 +80,98 @@ extension StatoShell {
 
     // MARK: - Importazioni da file
 
+    /// I tipi di file tabellari: CSV, testo a tabulazioni ed Excel (.xlsx).
+    static var tipiTabelle: [UTType] {
+        [.commaSeparatedText, .tabSeparatedText, .plainText] + [UTType(filenameExtension: "xlsx")].compactMap { $0 }
+    }
+
     @MainActor
     func importaClientiDaFile() {
         let pannello = NSOpenPanel()
-        pannello.allowedContentTypes = [.vCard, .commaSeparatedText, .tabSeparatedText, .plainText]
+        pannello.allowedContentTypes = [.vCard] + Self.tipiTabelle
         pannello.allowsMultipleSelection = false
-        pannello.message = "Un file vCard (dall'app Contatti: seleziona i contatti e trascinali sulla scrivania) o un CSV esportato da Excel o Numbers. Il file resta sul Mac."
+        pannello.message = "Un file vCard (dall'app Contatti: seleziona i contatti e trascinali sulla scrivania), un foglio Excel o un CSV. Il file resta sul Mac."
         guard pannello.runModal() == .OK, let url = pannello.url else { return }
+        importaClienti(da: url)
+    }
+
+    @MainActor
+    func importaClienti(da url: URL) {
         if let lettura = ImportaClienti.leggi(url, rubrica: clienti) {
             apri(.clienti)
             importazione = lettura
         } else {
-            mostraAvviso("Nel file non ho trovato contatti con un nome. Per Excel salva come CSV, con i nomi delle colonne nella prima riga.")
+            mostraAvviso("Nel file non ho trovato contatti con un nome: servono i nomi delle colonne nella prima riga (Nome, Cognome, Codice fiscale…).")
         }
     }
 
     @MainActor
     func importaPosizioniDaFile() {
         let pannello = NSOpenPanel()
-        pannello.allowedContentTypes = [.commaSeparatedText, .tabSeparatedText, .plainText]
+        pannello.allowedContentTypes = Self.tipiTabelle
         pannello.allowsMultipleSelection = false
-        pannello.message = "Un CSV con una posizione per riga e i nomi delle colonne nella prima (da Excel o Numbers: «Salva come» CSV). I clienti devono essere già in rubrica."
+        pannello.message = "Un foglio Excel o un CSV con una posizione per riga e i nomi delle colonne nella prima. I clienti che non sono in rubrica si aggiungono insieme."
         guard pannello.runModal() == .OK, let url = pannello.url else { return }
-        if let lettura = ImportaPosizioni.leggi(url, clienti: clienti, posizioni: posizioni) {
+        importaPosizioni(da: url)
+    }
+
+    @MainActor
+    func importaPosizioni(da url: URL) {
+        if let lettura = ImportaPosizioni.leggi(url, clienti: clienti, posizioni: posizioni, prodotti: dati.prodotti) {
             apri(.posizioni)
             importazionePosizioni = lettura
         } else {
             mostraAvviso("Nel file non ho trovato posizioni: servono almeno il prodotto o il numero di contratto, con i nomi delle colonne nella prima riga.")
+        }
+    }
+
+    /// Righe copiate da Excel o Numbers (intestazione compresa): clienti o posizioni, secondo le colonne.
+    @MainActor
+    func incollaDaExcel(posizioni preferite: Bool) {
+        guard !solaLettura else { return }
+        guard let testo = NSPasteboard.general.string(forType: .string), testo.contains("\n") || testo.contains("\t") else {
+            mostraAvviso("Negli appunti non ci sono righe di tabella. In Excel seleziona le righe con l'intestazione, ⌘C, poi «Incolla da Excel».")
+            return
+        }
+        let righe = ImportaClienti.righeCSV(testo)
+        if preferite || ImportaPosizioni.sembraPosizioni(righe),
+           let lettura = ImportaPosizioni.incollate(testo, clienti: clienti, posizioni: posizioni, prodotti: dati.prodotti) {
+            apri(.posizioni)
+            importazionePosizioni = lettura
+        } else if let lettura = ImportaClienti.incollati(testo, rubrica: clienti) {
+            apri(.clienti)
+            importazione = lettura
+        } else {
+            mostraAvviso("Nelle righe copiate non ho riconosciuto le colonne: copia anche la riga dell'intestazione (Cliente, Prodotto, Numero polizza…).")
+        }
+    }
+
+    /// Un file trascinato su Prisma va dove serve: PDF e immagini in Documenti, vCard in Clienti,
+    /// tabelle in Posizioni se hanno prodotti o importi, altrimenti in Clienti.
+    @MainActor
+    func importaFileTrascinati(_ urls: [URL]) {
+        guard !solaLettura else { return }
+        let documenti = urls.filter { ["pdf", "png", "jpg", "jpeg", "tiff", "tif", "heic"].contains($0.pathExtension.lowercased()) }
+        if !documenti.isEmpty {
+            apri(.documenti)
+            importaDocumenti(documenti)
+        }
+        // Le tabelle e i contatti: un'anteprima per volta, la prima
+        if let url = urls.first(where: { !documenti.contains($0) }) {
+            switch url.pathExtension.lowercased() {
+            case "vcf":
+                importaClienti(da: url)
+            case "csv", "txt", "tsv", "xlsx":
+                if let righe = ImportaClienti.righe(url), ImportaPosizioni.sembraPosizioni(righe) {
+                    importaPosizioni(da: url)
+                } else {
+                    importaClienti(da: url)
+                }
+            case "xls", "numbers":
+                mostraAvviso("«\(url.lastPathComponent)»: da Numbers o dal vecchio Excel salva come .xlsx o CSV, poi trascinalo di nuovo.")
+            default:
+                mostraAvviso("«\(url.lastPathComponent)» non è un file che Prisma sa importare.")
+            }
         }
     }
 }

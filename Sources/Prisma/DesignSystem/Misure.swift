@@ -261,6 +261,9 @@ enum Misure {
         static let raggio: CGFloat = 7
         static let distanzaBasso: CGFloat = 100
         static let margine = EdgeInsets(top: 13, leading: 19, bottom: 13, trailing: 19)
+        /// Il riquadro tratteggiato quando si trascina un file su Prisma.
+        static let rilascioRaggio: CGFloat = 10
+        static let rilascioMargine: CGFloat = 8
     }
 
     enum Impostazioni {

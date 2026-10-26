@@ -150,6 +150,12 @@ enum ImportaClienti {
     /// Date dei contatti: "1985-03-15", "19850315", "15/03/1985"; senza anno ("--0315") non è una data di nascita utile.
     static func data(_ s: String) -> Date? {
         let t = s.trimmingCharacters(in: .whitespaces)
+        // Numero di serie di Excel (giorni dal 30/12/1899), come esce da un .xlsx: "45123" o "45123,5"
+        if let serie = Int(t.split(whereSeparator: { $0 == "," || $0 == "." }).first ?? ""), t.first?.isNumber == true,
+           t.allSatisfy({ $0.isNumber || $0 == "," || $0 == "." }), (10_000...80_000).contains(serie),
+           let base = Calendar.current.date(from: DateComponents(year: 1899, month: 12, day: 30, hour: 12)) {
+            return Calendar.current.date(byAdding: .day, value: serie, to: base)
+        }
         if t.count == 8, t.allSatisfy(\.isNumber) {
             return EstrattoreDocumento.data("\(t.prefix(4))-\(t.dropFirst(4).prefix(2))-\(t.suffix(2))").map(mezzogiorno)
         }
@@ -204,9 +210,20 @@ enum ImportaClienti {
         return righe
     }
 
+    /// Le righe di un file tabellare: Excel (.xlsx) letto direttamente, altrimenti CSV o testo a tabulazioni.
+    static func righe(_ url: URL) -> [[String]]? {
+        if url.pathExtension.lowercased() == "xlsx" { return FoglioExcel.righe(url) }
+        guard let dati = try? Data(contentsOf: url), let t = testo(dati) else { return nil }
+        return righeCSV(t)
+    }
+
     /// I clienti di un CSV con intestazione; anche le colonne riconosciute, da mostrare nell'anteprima.
     static func daCSV(_ testo: String) -> (colonne: [Colonna], clienti: [ClienteImportato]) {
-        let righe = righeCSV(testo)
+        daRighe(righeCSV(testo))
+    }
+
+    /// I clienti di una tabella con intestazione (CSV, Excel o righe incollate).
+    static func daRighe(_ righe: [[String]]) -> (colonne: [Colonna], clienti: [ClienteImportato]) {
         guard let testa = righe.first else { return ([], []) }
         let colonne = testa.map(Colonna.da)
         var usate = Set<Colonna>()
@@ -239,6 +256,10 @@ enum ImportaClienti {
 
     /// Legge un file (vCard o CSV) e segna i doppioni rispetto alla rubrica; nil se non c'è nessun contatto.
     static func leggi(_ url: URL, rubrica: [Cliente]) -> ImportazioneClienti? {
+        if url.pathExtension.lowercased() == "xlsx" {
+            guard let righe = FoglioExcel.righe(url) else { return nil }
+            return importazione(daRighe(righe), file: url.lastPathComponent, rubrica: rubrica)
+        }
         guard let dati = try? Data(contentsOf: url), let t = testo(dati) else { return nil }
         let vcard = url.pathExtension.lowercased() == "vcf" || t.uppercased().contains("BEGIN:VCARD")
         let colonne: [Colonna]
@@ -251,8 +272,21 @@ enum ImportaClienti {
             colonne = csv.colonne
             clienti = csv.clienti
         }
-        guard !clienti.isEmpty else { return nil }
-        return ImportazioneClienti(file: url.lastPathComponent, colonne: colonne, clienti: segnaDoppioni(clienti, rubrica: rubrica))
+        return importazione((colonne, clienti), file: url.lastPathComponent, rubrica: rubrica)
+    }
+
+    /// Righe copiate da Excel o Numbers (testo a tabulazioni negli appunti), con l'intestazione nella prima.
+    static func incollati(_ testo: String, rubrica: [Cliente]) -> ImportazioneClienti? {
+        if testo.uppercased().contains("BEGIN:VCARD") {
+            return importazione(([], daVCard(testo)), file: "appunti", rubrica: rubrica)
+        }
+        return importazione(daCSV(testo), file: "appunti", rubrica: rubrica)
+    }
+
+    private static func importazione(_ letto: (colonne: [Colonna], clienti: [ClienteImportato]), file: String,
+                                     rubrica: [Cliente]) -> ImportazioneClienti? {
+        guard !letto.clienti.isEmpty else { return nil }
+        return ImportazioneClienti(file: file, colonne: letto.colonne, clienti: segnaDoppioni(letto.clienti, rubrica: rubrica))
     }
 
     // MARK: - Doppioni

@@ -151,7 +151,8 @@ enum ProvaEve {
                       "Importa posizioni: piano Alleanza abbinato, area risparmio, premio mensile, valore e versato")
             controlla(lette[1].cliente?.nome == "Anna Maria Verdi" && lette[1].posizione.area == .protezione && lette[1].posizione.rischio == .vita,
                       "Importa posizioni: cognome e nome invertiti, TCM in protezione caso morte")
-            controlla(lette[2].cliente == nil && lette[2].problema != nil, "Importa posizioni: cliente non in rubrica escluso")
+            controlla(lette[2].cliente == nil && lette[2].problema == nil && lette[2].nuovoCliente?.nome == "Mario Assente",
+                      "Importa posizioni: cliente non in rubrica proposto come cliente nuovo")
             controlla(lette[3].problema == "ripetuta nel file", "Importa posizioni: la stessa polizza due volte")
             controlla(lette[4].posizione.canale == .indipendente && lette[4].posizione.area == .investimento && lette[4].posizione.versamentoIniziale == 1_000
                       && lette[4].posizione.premio == 0, "Importa posizioni: premio unico come versamento iniziale, canale scelto")
@@ -163,6 +164,7 @@ enum ProvaEve {
             let nuove = Set(stato.clienti.filter { ["Anna Maria Verdi", "Luca Neri"].contains($0.nome) }.map(\.id))
             stato.dati.posizioni.removeAll { nuove.contains($0.clienteId) }
         }
+        for (ok, descrizione) in provaImportazioniRapide(stato) { controlla(ok, descrizione) }
         // Le prove che seguono riguardano i clienti di prova
         let importati = Set(foglio.clienti.map(\.nome))
         stato.dati.clienti.removeAll { importati.contains($0.nome) }
@@ -1027,6 +1029,101 @@ enum ProvaEve {
         }
         print("ERRORE: \(errori) verifiche di Eve non riuscite")
         return 1
+    }
+
+    /// Excel letto direttamente, righe incollate, clienti nuovi creati con le posizioni, schede prodotto collegate.
+    static func provaImportazioniRapide(_ stato: StatoShell) -> [(Bool, String)] {
+        var esiti: [(Bool, String)] = []
+        func controlla(_ ok: Bool, _ d: String) { esiti.append((ok, d)) }
+
+        // Il foglio di un .xlsx: stringhe condivise, celle vuote saltate, numeri e date di Excel
+        let condivise = """
+        <?xml version="1.0" encoding="UTF-8"?><sst xmlns="x"><si><t>Contraente</t></si><si><t>Prodotto</t></si><si><t>Premio</t></si>\
+        <si><t>Decorrenza</t></si><si><r><t>Mario </t></r><r><t>Nuovo</t></r></si><si><t>Piano Alleanza Futuro</t></si></sst>
+        """
+        let foglio = """
+        <?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="x"><sheetData>\
+        <row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="E1" t="s"><v>3</v></c></row>\
+        <row r="2"><c r="A2" t="s"><v>4</v></c><c r="B2" t="s"><v>5</v></c><c r="C2"><v>1234.5</v></c><c r="E2"><v>45292</v></c></row>\
+        </sheetData></worksheet>
+        """
+        let lette = FoglioExcel.righe(foglioXML: Data(foglio.utf8), condivisi: FoglioExcel.stringheCondivise(Data(condivise.utf8)))
+        controlla(lette.count == 2 && lette[1] == ["Mario Nuovo", "Piano Alleanza Futuro", "1234,5", "", "45292"],
+                  "Excel: celle, stringhe condivise a pezzi, colonna vuota, numero con la virgola (\(lette))")
+        let data = ImportaClienti.data("45292")
+        let giorno = data.map { Calendar.current.dateComponents([.year, .month, .day], from: $0) }
+        controlla(giorno?.year == 2024 && giorno?.month == 1 && giorno?.day == 1,
+                  "Excel: data come numero di serie (45292 = 1° gennaio 2024)")
+        controlla(ImportaClienti.data("1985") == nil && FoglioExcel.colonna("AB12") == 27, "Excel: un anno da solo non è una data; colonna AB = 27")
+
+        // Un .xlsx vero, compresso con zip e riletto con unzip
+        let cartella = FileManager.default.temporaryDirectory.appendingPathComponent("prova-xlsx-\(UUID().uuidString)")
+        let fm = FileManager.default
+        try? fm.createDirectory(at: cartella.appendingPathComponent("xl/worksheets"), withIntermediateDirectories: true)
+        try? fm.createDirectory(at: cartella.appendingPathComponent("xl/_rels"), withIntermediateDirectories: true)
+        try? Data(foglio.utf8).write(to: cartella.appendingPathComponent("xl/worksheets/foglio.xml"))
+        try? Data(condivise.utf8).write(to: cartella.appendingPathComponent("xl/sharedStrings.xml"))
+        try? Data(#"<workbook xmlns:r="r"><sheets><sheet name="Polizze" sheetId="1" r:id="rId7"/></sheets></workbook>"#.utf8)
+            .write(to: cartella.appendingPathComponent("xl/workbook.xml"))
+        try? Data(#"<Relationships><Relationship Id="rId7" Target="worksheets/foglio.xml"/></Relationships>"#.utf8)
+            .write(to: cartella.appendingPathComponent("xl/_rels/workbook.xml.rels"))
+        let file = cartella.appendingPathComponent("polizze.xlsx")
+        let zip = Process()
+        zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        zip.currentDirectoryURL = cartella
+        zip.arguments = ["-q", "-r", file.path, "xl"]
+        try? zip.run()
+        zip.waitUntilExit()
+        let daFile = FoglioExcel.righe(file)
+        controlla(daFile?.count == 2 && daFile?.last?.first == "Mario Nuovo", "Excel: .xlsx aperto senza Excel, primo foglio dalle relazioni (\(daFile ?? []))")
+
+        // Le stesse righe come posizioni: cliente nuovo, scheda prodotto collegata, premio e data
+        var scheda = Prodotto(nome: "Piano Alleanza Futuro", canale: .alleanza, area: .risparmio)
+        scheda.costoAnnuo = 1.4
+        scheda.sri = 2
+        scheda.tipologia = "Polizza rivalutabile (Ramo I)"
+        if let righe = daFile {
+            let pos = ImportaPosizioni.daRighe(righe, clienti: stato.clienti, posizioni: stato.posizioni, prodotti: [scheda], canale: .indipendente).posizioni
+            let p = pos.first?.posizione
+            controlla(pos.count == 1 && pos[0].nuovoCliente?.nome == "Mario Nuovo" && pos[0].prodotto == scheda.nome
+                      && p?.canale == .alleanza && p?.area == .risparmio && p?.costoAnnuo == 1.4 && p?.sri == 2 && p?.prodottoId == scheda.id
+                      && p?.premio == 1_234.5 && p?.decorrenza != nil,
+                      "Importa posizioni da Excel: cliente nuovo, canale e costi dalla scheda prodotto, premio e decorrenza")
+            controlla(ImportaPosizioni.sembraPosizioni(righe) && !ImportaPosizioni.sembraPosizioni([["Nome", "Cognome", "Email"]]),
+                      "Trascina: una tabella con il prodotto va in Posizioni, una di contatti in Clienti")
+        }
+        try? fm.removeItem(at: cartella)
+
+        // Righe incollate da Excel (tabulazioni): due polizze dello stesso cliente nuovo → un solo cliente
+        let appunti = "Cliente\tCodice fiscale\tProdotto\tN. polizza\tControvalore\n"
+            + "Bruno Fittizio\tFTTBRN70A01H501Z\tPiano Alleanza Futuro\tAF-1\t5.000,00\n"
+            + "Fittizio Bruno\tFTTBRN70A01H501Z\tTemporanea caso morte\tAF-2\t\n"
+        if let incollate = ImportaPosizioni.incollate(appunti, clienti: stato.clienti, posizioni: stato.posizioni, prodotti: [scheda]) {
+            let nuovi = Dictionary(incollate.posizioni.compactMap { x in x.nuovoCliente.map { (ImportaPosizioni.segnapostoNuovo($0), $0) } },
+                                   uniquingKeysWith: { a, _ in a })
+            let elenco = incollate.posizioni.map { x -> Posizione in
+                var p = x.posizione
+                if let n = x.nuovoCliente { p.clienteId = ImportaPosizioni.segnapostoNuovo(n) }
+                return p
+            }
+            let clientiPrima = stato.clienti.count
+            let posizioniPrima = stato.posizioni.count
+            let creati = stato.aggiungiPosizioniImportate(elenco, nuoviClienti: nuovi)
+            let bruno = stato.clienti.first { $0.codiceFiscale == "FTTBRN70A01H501Z" }
+            controlla(incollate.file == "appunti" && creati == 1 && stato.clienti.count == clientiPrima + 1 && stato.posizioni.count == posizioniPrima + 2
+                      && bruno.map { b in stato.posizioni.filter { $0.clienteId == b.id }.count } == 2,
+                      "Incolla da Excel: due polizze, un solo cliente nuovo con il codice fiscale, posizioni collegate a lui")
+            if let b = bruno {
+                stato.dati.posizioni.removeAll { $0.clienteId == b.id }
+                stato.dati.clienti.removeAll { $0.id == b.id }
+            }
+        } else {
+            controlla(false, "Incolla da Excel: righe a tabulazioni lette")
+        }
+        let contatti = ImportaClienti.incollati("Nome\tCognome\tEmail\nCarla\tProva\tcarla@example.it\n", rubrica: stato.clienti)
+        controlla(contatti?.clienti.first?.nome == "Carla Prova" && contatti?.clienti.first?.email == "carla@example.it",
+                  "Incolla da Excel: righe di contatti in Clienti")
+        return esiti
     }
 }
 

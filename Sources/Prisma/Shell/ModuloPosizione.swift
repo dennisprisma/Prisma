@@ -3,6 +3,7 @@ import SwiftUI
 /// Modulo per aggiungere o modificare una posizione (in essere o proposta).
 struct ModuloPosizione: View {
     @Environment(\.dismiss) var chiudi
+    @EnvironmentObject var stato: StatoShell
     @State var bozza: Posizione
     let nuova: Bool
     let salva: (Posizione) -> Void
@@ -13,6 +14,24 @@ struct ModuloPosizione: View {
     var body: some View {
         CorniceModulo(titolo: titolo) {
             VStack(alignment: .leading, spacing: 20) {
+                if !stato.dati.prodotti.isEmpty {
+                    sezione("Dalla scheda prodotto") {
+                        CampoModulo(etichetta: "Prodotto") {
+                            Picker("", selection: Binding(get: { bozza.prodottoId }, set: { scegli($0) })) {
+                                Text("Nessuna scheda · compilo a mano").tag(String?.none)
+                                ForEach(schede) { s in
+                                    Text("\(s.nome) · \(s.canale == .alleanza ? "Alleanza" : s.emittente.isEmpty ? "indipendente" : s.emittente)")
+                                        .tag(Optional(s.id))
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 380)
+                        }
+                        Text("Nome, canale, area, compagnia, costi, rendimento e rischio vengono dalla scheda: restano da scrivere numero, date e importi.")
+                            .font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 sezione("La posizione") {
                     CampoModulo(etichetta: "Stato") {
                         Picker("", selection: $bozza.stato) {
@@ -201,6 +220,32 @@ struct ModuloPosizione: View {
             .keyboardShortcut(.defaultAction)
         }
         .frame(width: Misure.Analisi.modulo.width, height: Misure.Analisi.modulo.height)
+    }
+
+    /// Le schede prodotto, prima quelle Alleanza, in ordine di nome.
+    private var schede: [Prodotto] {
+        stato.dati.prodotti.sorted { a, b in
+            a.canale == b.canale ? a.nome.localizedCaseInsensitiveCompare(b.nome) == .orderedAscending : a.canale == .alleanza
+        }
+    }
+
+    /// Compila la posizione dalla scheda: quello che la scheda sa, il resto resta com'è.
+    private func scegli(_ id: String?) {
+        bozza.prodottoId = id
+        guard let s = stato.dati.prodotti.first(where: { $0.id == id }) else { return }
+        bozza.nome = s.nome
+        bozza.canale = s.canale
+        bozza.area = s.area
+        bozza.tipologia = s.tipologia
+        bozza.emittente = s.emittente.isEmpty && s.canale == .alleanza ? "Alleanza Assicurazioni" : s.emittente
+        bozza.rendimentoAtteso = s.rendimentoAtteso
+        bozza.costoIngresso = s.costoIngresso
+        bozza.costoAnnuo = s.costoAnnuo
+        bozza.aliquotaFiscale = s.aliquotaFiscale ?? bozza.aliquotaFiscale
+        bozza.sri = s.sri
+        if !s.garanzie.isEmpty { bozza.garanzie = s.garanzie }
+        if s.area == .protezione, bozza.rischio == nil { bozza.rischio = ImportaPosizioni.rischio(s.nome + " " + s.tipologia) }
+        if s.area != .protezione { bozza.rischio = nil }
     }
 
     private var titolo: String {

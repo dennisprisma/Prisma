@@ -2264,11 +2264,12 @@ final class StatoShell: ObservableObject {
         }
     }
 
-    /// Importa in Posizioni quelle scelte (da CSV). Prima salva un backup dello stato attuale.
-    func importaPosizioni(_ elenco: [Posizione]) {
+    /// Importa in Posizioni quelle scelte (da CSV, Excel o righe incollate), con i clienti nuovi da creare
+    /// in rubrica (chiave: il segnaposto in `clienteId`). Prima salva un backup dello stato attuale.
+    func importaPosizioni(_ elenco: [Posizione], nuoviClienti: [String: ClienteImportato] = [:]) {
         guard !elenco.isEmpty, !solaLettura else { return }
         guard persistente else {
-            dati.posizioni.append(contentsOf: elenco)
+            aggiungiPosizioniImportate(elenco, nuoviClienti: nuoviClienti)
             return
         }
         guard !backupInCorso else { return }
@@ -2283,15 +2284,38 @@ final class StatoShell: ObservableObject {
                 self.backupInCorso = false
                 switch esito {
                 case .success:
-                    self.dati.posizioni.append(contentsOf: elenco)
+                    let creati = self.aggiungiPosizioniImportate(elenco, nuoviClienti: nuoviClienti)
                     self.aggiornaElencoBackup()
                     let clienti = Set(elenco.map(\.clienteId)).count
-                    self.mostraAvviso("\(elenco.count) \(elenco.count == 1 ? "posizione importata" : "posizioni importate") per \(clienti) \(clienti == 1 ? "cliente" : "clienti"). Lo stato precedente è salvato in un backup.")
+                    let nuovi = creati == 0 ? "" : creati == 1 ? " Un cliente nuovo aggiunto in rubrica." : " \(creati) clienti nuovi aggiunti in rubrica."
+                    self.mostraAvviso("\(elenco.count) \(elenco.count == 1 ? "posizione importata" : "posizioni importate") per \(clienti) \(clienti == 1 ? "cliente" : "clienti")."
+                                      + nuovi + " Lo stato precedente è salvato in un backup.")
                 case .failure(let e):
                     self.mostraAvviso("Importazione annullata, backup non riuscito: \(e.localizedDescription)")
                 }
             }
         }
+    }
+
+    /// La parte senza backup (usata anche dalle prove): crea i clienti nuovi e dà alle loro posizioni il loro id.
+    /// Restituisce quanti clienti ha creato.
+    @discardableResult
+    func aggiungiPosizioniImportate(_ elenco: [Posizione], nuoviClienti: [String: ClienteImportato]) -> Int {
+        var ids: [String: String] = [:]
+        for (chiave, nuovo) in nuoviClienti.sorted(by: { $0.value.nome < $1.value.nome })
+        where elenco.contains(where: { $0.clienteId == chiave }) {
+            let c = nuovo.cliente(tinta: prossimaTinta)
+            dati.clienti.append(c)
+            ids[chiave] = c.id
+        }
+        dati.posizioni.append(contentsOf: elenco.compactMap { p in
+            guard p.clienteId.hasPrefix("nuovo:") else { return p }
+            guard let id = ids[p.clienteId] else { return nil }
+            var q = p
+            q.clienteId = id
+            return q
+        })
+        return ids.count
     }
 
     /// La parte senza backup (usata anche dalle prove): ogni cliente con la sua tinta, il primo in primo piano.

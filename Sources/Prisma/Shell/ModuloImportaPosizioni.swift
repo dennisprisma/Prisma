@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// L'anteprima delle posizioni lette da un CSV: abbinate ai clienti, con canale e area proposti.
-/// Chi non ha un cliente in rubrica, o è già in Posizioni, parte escluso.
+/// Chi non è in rubrica si aggiunge come cliente nuovo (si può escludere); chi è già in Posizioni parte escluso.
 struct ModuloImportaPosizioni: View {
     @Environment(\.dismiss) var chiudi
     @EnvironmentObject var stato: StatoShell
@@ -11,6 +11,8 @@ struct ModuloImportaPosizioni: View {
     @State private var canale: Canale = .alleanza
     /// L'area corretta a mano, riga per riga.
     @State private var aree: [UUID: AreaPosizione] = [:]
+    /// Aggiungere in rubrica i clienti che nel file ci sono e in Prisma no.
+    @State private var creaClienti = true
 
     init(importazione: ImportazionePosizioni) {
         self.importazione = importazione
@@ -19,6 +21,7 @@ struct ModuloImportaPosizioni: View {
 
     private func finale(_ x: PosizioneImportata) -> Posizione {
         var p = x.posizione
+        if let nuovo = x.nuovoCliente { p.clienteId = ImportaPosizioni.segnapostoNuovo(nuovo) }
         if !x.canaleDalFile {
             p.canale = canale
             if canale == .indipendente, p.emittente == "Alleanza Assicurazioni" { p.emittente = "" }
@@ -30,8 +33,25 @@ struct ModuloImportaPosizioni: View {
         return p
     }
 
-    private var scelte: [Posizione] {
-        importazione.posizioni.filter { !esclusi.contains($0.id) && $0.cliente != nil }.map(finale)
+    private func importabile(_ x: PosizioneImportata) -> Bool {
+        !esclusi.contains(x.id) && (x.cliente != nil || (creaClienti && x.nuovoCliente != nil))
+    }
+
+    private var scelte: [Posizione] { importazione.posizioni.filter(importabile).map(finale) }
+
+    /// I clienti nuovi, uno per codice fiscale o nome, solo per le righe scelte.
+    private var nuoviClienti: [String: ClienteImportato] {
+        guard creaClienti else { return [:] }
+        var elenco: [String: ClienteImportato] = [:]
+        for x in importazione.posizioni where importabile(x) {
+            if let n = x.nuovoCliente { elenco[ImportaPosizioni.segnapostoNuovo(n)] = elenco[ImportaPosizioni.segnapostoNuovo(n)] ?? n }
+        }
+        return elenco
+    }
+
+    /// Quanti clienti nuovi ci sono nel file, scelti o no.
+    private var clientiNelFile: Int {
+        Set(importazione.posizioni.compactMap { $0.nuovoCliente.map(ImportaPosizioni.segnapostoNuovo) }).count
     }
 
     var body: some View {
@@ -41,6 +61,14 @@ struct ModuloImportaPosizioni: View {
                     .font(Tipo.campoEtichetta)
                     .foregroundColor(Colori.Rubrica.secondario)
                     .fixedSize(horizontal: false, vertical: true)
+                if clientiNelFile > 0 {
+                    Toggle(isOn: $creaClienti) {
+                        Text(clientiNelFile == 1 ? "Aggiungi in rubrica il cliente che non c'è ancora"
+                                                 : "Aggiungi in rubrica i \(clientiNelFile) clienti che non ci sono ancora")
+                            .font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.testo)
+                    }
+                    .toggleStyle(.checkbox)
+                }
                 if importazione.posizioni.contains(where: { !$0.canaleDalFile }) {
                     HStack(spacing: 10) {
                         Text("Canale delle righe che non lo indicano")
@@ -53,7 +81,7 @@ struct ModuloImportaPosizioni: View {
                     ForEach(importazione.posizioni) { x in riga(x) }
                 }
                 .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
-                Text("Area e canale si possono correggere anche dopo, nella scheda di ogni posizione. Il controvalore entra con la data del file o di oggi: è il primo punto dell'andamento.")
+                Text("Quando il nome del prodotto corrisponde a una scheda di Prodotti, costi, rendimento e rischio vengono dalla scheda. Area e canale si possono correggere anche dopo, nella scheda di ogni posizione. Il controvalore entra con la data del file o di oggi: è il primo punto dell'andamento.")
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.Analisi.kpiNota)
                     .fixedSize(horizontal: false, vertical: true)
@@ -67,7 +95,7 @@ struct ModuloImportaPosizioni: View {
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
                 .keyboardShortcut(.cancelAction)
             Button(scelte.count == 1 ? "Importa 1 posizione" : "Importa \(scelte.count) posizioni") {
-                stato.importaPosizioni(scelte)
+                stato.importaPosizioni(scelte, nuoviClienti: nuoviClienti)
                 chiudi()
             }
             .buttonStyle(StileBlu())
@@ -80,7 +108,7 @@ struct ModuloImportaPosizioni: View {
 
     private func riga(_ x: PosizioneImportata) -> some View {
         let p = finale(x)
-        let incluso = !esclusi.contains(x.id) && x.cliente != nil
+        let incluso = importabile(x)
         let cifre = [p.numeroContratto.isEmpty ? "" : "n. \(p.numeroContratto)",
                      p.controvalore.map { "valore \(Formati.euro($0))" } ?? "",
                      p.premioAnnuo > 0 ? "\(Formati.euro(p.premio)) \(p.frequenza.nome.lowercased())" : "",
@@ -93,7 +121,7 @@ struct ModuloImportaPosizioni: View {
                     .foregroundColor(incluso ? Colori.Analisi.navBasso : Colori.Analisi.kpiNota)
             }
             .buttonStyle(StileSemplice())
-            .disabled(x.cliente == nil)
+            .disabled(x.cliente == nil && (x.nuovoCliente == nil || !creaClienti))
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
@@ -105,6 +133,11 @@ struct ModuloImportaPosizioni: View {
             Spacer(minLength: 0)
             if let problema = x.problema {
                 Text(problema).font(Tipo.chip).foregroundColor(Colori.Analisi.attenzioneTesto).lineLimit(1)
+            } else if x.nuovoCliente != nil {
+                Text(creaClienti ? "cliente nuovo" : "cliente non in rubrica")
+                    .font(Tipo.chip).foregroundColor(creaClienti ? Colori.Analisi.kpiNota : Colori.Analisi.attenzioneTesto).lineLimit(1)
+            } else if let scheda = x.prodotto {
+                Text("dalla scheda «\(scheda)»").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
             }
             Picker("", selection: Binding(get: { aree[x.id] ?? p.area }, set: { aree[x.id] = $0 })) {
                 ForEach(AreaPosizione.allCases) { Text($0.nome).tag($0) }
