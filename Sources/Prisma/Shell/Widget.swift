@@ -179,63 +179,76 @@ struct WidgetCliente: View {
     @EnvironmentObject var stato: StatoShell
     @State var sceltaCliente = false
 
+    /// I numeri del cliente, calcolati una volta sola per tutte le varianti.
+    private struct Numeri {
+        let riepilogo: RiepilogoPosizioni
+        let incontro: String
+        let aperte: Int
+    }
+
     var body: some View {
+        let id = stato.clienteAttivoId
+        let numeri = Numeri(riepilogo: RiepilogoPosizioni(stato.posizioniCliente(id)),
+                            incontro: stato.prossimiAppuntamenti.first { $0.clienteId == id }
+                                .map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—",
+                            aperte: stato.attivitaAperte.filter { $0.clienteId == id }.count)
         // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri: ViewThatFits
         // misura l'altezza che serve a ogni variante e prende la prima che ci sta, in quest'ordine:
         // tutto; senza la nota; senza i pulsanti; una riga di numeri con i pulsanti; solo quella;
-        // infine la testata compatta del template (senza il tema, margini ridotti).
+        // poi la testata compatta del template (senza il tema, margini ridotti) con una riga;
+        // infine la sola testata compatta, che entra sempre (≈ 57 pt).
         // Il GeometryReader fissa la misura del widget alla sua cella: anche l'ultima variante,
         // se mai non ci stesse, resta dentro la cornice invece di sporgere sui vicini.
         GeometryReader { geo in
             ViewThatFits(in: .vertical) {
-                contenuto(righe: 2, nota: true, pulsanti: true)
-                contenuto(righe: 2, nota: false, pulsanti: true)
-                contenuto(righe: 2, nota: false, pulsanti: false)
-                contenuto(righe: 1, nota: false, pulsanti: true)
-                contenuto(righe: 1, nota: false, pulsanti: false)
-                contenuto(righe: 1, nota: false, pulsanti: false, compatta: true)
+                contenuto(numeri, righe: 2, nota: true, pulsanti: true)
+                contenuto(numeri, righe: 2, nota: false, pulsanti: true)
+                contenuto(numeri, righe: 2, nota: false, pulsanti: false)
+                contenuto(numeri, righe: 1, nota: false, pulsanti: true)
+                contenuto(numeri, righe: 1, nota: false, pulsanti: false)
+                contenuto(numeri, righe: 1, nota: false, pulsanti: false, compatta: true)
+                contenuto(numeri, righe: 0, nota: false, pulsanti: false, compatta: true)
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
         .corniceWidget(Colori.Colonna.sfondo)
     }
 
-    private func contenuto(righe: Int, nota: Bool, pulsanti: Bool, compatta: Bool = false) -> some View {
-        let id = stato.clienteAttivoId
-        let r = RiepilogoPosizioni(stato.posizioniCliente(id))
-        let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == id }
-        let aperte = stato.attivitaAperte.filter { $0.clienteId == id }.count
+    private func contenuto(_ n: Numeri, righe: Int, nota: Bool, pulsanti: Bool, compatta: Bool = false) -> some View {
+        let r = n.riepilogo
         return VStack(alignment: .leading, spacing: 0) {
             testata(compatta: compatta)
             VStack(alignment: .leading, spacing: Misure.Widget.clienteSpazio) {
                 // Il pannello carta con i numeri (.os-panel + .os-kpi)
-                VStack(alignment: .leading, spacing: Misure.Widget.clienteSpazio) {
-                    HStack(alignment: .top, spacing: 0) {
-                        dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
-                        dato("Prossimo incontro", prossimo.map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—")
-                        dato("Da fare", "\(aperte) attività")
-                    }
-                    if righe >= 2 {
+                if righe >= 1 {
+                    VStack(alignment: .leading, spacing: Misure.Widget.clienteSpazio) {
                         HStack(alignment: .top, spacing: 0) {
-                            dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
-                            dato("Premi annui", Formati.euro(r.premiAnnui))
-                            dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
+                            dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
+                            dato("Prossimo incontro", n.incontro)
+                            dato("Da fare", "\(n.aperte) attività")
+                        }
+                        if righe >= 2 {
+                            HStack(alignment: .top, spacing: 0) {
+                                dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
+                                dato("Premi annui", Formati.euro(r.premiAnnui))
+                                dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
+                            }
+                        }
+                        if nota, let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
+                            Text(nota)
+                                .font(Tipo.rigaSecondario)
+                                .foregroundColor(Colori.Colonna.rigaSecondario)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    if nota, let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
-                        Text(nota)
-                            .font(Tipo.rigaSecondario)
-                            .foregroundColor(Colori.Colonna.rigaSecondario)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    .padding(compatta ? Misure.Widget.pannelloMargineCompatto : Misure.Widget.pannelloMargine)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).fill(Gradienti.pannelloWidget))
+                    .luceInterna(.white, raggio: Misure.Widget.pannelloRaggio)
+                    .overlay(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).strokeBorder(Colori.Widget.pannelloBordo, lineWidth: 1))
+                    .ombraCSS(Colori.Widget.pannelloOmbra, y: 2, sfocatura: 6)
                 }
-                .padding(Misure.Widget.pannelloMargine)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).fill(Gradienti.pannelloWidget))
-                .luceInterna(.white, raggio: Misure.Widget.pannelloRaggio)
-                .overlay(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).strokeBorder(Colori.Widget.pannelloBordo, lineWidth: 1))
-                .ombraCSS(Colori.Widget.pannelloOmbra, y: 2, sfocatura: 6)
                 if pulsanti {
                     // Lo Spacer solo qui: nelle varianti senza pulsanti costerebbe comunque lo spazio della pila
                     Spacer(minLength: 0)
@@ -250,7 +263,7 @@ struct WidgetCliente: View {
                     .buttonStyle(StileCuoioChiaro())
                 }
             }
-            .padding(Misure.Widget.clienteMargine)
+            .padding(compatta ? Misure.Widget.clienteMargineCompatto : Misure.Widget.clienteMargine)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -513,7 +526,7 @@ struct WidgetPortafoglio: View {
                 .bordoAlto(Colori.Colonna.rigaBordo)
             }
         }
-        .padding(EdgeInsets(top: 2, leading: Misure.Widget.margineElenco, bottom: 12, trailing: Misure.Widget.margineElenco))
+        .padding(EdgeInsets(top: 2, leading: Misure.Widget.margineElenco, bottom: Misure.Widget.portafoglioSpazio, trailing: Misure.Widget.margineElenco))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 

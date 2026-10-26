@@ -103,12 +103,15 @@ enum Misure {
         static let margineElenco: CGFloat = 15
         /// Il pannello carta dentro il cliente (.os-panel) e i suoi numeri.
         static let pannelloMargine: CGFloat = 12
+        static let pannelloMargineCompatto: CGFloat = 8
         static let pannelloRaggio: CGFloat = 6
         /// Il widget del cliente: testata in pelle (.os-desk-client: 13/14/10, compatta 9/12 sugli
-        /// schermi bassi), margine del corpo e spazio fra pannello, righe e pulsanti.
+        /// schermi bassi), margine del corpo (ridotto nella variante compatta) e spazio fra
+        /// pannello, righe e pulsanti.
         static let clienteTestata = EdgeInsets(top: 13, leading: 14, bottom: 10, trailing: 14)
         static let clienteTestataCompatta = EdgeInsets(top: 9, leading: 12, bottom: 9, trailing: 12)
         static let clienteMargine = EdgeInsets(top: 10, leading: 13, bottom: 10, trailing: 13)
+        static let clienteMargineCompatto = EdgeInsets(top: 8, leading: 13, bottom: 8, trailing: 13)
         static let clienteSpazio: CGFloat = 8
         /// Lo spazio fra totale, barre dei canali e proposte nel portafoglio.
         static let portafoglioSpazio: CGFloat = 10
