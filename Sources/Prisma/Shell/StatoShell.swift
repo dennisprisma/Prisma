@@ -2242,7 +2242,8 @@ final class StatoShell: ObservableObject {
     }
 
     /// Gli identificativi dei clienti di prova.
-    static let clientiDiProva: Set<String> = Set(DatiDemo.clienti().map(\.id))
+    /// I 5 clienti del template e i 30 clienti fittizi: si tolgono insieme.
+    static let clientiDiProva: Set<String> = Set(DatiDemo.clienti().map(\.id)).union(ClientiFittizi.ids)
     var haDatiDiProva: Bool { dati.clienti.contains { Self.clientiDiProva.contains($0.id) } }
 
     /// Toglie i 5 clienti di prova con tutti i loro dati (e le schede prodotto di esempio non usate),
@@ -2373,8 +2374,9 @@ final class StatoShell: ObservableObject {
         }
     }
 
-    /// Torna ai 5 clienti di prova (con backup di sicurezza dello stato attuale).
-    func ripristinaDatiDiProva() {
+    /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,
+    /// oppure con `completi` anche i 30 clienti fittizi.
+    func ripristinaDatiDiProva(completi: Bool = false) {
         guard persistente, !backupInCorso, !solaLettura else { return }
         salvaOra()
         backupInCorso = true
@@ -2387,14 +2389,15 @@ final class StatoShell: ObservableObject {
                 self.backupInCorso = false
                 switch esito {
                 case .success:
-                    var demo = DatiPrisma.demo()
+                    var demo = completi ? ClientiFittizi.completi() : DatiPrisma.demo()
                     demo.impostazioni = self.dati.impostazioni
                     self.dati = demo
                     self.azzeraNote()
                     // I file dei clienti veri restano nel backup appena fatto, non nell'archivio
                     self.pulisciDocumentiOrfani()
                     self.aggiornaElencoBackup()
-                    self.mostraAvviso("Dati di prova ripristinati. Lo stato precedente è salvato in un backup.")
+                    self.mostraAvviso((completi ? "\(demo.clienti.count) clienti di prova caricati." : "Dati di prova ripristinati.")
+                                      + " Lo stato precedente è salvato in un backup.")
                 case .failure(let e):
                     self.mostraAvviso("Operazione annullata, backup non riuscito: \(e.localizedDescription)")
                 }

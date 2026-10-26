@@ -663,7 +663,7 @@ enum DatiDemo {
 
     /// Lo storico di prova: i valori di 12 e 6 mesi fa delle posizioni finanziarie in essere, ricavati
     /// all'indietro dal valore attuale con un andamento diverso per area (le azioni oscillano di più).
-    private static func conRilevazioni(_ elenco: [Posizione]) -> [Posizione] {
+    static func conRilevazioni(_ elenco: [Posizione]) -> [Posizione] {
         elenco.map { p in
             guard p.stato == .inEssere, p.area.proiettabile, let valore = p.controvalore, let decorrenza = p.decorrenza else { return p }
             var x = p

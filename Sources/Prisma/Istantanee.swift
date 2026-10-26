@@ -270,6 +270,17 @@ enum Istantanee {
             s.chiediEve("Cosa ho domani?")
             s.apri(.eve)
         }),
+        ("87-clienti-fittizi", { s in
+            // I 35 clienti di prova completi: rubrica piena e un cliente inventato aperto
+            s.dati = ClientiFittizi.completi()
+            s.clienteAttivoId = ClientiFittizi.prefisso + "ferraro"
+            s.apri(.clienti)
+        }),
+        ("88-portafoglio-fittizi", { s in
+            s.dati = ClientiFittizi.completi()
+            s.portafoglio = true
+            s.apri(.posizioni)
+        }),
         ("85-impostazioni-voce", { s in
             s.schedaImpostazioni = .esperienza
             s.apri(.impostazioni)

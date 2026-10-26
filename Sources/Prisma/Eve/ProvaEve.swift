@@ -165,6 +165,7 @@ enum ProvaEve {
             stato.dati.posizioni.removeAll { nuove.contains($0.clienteId) }
         }
         for (ok, descrizione) in provaImportazioniRapide(stato) { controlla(ok, descrizione) }
+        for (ok, descrizione) in provaClientiFittizi() { controlla(ok, descrizione) }
         // Le prove che seguono riguardano i clienti di prova
         let importati = Set(foglio.clienti.map(\.nome))
         stato.dati.clienti.removeAll { importati.contains($0.nome) }
@@ -1032,6 +1033,46 @@ enum ProvaEve {
         }
         print("ERRORE: \(errori) verifiche di Eve non riuscite")
         return 1
+    }
+
+    /// I 35 clienti di prova completi: coerenti, salvabili, leggibili da Eve e tolti insieme ai 5 del template.
+    static func provaClientiFittizi() -> [(Bool, String)] {
+        var esiti: [(Bool, String)] = []
+        func controlla(_ ok: Bool, _ d: String) { esiti.append((ok, d)) }
+        let d = ClientiFittizi.completi()
+        let fittizi = d.clienti.filter { $0.id.hasPrefix(ClientiFittizi.prefisso) }
+        controlla(d.clienti.count == 35 && fittizi.count == 30, "Clienti fittizi: 5 del template più 30 (\(d.clienti.count))")
+        let ids = Set(d.clienti.map(\.id))
+        controlla(Set(d.posizioni.map(\.id)).count == d.posizioni.count, "Clienti fittizi: ogni posizione ha un id suo (\(d.posizioni.count) posizioni)")
+        controlla(d.posizioni.allSatisfy { ids.contains($0.clienteId) } && d.appuntamenti.allSatisfy { ids.contains($0.clienteId) }
+                  && d.attivita.allSatisfy { ids.contains($0.clienteId) } && d.note.allSatisfy { ids.contains($0.clienteId) },
+                  "Clienti fittizi: posizioni, agenda, attività e note appartengono a clienti esistenti")
+        let posizioniIds = Set(d.posizioni.map(\.id))
+        controlla(d.appuntamenti.allSatisfy { $0.posizioneId.map(posizioniIds.contains) ?? true }, "Clienti fittizi: gli appuntamenti puntano a posizioni esistenti")
+        controlla(fittizi.allSatisfy { c in d.posizioni.filter { $0.clienteId == c.id }.count >= 2 && c.dataNascita != nil && !c.canali.isEmpty },
+                  "Clienti fittizi: ognuno con almeno due posizioni, data di nascita e canale")
+        let canali = Set(d.posizioni.filter { $0.clienteId.hasPrefix(ClientiFittizi.prefisso) }.map(\.canale))
+        controlla(canali == [.alleanza, .indipendente], "Clienti fittizi: posizioni su entrambi i canali")
+        let inScadenza = d.posizioni.filter { p in p.stato == .inEssere && (p.scadenza.map { $0 > Date() && $0 < Date().addingTimeInterval(90 * 86_400) } ?? false) }
+        controlla(inScadenza.count >= 5, "Clienti fittizi: scadenze nei prossimi 90 giorni (\(inScadenza.count))")
+        let riletti = (try? Archivio.codificatore.encode(d)).flatMap { try? Archivio.decodifica($0) }
+        controlla(riletti?.clienti.count == 35 && riletti?.posizioni.count == d.posizioni.count, "Clienti fittizi: l'archivio si salva e si rilegge")
+        // Eve legge ogni cliente fittizio: scheda nei limiti e una bozza per ogni spunto
+        let s = StatoShell(persistente: false)
+        s.dati = d
+        var schedeOk = true
+        var bozzeOk = true
+        for c in fittizi {
+            guard let f = s.fonteEve(c.id) else { schedeOk = false; continue }
+            if ContestoEve.scheda(f).count > ContestoEve.limite + 1 { schedeOk = false }
+            for sp in SpuntoEve.allCases where MotoriEve.sintesi.componi(RichiestaEve(domanda: sp.domanda, spunto: sp, fonte: f, storia: [])).testo.isEmpty {
+                bozzeOk = false
+            }
+        }
+        controlla(schedeOk && bozzeOk, "Clienti fittizi: Eve ha la scheda di ognuno e le cifre per ogni spunto")
+        s.rimuoviDatiDiProva()
+        controlla(s.dati.clienti.isEmpty && s.dati.posizioni.isEmpty, "Clienti fittizi: «Togli i clienti di prova» toglie anche loro")
+        return esiti
     }
 
     /// Excel letto direttamente, righe incollate, clienti nuovi creati con le posizioni, schede prodotto collegate.
