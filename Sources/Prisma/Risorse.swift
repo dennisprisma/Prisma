@@ -122,9 +122,14 @@ extension Risorse {
                      altezza: max(1, Int((CGFloat(sorgente.height) * fattore).rounded())))
         guard let ridotta = riduci(sorgente, a: pixel) else { return nil }
 
-        // Punti = pixel del riquadro / scala dello schermo (la riserva d'ingrandimento resta nei pixel)
+        // Punti = pixel del riquadro / scala dello schermo (la riserva d'ingrandimento resta nei pixel).
+        // Rappresentazione bitmap esplicita: NSImage(cgImage:size:) dichiara i pixel pari ai punti
+        // e perderebbe la densità; la bitmap invece porta i 118 px veri sotto i 52 pt.
         let punti = NSSize(width: CGFloat(pixel.larghezza) / scala, height: CGFloat(pixel.altezza) / scala)
-        let immagine = NSImage(cgImage: ridotta, size: punti)
+        let bitmap = NSBitmapImageRep(cgImage: ridotta)
+        bitmap.size = punti
+        let immagine = NSImage(size: punti)
+        immagine.addRepresentation(bitmap)
         immagine.cacheMode = .never
 
         if pixelInCache + pixel.larghezza * pixel.altezza > limitePixelCache {
