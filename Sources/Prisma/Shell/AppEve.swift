@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// App Eve (.os-app-eve): a sinistra la giornata su carta, a destra la conversazione.
-/// Eve risponde con il modello Apple sul Mac oppure, se non c'è, con la sintesi dai dati.
+/// Eve risponde con Qwen sul Mac (Ollama); i calcoli e le cifre li prepara Prisma.
 /// I numeri li calcola sempre Prisma: Eve li legge e li spiega.
 struct AppEve: View {
     @EnvironmentObject var stato: StatoShell
@@ -95,23 +95,24 @@ struct AppEve: View {
         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.testataBordo, lineWidth: 1))
     }
 
-    /// Striscia con il motore in uso: è sempre chiaro chi risponde e dove lavora.
+    /// Striscia con lo stato di Qwen: è sempre chiaro chi risponde, dove lavora e cosa fare se non c'è.
     private var avviso: some View {
-        let motore = stato.motoreEve
-        let apple = !(motore is MotoreSintesi)
-        let motivo = MotoriEve.motivo(stato.dati.impostazioni.eve, locale: stato.disponibilitaLocale)
+        let q = stato.qwen
+        let pronto = q.disponibilita.pronto
         return HStack(spacing: 8) {
-            Circle().fill(apple ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).frame(width: 8, height: 8)
-                .shadow(color: (apple ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).opacity(0.8), radius: 3)
-            Text("\(motore.nome) · elaborazione locale").font(Tipo.eveAvviso)
-            Text(apple || stato.dati.impostazioni.eve.motore == .sintesi ? motore.descrizione : (motivo ?? motore.descrizione))
+            Circle().fill(pronto ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).frame(width: 8, height: 8)
+                .shadow(color: (pronto ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).opacity(0.8), radius: 3)
+            Text("\(q.nome) · \(pronto ? "pronto" : "non pronto")").font(Tipo.eveAvviso)
+            Text(pronto ? q.descrizione : (q.disponibilita.motivo ?? q.descrizione))
                 .font(Tipo.eveAvvisoNota)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
-            MenuTendina(selezione: $stato.dati.impostazioni.eve.motore,
-                        opzioni: ImpostazioniEve.Motore.allCases.map { ($0, $0.nome) }, larghezza: 160)
-            .help("Chi risponde: il modello Apple o Qwen sul Mac, se disponibili, oppure la sintesi dai dati del dossier")
+            if !pronto {
+                Button("Verifica") { stato.verificaMotoreLocale() }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                    .help("Chiede di nuovo a Ollama se Qwen è pronto")
+            }
         }
         .foregroundColor(Colori.Eve.avvisoTesto)
         .incisione(Color.white.opacity(0.6))

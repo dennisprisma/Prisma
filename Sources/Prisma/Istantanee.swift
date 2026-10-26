@@ -193,7 +193,7 @@ enum Istantanee {
         }),
         ("72-eve-resistenza", { s in
             s.clienteAttivoId = "marco"
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.chiediEve(SpuntoEve.resistenza.domanda, spunto: .resistenza)
             s.apri(.eve)
         }),
@@ -254,7 +254,7 @@ enum Istantanee {
         }),
         ("84-eve-ascolta", { s in
             // Una conversazione a voce: Eve ha risposto e ora ascolta la frase successiva
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.clienteAttivoId = "marco"
             s.chiediEve(SpuntoEve.resistenza.domanda, spunto: .resistenza)
             s.conversazioneAVoce = true
@@ -263,7 +263,7 @@ enum Istantanee {
         }),
         ("86-eve-comandi", { s in
             // Eve fa le cose: un appuntamento, un promemoria e l'agenda di domani, dalla conversazione
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.clienteAttivoId = "marco"
             s.chiediEve("Fissa una telefonata con Marco domani alle 15")
             s.chiediEve("Ricordami di mandargli il KID del PIP venerdì")
@@ -297,36 +297,36 @@ enum Istantanee {
             s.apri(.documenti)
         }),
         ("19-eve", { s in
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
             s.chiediEve(SpuntoEve.incontro.domanda, spunto: .incontro)
             s.apri(.eve)
         }),
         ("48-report-commento", { s in
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
             s.prospetto = .checkUp(report: true)
             s.scriviCommentoConEve(.checkUp(report: true))
             s.apri(.presentazioni)
         }),
         ("50-eve-proposte", { s in
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
             s.chiediEve(SpuntoEve.proposte.domanda, spunto: .proposte)
             s.apri(.eve)
         }),
         ("49-eve-documento", { s in
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.spiegaDocumentoConEve("doc-marco-polizza")
         }),
         ("46-eve-pensione", { s in
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.clienteAttivoId = "marco"
             s.prospetto = .previdenza(report: false)
             s.chiediEveDelDocumento(.previdenza(report: false))
         }),
         ("47-eve-checkup", { s in
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
             s.chiediEve(SpuntoEve.checkUp.domanda, spunto: .checkUp)
             s.apri(.eve)
@@ -393,7 +393,7 @@ enum Istantanee {
             s.apriProspetto(.portafoglio)
         }),
         ("67-eve-portafoglio", { s in
-            s.dati.impostazioni.eve.motore = .sintesi
+            s.rispostePreparate = true
             s.evePortafoglio = true
             s.chiediEvePortafoglio(SpuntoPortafoglio.quadro.domanda, spunto: .quadro)
             s.chiediEvePortafoglio(SpuntoPortafoglio.settimana.domanda, spunto: .settimana)

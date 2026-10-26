@@ -504,7 +504,7 @@ enum ProvaProspetti {
 
         // Il commento del consulente: pagina «Due parole per te» dopo la copertina, solo nei report
         let stato = StatoShell(persistente: false)
-        stato.dati.impostazioni.eve.motore = .sintesi
+        stato.rispostePreparate = true
         stato.clienteAttivoId = "giulia"
         for scelta in [SceltaProspetto.checkUp(report: true), .previdenza(report: true), .resoconto(report: true)] {
             let senza = stato.documentoProspetto(scelta)?.pagine.count ?? 0

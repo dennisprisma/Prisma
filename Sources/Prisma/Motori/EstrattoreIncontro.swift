@@ -11,7 +11,7 @@ struct PropostaIncontro: Identifiable, Hashable {
     let tipo: Tipo
     /// La frase degli appunti da cui nasce.
     let fonte: String
-    /// Chi l'ha proposta: "Regole di Prisma" o "Modello Apple".
+    /// Chi l'ha proposta: "Regole di Prisma" o "Qwen".
     var origine = "Regole di Prisma"
 
     var id: String {
@@ -34,7 +34,7 @@ struct PropostaIncontro: Identifiable, Hashable {
 /// Legge gli appunti dell'incontro e propone bisogni, eventi di vita e attività.
 ///
 /// Le regole sono parole chiave dichiarate, frase per frase: funzionano sempre, sul Mac,
-/// senza intelligenza artificiale. Il modello Apple, se disponibile, si aggiunge alle regole
+/// senza intelligenza artificiale. Qwen, se è pronto, si aggiunge alle regole
 /// rispondendo in un formato a righe che l'app controlla prima di usarlo.
 enum EstrattoreIncontro {
 
@@ -156,14 +156,14 @@ enum EstrattoreIncontro {
                 guard let area = AreaBisogno(rawValue: parti[1].lowercased()) else { continue }
                 let livelli: [String: Importanza] = ["alta": .alta, "media": .media, "bassa": .bassa]
                 let importanza = livelli[parti[2].lowercased()] ?? .media
-                proposte.append(PropostaIncontro(tipo: .bisogno(area, importanza), fonte: parti.count > 3 ? parti[3] : "", origine: "Modello Apple"))
+                proposte.append(PropostaIncontro(tipo: .bisogno(area, importanza), fonte: parti.count > 3 ? parti[3] : "", origine: "Qwen"))
             case "EVENTO" where parti.count >= 3:
                 guard let t = EventoVita.Tipo(rawValue: parti[1]), let a = Int(parti[2].filter(\.isNumber)),
                       a >= annoCorrente - 50, a <= annoCorrente + 60 else { continue }
-                proposte.append(PropostaIncontro(tipo: .evento(t, a), fonte: parti.count > 3 ? parti[3] : "", origine: "Modello Apple"))
+                proposte.append(PropostaIncontro(tipo: .evento(t, a), fonte: parti.count > 3 ? parti[3] : "", origine: "Qwen"))
             case "ATTIVITA", "ATTIVITÀ":
                 guard parti.count >= 2, !parti[1].isEmpty else { continue }
-                proposte.append(PropostaIncontro(tipo: .attivita(String(parti[1].prefix(120))), fonte: "", origine: "Modello Apple"))
+                proposte.append(PropostaIncontro(tipo: .attivita(String(parti[1].prefix(120))), fonte: "", origine: "Qwen"))
             default:
                 continue
             }

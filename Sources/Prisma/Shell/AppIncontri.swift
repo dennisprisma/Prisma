@@ -285,7 +285,7 @@ struct AppIncontri: View {
                             .disabled(i.vuoto || stato.estrazioneInCorso)
                         if stato.estrazioneInCorso {
                             ProgressView().controlSize(.small)
-                            Text("Anche il modello Apple sta leggendo…").font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
+                            Text("Anche Qwen sta leggendo…").font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
                         }
                     }
                     if i.vuoto {

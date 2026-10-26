@@ -1,11 +1,11 @@
 import Foundation
 
-/// Motore senza intelligenza artificiale: compone le risposte agli spunti a partire dai dati
-/// del dossier e dai motori di calcolo. È sempre disponibile, è istantaneo e non sbaglia i numeri;
-/// non capisce però le domande libere. Fa da riserva quando il modello Apple non c'è.
+/// I calcoli di Prisma per Eve, senza intelligenza artificiale: compongono le bozze degli spunti a partire
+/// dai dati del dossier e dai motori di calcolo, con i numeri esatti. Qwen le riceve e le racconta;
+/// da soli non rispondono in chat (lo fanno solo nelle istantanee e nelle prove, dove Qwen non c'è).
 struct MotoreSintesi: MotoreEve {
-    let nome = "Sintesi dai dati"
-    let descrizione = "Risposte composte dai dati del dossier, sul Mac. Nessun modello di intelligenza artificiale."
+    let nome = "Calcoli di Prisma"
+    let descrizione = "Bozze composte dai dati del dossier, sul Mac. Nessun modello di intelligenza artificiale."
     let disponibilita = DisponibilitaEve.pronto
 
     func rispondi(_ r: RichiestaEve) async throws -> RispostaEve {
@@ -43,13 +43,13 @@ struct MotoreSintesi: MotoreEve {
             if let s = SpuntoEve.argomento(r.domanda) {
                 let risposta = componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: f, storia: []))
                 return RispostaEve(titolo: risposta.titolo, testo: risposta.testo
-                    + "\n\nHo letto la domanda come «\(s.domanda)». Per le domande libere serve il modello Apple sul Mac (Apple Intelligence).",
+                    + "\n\nHo letto la domanda come «\(s.domanda)». Per le domande libere serve Qwen sul Mac.",
                     proposte: risposta.proposte)
             }
             var risposta = riepilogo(f)
             risposta.titolo = "Ecco cosa trovo nel dossier"
             return RispostaEve(titolo: risposta.titolo, testo: risposta.testo
-                + "\n\nPer capire domande libere serve il modello Apple sul Mac (Apple Intelligence). Intanto puoi usare gli spunti qui sotto.")
+                + "\n\nPer capire domande libere serve Qwen sul Mac. Intanto puoi usare gli spunti qui sotto.")
         }
     }
 

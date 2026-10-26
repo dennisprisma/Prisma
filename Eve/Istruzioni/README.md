@@ -9,4 +9,4 @@
 - `documenti.md`: istruzioni per leggere una pagina di KID, polizza o estratto conto e completare i campi che le regole di Prisma (`EstrattoreDocumento`) non hanno trovato. Ogni dato va confermato dal consulente, con la pagina di riferimento.
 
 Modificare qui il testo cambia il comportamento di Eve alla build successiva, senza toccare il codice.
-Tenere il testo corto: il modello Apple ha una finestra di circa 4.000 token per istruzioni, scheda, storia e risposta.
+Tenere il testo corto: Qwen 3-4B sul Mac ha una finestra piccola (circa 4.000 token) per istruzioni, scheda, storia e risposta.

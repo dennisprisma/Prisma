@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Eve usa il modello Apple (FoundationModels), che si compila solo con l'SDK di macOS 26:
+      # L'ascolto di Eve usa SpeechAnalyzer, che si compila solo con l'SDK di macOS 26:
       # si sceglie l'Xcode 26 più recente installato sul runner (il predefinito è il 16).
       - name: Seleziona Xcode 26
         run: |

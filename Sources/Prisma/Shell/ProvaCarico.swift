@@ -50,7 +50,7 @@ enum ProvaCarico {
         // Eve e motori su ogni cliente
         let stato = StatoShell(persistente: false)
         stato.dati = dati
-        stato.dati.impostazioni.eve.motore = .sintesi
+        stato.rispostePreparate = true
         let spunti: [SpuntoEve] = [.riepilogo, .checkUp, .proposte, .pensione, .resoconto]
         var peggiore = (nome: "", tempo: 0.0)
         // Un giro di riscaldamento: formattatori ed espressioni regolari si preparano la prima volta
