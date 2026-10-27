@@ -269,6 +269,49 @@ final class StatoShell: ObservableObject {
     /// App in primo piano (nil = scrivania).
     var appAttiva: AppPrisma? { finestreVisibili.last?.app }
 
+    /// La scrivania non si vede: la copre una finestra ingrandita (resta solo una cornice di pochi punti)
+    /// o una presentazione. Allora lo sfondo d'acqua si ferma. Con la schermata di benvenuto lo sfondo si vede.
+    var scrivaniaCoperta: Bool {
+        if presentazione != nil { return true }
+        if bloccato { return false }
+        return finestreVisibili.contains { $0.ingrandita }
+    }
+
+    /// Di chi parla la finestra di un'app: il suo cliente, tutti i clienti (filtri vuoti, portafoglio)
+    /// o nil se l'app non riguarda i clienti. Le app del dossier mostrano il cliente attivo;
+    /// Agenda, Attività e Note il cliente del loro filtro.
+    func contesto(di app: AppPrisma) -> String? {
+        let attivo = clienteAttivo?.nome ?? "Nessun cliente"
+        let tutti = "Tutti i clienti"
+        let delPortafoglio = "Portafoglio · tutti i clienti"
+        func filtro(_ id: String?) -> String {
+            guard let id else { return tutti }
+            return cliente(id)?.nome ?? tutti
+        }
+        switch app {
+        case .clienti, .analisi360, .obiettivi, .simulazioni, .confronti, .documenti, .incontri:
+            return attivo
+        case .posizioni:
+            return portafoglio ? delPortafoglio : attivo
+        case .eve:
+            return evePortafoglio ? delPortafoglio : attivo
+        case .presentazioni:
+            return sceltaProspetto.tipo == .portafoglio ? delPortafoglio : attivo
+        case .agenda:
+            return filtro(filtroClienteAgenda)
+        case .attivita:
+            return filtro(filtroClienteAttivita)
+        case .note:
+            return filtro(filtroClienteNote)
+        case .prodotti:
+            return "Catalogo dei prodotti"
+        case .ricerca:
+            return testoRicerca.isEmpty ? nil : "«\(testoRicerca)»"
+        case .impostazioni:
+            return nil
+        }
+    }
+
     func aperta(_ app: AppPrisma) -> Bool { finestre.contains { $0.app == app } }
 
     func cliente(_ id: String) -> Cliente? { clienti.first { $0.id == id } }

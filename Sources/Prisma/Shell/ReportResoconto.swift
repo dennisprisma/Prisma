@@ -5,7 +5,7 @@ private typealias D = Misure.Documento
 
 /// Il report del resoconto delle posizioni in essere: A4 orizzontale, da lasciare al cliente.
 /// Una pagina per messaggio: il quadro, come sta andando, posizione per posizione, le tutele,
-/// i prossimi 12 mesi, i costi, la sintesi. Veste di Prisma (copertina in cuoio, carta avorio).
+/// i prossimi 12 mesi, i costi, la sintesi. Veste di Prisma (copertina blu notte, carta avorio).
 enum ReportResoconto {
     /// Schede delle posizioni per pagina (2 × 2).
     static let schedePerPagina = 4
@@ -49,7 +49,7 @@ enum ReportResoconto {
 
 private var larghezzaUtile: CGFloat { D.report.width - D.margineReport * 2 }
 
-/// Una cifra su carta: etichetta piccola e numero in Georgia.
+/// Una cifra su carta: etichetta piccola e numero grande.
 private struct CifraReport: View {
     @Environment(\.paletteDocumento) private var C
     let etichetta: String

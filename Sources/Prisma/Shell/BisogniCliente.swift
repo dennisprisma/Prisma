@@ -320,7 +320,7 @@ struct RuotaBisogni: View {
                         .shadow(color: .black.opacity(0.25), radius: 0, x: 0, y: -1)
                         .position(x: px, y: py)
                 }
-                Circle().fill(Color.white).frame(width: interno * 2 - 4, height: interno * 2 - 4)
+                Circle().fill(Tema.Colore.scheda).frame(width: interno * 2 - 4, height: interno * 2 - 4)
                     .overlay(Circle().strokeBorder(Colori.Bisogni.ruotaBordo, lineWidth: 1))
                     .position(centro)
                 VStack(spacing: 1) {

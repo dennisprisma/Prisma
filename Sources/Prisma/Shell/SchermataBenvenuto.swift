@@ -1,115 +1,164 @@
 import SwiftUI
 import AppKit
 
-/// Schermata di benvenuto (il lucchetto in alto): copre le finestre con lo sfondo, l'ora e il
-/// marchio, per esempio quando ci si allontana dalla scrivania con un cliente in studio.
+/// Schermata di benvenuto (il lucchetto in alto): sullo sfondo d'acqua restano la data, l'ora grande,
+/// il logo e il cursore «scorri per entrare», per esempio quando ci si allontana dalla scrivania con un
+/// cliente in studio. Lo sfondo è quello della scrivania (ShellView nasconde il resto sotto).
 /// Si entra facendo scorrere il cursore, con un clic o con Invio. È una schermata di cortesia:
 /// non protegge i dati (per quello c'è il blocco del Mac).
 struct SchermataBenvenuto: View {
     @EnvironmentObject var stato: StatoShell
-    @State private var corsa: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) var movimentoRidotto
+    @State var corsa: CGFloat = 0
+    @State var trascina = false
+    @State var luccichio = false
 
     private var corsaMassima: CGFloat {
-        Misure.Benvenuto.binario.width - Misure.Benvenuto.cursore.width - 2 * Misure.Benvenuto.margineCursore
+        let m = Tema.Misura.Shell.self
+        return max(1, m.cursoreBenvenuto.width - 2 * m.cursoreMargine - m.manopola)
     }
 
     var body: some View {
         GeometryReader { geo in
-            ZStack {
-                Materiale.SfondoScrivania()
-                Colori.Benvenuto.velo
-                VStack(spacing: 0) {
-                    orologio
-                    Spacer()
-                    marchio
-                    Spacer()
-                    sblocco
-                }
-                .padding(.top, geo.size.height * Misure.Benvenuto.alto)
-                .padding(.bottom, geo.size.height * Misure.Benvenuto.basso)
-                .foregroundColor(Colori.Benvenuto.testo)
-                .ombraCSS(Colori.Benvenuto.ombraTesto, y: 2, sfocatura: 3)
+            let m = Tema.Misura.Shell.self
+            // L'ora segue la larghezza della finestra (clamp(96px, 16vw, 188px) del tema)
+            let corpoOra = min(max(geo.size.width * m.oraQuota, m.oraMinima), m.oraMassima)
+            VStack(spacing: 0) {
+                orologio(corpoOra)
+                Spacer(minLength: 0)
+                marchio
+                sblocco
+                    .padding(.top, m.marchioSblocco)
             }
+            .foregroundColor(Tema.Colore.inchiostroBenvenuto)
+            .padding(.top, geo.size.height * m.benvenutoAlto)
+            .padding(.bottom, geo.size.height * m.benvenutoBasso)
+            .padding(.horizontal, m.benvenutoLato)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .contentShape(Rectangle())
         // Il cursore lascia il campo sotto la schermata: niente si scrive nelle finestre coperte
         .onAppear { NSApp.keyWindow?.makeFirstResponder(nil) }
     }
 
-    private var orologio: some View {
+    private func orologio(_ corpo: CGFloat) -> some View {
         TimelineView(.everyMinute) { contesto in
-            VStack(spacing: 7) {
-                Text(Formati.ora.string(from: contesto.date)).font(Tipo.benvenutoOra).tracking(-3)
-                Text(Formati.dataLunga.string(from: contesto.date).capitalized).font(Tipo.benvenutoData)
+            VStack(spacing: 0) {
+                Text(SchermataBenvenuto.data(contesto.date))
+                    .font(Tema.Testo.Shell.dataBenvenuto)
+                    .ombraTema(Tema.Ombra.Shell.dataBenvenuto)
+                Text(Formati.ora.string(from: contesto.date))
+                    .font(Tema.Testo.Shell.oraBenvenuto(corpo))
+                    .tracking(Tema.Testo.Shell.spaziaturaOra(corpo))
+                    .foregroundStyle(LinearGradient(colors: [Tema.Colore.Shell.oraAlto, Tema.Colore.Shell.oraBasso],
+                                                    startPoint: .top, endPoint: .bottom))
+                    .ombraTema(Tema.Ombra.Shell.oraBenvenuto)
+                    .lineLimit(1)
+                    .fixedSize()
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Misure.Benvenuto.fascia)
-            .background(Gradienti.fasciaBenvenuto)
-            .bordoAlto(Colori.Benvenuto.fasciaLuce)
-            .bordoBasso(Colori.Benvenuto.fasciaBordo)
         }
     }
 
+    /// «Martedì 27 ottobre»: solo la prima lettera maiuscola.
+    private static func data(_ giorno: Date) -> String {
+        let testo = Formati.dataLunga.string(from: giorno)
+        return testo.prefix(1).uppercased() + testo.dropFirst()
+    }
+
+    /// Il logo di Prisma con il nome e il motto.
     private var marchio: some View {
-        VStack(spacing: 0) {
-            ImmagineNitida(percorso: "Icone/Prisma.png", lato: Misure.Benvenuto.marchio)
-            HStack(spacing: 10) {
-                Text("PRISMA").font(Tipo.benvenutoMarchio)
-                Text("OS").font(Tipo.benvenutoMarchioLeggero)
+        let m = Tema.Misura.Shell.self
+        return VStack(spacing: m.marchioBenvenutoSpazio) {
+            LogoPrisma(colore: Tema.Colore.logo)
+                .frame(height: m.logoBenvenuto)
+            VStack(spacing: m.rigaTestoSpazio) {
+                Text("Prisma")
+                    .font(Tema.Testo.Shell.nomeBenvenuto)
+                Text("Il tuo mondo. Al tuo ritmo.")
+                    .font(Tema.Testo.Shell.mottoBenvenuto)
+                    .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
             }
-            .tracking(4)
-            .padding(.top, 20)
-            .padding(.bottom, 8)
-            Text("Il tuo mondo. Al tuo ritmo.").font(Tipo.benvenutoMotto).tracking(1)
         }
     }
 
     private var sblocco: some View {
-        VStack(spacing: 14) {
+        let m = Tema.Misura.Shell.self
+        return VStack(spacing: m.sbloccoSpazio) {
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: Misure.Benvenuto.raggioBinario).fill(Gradienti.binarioBenvenuto)
-                RoundedRectangle(cornerRadius: Misure.Benvenuto.raggioBinario).strokeBorder(Colori.Benvenuto.binarioBordo, lineWidth: 1)
-                Text("scorri per entrare")
-                    .font(Tipo.benvenutoScritta)
-                    .tracking(-0.4)
-                    .foregroundColor(Colori.Benvenuto.scritta)
-                    .opacity(1 - Double(corsa / max(1, corsaMassima)))
-                    .padding(.leading, Misure.Benvenuto.scrittaSinistra)
-                cursore
-                    .offset(x: Misure.Benvenuto.margineCursore + corsa)
+                scritta
+                    .padding(.leading, m.manopola)
+                    .frame(maxWidth: .infinity)
+                    .opacity(1 - Double(corsa / corsaMassima))
+                manopola
+                    .offset(x: corsa)
                     .gesture(
-                        DragGesture()
-                            .onChanged { corsa = min(max(0, $0.translation.width), corsaMassima) }
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { g in
+                                if !trascina { withAnimation(Tema.Moto.molla) { trascina = true } }
+                                corsa = min(max(0, g.translation.width), corsaMassima)
+                            }
                             .onEnded { _ in
-                                if corsa >= corsaMassima * Misure.Benvenuto.soglia { entra() } else {
-                                    withAnimation(Animazioni.apertura) { corsa = 0 }
+                                withAnimation(Tema.Moto.molla) { trascina = false }
+                                if corsa >= corsaMassima * m.sogliaBenvenuto {
+                                    entra()
+                                } else {
+                                    withAnimation(Tema.Moto.Shell.ritornoManopola) { corsa = 0 }
                                 }
                             }
                     )
             }
-            .frame(width: Misure.Benvenuto.binario.width, height: Misure.Benvenuto.binario.height)
-            .shadow(color: Colori.Benvenuto.binarioLuce, radius: 0, x: 0, y: 1)
-            Button("oppure entra con un clic") { entra() }
-                .buttonStyle(StileSemplice())
-                .font(Tipo.benvenutoCollegamento)
-                .foregroundColor(Colori.Benvenuto.collegamento)
-                .keyboardShortcut(.defaultAction)
-            Text("Schermata di cortesia · non protegge i dati")
-                .font(Tipo.benvenutoNota)
-                .foregroundColor(Colori.Benvenuto.nota)
+            .padding(m.cursoreMargine)
+            .frame(width: m.cursoreBenvenuto.width, height: m.cursoreBenvenuto.height)
+            .vetro(.leggero, forma: .capsula)
+
+            Button { entra() } label: {
+                Text("Oppure entra con un clic").underline()
+            }
+            .buttonStyle(StileSemplice())
+            .font(Tema.Testo.Shell.entraBenvenuto)
+            .keyboardShortcut(.defaultAction)
+            Text("Schermata di cortesia: non protegge i dati.")
+                .font(Tema.Testo.Shell.notaBenvenuto)
+                .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
         }
     }
 
-    private var cursore: some View {
-        Text("➜")
-            .font(Tipo.benvenutoFreccia)
-            .foregroundColor(Colori.Benvenuto.freccia)
-            .shadow(color: .white, radius: 0, x: 0, y: 1)
-            .frame(width: Misure.Benvenuto.cursore.width, height: Misure.Benvenuto.cursore.height)
-            .background(RoundedRectangle(cornerRadius: Misure.Benvenuto.raggioCursore).fill(Gradienti.cursoreBenvenuto))
-            .luceInterna(.white, raggio: Misure.Benvenuto.raggioCursore)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Benvenuto.raggioCursore).strokeBorder(Colori.Benvenuto.cursoreBordo, lineWidth: 1))
-            .ombraCSS(Colori.Benvenuto.cursoreOmbra, y: 2, sfocatura: 3)
+    /// «scorri per entrare» con il luccichio che passa (fermo con «Riduci movimento»).
+    private var scritta: some View {
+        let testo = Text("scorri per entrare").font(Tema.Testo.Shell.scorriBenvenuto)
+        return testo
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+            .overlay {
+                GeometryReader { g in
+                    let w = g.size.width
+                    LinearGradient(colors: [Tema.Colore.inchiostro.opacity(0), Tema.Colore.inchiostro, Tema.Colore.inchiostro.opacity(0)],
+                                   startPoint: .leading, endPoint: .trailing)
+                        .frame(width: w / 3)
+                        .offset(x: luccichio ? w : -w / 3)
+                }
+                .mask { testo }
+                .opacity(movimentoRidotto ? 0 : 1)
+                .allowsHitTesting(false)
+            }
+            .onAppear {
+                guard !movimentoRidotto else { return }
+                withAnimation(Tema.Moto.Shell.luccichio) { luccichio = true }
+            }
+    }
+
+    /// La manopola: capsula chiara con la freccia, si allarga mentre la trascini.
+    private var manopola: some View {
+        let m = Tema.Misura.Shell.self
+        return Image(systemName: "chevron.right")
+            .font(Tema.Testo.Shell.frecciaManopola)
+            .foregroundColor(Tema.Colore.Shell.frecciaManopola)
+            .frame(width: trascina ? m.manopolaTrascinata : m.manopola, height: m.manopola)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(Tema.Colore.cursore)
+                    .ombraTema(Tema.Ombra.manopola)
+            }
+            .contentShape(Capsule(style: .continuous))
     }
 
     private func entra() {
@@ -118,88 +167,116 @@ struct SchermataBenvenuto: View {
     }
 }
 
-/// «Le tue app aperte»: le finestre aperte, in primo piano o ridotte, con un clic per tornarci.
+/// «Le tue app aperte»: le finestre aperte, in primo piano o ridotte, ognuna con il suo cliente
+/// (o il suo contesto), con un clic per tornarci. Pannello di vetro del tema (switcher).
 struct PannelloAppAperte: View {
     @EnvironmentObject var stato: StatoShell
-    /// Altezza misurata delle schede: il riquadro si adatta, fino all'altezza massima.
-    @State private var altezzaContenuto: CGFloat = 0
 
     var body: some View {
-        ZStack {
-            Colori.Benvenuto.veloApp
-                .contentShape(Rectangle())
-                .onTapGesture { stato.pannelloAppAperte = false }
-            CorniceModulo(titolo: "Le tue app aperte") {
-                let aperte = Array(stato.finestre.reversed())
-                if aperte.isEmpty {
-                    VStack(spacing: 6) {
-                        Text("La scrivania è tutta tua.").font(Tipo.pannelloTitolo).foregroundColor(Colori.Pannello.titolo)
-                        Text("Apri un'app dal dock o dalle icone per iniziare.").font(Tipo.pannelloTesto).foregroundColor(Colori.Pannello.testoSecondario)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-                } else {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: Misure.Benvenuto.colonne), spacing: 14) {
-                        ForEach(aperte) { f in scheda(f, inPrimoPiano: f.app == stato.appAttiva) }
-                    }
-                    .background(GeometryReader { g in
-                        Color.clear.preference(key: AltezzaAppAperte.self, value: g.size.height)
-                    })
-                }
-            } piede: {
+        GeometryReader { geo in
+            let m = Tema.Misura.Shell.self
+            ZStack {
+                Tema.Colore.Shell.veloPannello
+                    .contentShape(Rectangle())
+                    .onTapGesture { stato.pannelloAppAperte = false }
+                pannello
+                    .frame(width: max(0, min(m.appAperteLarghezza, geo.size.width - 2 * m.appAperteBordo)))
+                    .frame(maxHeight: max(0, min(m.appAperteAltezza, geo.size.height - 2 * m.appAperteBordo)))
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+
+    private var pannello: some View {
+        let m = Tema.Misura.Shell.self
+        return VStack(alignment: .leading, spacing: m.appAperteSpazio) {
+            Text("Le tue app aperte")
+                .font(Tema.Testo.sezione)
+                .tracking(Tema.Testo.spaziaturaSezione)
+                .foregroundColor(Tema.Colore.inchiostro)
+            // Alto quanto le schede; oltre l'altezza massima le schede scorrono
+            ViewThatFits(in: .vertical) {
+                griglia
+                ScrollView { griglia }
+            }
+            HStack(spacing: m.pulsantiSpazio) {
                 Spacer()
                 Button("Mostra la scrivania") {
                     stato.pannelloAppAperte = false
                     stato.mostraScrivania()
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 Button("Chiudi") { stato.pannelloAppAperte = false }
                     .buttonStyle(StileBlu())
                     .keyboardShortcut(.cancelAction)
             }
-            .onPreferenceChange(AltezzaAppAperte.self) { altezzaContenuto = $0 }
-            .frame(width: Misure.Benvenuto.riepilogo.width, height: altezzaRiquadro(vuoto: stato.finestre.isEmpty))
-            .clipShape(RoundedRectangle(cornerRadius: Misure.Finestra.raggio))
-            .ombraCSS(Colori.Spazi.schedaOmbra, y: 12, sfocatura: 40)
         }
+        .padding(m.appAperteMargine)
+        .vetro(.pannello, forma: .arrotondata(Tema.Raggio.appAperte))
     }
 
-    /// Alto quanto le schede più la cornice, mai oltre il massimo (poi le schede scorrono).
-    private func altezzaRiquadro(vuoto: Bool) -> CGFloat {
-        let massimo = Misure.Benvenuto.riepilogo.height
-        guard !vuoto, altezzaContenuto > 0 else { return vuoto ? min(massimo, Misure.Benvenuto.corniceModulo + Misure.Benvenuto.vuotoAltezza) : massimo }
-        return min(massimo, altezzaContenuto + Misure.Benvenuto.corniceModulo)
-    }
-
-    private func scheda(_ f: StatoShell.Finestra, inPrimoPiano: Bool) -> some View {
-        Button {
-            stato.pannelloAppAperte = false
-            stato.apri(f.app)
-        } label: {
-            VStack(spacing: 5) {
-                IconaApp(app: f.app, lato: Misure.Benvenuto.iconaApp)
-                    .padding(.bottom, 7)
-                Text(f.app.titolo).font(Tipo.appApertaTitolo).foregroundColor(Colori.Benvenuto.schedaTitolo)
-                Text(stato.clienteAttivo?.nome ?? "Nessun cliente").font(Tipo.appApertaCliente).foregroundColor(Colori.Benvenuto.schedaCliente)
-                Text(f.ridotta ? "Ridotta a icona" : inPrimoPiano ? "In primo piano" : "Aperta")
-                    .font(Tipo.appApertaStato)
-                    .foregroundColor(Colori.Benvenuto.schedaStato)
-                    .padding(.top, 3)
+    @ViewBuilder private var griglia: some View {
+        let m = Tema.Misura.Shell.self
+        let aperte = Array(stato.finestre.reversed())
+        if aperte.isEmpty {
+            VStack(spacing: m.rigaTestoSpazio) {
+                Text("La scrivania è tutta tua.")
+                    .font(Tema.Testo.titolo)
+                    .foregroundColor(Tema.Colore.inchiostro)
+                Text("Apri un'app dal dock per iniziare.")
+                    .font(Tema.Testo.secondario)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
             }
-            .lineLimit(1)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
-            .padding(.horizontal, 8)
-            .background(RoundedRectangle(cornerRadius: 7).fill(Gradienti.schedaAppAperta))
-            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Colori.Benvenuto.schedaBordo, lineWidth: 1))
-            .contentShape(Rectangle())
+            .padding(.vertical, m.appAperteMargine * 2)
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: m.schedaAppMinima), spacing: m.appAperteSpazio)],
+                      spacing: m.appAperteSpazio) {
+                ForEach(aperte) { f in
+                    SchedaAppAperta(finestra: f, inPrimoPiano: f.app == stato.appAttiva)
+                }
+            }
         }
-        .buttonStyle(StileSemplice())
     }
 }
 
-/// L'altezza delle schede delle app aperte, misurata per adattare il riquadro.
-private struct AltezzaAppAperte: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+/// Una scheda di «Le tue app aperte»: icona, nome, cliente o contesto della finestra, stato.
+private struct SchedaAppAperta: View {
+    @EnvironmentObject var stato: StatoShell
+    let finestra: StatoShell.Finestra
+    let inPrimoPiano: Bool
+    @State var sopra = false
+
+    var body: some View {
+        let m = Tema.Misura.Shell.self
+        let forma = RoundedRectangle(cornerRadius: Tema.Raggio.schedaApp, style: .continuous)
+        Button {
+            stato.pannelloAppAperte = false
+            stato.apri(finestra.app)
+        } label: {
+            VStack(spacing: m.schedaAppSpazio) {
+                IconaApp(app: finestra.app, lato: Tema.Misura.iconaAppAperte)
+                    .padding(.bottom, m.schedaAppSpazio)
+                Text(finestra.app.titolo)
+                    .font(Tema.Testo.Shell.nomeAppAperta)
+                    .foregroundColor(Tema.Colore.inchiostro)
+                // Il cliente (o il contesto) di questa finestra; una riga vuota tiene le schede alte uguali
+                Text(stato.contesto(di: finestra.app) ?? " ")
+                    .font(Tema.Testo.Shell.contestoAppAperta)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                Text(finestra.ridotta ? "Ridotta nel dock" : inPrimoPiano ? "In primo piano" : "Aperta")
+                    .font(Tema.Testo.Shell.statoAppAperta)
+                    .foregroundColor(Tema.Colore.inchiostroTerziario)
+            }
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity)
+            .padding(m.schedaAppMargine)
+            .background(forma.fill(sopra ? Tema.Colore.chipSopra : Tema.Colore.chip))
+            .overlay(forma.strokeBorder(Tema.Colore.bordoChip, lineWidth: Tema.Misura.filo))
+            .contentShape(forma)
+        }
+        .buttonStyle(StileSemplice())
+        .onHover { s in withAnimation(Tema.Moto.passaggio) { sopra = s } }
+    }
 }

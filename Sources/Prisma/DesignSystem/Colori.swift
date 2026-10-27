@@ -31,185 +31,201 @@ extension Color {
     }
 }
 
-/// Palette ricavata da Design/template.html (valori effettivi del browser).
+// Abbreviazioni di questo file: i gettoni di base del tema e i colori che cambiano con l'aspetto.
+private typealias TC = Tema.Colore
+private func adatto(_ chiaro: Color, _ scuro: Color) -> Color { Color.dinamico(chiaro: chiaro, scuro: scuro) }
+private func neroAlfa(_ a: Double) -> Color { Color(r: 0, g: 0, b: 0, a: a) }
+private func biancoAlfa(_ a: Double) -> Color { Color(r: 255, g: 255, b: 255, a: a) }
+
+/// Palette delle schermate nel tema «Liquid Glass» (tema.html): gli stessi nomi del tema iOS 5,
+/// con valori ricavati dai gettoni di base (`Tema.Colore`), chiari o scuri secondo l'aspetto.
+/// Le superfici diventano vetro, schede e pozzetti; i testi inchiostri; rilievi e incisioni spariscono.
+/// I documenti (PDF) hanno i loro colori fissi in `Colori.Carta` e `Colori.Documento`.
 enum Colori {
     static let bianco = Color.white
     static let nero = Color.black
 
+    /// Sfondo della scrivania: ora è l'acqua (SfondoAcqua); qui resta il colore di riserva.
     enum Sfondo {
-        /// Colore di riserva del body.
-        static let base = Color(hex: "#637f8f")
-        static let veloInizio = Color(hex: "#17344c22")
-        static let veloFine = Color(hex: "#294b6433")
-        static let vignettatura = Color(hex: "#1933486b")
+        static let base = TC.cielo2
+        static let veloInizio = Color.clear
+        static let veloFine = Color.clear
+        static let vignettatura = Color.clear
     }
 
+    /// Barra superiore: niente fondo, solo il velo che scende e il testo sullo sfondo.
     enum Barra {
-        static let sfondoAlto = Color(r: 249, g: 249, b: 249, a: 0.96)
-        static let sfondoBasso = Color(r: 225, g: 225, b: 225, a: 0.95)
-        static let bordo = Color(hex: "#888")
-        static let ombra = Color(hex: "#0004")
-        static let testo = Color(hex: "#202020")
-        static let testoSecondario = Color(hex: "#333")
-        static let incisione = Color(r: 255, g: 255, b: 255, a: 0.6)
-        static let logo = Color(hex: "#343434")
-        static let logoOmbra = Color(r: 0, g: 0, b: 0, a: 0.4)
-        static let os = Color(hex: "#4d4d4d")
-        static let appCorrente = Color(hex: "#2e2e2e")
-        static let separatore = Color(r: 153, g: 153, b: 153, a: 0.4)
-        static let tasto = Color(hex: "#555")
-        static let avatarBordo = Color(hex: "#82888c")
-        /// La capsula «Modalità cliente»: il blu dei pulsanti del template
-        static let modoCliente = Color(hex: "#2f6bc4")
-        static let modoClienteBordo = Color(hex: "#1d4a8f")
+        static let sfondoAlto = TC.veloBarra
+        static let sfondoBasso = Color.clear
+        static let bordo = Color.clear
+        static let ombra = Color.clear
+        static let testo = TC.inchiostroSfondo
+        static let testoSecondario = TC.inchiostroSfondoSecondario
+        static let incisione = Color.clear
+        static let logo = TC.logo
+        static let logoOmbra = Color.clear
+        static let os = TC.inchiostroSfondoSecondario
+        static let appCorrente = TC.inchiostroSfondo
+        static let separatore = TC.separatore
+        static let tasto = TC.inchiostroSecondario
+        static let avatarBordo = biancoAlfa(0.5)
+        /// La capsula «Modalità cliente»: l'accento del tema
+        static let modoCliente = TC.accento
+        static let modoClienteBordo = TC.accento
     }
 
+    /// Testi direttamente sullo sfondo d'acqua (saluto, sezioni, piede) con l'alone del tema.
     enum Scrivania {
-        static let kicker = Color(hex: "#e0edf4")
-        static let titolo = Color.white
-        static let sottotitolo = Color(hex: "#f0f0f0")
-        static let ombraTesto = Color(r: 0, g: 0, b: 0, a: 0.6)
-        static let intestazione = Color(hex: "#edf5fa")
-        static let intestazioneOmbra = Color(hex: "#153149")
-        static let piede = Color(r: 227, g: 239, b: 245, a: 0.72)
-        static let piedeOmbra = Color(hex: "#183c59")
-        static let iconaOmbra1 = Color(hex: "#0009")
-        static let iconaOmbra2 = Color(hex: "#071b2859")
-        static let etichettaOmbra = Color(hex: "#000c")
-        static let sottotitoloOmbra = Color(hex: "#000b")
+        static let kicker = TC.inchiostroSfondoSecondario
+        static let titolo = TC.inchiostroSfondo
+        static let sottotitolo = TC.inchiostroSfondoSecondario
+        static let ombraTesto = TC.aloneSfondo
+        static let intestazione = TC.inchiostroSfondo
+        static let intestazioneOmbra = TC.aloneSfondo
+        static let piede = TC.inchiostroSfondoSecondario
+        static let piedeOmbra = TC.aloneSfondo
+        static let iconaOmbra1 = neroAlfa(0.25)
+        static let iconaOmbra2 = neroAlfa(0.14)
+        static let etichettaOmbra = TC.aloneSfondo
+        static let sottotitoloOmbra = TC.aloneSfondo
     }
 
+    /// Widget del cliente e righe della scrivania: tutto sul vetro del widget.
     enum Colonna {
-        static let sfondo = Color(hex: "#f6f4ef")
-        static let bordo = Color(hex: "#777")
-        static let ombra = Color(hex: "#0004")
-        static let pelleBordo = Color(hex: "#3c291b")
-        static let pelleLuce = Color(hex: "#d5b38e")
-        static let pelleOmbra = Color(r: 67, g: 44, b: 36, a: 0.4)
-        static let pelleEtichetta = Color(hex: "#eedbc4")
-        static let pelleNome = Color(hex: "#fff5e6")
-        static let pelleTema = Color(hex: "#ead5bc")
-        static let schedeAlto = Color(hex: "#e7e7e7")
-        static let schedeBasso = Color(hex: "#d7d7d7")
-        static let schedeBordo = Color(hex: "#b6b6b6")
-        static let intestazione = Color(hex: "#777")
-        static let collegamento = Color(hex: "#345f8a")
-        static let rigaBordo = Color(hex: "#d7d3c9")
-        static let rigaLuce = Color(r: 255, g: 255, b: 255, a: 0.467)
-        static let rigaSecondario = Color(hex: "#777")
-        static let rigaNome = Color(hex: "#333")
-        static let freccia = Color(hex: "#a4b7c5")
-        static let dataAlto = Color(hex: "#fffefb")
-        static let dataBasso = Color(hex: "#e9e4d8")
-        static let dataBordo = Color(hex: "#aaa497")
-        static let dataOmbra = Color(r: 79, g: 68, b: 51, a: 0.2)
-        static let dataGiorno = Color(hex: "#3d3d37")
-        static let dataMeseTesto = Color(hex: "#fff3e9")
-        static let dataMeseAlto = Color(hex: "#c96153")
-        static let dataMeseBasso = Color(hex: "#a83629")
-        static let dataMeseBordo = Color(hex: "#9b3629")
-        static let eveBordo = Color(hex: "#222a32")
-        static let eveTitolo = Color(hex: "#f1edf8")
-        static let eveTesto = Color(hex: "#c0c1ce")
-        static let eveFreccia = Color(hex: "#a5aec2")
-        static let eveIncisione = Color(hex: "#10171f")
-        static let eveIconaOmbra = Color(hex: "#0009")
-        // Pelle del template (--prisma-leather) e cucitura
-        static let pelleAlto = Color(hex: "#a36e42")
-        static let pelleMezzo = Color(hex: "#7c4d2b")
-        static let pelleBasso = Color(hex: "#683e22")
-        static let pelleRiflesso = Color(r: 255, g: 225, b: 173, a: 0.125)
-        static let cucitura = Color(r: 229, g: 195, b: 156, a: 0.55)
-        static let cucituraOmbra = Color(r: 54, g: 34, b: 20, a: 0.4)
-        // Casella delle attività (.os-desk-check)
-        static let casellaBordo = Color(hex: "#9aaebc")
-        static let casellaAlto = Color(hex: "#d3dfe6")
-        static let casellaBasso = Color(hex: "#f7fafd")
-        static let casellaOmbra = Color(r: 88, g: 109, b: 125, a: 0.17)
-        // Righe metriche del dossier (.os-desk-metrics)
-        static let metricaEtichetta = Color(hex: "#7b90a0")
-        static let metricaValore = Color(hex: "#47687f")
+        static let sfondo = TC.chip
+        static let bordo = TC.bordoChip
+        static let ombra = Color.clear
+        static let pelleBordo = TC.separatore
+        static let pelleLuce = Color.clear
+        static let pelleOmbra = Color.clear
+        static let pelleEtichetta = TC.inchiostroSecondario
+        static let pelleNome = TC.inchiostro
+        static let pelleTema = TC.inchiostroSecondario
+        static let schedeAlto = TC.pozzetto
+        static let schedeBasso = TC.pozzetto
+        static let schedeBordo = TC.separatore
+        static let intestazione = TC.inchiostroSecondario
+        static let collegamento = TC.link
+        static let rigaBordo = TC.separatore
+        static let rigaLuce = Color.clear
+        static let rigaSecondario = TC.inchiostroSecondario
+        static let rigaNome = TC.inchiostro
+        static let freccia = TC.inchiostroTerziario
+        // Tessera della data: mese rosso sulla tessera, niente fascia
+        static let dataAlto = TC.tesseraData
+        static let dataBasso = TC.tesseraData
+        static let dataBordo = TC.bordoChip
+        static let dataOmbra = neroAlfa(0.08)
+        static let dataGiorno = TC.inchiostro
+        static let dataMeseTesto = TC.rosso
+        static let dataMeseAlto = Color.clear
+        static let dataMeseBasso = Color.clear
+        static let dataMeseBordo = Color.clear
+        static let eveBordo = TC.bordoChip
+        static let eveTitolo = TC.inchiostro
+        static let eveTesto = TC.inchiostroSecondario
+        static let eveFreccia = TC.inchiostroTerziario
+        static let eveIncisione = Color.clear
+        static let eveIconaOmbra = neroAlfa(0.2)
+        // Ex pelle e cucitura: nel tema non si disegnano più
+        static let pelleAlto = Color.clear
+        static let pelleMezzo = Color.clear
+        static let pelleBasso = Color.clear
+        static let pelleRiflesso = Color.clear
+        static let cucitura = Color.clear
+        static let cucituraOmbra = Color.clear
+        // Casella delle attività (la spunta del tema)
+        static let casellaBordo = TC.pozzettoScuro
+        static let casellaAlto = TC.chip
+        static let casellaBasso = TC.chip
+        static let casellaOmbra = Color.clear
+        // Righe metriche del dossier
+        static let metricaEtichetta = TC.inchiostroSecondario
+        static let metricaValore = TC.inchiostro
     }
 
-    /// App di analisi (Posizioni): elenco laterale blu di Lion, pannello bianco, KPI, tabelle (.fx-*).
+    /// App di analisi (Posizioni): laterale di vetro, schede, KPI, tabelle.
     enum Analisi {
-        static let railAlto = Color(hex: "#e5ebf3")
-        static let railBasso = Color(hex: "#d6dde7")
-        static let railTesto = Color(hex: "#303b4a")
-        static let railFilo = Color(hex: "#b8c2cf")
-        static let railRiflesso = Color(hex: "#f5f8fc")
-        static let railEtichetta = Color(hex: "#69788b")
-        static let segBordo = Color(hex: "#8f9ba9")
-        static let segTesto = Color(hex: "#384554")
-        static let segAttivoAlto = Color(hex: "#8896a8")
-        static let segAttivoBasso = Color(hex: "#687b92")
-        static let segAttivoIncisione = Color(hex: "#4a5b6f")
-        static let segAttivoOmbra = Color(r: 38, g: 55, b: 77, a: 0.333)
-        static let navAlto = Color(hex: "#7da9dc")
-        static let navBasso = Color(hex: "#4279bd")
-        static let navBordoAlto = Color(hex: "#5d8dbd")
-        static let navBordoBasso = Color(hex: "#34699f")
-        static let navLuce = Color(hex: "#a7c8eb")
-        static let navIncisione = Color(hex: "#2f5a8e")
-        static let navTesto = Color(hex: "#303d4e")
-        static let navIncisioneSpento = Color(hex: "#f6f8fb")
-        static let navConteggio = Color(hex: "#c3ccd8")
-        static let navConteggioTesto = Color(hex: "#55657a")
-        static let principale = Color.white
-        static let testo = Color(hex: "#30343a")
-        static let kpiAlto = Color(hex: "#f8fafc")
-        static let kpiBasso = Color(hex: "#e8edf3")
-        static let kpiBordo = Color(hex: "#b5bec9")
-        static let kpiTitolo = Color(hex: "#617186")
-        static let kpiValore = Color(hex: "#203f67")
-        static let kpiNota = Color(hex: "#6a7686")
-        static let chip = Color(hex: "#edf1f6")
-        static let chipBordo = Color(hex: "#b9c3ce")
-        static let chipTesto = Color(hex: "#5d6a7d")
-        static let pannelloTitolo = Color(hex: "#3a434e")
-        static let pannelloNota = Color(hex: "#6a7686")
-        static let tabellaTestaAlto = Color(hex: "#fafafa")
-        static let tabellaTestaBasso = Color(hex: "#e1e4e8")
-        static let tabellaTestaBordo = Color(hex: "#aeb4bc")
-        static let tabellaTesta = Color(hex: "#404951")
-        static let tabellaRiga = Color(hex: "#e0e5eb")
-        static let tabellaAlternata = Color(hex: "#edf3fa")
-        static let tabellaSelezione = Color(hex: "#d4e3f5")
-        static let tabellaTesto = Color(hex: "#404c59")
-        static let tabellaBordo = Color(hex: "#b5becd")
-        // Stati
-        static let okFondo = Color(hex: "#eaf0e5")
-        static let okBordo = Color(hex: "#bac8af")
-        static let okTesto = Color(hex: "#567047")
-        static let attenzioneFondo = Color(hex: "#f5edd9")
-        static let attenzioneBordo = Color(hex: "#d3c294")
-        static let attenzioneTesto = Color(hex: "#8a712e")
-        static let erroreFondo = Color(hex: "#f4e4e1")
-        static let erroreBordo = Color(hex: "#d5b4ae")
-        static let erroreTesto = Color(hex: "#974f45")
-        static let neutroFondo = Color(hex: "#e2ebef")
-        static let neutroBordo = Color(hex: "#c9d7de")
-        static let neutroTesto = Color(hex: "#6e899c")
+        static let railAlto = TC.laterale
+        static let railBasso = TC.laterale
+        static let railTesto = TC.inchiostro
+        static let railFilo = TC.separatore
+        static let railRiflesso = Color.clear
+        static let railEtichetta = TC.inchiostroTerziario
+        static let segBordo = TC.separatore
+        static let segTesto = TC.inchiostro
+        // Il segmento scelto porta il testo bianco: pieno d'accento
+        static let segAttivoAlto = TC.accento
+        static let segAttivoBasso = TC.accento
+        static let segAttivoIncisione = Color.clear
+        static let segAttivoOmbra = neroAlfa(0.1)
+        // Voce scelta del laterale: accento pieno con il testo bianco
+        static let navAlto = TC.accento
+        static let navBasso = TC.accento
+        static let navBordoAlto = TC.accento
+        static let navBordoBasso = TC.accento
+        static let navLuce = Color.clear
+        /// Anche il numero sulla capsula bianca della voce scelta.
+        static let navIncisione = TC.accento
+        static let navTesto = TC.inchiostro
+        static let navIncisioneSpento = Color.clear
+        static let navConteggio = TC.pozzetto
+        static let navConteggioTesto = TC.inchiostroSecondario
+        static let principale = TC.scheda
+        static let testo = TC.inchiostro
+        static let kpiAlto = TC.chip
+        static let kpiBasso = TC.chip
+        static let kpiBordo = TC.bordoScheda
+        static let kpiTitolo = TC.inchiostroSecondario
+        static let kpiValore = TC.inchiostro
+        static let kpiNota = TC.inchiostroSecondario
+        static let chip = TC.chip
+        static let chipBordo = TC.bordoChip
+        static let chipTesto = TC.inchiostroSecondario
+        static let pannelloTitolo = TC.inchiostro
+        static let pannelloNota = TC.inchiostroSecondario
+        static let tabellaTestaAlto = TC.rigaSopra
+        static let tabellaTestaBasso = TC.rigaSopra
+        static let tabellaTestaBordo = TC.separatore
+        static let tabellaTesta = TC.inchiostroSecondario
+        static let tabellaRiga = TC.separatore
+        static let tabellaAlternata = TC.rigaSopra
+        static let tabellaSelezione = TC.selezioneRiga
+        static let tabellaTesto = TC.inchiostro
+        static let tabellaBordo = TC.bordoScheda
+        // Stati (le pillole del tema)
+        static let okFondo = TC.fondoInEssere
+        static let okBordo = TC.verde.opacity(0.35)
+        static let okTesto = TC.testoInEssere
+        static let attenzioneFondo = TC.fondoProposta
+        static let attenzioneBordo = TC.arancio.opacity(0.4)
+        static let attenzioneTesto = TC.testoProposta
+        static let erroreFondo = TC.rosso.opacity(0.14)
+        static let erroreBordo = TC.rosso.opacity(0.35)
+        static let erroreTesto = TC.scadenzaOra
+        static let neutroFondo = TC.pozzetto
+        static let neutroBordo = TC.separatore
+        static let neutroTesto = TC.inchiostroSecondario
         // Grafici
-        static let linea = Color(hex: "#2f6eb0")
-        static let lineaTratteggiata = Color(hex: "#a5b3bd")
-        static let barre = Color(hex: "#9cb6cc")
-        static let griglia = Color(hex: "#d5dde2")
-        static let assi = Color(hex: "#7f909b")
-        static let tracciaAnello = Color(hex: "#e5e4df")
+        static let linea = adatto(Color(hex: "#2F6EB0"), Color(hex: "#6AA6F0"))
+        static let lineaTratteggiata = TC.inchiostroTerziario
+        static let barre = adatto(Color(hex: "#9CB6CC"), Color(hex: "#4F7393"))
+        static let griglia = TC.separatore
+        static let assi = TC.inchiostroTerziario
+        static let tracciaAnello = TC.pozzetto
         static let prudente = Color(hex: "#c5ab7e")
         static let favorevole = Color(hex: "#6e9f9b")
         /// Andamento: dove sarebbe la posizione all'atteso netto.
         static let lineaAtteso = Color(hex: "#c5ab7e")
-        static let canaleAlleanza = Color(hex: "#587cad")
-        static let canaleIndipendente = Color(hex: "#bba282")
-        // Barra di stato in basso
-        static let statoAlto = Color(hex: "#f2f2f2")
-        static let statoBasso = Color(hex: "#dcdcdc")
-        static let statoBordo = Color(hex: "#a7a7a7")
-        static let statoLuce = Color(hex: "#5fbf4a")
+        static let canaleAlleanza = TC.canaleAlleanza
+        static let canaleIndipendente = TC.canaleIndipendente
+        // Barra di stato in basso: trasparente, con la spia verde
+        static let statoAlto = Color.clear
+        static let statoBasso = Color.clear
+        static let statoBordo = TC.separatore
+        static let statoLuce = TC.verde
 
-        /// Colore di ogni area (le prime quattro dal template, le altre nella stessa gamma).
+        /// Colore di ogni area (toni medi: si leggono in chiaro e in scuro).
         static func area(_ a: AreaPosizione) -> Color {
             switch a {
             case .investimento: return Color(hex: "#6386a5")
@@ -223,304 +239,317 @@ enum Colori {
         }
     }
 
-    /// Moduli e finestre di dialogo (.os-dialog).
+    /// Moduli e finestre di dialogo: testata e piede pieni come la barra del titolo.
     enum Modulo {
-        static let titoloAlto = Color(hex: "#e9e9e9")
-        static let titoloBasso = Color(hex: "#d0d0d0")
-        static let titoloBordo = Color(hex: "#aaa")
-        static let piedeAlto = Color(hex: "#e7e7e7")
-        static let piedeBasso = Color(hex: "#dcdcdc")
-        static let piedeBordo = Color(hex: "#b4b4b4")
+        static let titoloAlto = TC.finestraPiena
+        static let titoloBasso = TC.finestraPiena
+        static let titoloBordo = TC.separatore
+        static let piedeAlto = TC.finestraPiena
+        static let piedeBasso = TC.finestraPiena
+        static let piedeBordo = TC.separatore
     }
 
-    /// App Clienti: rubrica in carta e cuoio (.clients-book).
+    /// App Clienti: elenco e dossier su schede di vetro.
     enum Rubrica {
-        static let fondoApp = Color(hex: "#d9d6cf")
-        static let carta = Color(hex: "#fbfaf6")
-        static let libroBordo = Color(hex: "#887358")
-        static let libroRiflesso = Color(hex: "#ece4d3")
-        static let libroOmbra = Color(r: 53, g: 43, b: 31, a: 0.19)
-        static let indiceTitolo = Color(hex: "#645b4d")
-        static let contatoreAlto = Color(hex: "#e3ddcf")
-        static let contatoreBasso = Color(hex: "#d0c7b6")
-        static let contatoreBordo = Color(hex: "#b1a58f")
-        static let contatoreTesto = Color(hex: "#655846")
-        static let rigaNome = Color(hex: "#2f2e2b")
-        static let rigaTema = Color(hex: "#787266")
-        static let rigaFreccia = Color(hex: "#776d5e")
-        static let rigaLuce = Color(r: 255, g: 255, b: 255, a: 0.467)
-        static let rigaBordo = Color(r: 199, g: 191, b: 176, a: 0.5)
-        static let selezioneAlto = Color(hex: "#82a7d2")
-        static let selezioneBasso = Color(hex: "#557fb5")
-        static let selezioneBordoAlto = Color(hex: "#a9c0dd")
-        static let selezioneBordoBasso = Color(hex: "#496e9c")
-        static let selezioneIncisione = Color(hex: "#44688b")
-        static let selezioneTema = Color(hex: "#edf3fa")
-        static let stella = Color(hex: "#b79557")
-        static let stellaSelezione = Color(hex: "#ffe1a4")
-        static let stellaGrande = Color(hex: "#ffda7b")
-        static let stellaVuota = Color(hex: "#8a7556")
-        static let piede = Color(hex: "#6e5e46")
-        static let piedeBordo = Color(hex: "#b6a486")
-        static let cerca = Color(hex: "#9b998f")
-        static let divisoreOmbra = Color(r: 110, g: 98, b: 76, a: 0.533)
-        // Intestazione del dossier in cuoio chiaro
-        static let selleriaAlto = Color(hex: "#bca27e")
-        static let selleriaMezzo = Color(hex: "#b19773")
-        static let selleriaBasso = Color(hex: "#a78a64")
-        static let selleriaBordo = Color(hex: "#82694a")
-        static let selleriaLuce = Color(hex: "#dfc9a8")
-        static let selleriaLuceBasso = Color(hex: "#d8c3a2")
-        static let profiloOcchiello = Color(hex: "#584a37")
-        static let profiloOcchielloIncisione = Color(hex: "#d8c3a3")
-        static let profiloNome = Color(hex: "#3a3023")
-        static let profiloNomeIncisione = Color(hex: "#e1cfb5")
-        static let avatarCornice = Color(hex: "#f0e7d8")
-        static let avatarOmbra = Color(r: 95, g: 75, b: 53, a: 0.3)
-        static let pulsanteTesto = Color(hex: "#493b29")
-        static let pulsanteIncisione = Color(hex: "#ead7b7")
-        static let pulsanteBordo = Color(hex: "#887255")
-        static let pulsanteLuce = Color(hex: "#e8d9bf")
-        // Schede del dossier
-        static let schedeAlto = Color(hex: "#e7e1d4")
-        static let schedeBasso = Color(hex: "#d5cdbc")
-        static let schedeBordo = Color(hex: "#b5a98f")
-        static let schedeLuce = Color(hex: "#f6f0e4")
-        static let schedaAttivaAlto = Color(hex: "#a9987c")
-        static let schedaAttivaBasso = Color(hex: "#c1af91")
-        static let schedaAttivaBordo = Color(hex: "#958367")
-        static let schedaAttivaTesto = Color(hex: "#3f3322")
-        static let schedaAttivaIncisione = Color(hex: "#dccbad")
-        static let schedaAttivaOmbra = Color(r: 91, g: 71, b: 38, a: 0.314)
-        static let schedaAlto = Color(hex: "#f4eee2")
-        static let schedaBasso = Color(hex: "#d9cfbc")
-        static let schedaBordo = Color(hex: "#b6a78c")
-        static let schedaTesto = Color(hex: "#635640")
+        static let fondoApp = Color.clear
+        static let carta = TC.scheda
+        static let libroBordo = TC.bordoScheda
+        static let libroRiflesso = Color.clear
+        static let libroOmbra = neroAlfa(0.06)
+        static let indiceTitolo = TC.inchiostroSecondario
+        static let contatoreAlto = TC.pozzetto
+        static let contatoreBasso = TC.pozzetto
+        static let contatoreBordo = Color.clear
+        static let contatoreTesto = TC.inchiostroSecondario
+        static let rigaNome = TC.inchiostro
+        static let rigaTema = TC.inchiostroSecondario
+        static let rigaFreccia = TC.inchiostroTerziario
+        static let rigaLuce = Color.clear
+        static let rigaBordo = TC.separatore
+        // Riga scelta: accento pieno con il testo bianco
+        static let selezioneAlto = TC.accento
+        static let selezioneBasso = TC.accento
+        static let selezioneBordoAlto = TC.accento
+        static let selezioneBordoBasso = TC.accento
+        static let selezioneIncisione = Color.clear
+        static let selezioneTema = biancoAlfa(0.85)
+        static let stella = adatto(Color(hex: "#B98A2E"), Color(hex: "#E3B866"))
+        static let stellaSelezione = Color(hex: "#FFE1A4")
+        static let stellaGrande = adatto(Color(hex: "#E6A817"), Color(hex: "#FFC845"))
+        static let stellaVuota = TC.inchiostroTerziario
+        static let piede = TC.inchiostroSecondario
+        static let piedeBordo = TC.separatore
+        static let cerca = TC.inchiostroTerziario
+        static let divisoreOmbra = TC.separatore
+        // Intestazione del dossier (ex cuoio chiaro): sul vetro della finestra
+        static let selleriaAlto = Color.clear
+        static let selleriaMezzo = Color.clear
+        static let selleriaBasso = Color.clear
+        static let selleriaBordo = TC.separatore
+        static let selleriaLuce = Color.clear
+        static let selleriaLuceBasso = Color.clear
+        static let profiloOcchiello = TC.inchiostroSecondario
+        static let profiloOcchielloIncisione = Color.clear
+        static let profiloNome = TC.inchiostro
+        static let profiloNomeIncisione = Color.clear
+        static let avatarCornice = TC.bordoChip
+        static let avatarOmbra = neroAlfa(0.2)
+        static let pulsanteTesto = TC.inchiostro
+        static let pulsanteIncisione = Color.clear
+        static let pulsanteBordo = TC.bordoChip
+        static let pulsanteLuce = Color.clear
+        // Schede del dossier: pozzetto con il cursore chiaro (segmented del tema)
+        static let schedeAlto = TC.pozzetto
+        static let schedeBasso = TC.pozzetto
+        static let schedeBordo = TC.separatore
+        static let schedeLuce = Color.clear
+        static let schedaAttivaAlto = TC.cursore
+        static let schedaAttivaBasso = TC.cursore
+        static let schedaAttivaBordo = TC.bordoChip
+        static let schedaAttivaTesto = TC.inchiostro
+        static let schedaAttivaIncisione = Color.clear
+        static let schedaAttivaOmbra = neroAlfa(0.08)
+        static let schedaAlto = Color.clear
+        static let schedaBasso = Color.clear
+        static let schedaBordo = Color.clear
+        static let schedaTesto = TC.inchiostroSecondario
         // Contenuto
-        static let testo = Color(hex: "#3c382f")
-        static let secondario = Color(hex: "#7c7364")
-        static let occhiello = Color(hex: "#725737")
-        static let sottile = Color(hex: "#8899a3")
-        static let filo = Color(hex: "#cfc3ac")
-        static let metricaEtichetta = Color(hex: "#787062")
-        static let metricaValore = Color(hex: "#33322e")
-        static let metricaNota = Color(hex: "#756448")
-        static let schedaAppAlto = Color(hex: "#fcfbf6")
-        static let schedaAppBasso = Color(hex: "#efebe1")
-        static let schedaAppBordo = Color(hex: "#c8c0b0")
-        static let conteggio = Color(hex: "#e5e0d5")
-        static let conteggioTesto = Color(hex: "#7c7364")
-        // Pulsante principale "Nuovo cliente" (aqua del template)
-        static let aqua = [Color(hex: "#b8d4ef"), Color(hex: "#87b2df"), Color(hex: "#6da0d2"), Color(hex: "#a5caea")]
-        static let aquaBordo = Color(hex: "#6185aa")
-        static let aquaTesto = Color(hex: "#243e58")
-        static let aquaIncisione = Color(hex: "#d7e8f7")
-        static let aquaLuce = Color(hex: "#e6f3ff")
-        static let pericolo = Color(hex: "#974f45")
+        static let testo = TC.inchiostro
+        static let secondario = TC.inchiostroSecondario
+        static let occhiello = TC.inchiostroSecondario
+        static let sottile = TC.inchiostroTerziario
+        static let filo = TC.separatore
+        static let metricaEtichetta = TC.inchiostroSecondario
+        static let metricaValore = TC.inchiostro
+        static let metricaNota = TC.inchiostroSecondario
+        static let schedaAppAlto = TC.chip
+        static let schedaAppBasso = TC.chip
+        static let schedaAppBordo = TC.bordoChip
+        static let conteggio = TC.pozzetto
+        static let conteggioTesto = TC.inchiostroSecondario
+        // Pulsante principale "Nuovo cliente": primario del tema (accento, testo bianco)
+        static let aqua: [Color] = [TC.accento, TC.accento, TC.accento, TC.accento]
+        static let aquaBordo = Color.clear
+        static let aquaTesto = Color.white
+        static let aquaIncisione = Color.clear
+        static let aquaLuce = Color.clear
+        static let pericolo = TC.scadenzaOra
     }
 
-    /// Widget della scrivania, nello stile dei widget della Dashboard di Mac OS X (2011).
+    /// Widget della scrivania: vetro con chip e inchiostri del tema (molti gettoni restano per compatibilità).
     enum Widget {
-        static let guidaSimbolo = Color(hex: "#2f6eb0")
-        static let bordo = Color(hex: "#777")
-        static let ombra = Color(hex: "#0004")
-        // Pannello carta dentro i widget (.os-panel) e i suoi numeri (.os-kpi)
-        static let pannelloBordo = Color(hex: "#c8d0d3")
-        static let pannelloAlto = Color(r: 255, g: 255, b: 255, a: 0.94)
-        static let pannelloBasso = Color(r: 246, g: 248, b: 248, a: 0.94)
-        static let pannelloOmbra = Color(r: 53, g: 82, b: 103, a: 0.05)
-        static let kpiEtichetta = Color(hex: "#8aa0ae")
-        static let kpiValore = Color(hex: "#4e6b7e")
-        // Barra del portafoglio (.os-progress)
-        static let progressoFondo = Color(hex: "#d3dce0")
-        static let progressoBordo = Color(hex: "#b8c5c9")
-        static let progressoOmbra = Color(r: 83, g: 107, b: 126, a: 0.17)
-        static let progressoLuce = Color.white.opacity(0.4)
-        static let carta = Color(hex: "#f6f4ef")
-        static let cartaBianca = Color(hex: "#fffdf7")
-        static let titolo = Color(hex: "#303030")
-        static let secondario = Color(hex: "#666")
-        static let numero = Color(hex: "#203f67")
-        // Calendario da scrivania
-        static let calendario = [Color(hex: "#ff7767"), Color(hex: "#ef352d"), Color(hex: "#cc171d"), Color(hex: "#a50c12")]
-        static let calendarioBordo = Color(hex: "#7c1317")
-        static let calendarioLuce = Color(hex: "#ffb7a2")
-        static let calendarioTesto = Color(hex: "#fffaf0")
-        static let calendarioSecondario = Color(hex: "#ffd9cf")
-        static let calendarioGiorno = Color(hex: "#a8342a")
-        static let calendarioPagina = Color(hex: "#fffefa")
-        static let calendarioPaginaBasso = Color(hex: "#f0eee8")
-        static let calendarioRighe = Color(hex: "#e8dfcf")
-        static let calendarioMargine = Color(hex: "#e7a59b")
-        static let calendarioOra = Color(hex: "#a8342a")
-        static let anelloAlto = Color(hex: "#f4f4f4")
-        static let anelloBasso = Color(hex: "#8d8d8d")
-        static let anelloBordo = Color(hex: "#5c5c5c")
-        // Cartella in pelle del cliente
-        static let cucitura = Color(hex: "#e9c89c")
-        static let cartoncino = Color(hex: "#f7f0e2")
-        static let cartoncinoBasso = Color(hex: "#ebe1cd")
-        static let cartoncinoBordo = Color(hex: "#9c7a52")
-        static let cartoncinoOmbra = Color(hex: "#3b230f66")
-        static let cartoncinoTesto = Color(hex: "#3c3226")
-        static let cartoncinoEtichetta = Color(hex: "#8a7557")
-        static let cartoncinoValore = Color(hex: "#5a3a1c")
-        // Portafoglio (pannello nero lucido come l'app Borsa)
-        static let borsaAlto = Color(hex: "#4b4b4f")
-        static let borsaMezzo = Color(hex: "#1f1f22")
-        static let borsaBasso = Color(hex: "#0e0e10")
-        static let borsaBordo = Color(hex: "#000")
-        static let borsaRiflesso = Color(r: 255, g: 255, b: 255, a: 0.16)
-        static let borsaTitolo = Color(hex: "#9a9aa2")
-        static let borsaTesto = Color(hex: "#f2f2f2")
-        static let borsaSecondario = Color(hex: "#a7a7ae")
-        static let borsaFilo = Color(r: 255, g: 255, b: 255, a: 0.1)
-        static let borsaVerde = [Color(hex: "#8fe07a"), Color(hex: "#4fae3a"), Color(hex: "#3a9a27"), Color(hex: "#58b544")]
-        static let borsaVerdeBordo = Color(hex: "#2a6e1d")
-        static let borsaAlleanza = Color(hex: "#6f9be0")
-        static let borsaIndipendente = Color(hex: "#d8bf94")
-        // Foglietto giallo delle scadenze
-        static let foglietto = Color(hex: "#fbefc0")
-        static let fogliettoBasso = Color(hex: "#f5e3a1")
-        static let fogliettoRighe = Color(r: 154, g: 171, b: 159, a: 0.4)
-        static let fogliettoMargine = Color(hex: "#e0a19a")
-        static let fogliettoTesto = Color(hex: "#3d3426")
-        static let fogliettoSecondario = Color(hex: "#7c6a48")
-        static let rilegaturaAlto = Color(hex: "#6e5944")
-        static let rilegaturaMezzo = Color(hex: "#5a4533")
-        static let rilegaturaBasso = Color(hex: "#4b3828")
-        static let rilegaturaLuce = Color(hex: "#927c61")
-        static let rilegaturaOmbra = Color(hex: "#392a1d")
-        // Promemoria a righe
-        static let promemoriaRighe = Color(hex: "#d9e2ec")
-        static let promemoriaTitolo = Color(hex: "#2c4a6e")
-        static let promemoriaCerchio = Color(hex: "#9fb1c4")
-        static let promemoriaSpunta = Color(hex: "#3a7fae")
+        static let guidaSimbolo = TC.accento
+        static let bordo = TC.bordoVetro
+        static let ombra = neroAlfa(0.15)
+        // Pannello dentro i widget e i suoi numeri
+        static let pannelloBordo = TC.bordoChip
+        static let pannelloAlto = TC.chip
+        static let pannelloBasso = TC.chip
+        static let pannelloOmbra = Color.clear
+        static let kpiEtichetta = TC.inchiostroSecondario
+        static let kpiValore = TC.inchiostro
+        // Barra del portafoglio
+        static let progressoFondo = TC.pozzettoScuro
+        static let progressoBordo = Color.clear
+        static let progressoOmbra = Color.clear
+        static let progressoLuce = Color.clear
+        static let carta = TC.scheda
+        static let cartaBianca = TC.scheda
+        static let titolo = TC.inchiostro
+        static let secondario = TC.inchiostroSecondario
+        static let numero = TC.inchiostro
+        // Calendario da scrivania: rosso del tema, testo bianco
+        static let calendario: [Color] = [TC.rosso, TC.rosso, TC.rosso, TC.rosso]
+        static let calendarioBordo = Color.clear
+        static let calendarioLuce = Color.clear
+        static let calendarioTesto = Color.white
+        static let calendarioSecondario = biancoAlfa(0.8)
+        static let calendarioGiorno = TC.rosso
+        static let calendarioPagina = TC.scheda
+        static let calendarioPaginaBasso = TC.scheda
+        static let calendarioRighe = TC.separatore
+        static let calendarioMargine = Color.clear
+        static let calendarioOra = TC.rosso
+        static let anelloAlto = TC.pozzettoScuro
+        static let anelloBasso = TC.pozzettoScuro
+        static let anelloBordo = Color.clear
+        // Ex cartella in pelle del cliente
+        static let cucitura = Color.clear
+        static let cartoncino = TC.chip
+        static let cartoncinoBasso = TC.chip
+        static let cartoncinoBordo = TC.bordoChip
+        static let cartoncinoOmbra = Color.clear
+        static let cartoncinoTesto = TC.inchiostro
+        static let cartoncinoEtichetta = TC.inchiostroSecondario
+        static let cartoncinoValore = TC.inchiostro
+        // Ex pannello nero «Borsa» del portafoglio
+        static let borsaAlto = TC.chip
+        static let borsaMezzo = TC.chip
+        static let borsaBasso = TC.chip
+        static let borsaBordo = TC.bordoChip
+        static let borsaRiflesso = Color.clear
+        static let borsaTitolo = TC.inchiostroSecondario
+        static let borsaTesto = TC.inchiostro
+        static let borsaSecondario = TC.inchiostroSecondario
+        static let borsaFilo = TC.separatore
+        static let borsaVerde: [Color] = [TC.verde, TC.verde, TC.verde, TC.verde]
+        static let borsaVerdeBordo = Color.clear
+        static let borsaAlleanza = TC.canaleAlleanza
+        static let borsaIndipendente = TC.canaleIndipendente
+        // Ex foglietto giallo delle scadenze e rilegatura
+        static let foglietto = TC.chip
+        static let fogliettoBasso = TC.chip
+        static let fogliettoRighe = TC.separatore
+        static let fogliettoMargine = Color.clear
+        static let fogliettoTesto = TC.inchiostro
+        static let fogliettoSecondario = TC.inchiostroSecondario
+        static let rilegaturaAlto = TC.chip
+        static let rilegaturaMezzo = TC.chip
+        static let rilegaturaBasso = TC.chip
+        static let rilegaturaLuce = Color.clear
+        static let rilegaturaOmbra = Color.clear
+        // Promemoria
+        static let promemoriaRighe = TC.separatore
+        static let promemoriaTitolo = TC.inchiostro
+        static let promemoriaCerchio = TC.pozzettoScuro
+        static let promemoriaSpunta = TC.accento
         // Eve
         static let onda = [Color(hex: "#b9a6ff"), Color(hex: "#6f5bd6")]
         static let eveAlone = Color(hex: "#8a73ff")
     }
 
+    /// Ex lino grafite: ora il riempimento dei pannelli di vetro.
     enum Lino {
-        static let alto = Color(hex: "#4b4e51")
-        static let basso = Color(hex: "#35383b")
+        static let alto = TC.riempimentoPannelloColorato
+        static let basso = TC.riempimentoPannelloColorato
     }
 
+    /// Dock: capsula di vetro sottile, puntino piatto, nomi sullo sfondo.
     enum Dock {
-        static let ripianoBordo = Color(r: 216, g: 223, b: 230, a: 0.65)
-        static let ripianoFondo = Color(hex: "#7e8993")
-        static let ripianoOmbra = Color(hex: "#0006")
-        static let filo = Color(r: 255, g: 255, b: 255, a: 0.6)
-        static let filoOmbra = Color(hex: "#354e69")
-        static let divisoreMezzo = Color(r: 116, g: 125, b: 133, a: 0.667)
-        static let divisoreBasso = Color(r: 255, g: 255, b: 255, a: 0.5)
-        static let iconaOmbra = Color(hex: "#0008")
-        static let puntino = Color(hex: "#effaff")
-        static let puntinoAlone = Color(hex: "#b9e8fb80")
-        static let suggerimento = Color(hex: "#292929f2")
-        /// Il nome sotto l'icona: bianco con l'ombra scura, come le etichette della home di iOS 5.
-        static let etichetta = Color.white
-        static let etichettaOmbra = Color(hex: "#000c")
+        static let ripianoBordo = TC.bordoVetro
+        static let ripianoFondo = TC.riempimentoLeggeroColorato
+        static let ripianoOmbra = neroAlfa(0.2)
+        static let filo = TC.riflessoAlto
+        static let filoOmbra = Color.clear
+        static let divisoreMezzo = TC.pozzettoScuro
+        static let divisoreBasso = Color.clear
+        static let iconaOmbra = neroAlfa(0.32)
+        static let puntino = TC.inchiostroSfondo
+        static let puntinoAlone = Color.clear
+        /// Il suggerimento porta il testo bianco: resta scuro in tutti e due gli aspetti.
+        static let suggerimento = Color(r: 22, g: 38, b: 50, a: 0.86)
+        /// Il nome sotto l'icona, sullo sfondo d'acqua.
+        static let etichetta = TC.inchiostroSfondo
+        static let etichettaOmbra = TC.aloneSfondo
     }
 
+    /// Finestre interne: vetro chiaro o scuro, barra del titolo che sfuma nel contenuto.
     enum Finestra {
-        static let sfondo = Color(hex: "#e6e6e6")
-        static let contenuto = Color(hex: "#e8e8e8")
-        static let bordoAttiva = Color(hex: "#626262")
-        static let bordoInattiva = Color(hex: "#777")
-        static let ombraAttiva1 = Color(hex: "#0006")
-        static let ombraAttiva2 = Color(hex: "#0003")
-        static let ombraInattiva = Color(hex: "#0004")
-        static let titoloAttivaAlto = Color(hex: "#e8e8e8")
-        static let titoloAttivaBasso = Color(hex: "#d6d6d6")
-        static let titoloInattivaAlto = Color(hex: "#f0f0f0")
-        static let titoloInattivaBasso = Color(hex: "#e6e6e6")
-        static let titoloBordoAttiva = Color(hex: "#b4b4b4")
-        static let titoloBordoInattiva = Color(hex: "#c5c5c5")
-        static let titoloLuce = Color(r: 255, g: 255, b: 255, a: 0.7)
-        static let titoloTesto = Color(hex: "#303030")
-        static let titoloTestoInattivo = Color(hex: "#929292")
-        static let titoloIncisione = Color(r: 255, g: 255, b: 255, a: 0.65)
-        static let contesto = Color(hex: "#666")
-        static let affiancaAlto = Color(hex: "#eee")
-        static let affiancaBasso = Color(hex: "#d4d4d4")
-        static let affiancaBordo = Color(hex: "#aaa")
-        static let affiancaSimbolo = Color(hex: "#606060")
+        static let sfondo = TC.finestra
+        static let contenuto = Color.clear
+        static let bordoAttiva = TC.contornoFinestra
+        static let bordoInattiva = TC.contornoFinestraInattiva
+        static let ombraAttiva1 = neroAlfa(0.35)
+        static let ombraAttiva2 = neroAlfa(0.18)
+        static let ombraInattiva = neroAlfa(0.25)
+        static let titoloAttivaAlto = TC.finestraPiena
+        static let titoloAttivaBasso = TC.finestraPiena.opacity(0)
+        static let titoloInattivaAlto = TC.finestraPiena
+        static let titoloInattivaBasso = TC.finestraPiena.opacity(0)
+        static let titoloBordoAttiva = Color.clear
+        static let titoloBordoInattiva = Color.clear
+        static let titoloLuce = Color.clear
+        static let titoloTesto = TC.inchiostro
+        static let titoloTestoInattivo = TC.inchiostroTerziario
+        static let titoloIncisione = Color.clear
+        static let contesto = TC.inchiostroSecondario
+        static let affiancaAlto = TC.chip
+        static let affiancaBasso = TC.chip
+        static let affiancaBordo = TC.bordoChip
+        static let affiancaSimbolo = TC.inchiostroSecondario
     }
 
+    /// Semafori piatti del tema (gli array restano di tre colori per il gradiente radiale).
     enum Semafori {
-        static let chiudi = [Color(hex: "#ffc2b3"), Color(hex: "#ef655a"), Color(hex: "#cb2e27")]
-        static let chiudiBordo = Color(hex: "#a3423b")
-        static let riduci = [Color(hex: "#fff0ad"), Color(hex: "#f2ba3d"), Color(hex: "#d29721")]
-        static let riduciBordo = Color(hex: "#a7832b")
-        static let ingrandisci = [Color(hex: "#d4ffab"), Color(hex: "#8bc64d"), Color(hex: "#4d9b2a")]
-        static let ingrandisciBordo = Color(hex: "#598137")
-        static let inattivoAlto = Color(hex: "#ddd")
-        static let inattivoBasso = Color(hex: "#c8c8c8")
-        static let inattivoBordo = Color(hex: "#aaa")
-        static let simbolo = Color(hex: "#573f38")
+        static let chiudi: [Color] = [TC.semaforoChiudi, TC.semaforoChiudi, TC.semaforoChiudi]
+        static let chiudiBordo = TC.bordoSemaforo
+        static let riduci: [Color] = [TC.semaforoRiduci, TC.semaforoRiduci, TC.semaforoRiduci]
+        static let riduciBordo = TC.bordoSemaforo
+        static let ingrandisci: [Color] = [TC.semaforoIngrandisci, TC.semaforoIngrandisci, TC.semaforoIngrandisci]
+        static let ingrandisciBordo = TC.bordoSemaforo
+        static let inattivoAlto = TC.pozzettoScuro
+        static let inattivoBasso = TC.pozzettoScuro
+        static let inattivoBordo = Color.clear
+        static let simbolo = TC.simboloSemaforo
     }
 
+    /// Intestazione delle app: trasparente, con un filo sotto.
     enum IntestazioneApp {
-        static let alto = Color(hex: "#d6d6d6")
-        static let mezzo = Color(hex: "#d0d0d0")
-        static let basso = Color(hex: "#c6c6c6")
-        static let bordo = Color(hex: "#a7a7a7")
-        static let luce = Color(r: 255, g: 255, b: 255, a: 0.32)
-        static let titolo = Color(hex: "#303030")
-        static let occhiello = Color(hex: "#666")
-        static let incisione = Color(r: 255, g: 255, b: 255, a: 0.533)
-        static let corpo = Color(hex: "#ececec")
+        static let alto = Color.clear
+        static let mezzo = Color.clear
+        static let basso = Color.clear
+        static let bordo = TC.separatore
+        static let luce = Color.clear
+        static let titolo = TC.inchiostro
+        static let occhiello = TC.inchiostroSecondario
+        static let incisione = Color.clear
+        /// Fondo predefinito delle app: si vede il vetro della finestra.
+        static let corpo = Color.clear
     }
 
     enum Pannello {
-        static let sfondo = Color.white
-        static let bordo = Color(hex: "#b5bcc3")
-        static let testo = Color(hex: "#30343a")
-        static let testoSecondario = Color(hex: "#666")
-        static let titolo = Color(hex: "#3a434e")
+        static let sfondo = TC.scheda
+        static let bordo = TC.bordoScheda
+        static let testo = TC.inchiostro
+        static let testoSecondario = TC.inchiostroSecondario
+        static let titolo = TC.inchiostro
     }
 
     enum Pulsante {
-        static let vetroBordo = Color(hex: "#888")
-        static let vetroOmbra = Color(hex: "#0003")
-        static let testo = Color(hex: "#333")
-        static let segmentoBordo = Color(hex: "#a0a0a0")
-        static let segmentoAttivoAlto = Color(hex: "#808080")
-        static let segmentoAttivoBasso = Color(hex: "#a0a0a0")
-        static let segmentoAttivoBordo = Color(hex: "#777")
-        static let segmentoAttivoOmbra = Color(hex: "#0004")
-        /// Pulsante principale blu iOS 5 (--ios5-button-bg).
-        static let blu = [Color(hex: "#7e9cc5"), Color(hex: "#587cad"), Color(hex: "#315e96"), Color(hex: "#537eae")]
-        static let bluBordo = Color(hex: "#33547b")
-        static let bluIncisione = Color(hex: "#1c3c68")
-        static let bluLuce = Color(r: 255, g: 255, b: 255, a: 0.333)
-        static let bluRiflesso = Color(r: 197, g: 219, b: 239, a: 0.314)
-        /// Pulsante cuoio chiaro (--apple-2011-tan-button).
-        static let cuoio = [Color(hex: "#dbcbb4"), Color(hex: "#c4af90"), Color(hex: "#bba282"), Color(hex: "#cfb99a")]
-        static let cuoioBordo = Color(hex: "#816d53")
-        static let cuoioIncisione = Color(hex: "#6f5b42")
+        // Pulsante di vetro: chip del tema
+        static let vetroBordo = TC.bordoChip
+        static let vetroOmbra = neroAlfa(0.08)
+        static let testo = TC.inchiostro
+        static let segmentoBordo = TC.separatore
+        // Segmento scelto: porta il testo bianco
+        static let segmentoAttivoAlto = TC.accento
+        static let segmentoAttivoBasso = TC.accento
+        static let segmentoAttivoBordo = TC.accento
+        static let segmentoAttivoOmbra = Color.clear
+        /// Pulsante principale ed etichetta Alleanza: il blu del canale, fisso e opaco
+        /// (l'etichetta del canale va anche nei PDF, su carta bianca).
+        static let blu: [Color] = [Color(hex: "#3B78F0"), Color(hex: "#2E6CEC"), Color(hex: "#2766EB"), Color(hex: "#2563EB")]
+        static let bluBordo = Color(hex: "#1D52C4")
+        static let bluIncisione = Color.clear
+        static let bluLuce = biancoAlfa(0.25)
+        static let bluRiflesso = Color.clear
+        /// Etichetta del canale indipendente: cuoio/ambra del tema, fisso e opaco (anche nei PDF).
+        static let cuoio: [Color] = [Color(hex: "#BE7E22"), Color(hex: "#B47417"), Color(hex: "#B06E12"), Color(hex: "#AC6B10")]
+        static let cuoioBordo = Color(hex: "#8E570B")
+        static let cuoioIncisione = Color.clear
     }
 
+    /// Badge rosso piatto del tema.
     enum Badge {
-        static let grande = [Color(hex: "#ffaaa0"), Color(hex: "#e65143"), Color(hex: "#bb140b"), Color(hex: "#e23e30")]
-        static let grandeLuce = Color(hex: "#ffd8d3")
-        static let grandeIncisione = Color(hex: "#8d1d15")
-        static let piccolo = [Color(hex: "#f58e87"), Color(hex: "#d43429"), Color(hex: "#b91812"), Color(hex: "#df4a3d")]
-        static let piccoloIncisione = Color(hex: "#8c211c")
-        static let ombra = Color(r: 0, g: 0, b: 0, a: 0.5)
+        static let grande: [Color] = [TC.rosso, TC.rosso, TC.rosso, TC.rosso]
+        static let grandeLuce = Color.clear
+        static let grandeIncisione = Color.clear
+        static let piccolo: [Color] = [TC.rosso, TC.rosso, TC.rosso, TC.rosso]
+        static let piccoloIncisione = Color.clear
+        static let ombra = neroAlfa(0.2)
     }
 
+    /// Avviso temporaneo: capsula di vetro (riempimento coprente, si legge su qualunque fondo).
     enum Avvisi {
-        static let alto = Color(hex: "#4d5662f5")
-        static let basso = Color(hex: "#262d37f5")
-        static let bordo = Color(hex: "#151c26")
-        static let testo = Color(hex: "#eff7fc")
-        static let ombra = Color(hex: "#0006")
-        static let luce = Color(hex: "#fff3")
+        static let alto = TC.riempimentoPannelloColorato
+        static let basso = TC.riempimentoPannelloColorato
+        static let bordo = TC.bordoVetro
+        static let testo = TC.inchiostro
+        static let ombra = neroAlfa(0.22)
+        static let luce = Color.clear
     }
 
-    /// Colori degli avatar dei clienti (gradiente, bordo, testo).
+    /// Colori degli avatar dei clienti (tinte del tema, iniziali bianche).
     enum Avatar {
         struct Tinta {
             let alto: Color
@@ -529,167 +558,168 @@ enum Colori {
             let testo: Color
         }
 
-        static let blu = Tinta(alto: Color(hex: "#e0eaf3"), basso: Color(hex: "#b7cbdb"), bordo: Color(hex: "#a2b8c9"), testo: Color(hex: "#5f7c91"))
-        static let rosa = Tinta(alto: Color(hex: "#f4e5e2"), basso: Color(hex: "#d9bfb9"), bordo: Color(hex: "#caaea6"), testo: Color(hex: "#a07264"))
-        static let verde = Tinta(alto: Color(hex: "#dceee4"), basso: Color(hex: "#b5d1bf"), bordo: Color(hex: "#a5c1b1"), testo: Color(hex: "#648976"))
-        static let viola = Tinta(alto: Color(hex: "#ebe5f2"), basso: Color(hex: "#cbc0df"), bordo: Color(hex: "#b5a7ca"), testo: Color(hex: "#8874a0"))
-        static let oro = Tinta(alto: Color(hex: "#f4ebd7"), basso: Color(hex: "#dfcba6"), bordo: Color(hex: "#cabb9a"), testo: Color(hex: "#9c8657"))
-        static let luce = Color(hex: "#f6fcff")
-        static let ombra = Color(r: 39, g: 65, b: 81, a: 0.08)
+        static let blu = Tinta(alto: Color(hex: "#A3BEDF"), basso: Color(hex: "#4C72A8"), bordo: biancoAlfa(0.35), testo: .white)
+        static let rosa = Tinta(alto: Color(hex: "#E4AEB9"), basso: Color(hex: "#B0687A"), bordo: biancoAlfa(0.35), testo: .white)
+        static let verde = Tinta(alto: Color(hex: "#A5CDB5"), basso: Color(hex: "#4B8566"), bordo: biancoAlfa(0.35), testo: .white)
+        static let viola = Tinta(alto: Color(hex: "#BCB0D8"), basso: Color(hex: "#6E62A0"), bordo: biancoAlfa(0.35), testo: .white)
+        static let oro = Tinta(alto: Color(hex: "#E2CC98"), basso: Color(hex: "#A9853C"), bordo: biancoAlfa(0.35), testo: .white)
+        static let luce = biancoAlfa(0.5)
+        static let ombra = neroAlfa(0.2)
     }
 
-    /// App Impostazioni (gruppi iOS 5 su fondo a righe).
+    /// App Impostazioni: gruppi su schede di vetro, interruttore verde.
     enum Impostazioni {
-        static let gruppoBordo = Color(hex: "#a5aebc")
-        static let gruppoRiflesso = Color(hex: "#f7faff")
-        static let rigaBordo = Color(hex: "#c5cbd3")
-        static let rigaTitolo = Color(hex: "#242a31")
-        static let rigaSottotitolo = Color(hex: "#7c8490")
-        static let rigaValore = Color(hex: "#4d6a92")
-        static let avvertenza = Color(hex: "#974f45")
-        static let nota = Color(hex: "#5f718b")
-        static let notaIncisione = Color(hex: "#edf3fc")
-        static let intestazioneGruppo = Color(hex: "#4c5c72")
-        static let schedeBordo = Color(hex: "#b6b6b6")
-        static let segmentoBordo = Color(hex: "#9a9a9a")
-        static let segmentoTesto = Color(hex: "#373737")
-        static let segmentoAttivoAlto = Color(hex: "#7b7b7b")
-        static let segmentoAttivoBasso = Color(hex: "#999")
-        static let segmentoAttivoBordo = Color(hex: "#6f6f6f")
-        static let segmentoAttivoIncisione = Color(hex: "#5b5b5b")
-        static let informazioniFilo = Color(hex: "#e9eff8")
-        static let informazioniTesto = Color(hex: "#657f92")
-        static let informazioniOcchiello = Color(hex: "#879da9")
-        static let informazioniTitolo = Color(hex: "#4c5c72")
-        static let numero = Color(hex: "#4c5c72")
-        static let numeroEtichetta = Color(hex: "#5f718b")
-        static let interruttoreSpento = [Color(hex: "#aaa"), Color(hex: "#f7f7f7"), Color(hex: "#eee")]
-        static let interruttoreSpentoBordo = Color(hex: "#8a8a8a")
-        static let interruttoreAcceso = [Color(hex: "#0b58a8"), Color(hex: "#247bcf"), Color(hex: "#58a0e3"), Color(hex: "#7bb7ec")]
-        static let interruttoreAccesoBordo = Color(hex: "#366492")
-        static let interruttoreOmbra = Color(r: 0, g: 0, b: 0, a: 0.333)
-        static let interruttoreAccesoOmbra = Color(r: 11, g: 53, b: 107, a: 0.5)
-        static let interruttoreTestoSpento = Color(hex: "#6d6d6d")
+        static let gruppoBordo = TC.bordoScheda
+        static let gruppoRiflesso = Color.clear
+        static let rigaBordo = TC.separatore
+        static let rigaTitolo = TC.inchiostro
+        static let rigaSottotitolo = TC.inchiostroSecondario
+        static let rigaValore = TC.inchiostroSecondario
+        static let avvertenza = TC.scadenzaOra
+        static let nota = TC.inchiostroSecondario
+        static let notaIncisione = Color.clear
+        static let intestazioneGruppo = TC.inchiostroSecondario
+        static let schedeBordo = TC.separatore
+        static let segmentoBordo = TC.separatore
+        static let segmentoTesto = TC.inchiostro
+        // Segmento scelto: porta il testo bianco
+        static let segmentoAttivoAlto = TC.accento
+        static let segmentoAttivoBasso = TC.accento
+        static let segmentoAttivoBordo = TC.accento
+        static let segmentoAttivoIncisione = Color.clear
+        static let informazioniFilo = TC.separatore
+        static let informazioniTesto = TC.inchiostroSecondario
+        static let informazioniOcchiello = TC.inchiostroTerziario
+        static let informazioniTitolo = TC.inchiostro
+        static let numero = TC.inchiostro
+        static let numeroEtichetta = TC.inchiostroSecondario
+        static let interruttoreSpento: [Color] = [TC.pozzettoScuro, TC.pozzettoScuro, TC.pozzettoScuro]
+        static let interruttoreSpentoBordo = Color.clear
+        static let interruttoreAcceso: [Color] = [TC.verde, TC.verde, TC.verde, TC.verde]
+        static let interruttoreAccesoBordo = Color.clear
+        static let interruttoreOmbra = Color.clear
+        static let interruttoreAccesoOmbra = Color.clear
+        static let interruttoreTestoSpento = TC.inchiostroSecondario
     }
 
     enum Agenda {
-        /// Inchiostro della data sull'icona Agenda (agenda-dateInk).
-        static let inchiostroAlto = Color(hex: "#151515")
-        static let inchiostroBasso = Color(hex: "#252321")
-        static let mese = Color(hex: "#fffaf0")
-        static let meseOmbra = Color(hex: "#97151a")
+        /// Icona Agenda (sempre su piastrella bianca): giorno #1C1C1E, mese rosso del tema, niente ombra.
+        static let inchiostroAlto = Color(hex: "#1C1C1E")
+        static let inchiostroBasso = Color(hex: "#1C1C1E")
+        static let mese = Color(hex: "#E0443A")
+        static let meseOmbra = Color.clear
+        static let giornoIcona = Color(hex: "#1C1C1E")
 
-        // App Agenda (.os-app-agenda, passata "2011": cuoio chiaro, anelli cromati, pagine color avorio)
-        static let fondoApp = Color(hex: "#d3cfc5")
-        static let cuoioAlto = Color(hex: "#bca27e")
-        static let cuoioMezzo = Color(hex: "#b19773")
-        static let cuoioBasso = Color(hex: "#a78a64")
-        static let cuoioBordo = Color(hex: "#846c4b")
-        static let cuoioLuce = Color(hex: "#ddc9a9")
-        static let cuoioLuceBasso = Color(hex: "#8b704f")
-        static let cuoioCucitura = Color(hex: "#e3cfac")
-        static let cuoioCucituraOmbra = Color(r: 121, g: 96, b: 69, a: 0.53)
-        static let cuoioTitolo = Color(hex: "#3e3020")
-        static let cuoioTesto = Color(hex: "#5f4b31")
-        static let cuoioIncisione = Color(hex: "#ddc9a9")
-        static let targhettaCarta = Color(hex: "#f7f4e9")
-        static let targhettaBordo = Color(hex: "#8d7150")
-        static let targhettaOmbra1 = Color(hex: "#d0bd9c")
-        static let targhettaOmbra2 = Color(hex: "#715c40")
-        static let targhettaOmbra3 = Color(r: 75, g: 57, b: 38, a: 0.21)
-        static let targhettaRossoAlto = Color(hex: "#c15a4d")
-        static let targhettaRossoBasso = Color(hex: "#a64134")
-        static let targhettaRossoBordo = Color(hex: "#87372b")
-        static let targhettaRossoLuce = Color(hex: "#e19280")
-        static let targhettaRossoIncisione = Color(hex: "#7c2e26")
-        static let targhettaTesto = Color(hex: "#373430")
-        static let cartaBordo = Color(hex: "#eeeadd")
-        static let carta = Color(hex: "#faf8ef")
-        static let libroBordo = Color(hex: "#b6a88e")
-        static let libroOmbra1 = Color(hex: "#eee8d8")
-        static let libroOmbra2 = Color(hex: "#b3a58b")
-        static let libroOmbra3 = Color(r: 89, g: 73, b: 46, a: 0.19)
-        static let anello = [Color(hex: "#36312b"), Color(hex: "#9f9a92"), Color(hex: "#fff9ed"), Color(hex: "#fefdfb"),
-                             Color(hex: "#8f8e8a"), Color(hex: "#c7c7c2"), Color(hex: "#5c554c"), Color(hex: "#2f2821")]
-        static let anelloBordo = Color(hex: "#696056")
-        static let anelloOmbra = Color(r: 48, g: 35, b: 28, a: 0.4)
-        static let barraStrumenti = Color(hex: "#f3efe3")
-        static let settimanaAlto = Color(hex: "#faf7ee")
-        static let settimanaBasso = Color(hex: "#eee7d8")
-        static let settimanaBordo = Color(hex: "#c8bda7")
-        static let giorno = Color(hex: "#6c6250")
-        static let giornoNumero = Color(hex: "#494137")
-        static let giornoPassaggio = Color(hex: "#e9e3d6")
-        static let giornoOggiBordo = Color(hex: "#c7a69f")
-        static let giornoOggiNumero = Color(hex: "#ae3930")
-        static let selezioneAlto = Color(hex: "#d46e5c")
-        static let selezioneBasso = Color(hex: "#b84d3c")
-        static let selezioneBordo = Color(hex: "#9c4234")
-        static let selezioneLuce = Color(hex: "#edab97")
-        static let selezioneIncisione = Color(hex: "#8d382b")
-        static let selezioneTesto = Color(hex: "#fff8ef")
-        static let puntino = Color(hex: "#ae4740")
-        static let puntinoSelezione = Color(hex: "#ffe6d1")
-        static let paginaOcchiello = Color(hex: "#a34b40")
-        static let paginaTitolo = Color(hex: "#40382e")
-        static let paginaNota = Color(hex: "#938777")
-        static let paginaBordo = Color(hex: "#c4b38d")
-        static let rigatura = Color(r: 156, g: 174, b: 184, a: 0.3)
-        static let rigaBordo = Color(hex: "#c9bfa7")
-        static let rigaSelezione = Color(hex: "#ece6d5")
-        static let rigaSegno = Color(hex: "#b44e43")
-        static let ora = Color(hex: "#61574a")
-        static let oraFine = Color(hex: "#a49888")
-        static let evento = Color(hex: "#2d2a24")
-        static let eventoConcluso = Color(hex: "#888174")
-        static let eventoCliente = Color(hex: "#8b6950")
-        static let eventoDettagli = Color(hex: "#76684e")
-        static let freccia = Color(hex: "#88785b")
-        static let conclusoTesto = Color(hex: "#6b8261")
-        static let conclusoFondo = Color(hex: "#e0e6d6")
-        static let scadenzaTesto = Color(hex: "#9a6a2e")
-        static let scadenzaFondo = Color(hex: "#f3e2bd")
-        static let notaSettimana = Color(hex: "#988c79")
-        static let notaSettimanaBordo = Color(r: 213, g: 204, b: 183, a: 0.5)
-        static let dettaglioAlto = Color(hex: "#e5decb")
-        static let dettaglioFondo = Color(hex: "#f1ecde")
-        static let dettaglioBordo = Color(hex: "#c2b59b")
-        static let dettaglioOcchiello = Color(hex: "#a18868")
-        static let dettaglioTitolo = Color(hex: "#433a2b")
-        static let dettaglioCliente = Color(hex: "#90704d")
-        static let voceEtichetta = Color(hex: "#998971")
-        static let voceValore = Color(hex: "#655745")
-        static let voceBordo = Color(r: 194, g: 180, b: 153, a: 0.28)
-        static let notaFondo = Color(hex: "#eee6ce")
-        static let notaBordo = Color(hex: "#d1c3a1")
-        static let notaLuce = Color(hex: "#f9f3df")
-        static let notaEtichetta = Color(hex: "#9a7c4f")
-        static let notaTesto = Color(hex: "#65563b")
-        static let azioniBordo = Color(r: 198, g: 185, b: 159, a: 0.44)
-        static let quieto = Color(hex: "#bca481")
-        static let quietoTesto = Color(hex: "#958267")
-        static let quietoSuggerimento = Color(hex: "#a38e70")
-        static let vuotoData = Color(hex: "#c1b39c")
-        static let vuotoTitolo = Color(hex: "#8e7c60")
-        static let vuotoTesto = Color(hex: "#9c907e")
+        // App Agenda: niente cuoio né anelli, schede di vetro, giorno scelto in rosso
+        static let fondoApp = Color.clear
+        static let cuoioAlto = Color.clear
+        static let cuoioMezzo = Color.clear
+        static let cuoioBasso = Color.clear
+        static let cuoioBordo = TC.separatore
+        static let cuoioLuce = Color.clear
+        static let cuoioLuceBasso = Color.clear
+        static let cuoioCucitura = Color.clear
+        static let cuoioCucituraOmbra = Color.clear
+        static let cuoioTitolo = TC.inchiostro
+        static let cuoioTesto = TC.inchiostroSecondario
+        static let cuoioIncisione = Color.clear
+        static let targhettaCarta = TC.tesseraData
+        static let targhettaBordo = TC.bordoChip
+        static let targhettaOmbra1 = Color.clear
+        static let targhettaOmbra2 = Color.clear
+        static let targhettaOmbra3 = neroAlfa(0.08)
+        static let targhettaRossoAlto = TC.rosso
+        static let targhettaRossoBasso = TC.rosso
+        static let targhettaRossoBordo = Color.clear
+        static let targhettaRossoLuce = Color.clear
+        static let targhettaRossoIncisione = Color.clear
+        static let targhettaTesto = TC.inchiostro
+        static let cartaBordo = TC.scheda
+        static let carta = TC.scheda
+        static let libroBordo = TC.bordoScheda
+        static let libroOmbra1 = Color.clear
+        static let libroOmbra2 = Color.clear
+        static let libroOmbra3 = neroAlfa(0.06)
+        static let anello: [Color] = Array(repeating: Color.clear, count: 8)
+        static let anelloBordo = Color.clear
+        static let anelloOmbra = Color.clear
+        static let barraStrumenti = Color.clear
+        static let settimanaAlto = TC.rigaSopra
+        static let settimanaBasso = TC.rigaSopra
+        static let settimanaBordo = TC.separatore
+        static let giorno = TC.inchiostroSecondario
+        static let giornoNumero = TC.inchiostro
+        static let giornoPassaggio = TC.rigaSopra
+        static let giornoOggiBordo = TC.rosso
+        static let giornoOggiNumero = TC.rosso
+        static let selezioneAlto = TC.rosso
+        static let selezioneBasso = TC.rosso
+        static let selezioneBordo = Color.clear
+        static let selezioneLuce = Color.clear
+        static let selezioneIncisione = Color.clear
+        static let selezioneTesto = Color.white
+        static let puntino = TC.inchiostroTerziario
+        static let puntinoSelezione = biancoAlfa(0.9)
+        static let paginaOcchiello = TC.scadenzaOra
+        static let paginaTitolo = TC.inchiostro
+        static let paginaNota = TC.inchiostroSecondario
+        static let paginaBordo = TC.separatore
+        static let rigatura = Color.clear
+        static let rigaBordo = TC.separatore
+        static let rigaSelezione = TC.selezioneRiga
+        static let rigaSegno = TC.rosso
+        static let ora = TC.inchiostro
+        static let oraFine = TC.inchiostroSecondario
+        static let evento = TC.inchiostro
+        static let eventoConcluso = TC.inchiostroTerziario
+        static let eventoCliente = TC.inchiostroSecondario
+        static let eventoDettagli = TC.inchiostroSecondario
+        static let freccia = TC.inchiostroTerziario
+        static let conclusoTesto = TC.testoInEssere
+        static let conclusoFondo = TC.fondoInEssere
+        static let scadenzaTesto = TC.testoProposta
+        static let scadenzaFondo = TC.fondoProposta
+        static let notaSettimana = TC.inchiostroSecondario
+        static let notaSettimanaBordo = TC.separatore
+        static let dettaglioAlto = TC.laterale
+        static let dettaglioFondo = TC.laterale
+        static let dettaglioBordo = TC.separatore
+        static let dettaglioOcchiello = TC.inchiostroSecondario
+        static let dettaglioTitolo = TC.inchiostro
+        static let dettaglioCliente = TC.inchiostroSecondario
+        static let voceEtichetta = TC.inchiostroSecondario
+        static let voceValore = TC.inchiostro
+        static let voceBordo = TC.separatore
+        static let notaFondo = TC.chip
+        static let notaBordo = TC.bordoChip
+        static let notaLuce = Color.clear
+        static let notaEtichetta = TC.inchiostroSecondario
+        static let notaTesto = TC.inchiostro
+        static let azioniBordo = TC.separatore
+        static let quieto = TC.inchiostroTerziario
+        static let quietoTesto = TC.inchiostroSecondario
+        static let quietoSuggerimento = TC.inchiostroTerziario
+        static let vuotoData = TC.inchiostroTerziario
+        static let vuotoTitolo = TC.inchiostroSecondario
+        static let vuotoTesto = TC.inchiostroTerziario
     }
 
-    /// App Incontri (.os-app-meetings, passata "2011": quaderno di lavoro su carta).
+    /// App Incontri: schede di vetro, niente carta a righe.
     enum Incontri {
-        static let fondoAlto = Color(hex: "#e4e1d7")
-        static let fondoBasso = Color(hex: "#d9d8cd")
-        static let testo = Color(hex: "#4f574c")
-        static let secondario = Color(hex: "#7a7f72")
-        static let cartaBordo = Color(hex: "#b7b6a7")
-        static let cartaLato = Color(hex: "#f1ede0")
-        static let carta = Color(hex: "#fffdf3")
-        static let rigatura = Color(r: 135, g: 156, b: 156, a: 0.22)
-        static let margine = Color(r: 198, g: 140, b: 140, a: 0.35)
-        static let filo = Color(hex: "#cfcbbd")
-        static let citazione = Color(hex: "#8a7f62")
-        static let citazioneFondo = Color(hex: "#f4efdf")
-        static let concluso = Color(hex: "#5f7f4f")
-        static let piede = Color(hex: "#ebe8de")
+        static let fondoAlto = Color.clear
+        static let fondoBasso = Color.clear
+        static let testo = TC.inchiostro
+        static let secondario = TC.inchiostroSecondario
+        static let cartaBordo = TC.bordoScheda
+        static let cartaLato = TC.scheda
+        static let carta = TC.scheda
+        static let rigatura = Color.clear
+        static let margine = Color.clear
+        static let filo = TC.separatore
+        static let citazione = TC.inchiostroSecondario
+        static let citazioneFondo = TC.pozzetto
+        static let concluso = TC.testoInEssere
+        static let piede = TC.rigaSopra
     }
 
     /// Profilo dei bisogni (scheda del cliente).
@@ -712,242 +742,244 @@ enum Colori {
             case .alta: return Color(hex: "#b5523f")
             }
         }
-        static let ruotaFondo = Color(hex: "#ebe6da")
-        static let ruotaBordo = Color(hex: "#c9bfa9")
-        static let cartaFondo = Color(hex: "#fffdf6")
-        static let cartaBordo = Color(hex: "#cfc5b0")
-        static let cartaOmbra = Color(r: 89, g: 73, b: 46, a: 0.15)
-        static let confermato = Color(hex: "#5f7f4f")
-        static let confermatoFondo = Color(hex: "#eef3e6")
-        static let scartato = Color(hex: "#a39d92")
-        static let chipFondo = Color(hex: "#f4efe3")
-        static let chipBordo = Color(hex: "#c8bea8")
-        static let chipTesto = Color(hex: "#6b5d45")
+        static let ruotaFondo = TC.pozzetto
+        static let ruotaBordo = TC.separatore
+        static let cartaFondo = TC.scheda
+        static let cartaBordo = TC.bordoScheda
+        static let cartaOmbra = neroAlfa(0.06)
+        static let confermato = TC.testoInEssere
+        static let confermatoFondo = TC.fondoInEssere
+        static let scartato = TC.inchiostroTerziario
+        static let chipFondo = TC.chip
+        static let chipBordo = TC.bordoChip
+        static let chipTesto = TC.inchiostroSecondario
     }
 
-    /// App Eve (.os-app-eve, passata "2011": lino grafite, conversazione azzurrina, nuvolette lucide).
+    /// App Eve: schede e bolle di vetro, le tue in accento (si cambia qui, non in AppEve.swift).
     enum Eve {
-        static let linoAlto = Color(hex: "#5c5e60")
-        static let linoBasso = Color(hex: "#505254")
-        static let testataAlto = Color(hex: "#64686f")
-        static let testataBasso = Color(hex: "#464b53")
-        static let testataBordo = Color(hex: "#2e333b")
-        static let testataLuce = Color(hex: "#858a92")
-        static let testataTesto = Color(hex: "#e3e5e9")
-        static let testataTitolo = Color(hex: "#f3f3f4")
-        static let testataIncisione = Color(hex: "#272d35")
-        static let avvisoAlto = Color(hex: "#dedfe1")
-        static let avvisoBasso = Color(hex: "#c6c9cd")
-        static let avvisoBordo = Color(hex: "#737a83")
-        static let avvisoTesto = Color(hex: "#4c5664")
-        static let spiaPronta = Color(hex: "#6fbf4a")
-        static let spiaSintesi = Color(hex: "#e0a33a")
-        static let conversazioneAlto = Color(hex: "#e1e7ed")
-        static let conversazioneBasso = Color(hex: "#d0d9e3")
-        static let conversazioneBordo = Color(hex: "#788390")
-        static let barraAlto = Color(hex: "#e5e6e8")
-        static let barraBasso = Color(hex: "#c8cdd3")
-        static let barraBordo = Color(hex: "#98a1ac")
-        static let barraTesto = Color(hex: "#52606e")
-        static let displayAlto = Color(hex: "#252b34")
-        static let displayBasso = Color(hex: "#323a47")
-        static let displayBordo = Color(hex: "#525c6b")
-        static let displayTesto = Color(hex: "#aab4c4")
-        static let nuvolaEveAlto = Color.white
-        static let nuvolaEveBasso = Color(hex: "#efefef")
-        static let nuvolaEveBordo = Color(hex: "#abb4bc")
-        static let nuvolaEveTesto = Color(hex: "#414c58")
-        static let nuvolaTuoi = [Color(hex: "#e3f0ba"), Color(hex: "#c4df8d"), Color(hex: "#b8d77f"), Color(hex: "#d1e7a4")]
-        static let nuvolaTuaBordo = Color(hex: "#92a76d")
-        static let nuvolaTuaTesto = Color(hex: "#3b4d30")
-        static let autore = Color(hex: "#7c8996")
-        static let azioneAlto = Color(hex: "#fcfcfc")
-        static let azioneBasso = Color(hex: "#e4e7e9")
-        static let azioneBordo = Color(hex: "#aeb7bf")
-        static let azioneTesto = Color(hex: "#536a7e")
-        static let campo = Color(hex: "#fbfcfd")
-        static let campoBordo = Color(hex: "#9aa8b6")
-        static let cartaBordo = Color(hex: "#9c8d74")
-        static let cuoioTesto = Color(hex: "#4a3b26")
-        static let tappa = Color(hex: "#faf7ee")
-        static let tappaBordo = Color(hex: "#c9c1b0")
-        static let tappaAttiva = Color(hex: "#e8edf3")
-        static let tappaAttivaBordo = Color(hex: "#b2bfcd")
-        static let tappaTesto = Color(hex: "#403c32")
-        static let tappaNota = Color(hex: "#7b7467")
-        static let postitAlto = Color(hex: "#fff2a1")
-        static let postitBasso = Color(hex: "#f2df85")
-        static let postitTesto = Color(hex: "#5c4c21")
-        static let quadroBordo = Color(hex: "#c4bca9")
-        static let quadroAlto = Color(hex: "#fcf9ef")
-        static let quadroBasso = Color(hex: "#e9e3d2")
-        static let quadroTesto = Color(hex: "#716248")
-        // Voce: il microfono acceso è un pulsante rosso lucido iOS 5, la spia rossa dice che Eve ascolta
-        static let microfonoAcceso = [Color(hex: "#ef8a7f"), Color(hex: "#df5b4d"), Color(hex: "#cc3b2c"), Color(hex: "#d9503f")]
-        static let microfonoBordo = Color(hex: "#8f2a20")
-        static let microfonoIncisione = Color(hex: "#7a2017")
-        static let spiaAscolto = Color(hex: "#e2493b")
-        static let spiaVoce = Color(hex: "#7fb3e8")
-        static let displayAttivo = Color(hex: "#dfe7f2")
-        static let ascoltoTesto = Color(hex: "#6c7a88")
+        static let linoAlto = Color.clear
+        static let linoBasso = Color.clear
+        static let testataAlto = TC.laterale
+        static let testataBasso = TC.laterale
+        static let testataBordo = TC.separatore
+        static let testataLuce = Color.clear
+        static let testataTesto = TC.inchiostroSecondario
+        static let testataTitolo = TC.inchiostro
+        static let testataIncisione = Color.clear
+        static let avvisoAlto = TC.chip
+        static let avvisoBasso = TC.chip
+        static let avvisoBordo = TC.bordoChip
+        static let avvisoTesto = TC.inchiostroSecondario
+        static let spiaPronta = TC.verde
+        static let spiaSintesi = TC.arancio
+        static let conversazioneAlto = Color.clear
+        static let conversazioneBasso = Color.clear
+        static let conversazioneBordo = TC.separatore
+        static let barraAlto = TC.finestraPiena
+        static let barraBasso = TC.finestraPiena
+        static let barraBordo = TC.separatore
+        static let barraTesto = TC.inchiostroSecondario
+        // Display: pozzetto del tema con l'onda viola
+        static let displayAlto = TC.pozzetto
+        static let displayBasso = TC.pozzetto
+        static let displayBordo = TC.separatore
+        static let displayTesto = TC.inchiostroSecondario
+        static let nuvolaEveAlto = TC.scheda
+        static let nuvolaEveBasso = TC.scheda
+        static let nuvolaEveBordo = TC.bordoScheda
+        static let nuvolaEveTesto = TC.inchiostro
+        static let nuvolaTuoi: [Color] = [TC.accento, TC.accento, TC.accento, TC.accento]
+        static let nuvolaTuaBordo = Color.clear
+        static let nuvolaTuaTesto = Color.white
+        static let autore = TC.inchiostroTerziario
+        static let azioneAlto = TC.chip
+        static let azioneBasso = TC.chip
+        static let azioneBordo = TC.bordoChip
+        static let azioneTesto = TC.inchiostro
+        static let campo = TC.pozzetto
+        static let campoBordo = TC.separatore
+        static let cartaBordo = TC.bordoScheda
+        static let cuoioTesto = TC.inchiostro
+        static let tappa = TC.chip
+        static let tappaBordo = TC.bordoChip
+        static let tappaAttiva = TC.selezione
+        static let tappaAttivaBordo = TC.accento.opacity(0.35)
+        static let tappaTesto = TC.inchiostro
+        static let tappaNota = TC.inchiostroSecondario
+        static let postitAlto = adatto(Color(hex: "#FFF4B0"), Color(r: 255, g: 214, b: 10, a: 0.16))
+        static let postitBasso = adatto(Color(hex: "#FBEA92"), Color(r: 255, g: 214, b: 10, a: 0.12))
+        static let postitTesto = adatto(Color(hex: "#5C4C21"), Color(hex: "#F3E2A0"))
+        static let quadroBordo = TC.separatore
+        static let quadroAlto = TC.scheda
+        static let quadroBasso = TC.scheda
+        static let quadroTesto = TC.inchiostroSecondario
+        // Voce: il microfono acceso è rosso pieno, la spia rossa dice che Eve ascolta
+        static let microfonoAcceso: [Color] = [TC.rosso, TC.rosso, TC.rosso, TC.rosso]
+        static let microfonoBordo = Color(hex: "#D70015")
+        static let microfonoIncisione = Color.clear
+        static let spiaAscolto = TC.rosso
+        static let spiaVoce = TC.accento
+        static let displayAttivo = TC.inchiostro
+        static let ascoltoTesto = TC.inchiostroSecondario
     }
 
-    /// Strumenti di analisi: Simulazioni, Confronti, Analisi 360 (passata "2011", stile Lion).
+    /// Strumenti di analisi: Simulazioni, Confronti, Analisi 360.
     enum Strumenti {
-        // Console del simulatore con i display a cristalli liquidi (.fin-console, .fin-value-control)
-        static let consoleAlto = Color(hex: "#e9e9e6")
-        static let consoleBasso = Color(hex: "#d9dcda")
-        static let consoleBordo = Color(hex: "#a7aeaf")
-        static let consoleTitolo = Color(hex: "#5a625e")
-        static let consoleEtichetta = Color(hex: "#535d58")
-        static let lcdAlto = Color(hex: "#b9c3a3")
-        static let lcdBasso = Color(hex: "#d8dfbd")
-        static let lcdBordo = Color(hex: "#747e68")
-        static let lcdOmbra = Color(r: 52, g: 67, b: 37, a: 0.33)
-        static let lcdTesto = Color(hex: "#2b3824")
-        static let lcdLuce = Color(r: 244, g: 247, b: 217, a: 0.47)
-        static let spia = Color(hex: "#6fbf4a")
-        static let simulatoreBordo = Color(hex: "#9faaa9")
-        static let carta = Color(hex: "#fffef7")
-        static let cartaRiga = Color(r: 156, g: 175, b: 181, a: 0.07)
-        static let risultato = Color(hex: "#3c5147")
-        static let risultatoNota = Color(hex: "#576d5d")
-        static let risultatoBordo = Color(hex: "#d4d9d2")
-        static let negativo = Color(hex: "#a3483c")
-        static let positivo = Color(hex: "#4f7a45")
-        // Schede delle aree (.plan-area-card)
-        static let schedaBordoLato = Color(hex: "#eae6d9")
-        static let schedaFondo = Color(hex: "#fffef7")
-        static let schedaBordo = Color(hex: "#a9a699")
-        static let schedaBordoSopra = Color(hex: "#7c8d9f")
-        static let schedaOmbra1 = Color(hex: "#faf7ed")
-        static let schedaOmbra2 = Color(hex: "#bfb9a9")
-        static let schedaTitolo = Color(hex: "#4b5867")
-        static let schedaValore = Color(hex: "#3c4650")
-        static let schedaNota = Color(hex: "#747b7d")
-        static let schedaNumero = Color(hex: "#81878c")
-        static let schedaFilo = Color(hex: "#d8d5c9")
-        static let titolo = Color(hex: "#35414d")
-        static let occhiello = Color(hex: "#7a838c")
-        // Pannello delle ipotesi e dei risultati (.plan-parameters, .plan-results)
-        static let ipotesiTestaAlto = Color(hex: "#edf0f4")
-        static let ipotesiTestaBasso = Color(hex: "#dce2e9")
-        static let ipotesiBordo = Color(hex: "#b6bfcb")
-        static let ipotesiTesto = Color(hex: "#4a5665")
-        static let ipotesiRiga = Color(hex: "#c3ccd7")
-        static let ipotesiNota = Color(hex: "#626e7d")
-        static let layoutBordo = Color(hex: "#9ea8b3")
-        static let risultati = Color(hex: "#fdfdfa")
-        static let schedeAlto = Color(hex: "#f8f8f8")
-        static let schedeBasso = Color(hex: "#e8e8e8")
-        static let schedeBordo = Color(hex: "#b8bec4")
-        static let schedaAttivaAlto = Color(hex: "#cad1da")
-        static let schedaAttivaBasso = Color(hex: "#e3e7ed")
-        static let schedaAttivaBordo = Color(hex: "#b5bdc7")
-        static let schedaAttivaTesto = Color(hex: "#3f526a")
-        static let schedaTesto = Color(hex: "#626d7a")
-        static let piede = Color(hex: "#efefed")
-        static let piedeBordo = Color(hex: "#c9cdcf")
-        static let piedeTesto = Color(hex: "#74808b")
-        static let metodoFondo = Color(hex: "#f8f6eb")
-        static let metodoBordo = Color(hex: "#d3cfbc")
-        static let metodoTesto = Color(hex: "#81795c")
-        static let rischioPresenteFondo = Color(hex: "#eaf0e7")
-        static let rischioPresenteBordo = Color(hex: "#b9c7b0")
-        static let rischioPresenteTesto = Color(hex: "#647c55")
-        static let rischioAssenteFondo = Color(hex: "#f2f3f3")
-        static let rischioAssenteBordo = Color(hex: "#d0d5d5")
-        static let rischioAssenteTesto = Color(hex: "#7c8686")
+        // Console del simulatore: laterale di vetro, display nel pozzetto
+        static let consoleAlto = TC.laterale
+        static let consoleBasso = TC.laterale
+        static let consoleBordo = TC.separatore
+        static let consoleTitolo = TC.inchiostroSecondario
+        static let consoleEtichetta = TC.inchiostro
+        static let lcdAlto = TC.pozzetto
+        static let lcdBasso = TC.pozzetto
+        static let lcdBordo = TC.separatore
+        static let lcdOmbra = Color.clear
+        static let lcdTesto = TC.inchiostro
+        static let lcdLuce = Color.clear
+        static let spia = TC.verde
+        static let simulatoreBordo = TC.separatore
+        static let carta = TC.scheda
+        static let cartaRiga = Color.clear
+        static let risultato = TC.inchiostro
+        static let risultatoNota = TC.inchiostroSecondario
+        static let risultatoBordo = TC.separatore
+        static let negativo = TC.scadenzaOra
+        static let positivo = TC.testoInEssere
+        // Schede delle aree
+        static let schedaBordoLato = TC.scheda
+        static let schedaFondo = TC.scheda
+        static let schedaBordo = TC.bordoScheda
+        static let schedaBordoSopra = TC.separatore
+        static let schedaOmbra1 = Color.clear
+        static let schedaOmbra2 = Color.clear
+        static let schedaTitolo = TC.inchiostro
+        static let schedaValore = TC.inchiostro
+        static let schedaNota = TC.inchiostroSecondario
+        static let schedaNumero = TC.inchiostroTerziario
+        static let schedaFilo = TC.separatore
+        static let titolo = TC.inchiostro
+        static let occhiello = TC.inchiostroSecondario
+        // Pannello delle ipotesi e dei risultati
+        static let ipotesiTestaAlto = TC.rigaSopra
+        static let ipotesiTestaBasso = TC.rigaSopra
+        static let ipotesiBordo = TC.bordoScheda
+        static let ipotesiTesto = TC.inchiostro
+        static let ipotesiRiga = TC.separatore
+        static let ipotesiNota = TC.inchiostroSecondario
+        static let layoutBordo = TC.separatore
+        static let risultati = TC.scheda
+        // Schede dei risultati: pozzetto con il cursore chiaro
+        static let schedeAlto = TC.pozzetto
+        static let schedeBasso = TC.pozzetto
+        static let schedeBordo = TC.separatore
+        static let schedaAttivaAlto = TC.cursore
+        static let schedaAttivaBasso = TC.cursore
+        static let schedaAttivaBordo = TC.bordoChip
+        static let schedaAttivaTesto = TC.inchiostro
+        static let schedaTesto = TC.inchiostroSecondario
+        static let piede = TC.rigaSopra
+        static let piedeBordo = TC.separatore
+        static let piedeTesto = TC.inchiostroSecondario
+        static let metodoFondo = TC.pozzetto
+        static let metodoBordo = TC.separatore
+        static let metodoTesto = TC.inchiostroSecondario
+        static let rischioPresenteFondo = TC.fondoInEssere
+        static let rischioPresenteBordo = TC.verde.opacity(0.35)
+        static let rischioPresenteTesto = TC.testoInEssere
+        static let rischioAssenteFondo = TC.pozzetto
+        static let rischioAssenteBordo = TC.separatore
+        static let rischioAssenteTesto = TC.inchiostroSecondario
         // Serie dei confronti: A, B, C
-        static let serie = [Color(hex: "#2f6eb0"), Color(hex: "#c08a3e"), Color(hex: "#6e9f9b")]
+        static let serie = [adatto(Color(hex: "#2F6EB0"), Color(hex: "#6AA6F0")), Color(hex: "#c08a3e"), Color(hex: "#6e9f9b")]
     }
 
-    /// App Attività (.os-app-tasks, passata "2011": lino grafite, registro a righe).
+    /// App Attività: elenco su scheda di vetro, spunte verdi del tema.
     enum Attivita {
-        static let linoAlto = Color(hex: "#5c5e60")
-        static let linoBasso = Color(hex: "#505254")
-        static let testataAlto = Color(hex: "#66676a")
-        static let testataBasso = Color(hex: "#4b4d50")
-        static let testataBordo = Color(hex: "#343638")
-        static let testataLuce = Color(hex: "#888a8c")
-        static let testataTitolo = Color(hex: "#f4f4f4")
-        static let testataTesto = Color(hex: "#d3d4d5")
-        static let testataIncisione = Color(hex: "#292b2d")
-        static let numero = Color(hex: "#e5e6e7")
-        static let numeroIncisione = Color(hex: "#353638")
-        static let separatore = Color(hex: "#393c3e")
-        static let separatoreLuce = Color(hex: "#727477")
-        static let progressoFondo = Color(hex: "#bdc7c9")
-        static let progressoBordo = Color(hex: "#a9b5b9")
-        static let progressoAlto = Color(hex: "#96ad94")
-        static let progressoBasso = Color(hex: "#698b67")
-        static let registroBordo = Color(hex: "#606467")
-        static let registroFondo = Color(hex: "#fcfcf8")
-        static let registroOmbra1 = Color(hex: "#8b8d8d")
-        static let registroOmbra2 = Color(hex: "#363a3b")
-        static let metalloAlto = Color(hex: "#ededed")
-        static let metalloBasso = Color(hex: "#d6d6d6")
-        static let metalloBordo = Color(hex: "#a1a6a9")
-        static let carta = Color(hex: "#fafbf7")
-        static let rigatura = Color(r: 188, g: 203, b: 214, a: 0.33)
-        static let margine = Color(r: 198, g: 140, b: 140, a: 0.33)
-        static let titoloElenco = Color(hex: "#83969e")
-        static let titoloElencoFondo = Color(r: 237, g: 240, b: 237, a: 0.67)
-        static let titoloElencoBordo = Color(hex: "#b7c3ca")
-        static let rigaBordo = Color(r: 185, g: 200, b: 209, a: 0.4)
-        static let rigaSelezione = Color(r: 223, g: 231, b: 237, a: 0.53)
-        static let rigaTitolo = Color(hex: "#262a2e")
-        static let rigaTitoloFatto = Color(hex: "#96a29f")
-        static let rigaSotto = Color(hex: "#697686")
-        static let scadenza = Color(hex: "#8a9a9f")
-        static let scadenzaOggi = Color(hex: "#b68539")
-        static let scadenzaPassata = Color(hex: "#b36758")
-        static let scadenzaFatta = Color(hex: "#81997d")
-        static let prioritaAlta = Color(hex: "#b47162")
-        static let prioritaBassa = Color(hex: "#7c9678")
-        static let spuntaAlto = Color(hex: "#e6e9e7")
-        static let spuntaBordo = Color(hex: "#9da7aa")
-        static let spuntaFattaAlto = Color(hex: "#a8b99e")
-        static let spuntaFattaBasso = Color(hex: "#849c78")
-        static let spuntaFattaBordo = Color(hex: "#718368")
-        static let dettaglioAlto = Color(hex: "#e3e5de")
-        static let dettaglioFondo = Color(hex: "#f3f4ed")
-        static let dettaglioBordo = Color(hex: "#b5bdbb")
-        static let dettaglioOcchiello = Color(hex: "#8e9c97")
-        static let dettaglioTitolo = Color(hex: "#353b3d")
-        static let dettaglioCliente = Color(hex: "#637284")
-        static let voceEtichetta = Color(hex: "#91a197")
-        static let voceValore = Color(hex: "#64776b")
-        static let voceBordo = Color(r: 189, g: 203, b: 193, a: 0.35)
-        static let collegamentoFondo = Color(hex: "#edf0e7")
-        static let collegamentoBordo = Color(hex: "#c9d0c1")
-        static let collegamentoEtichetta = Color(hex: "#7b9681")
-        static let collegamentoTitolo = Color(hex: "#687f6c")
-        static let collegamentoTesto = Color(hex: "#93a597")
-        static let nota = Color(hex: "#a0aaa5")
-        static let vuoto = Color(hex: "#b4c2b7")
-        static let vuotoTitolo = Color(hex: "#85988b")
-        static let vuotoTesto = Color(hex: "#97a69f")
+        static let linoAlto = Color.clear
+        static let linoBasso = Color.clear
+        static let testataAlto = Color.clear
+        static let testataBasso = Color.clear
+        static let testataBordo = TC.separatore
+        static let testataLuce = Color.clear
+        static let testataTitolo = TC.inchiostro
+        static let testataTesto = TC.inchiostroSecondario
+        static let testataIncisione = Color.clear
+        static let numero = TC.inchiostro
+        static let numeroIncisione = Color.clear
+        static let separatore = TC.separatore
+        static let separatoreLuce = Color.clear
+        static let progressoFondo = TC.pozzettoScuro
+        static let progressoBordo = Color.clear
+        static let progressoAlto = TC.verde
+        static let progressoBasso = TC.verde
+        static let registroBordo = TC.bordoScheda
+        static let registroFondo = TC.scheda
+        static let registroOmbra1 = Color.clear
+        static let registroOmbra2 = Color.clear
+        static let metalloAlto = TC.rigaSopra
+        static let metalloBasso = TC.rigaSopra
+        static let metalloBordo = TC.separatore
+        static let carta = TC.scheda
+        static let rigatura = Color.clear
+        static let margine = Color.clear
+        static let titoloElenco = TC.inchiostroSecondario
+        static let titoloElencoFondo = TC.rigaSopra
+        static let titoloElencoBordo = TC.separatore
+        static let rigaBordo = TC.separatore
+        static let rigaSelezione = TC.selezioneRiga
+        static let rigaTitolo = TC.inchiostro
+        static let rigaTitoloFatto = TC.inchiostroTerziario
+        static let rigaSotto = TC.inchiostroSecondario
+        static let scadenza = TC.inchiostroSecondario
+        static let scadenzaOggi = TC.scadenzaVicina
+        static let scadenzaPassata = TC.scadenzaOra
+        static let scadenzaFatta = TC.testoInEssere
+        static let prioritaAlta = TC.arancio
+        static let prioritaBassa = TC.inchiostroTerziario
+        static let spuntaAlto = TC.chip
+        static let spuntaBordo = TC.pozzettoScuro
+        static let spuntaFattaAlto = TC.verde
+        static let spuntaFattaBasso = TC.verde
+        static let spuntaFattaBordo = Color.clear
+        static let dettaglioAlto = TC.laterale
+        static let dettaglioFondo = TC.laterale
+        static let dettaglioBordo = TC.separatore
+        static let dettaglioOcchiello = TC.inchiostroSecondario
+        static let dettaglioTitolo = TC.inchiostro
+        static let dettaglioCliente = TC.inchiostroSecondario
+        static let voceEtichetta = TC.inchiostroSecondario
+        static let voceValore = TC.inchiostro
+        static let voceBordo = TC.separatore
+        static let collegamentoFondo = TC.chip
+        static let collegamentoBordo = TC.bordoChip
+        static let collegamentoEtichetta = TC.inchiostroSecondario
+        static let collegamentoTitolo = TC.inchiostro
+        static let collegamentoTesto = TC.inchiostroSecondario
+        static let nota = TC.inchiostroSecondario
+        static let vuoto = TC.inchiostroTerziario
+        static let vuotoTitolo = TC.inchiostroSecondario
+        static let vuotoTesto = TC.inchiostroTerziario
     }
 
-    /// I menu a tendina (.os-select del template): vetro come i pulsanti, carta gialla nelle Note, scuro nelle testate di Eve.
+    /// I menu a tendina: chip del tema in tutte le varianti (le testate scure non ci sono più).
     enum Tendina {
-        static let freccia = Color(hex: "#5d6b78")
-        static let cartaFondo = Color(hex: "#fff9df")
-        static let cartaBordo = Color(hex: "#d7c794")
-        static let cartaTesto = Color(hex: "#625a4a")
-        static let scuroFondo = Color(hex: "#1734482e")
-        static let scuroBordo = Color(hex: "#bbd2df47")
-        static let scuroTesto = Color.white
-        static let scuroFreccia = Color(hex: "#ffffffb0")
+        static let freccia = TC.inchiostroSecondario
+        static let cartaFondo = TC.chip
+        static let cartaBordo = TC.bordoChip
+        static let cartaTesto = TC.inchiostro
+        static let scuroFondo = TC.chip
+        static let scuroBordo = TC.bordoChip
+        static let scuroTesto = TC.inchiostro
+        static let scuroFreccia = TC.inchiostroSecondario
     }
 
-    /// Campi di testo (.os-input del template).
+    /// Campi di testo: pozzetto del tema.
     enum Campo {
-        static let testo = Color(hex: "#445f74")
-        static let fondo = Color(hex: "#ffffffde")
-        static let bordo = Color(hex: "#b4c2cb")
-        static let ombraInterna = Color(hex: "#3d5e7521")
-        static let riflesso = Color(hex: "#ffffffbc")
+        static let testo = TC.inchiostro
+        static let fondo = TC.pozzetto
+        static let bordo = TC.separatore
+        static let ombraInterna = Color.clear
+        static let riflesso = Color.clear
     }
 }

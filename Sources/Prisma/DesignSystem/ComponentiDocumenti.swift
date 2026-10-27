@@ -5,6 +5,7 @@ import SwiftUI
 
 /// Un foglio di dimensione fissa (A4 orizzontale o verticale), identico a schermo e nel PDF.
 /// Senza sfondo indicato usa il foglio della tavolozza (bianco, o carta avorio sfumata per il report).
+/// Sempre chiaro, anche con l'app in scuro; le etichette dei canali sono quelle opache da stampa.
 struct FoglioDocumento<Contenuto: View>: View {
     @Environment(\.paletteDocumento) private var p
     let formato: CGSize
@@ -15,6 +16,7 @@ struct FoglioDocumento<Contenuto: View>: View {
         contenuto()
             .frame(width: formato.width, height: formato.height, alignment: .topLeading)
             .background(fondo)
+            .environment(\.etichetteStampa, true)
             .environment(\.colorScheme, .light)
             .clipped()
     }

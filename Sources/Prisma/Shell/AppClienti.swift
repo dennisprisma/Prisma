@@ -247,7 +247,7 @@ struct AppClienti: View {
                 .scrollIndicators(.never)
                 .padding(10)
                 .frame(minHeight: 260)
-                .background(RoundedRectangle(cornerRadius: 3).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 3).fill(Tema.Colore.scheda))
                 .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Rubrica.schedaAppBordo, lineWidth: 1))
             OcchielloSezione(titolo: "Nel taccuino", nota: "Le note dell'app Note")
                 .padding(.top, 8)
@@ -372,7 +372,7 @@ struct CampoRicerca: View {
         }
         .padding(.horizontal, 8)
         .frame(height: 30)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 3).fill(Tema.Colore.scheda))
         .overlay(alignment: .top) {
             LinearGradient(colors: [Color.black.opacity(0.13), .clear], startPoint: .top, endPoint: .bottom)
                 .frame(height: 2)

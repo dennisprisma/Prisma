@@ -792,7 +792,7 @@ struct DettaglioAppuntamento: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.45)))
+        .background(RoundedRectangle(cornerRadius: 3).fill(Tema.Colore.scheda))
         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Agenda.notaBordo, lineWidth: 1))
         .padding(.bottom, 8)
     }

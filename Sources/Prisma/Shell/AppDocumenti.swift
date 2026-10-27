@@ -450,7 +450,7 @@ struct AppDocumenti: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white)
+                .background(Tema.Colore.scheda)
                 .overlay(Rectangle().strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
                 .shadow(color: Color.black.opacity(0.08), radius: 2, x: 0, y: 1)
         }

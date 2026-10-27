@@ -4,10 +4,10 @@ import SwiftUI
 
 extension Colori {
     enum Portafoglio {
-        static let barraFondo = Color(hex: "#e3e7ea")
-        static let barraBordo = Color(r: 0, g: 0, b: 0, a: 0.12)
-        static let misto = Color(hex: "#8a97a3")
-        static let mese = Color(hex: "#5e6f7e")
+        static let barraFondo = Tema.Colore.pozzetto
+        static let barraBordo = Color.clear
+        static let misto = Tema.Colore.inchiostroTerziario
+        static let mese = Tema.Colore.inchiostroSecondario
     }
 }
 
@@ -27,30 +27,29 @@ extension Misure {
     }
 }
 
-/// Barra orizzontale della quota (0…1), del colore del canale.
+/// Barra orizzontale della quota (0…1), del colore del canale, su un pozzetto arrotondato.
 struct BarraQuotaPortafoglio: View {
     let quota: Double
     let colore: Color
 
     var body: some View {
+        let forma = RoundedRectangle(cornerRadius: Tema.Raggio.barraCanali, style: .continuous)
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Rectangle().fill(Colori.Portafoglio.barraFondo)
-                Rectangle().fill(colore).frame(width: geo.size.width * CGFloat(min(max(quota, 0), 1)))
+                forma.fill(Colori.Portafoglio.barraFondo)
+                forma.fill(colore).frame(width: geo.size.width * CGFloat(min(max(quota, 0), 1)))
             }
         }
         .frame(height: Misure.Portafoglio.barra)
-        .clipShape(RoundedRectangle(cornerRadius: 2))
-        .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Colori.Portafoglio.barraBordo, lineWidth: 1))
     }
 }
 
 extension Colori.Analisi {
-    /// Il colore di un canale nelle barre (grigio se misto).
+    /// Il colore di un canale nelle barre: blu Alleanza e cuoio indipendente del tema (grigio se misto).
     static func canale(_ c: Canale?) -> Color {
         switch c {
-        case .alleanza: return canaleAlleanza
-        case .indipendente: return canaleIndipendente
+        case .alleanza: return Tema.Colore.canaleAlleanza
+        case .indipendente: return Tema.Colore.canaleIndipendente
         case nil: return Colori.Portafoglio.misto
         }
     }

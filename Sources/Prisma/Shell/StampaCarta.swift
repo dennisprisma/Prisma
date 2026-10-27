@@ -148,7 +148,7 @@ struct DocumentoStampabile {
 }
 
 /// Dalle viste al PDF: ogni pagina è disegnata in un contesto PDF (testo vettoriale, selezionabile
-/// e ricercabile). Tutto sul Mac.
+/// e ricercabile). Tutto sul Mac. Sempre in chiaro, anche con l'app in scuro: carta bianca, colori fissi.
 enum StampaCarta {
     @MainActor
     static func pdf(_ d: DocumentoStampabile) -> Data? {
@@ -163,7 +163,10 @@ enum StampaCarta {
         ]
         guard let contesto = CGContext(consumer: consumatore, mediaBox: &riquadro, info as CFDictionary) else { return nil }
         for pagina in d.pagine {
-            let renderer = ImageRenderer(content: pagina.frame(width: d.formato.width, height: d.formato.height))
+            // Sempre chiaro, con le etichette dei canali da stampa: la carta non va mai in scuro
+            let renderer = ImageRenderer(content: pagina.frame(width: d.formato.width, height: d.formato.height)
+                .environment(\.etichetteStampa, true)
+                .environment(\.colorScheme, .light))
             renderer.proposedSize = ProposedViewSize(d.formato)
             contesto.beginPDFPage(nil)
             renderer.render { _, disegna in disegna(contesto) }

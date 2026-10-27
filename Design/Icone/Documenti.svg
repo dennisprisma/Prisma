@@ -1,53 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" fill="none" role="img" aria-label="Documenti"><title>Documenti</title><defs><linearGradient id="documents-__base" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#54b0e5"/><stop offset="1" stop-color="#095198"/></linearGradient><linearGradient id="documents-__rim" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.92"/><stop offset="0.4" stop-color="#fff" stop-opacity="0.12"/><stop offset="0.75" stop-color="#000" stop-opacity="0.05"/><stop offset="1" stop-color="#000" stop-opacity="0.6"/></linearGradient><linearGradient id="documents-__glass" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.12"/><stop offset="0.82" stop-color="#fff" stop-opacity="0.015"/><stop offset="1" stop-color="#fff" stop-opacity="0.0324"/></linearGradient><radialGradient id="documents-__shade" cx="45%" cy="30%" r="75%"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.16"/></radialGradient><clipPath id="documents-__clip"><rect x="8" y="6" width="240" height="240" rx="43"/></clipPath><radialGradient id="documents-blueLight" cx="32%" cy="16%" r="95%"><stop offset="0" stop-color="#abecff"/><stop offset="0.3333333333333333" stop-color="#47b6f4"/><stop offset="0.6666666666666666" stop-color="#0974c9"/><stop offset="1" stop-color="#06448d"/></radialGradient><linearGradient id="documents-folderBack" x1="0%" y1="0%" x2="85%" y2="100%"><stop offset="0" stop-color="#47b9f0"/><stop offset="0.5" stop-color="#1477b9"/><stop offset="1" stop-color="#074b8b"/></linearGradient><linearGradient id="documents-folderFace" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#8bd4ff"/><stop offset="0.045" stop-color="#399ce3"/><stop offset="0.2" stop-color="#288ed7"/><stop offset="0.72" stop-color="#1268bd"/><stop offset="1" stop-color="#084687"/></linearGradient><linearGradient id="documents-folderSide" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#1466a3"/><stop offset="1" stop-color="#053967"/></linearGradient><linearGradient id="documents-folderLip" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#b8ebff"/><stop offset="0.3333333333333333" stop-color="#76c7fa"/><stop offset="0.6666666666666666" stop-color="#207dc5"/><stop offset="1" stop-color="#0d4f92"/></linearGradient><linearGradient id="documents-paper" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fffef5"/><stop offset="0.5" stop-color="#fffeef"/><stop offset="1" stop-color="#e4e4d6"/></linearGradient><linearGradient id="documents-paperSide" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#d4d1c0"/><stop offset="0.5" stop-color="#fbfaeb"/><stop offset="1" stop-color="#b5b6ab"/></linearGradient><linearGradient id="documents-metal" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#7e969f"/><stop offset="0.13" stop-color="#fff"/><stop offset="0.32" stop-color="#e6f3f8"/><stop offset="0.49" stop-color="#acbdc7"/><stop offset="0.54" stop-color="#728794"/><stop offset="0.72" stop-color="#cbdce3"/><stop offset="1" stop-color="#f4fcff"/></linearGradient><linearGradient id="documents-labelPaper" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#d4d7d1"/><stop offset="0.5" stop-color="#fffef5"/><stop offset="1" stop-color="#eeeede"/></linearGradient><linearGradient id="documents-folderSheen" x1="0%" y1="0%" x2="100%" y2="75%"><stop offset="0" stop-color="#d6f5ff" stop-opacity="0.3"/><stop offset="0.5" stop-color="#b5e5ff" stop-opacity="0.07"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><filter id="documents-trayShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#000" flood-opacity="0.42"/></filter><filter id="documents-sheetShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="2" stdDeviation="1.4" flood-color="#000" flood-opacity="0.24"/></filter><filter id="documents-labelShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="1.8" stdDeviation="0.8" flood-color="#000" flood-opacity="0.46"/></filter><clipPath id="documents-folderClip"><path d="M33 129L222 114 213 207Q212 216 202 217L50 230Q39 230 37 219Z"/></clipPath><pattern id="documents-folderGrain" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 .5H4M0 2.5H4" stroke="#d5f1ff" stroke-opacity=".065" stroke-width=".45"/></pattern></defs>
- <rect x="8" y="11" width="240" height="240" rx="44" fill="#000" opacity=".08"/><rect x="8" y="9" width="240" height="240" rx="43" fill="#000" opacity=".15"/>
- <g clip-path="url(#documents-__clip)"><rect x="8" y="6" width="240" height="240" rx="43" fill="url(#documents-__base)"/>
-  <rect x="8" y="6" width="240" height="240" fill="url(#documents-blueLight)"/>
-  <path d="M24 203C74 182 179 178 232 196V246H24Z" fill="#063e77" opacity=".13"/>
-  <ellipse cx="131" cy="223" rx="91" ry="12" fill="#002756" opacity=".28"/>
-  <g filter="url(#documents-trayShadow)">
-    <path d="M43 90Q42 84 49 83L85 80 94 68Q97 65 104 65L202 58Q212 57 214 68L224 171 43 192Z" fill="url(#documents-folderBack)" stroke="#0a568e" stroke-width="1.6"/>
-    <path d="M47 88L87 85 98 71 204 63" stroke="#b0e5ff" stroke-opacity=".8" stroke-width="1.5"/>
-    <path d="M44 112L219 98 221 174 43 195Z" fill="#043762" opacity=".5"/>
-    <g filter="url(#documents-sheetShadow)">
-      <path d="M60 47L190 42 202 163 70 174Z" fill="#b9c5c4"/>
-      <path d="M60 44L190 39 200 161 69 171Z" fill="url(#documents-paper)" stroke="#d5dddc" stroke-width=".8"/>
-      <path d="M72 63L175 59M73 70L178 66M75 79L166 75" stroke="#93a4b0" stroke-opacity=".45" stroke-width="1.6"/>
-    </g>
-    <g filter="url(#documents-sheetShadow)">
-      <path d="M48 64L179 49 195 172 61 187Z" fill="#b6c3c4"/>
-      <path d="M48 61L179 46 194 169 61 183Z" fill="url(#documents-paper)" stroke="#d5dddc" stroke-width=".8"/>
-      <path d="M61 80L166 68M62 87L169 75M63 94L154 84" stroke="#8997a1" stroke-opacity=".4" stroke-width="1.5"/>
-    </g>
-    <g filter="url(#documents-sheetShadow)">
-      <path d="M75 78L201 67 211 183 85 194Z" fill="#aab8b9"/>
-      <path d="M75 75L201 64 211 180 85 191Z" fill="url(#documents-paper)" stroke="#d4dad8" stroke-width=".8"/>
-      <path d="M76 76L200 65" stroke="#fff" stroke-width="1.4"/>
-      <path d="M91 89L175 82" stroke="#7b8c95" stroke-width="3" opacity=".6"/>
-      <path d="M91 98L188 90M92 105L188 97M93 112L173 105M94 122L190 114M95 129L189 121" stroke="#7c8c95" stroke-width="1.5" opacity=".34"/>
-    </g>
-    <path d="M33 129L46 118 222 104 222 114 45 130 50 230 42 222Z" fill="url(#documents-folderSide)" stroke="#084a80" stroke-width="1"/>
-    <path d="M33 129L222 114 213 207Q212 216 202 217L50 230Q39 230 37 219Z" fill="url(#documents-folderFace)" stroke="#064a8a" stroke-width="1.3"/>
-    <g clip-path="url(#documents-folderClip)">
-      <rect x="30" y="113" width="194" height="120" fill="url(#documents-folderGrain)"/>
-      <path d="M29 128L226 111 226 146C148 160 71 164 31 160Z" fill="url(#documents-folderSheen)"/>
-      <path d="M39 134L43 217Q43 224 51 224L203 211Q208 211 209 205" stroke="#57b2ee" stroke-opacity=".45" stroke-width="1.2"/>
-      <path d="M45 139L218 125" stroke="#0560a5" stroke-width="1" opacity=".45"/>
-    </g>
-    <path d="M33 129L47 122 222 108 222 114 45 130Z" fill="url(#documents-folderLip)"/>
-    <path d="M35 129L222 113" stroke="#b6eaff" stroke-width="1.5"/>
-    <g transform="rotate(-4.8 128 181)" filter="url(#documents-labelShadow)">
-      <rect x="81" y="168" width="94" height="28" rx="4" fill="#08447b" stroke="#62b4e8" stroke-width=".8"/>
-      <rect x="83" y="169" width="90" height="25" rx="3" fill="url(#documents-metal)" stroke="#335e76" stroke-width=".8"/>
-      <rect x="91" y="174" width="74" height="15" rx="1" fill="#6a7980"/>
-      <rect x="92" y="175" width="72" height="13" rx=".5" fill="url(#documents-labelPaper)"/>
-      <path d="M92 176H164" stroke="#a6aba5" stroke-width=".8"/>
-      <circle cx="87" cy="181.5" r="1.4" fill="#5c7483"/><circle cx="169" cy="181.5" r="1.4" fill="#5c7483"/>
-      <path d="M85.9 181H88.1M167.9 181H170.1" stroke="#d9e9f0" stroke-width=".7"/>
-      <path d="M86 170H169" stroke="#fff" stroke-opacity=".9" stroke-width=".8"/>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Documenti</title>
+  <defs>
+    <linearGradient id="lgGlass" x1="0" y1="0" x2=".45" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="lgBeam" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <radialGradient id="lgEveOrb" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#F3D7FF"/><stop offset=".35" stop-color="#B28DF4"/><stop offset=".72" stop-color="#6964D8"/><stop offset="1" stop-color="#3C3D92"/></radialGradient>
+    <linearGradient id="fondo" x1="0.342" y1="-0.092" x2="0.658" y2="1.092"><stop offset="0" stop-color="#73A9CF"/><stop offset="1" stop-color="#376E99"/></linearGradient>
+    <linearGradient id="riflesso" x1="0.399" y1="-0.07" x2="0.601" y2="1.07"><stop offset="0" stop-color="#fff" stop-opacity=".36"/><stop offset=".42" stop-color="#fff" stop-opacity=".07"/><stop offset=".62" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="forma"><rect x="16" y="12" width="480" height="480" rx="112.8"/></clipPath>
+    <linearGradient id="sfumaX" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.031" stop-color="#fff"/><stop offset="0.969" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="sfumaY" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.023" stop-color="#fff"/><stop offset="0.961" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="bordoX" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="url(#sfumaX)"/></mask>
+    <mask id="bordoY" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="url(#sfumaY)"/></mask>
+    <filter id="sfocaOmbra" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="33.6"/></filter>
+    <mask id="luce" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect x="16" y="12" width="480" height="480" rx="112.8" fill="#fff"/><rect x="16" y="12" width="480" height="480" rx="112.8" transform="translate(0 9.6)" fill="#000"/></mask>
+    <mask id="buio" maskUnits="userSpaceOnUse" x="-50" y="-50" width="612" height="612"><rect x="-50" y="-50" width="612" height="612" fill="#fff"/><rect x="16" y="12" width="480" height="480" rx="112.8" transform="translate(0 -9.6)" fill="#000"/></mask>
+    <filter id="sfocaBuio" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4.8"/></filter>
+    <filter id="ombraGlifo" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="7.2" stdDeviation="4.8" flood-color="#000" flood-opacity=".22"/></filter>
+  </defs>
+  <style>
+    .g1 { fill: url(#lgGlass); }
+    .g2 { fill: #fff; fill-opacity: .5; }
+    .gs { stroke: #fff; }
+    .g3 { fill: #FF3B30; }
+    .gk { fill: #1C1C1E; }
+    .gl { stroke: rgba(0,0,0,.2); fill: none; }
+    .gt { fill: #fff; font: 800 13px/1 ui-rounded, 'SF Pro Rounded', -apple-system, 'Inter Display', Inter, sans-serif; letter-spacing: -.4px; }
+    .gtk { fill: #1C1C1E; font: 600 7.5px/1 ui-rounded, 'SF Pro Rounded', -apple-system, 'Inter Display', Inter, sans-serif; }
+    .gt-mon { font: 700 10.5px/1 -apple-system, 'SF Pro Text', 'Helvetica Neue', Inter, sans-serif; letter-spacing: .08em; }
+    .gt-day { font: 300 30px/1 -apple-system, 'SF Pro Display', 'Helvetica Neue', 'Inter Display', Inter, sans-serif; letter-spacing: -1px; }
+    .gw { fill: #fff; }
+    .gws { stroke: #fff; }
+  </style>
+  <g mask="url(#bordoX)"><g mask="url(#bordoY)"><rect x="30.4" y="50.4" width="451.2" height="451.2" rx="98.4" fill="#000" fill-opacity=".32" filter="url(#sfocaOmbra)"/></g></g>
+  <rect x="16" y="12" width="480" height="480" rx="112.8" fill="url(#fondo)"/>
+  <g clip-path="url(#forma)">
+    <rect x="0" y="0" width="512" height="512" fill="#fff" fill-opacity=".55" mask="url(#luce)"/>
+    <rect x="16" y="12" width="480" height="480" rx="112.8" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="9.6"/>
+    <g filter="url(#sfocaBuio)"><rect x="-50" y="-50" width="612" height="612" fill="#000" fill-opacity=".14" mask="url(#buio)"/></g>
   </g>
- <rect x="8" y="6" width="240" height="240" rx="43" fill="url(#documents-__shade)"/>
- <path d="M8 49Q8 6 51 6H205Q248 6 248 49V101Q128 143 8 101Z" fill="url(#documents-__glass)"/>
- </g>
- <rect x="9.5" y="7.5" width="237" height="237" rx="42" fill="none" stroke="url(#documents-__rim)" stroke-width="2"/>
- <rect x="8" y="6" width="240" height="240" rx="43" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="1.2"/></svg>
+  <g filter="url(#ombraGlifo)"><g transform="translate(16 12) scale(7.5)"><path class="g2" d="M19 13.5h18l7 7V34H19z"/><path class="g1" d="M11.5 25a3.5 3.5 0 0 1 3.5-3.5h10.4l4.2 4h19.4a3.5 3.5 0 0 1 3.5 3.5v18.5a3.5 3.5 0 0 1-3.5 3.5H15a3.5 3.5 0 0 1-3.5-3.5z"/><rect class="gk" x="25" y="37" width="14" height="4" rx="2" opacity=".2"/></g></g>
+  <rect x="16" y="12" width="480" height="480" rx="112.8" fill="url(#riflesso)"/>
+</svg>

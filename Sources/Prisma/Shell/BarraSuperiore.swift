@@ -1,162 +1,223 @@
 import AppKit
 import SwiftUI
 
-/// Barra superiore di Prisma OS (#os-topbar).
+/// Barra superiore (tema «Liquid Glass»): niente fondo, solo un velo che sfuma sotto; a sinistra il marchio
+/// e l'app in primo piano, al centro data e ora, a destra gli strumenti in una capsula di vetro.
 struct BarraSuperiore: View {
     @EnvironmentObject var stato: StatoShell
     @Environment(\.modoIstantanea) var modoIstantanea
 
     var body: some View {
+        let m = Tema.Misura.Shell.self
         ZStack {
-            HStack(spacing: 0) {
+            HStack(spacing: m.barraSpazio) {
                 marchio
                 appCorrente
                 Spacer(minLength: 20)
-                comandiDestra
+                strumenti
             }
-            .padding(.leading, stato.schermoIntero ? Misure.Barra.margine : Misure.Barra.spazioSemaforiNativi)
-            .padding(.trailing, Misure.Barra.margine)
+            // Fuori dallo schermo intero a sinistra ci sono i pulsanti della finestra del Mac
+            .padding(.leading, stato.schermoIntero ? m.barraMargineSinistro : Misure.Barra.spazioSemaforiNativi)
+            .padding(.trailing, m.barraMargineDestro)
 
             orologio
         }
-        .frame(height: Misure.Barra.altezza)
+        .frame(height: Tema.Misura.barra)
         .frame(maxWidth: .infinity)
-        .background(
-            ZStack {
-                Gradienti.barra
-                if !modoIstantanea { AreaTrascinamento() }
-            }
-        )
-        .bordoBasso(Colori.Barra.bordo)
-        .ombraCSS(Colori.Barra.ombra, y: 1, sfocatura: 3)
-    }
-
-    private var marchio: some View {
-        Button {
-            stato.mostraScrivania()
-        } label: {
-            HStack(spacing: Misure.Barra.spazioMarchio) {
-                Text("◈")
-                    .font(Tipo.barraLogo)
-                    .foregroundColor(Colori.Barra.logo)
-                    .incisione(.white)
-                    .shadow(color: Colori.Barra.logoOmbra, radius: 0, x: 0, y: -1)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("PRISMA").font(Tipo.barraMarchio).foregroundColor(Colori.Barra.testo)
-                    Text("OS").font(Tipo.barraOS).foregroundColor(Colori.Barra.os)
+        .background(alignment: .top) {
+            ZStack(alignment: .top) {
+                // Il velo scende oltre la barra e sfuma (--bar-shade)
+                LinearGradient(colors: [Tema.Colore.veloBarra, Tema.Colore.veloBarra.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: Tema.Misura.barra + Tema.Misura.veloBarra)
+                    .allowsHitTesting(false)
+                if !modoIstantanea {
+                    AreaTrascinamento().frame(height: Tema.Misura.barra)
                 }
-                .incisione(Colori.Barra.incisione)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
-        .buttonStyle(StileSemplice())
-        .help("Prisma OS, torna alla scrivania")
     }
 
-    private var appCorrente: some View {
-        HStack(spacing: 0) {
-            Rectangle().fill(Colori.Barra.separatore).frame(width: 1, height: 14)
-                .padding(.leading, Misure.Barra.spazioApp)
-            Button {
-                stato.pannelloNotifiche = false
-                if !stato.inModoCliente { stato.pannelloSpazi.toggle() }
-            } label: {
-                Text(stato.appAttiva?.titolo ?? "Scrivania")
-                    .font(Tipo.barraApp)
-                    .foregroundColor(Colori.Barra.appCorrente)
-                    .incisione(Colori.Barra.incisione)
-                    .padding(.leading, Misure.Barra.spazioApp)
+    /// Il logo e «Prisma»: torna alla scrivania.
+    private var marchio: some View {
+        let m = Tema.Misura.Shell.self
+        return PulsanteBarra(aiuto: "Prisma: torna alla scrivania", azione: { stato.mostraScrivania() }) {
+            HStack(spacing: m.marchioSpazio) {
+                LogoPrisma(colore: Tema.Colore.logo)
+                    .frame(height: Tema.Misura.logoBarra)
+                Text("Prisma")
+                    .font(Tema.Testo.marchio)
+                    .tracking(Tema.Testo.Shell.spaziaturaMarchio)
+                    .foregroundColor(Tema.Colore.inchiostroSfondo)
             }
-            .buttonStyle(StileSemplice())
-            .help("Spazi di lavoro")
+            .padding(.leading, m.marchioMargineSinistro)
+            .padding(.trailing, m.marchioMargine)
+            .frame(height: Tema.Misura.marchioBarra)
+            .aloneSfondo()
+        }
+    }
+
+    /// Il nome dell'app in primo piano («Scrivania» se non ce n'è): apre gli spazi di lavoro.
+    private var appCorrente: some View {
+        PulsanteBarra(aiuto: "Spazi di lavoro", azione: {
+            stato.pannelloNotifiche = false
+            if !stato.inModoCliente { stato.pannelloSpazi.toggle() }
+        }) {
+            Text(stato.appAttiva?.titolo ?? "Scrivania")
+                .font(Tema.Testo.barra)
+                .foregroundColor(Tema.Colore.inchiostroSfondo)
+                .lineLimit(1)
+                .padding(.horizontal, Tema.Misura.Shell.marchioMargine)
+                .frame(height: Tema.Misura.marchioBarra)
+                .aloneSfondo()
         }
     }
 
     private var orologio: some View {
         TimelineView(.everyMinute) { contesto in
-            HStack(spacing: Misure.Barra.spazioOra) {
+            HStack(spacing: Tema.Misura.Shell.orologioSpazio) {
                 Text(Formati.barraData.string(from: contesto.date))
                 Text(Formati.ora.string(from: contesto.date))
             }
-            .font(Tipo.barraOra)
-            .foregroundColor(Colori.Barra.testoSecondario)
-            .incisione(Colori.Barra.incisione)
+            .font(Tema.Testo.Shell.orologio)
+            .foregroundColor(Tema.Colore.inchiostroSfondo)
+            .aloneSfondo()
         }
         .allowsHitTesting(false)
     }
 
-    private var comandiDestra: some View {
-        HStack(spacing: Misure.Barra.spazioDestra) {
+    /// Gli strumenti a destra, nella capsula di vetro sottile.
+    private var strumenti: some View {
+        let m = Tema.Misura.Shell.self
+        return HStack(spacing: m.strumentiSpazio) {
             if stato.inModoCliente {
                 ContrassegnoModoCliente()
+                    .padding(.horizontal, m.strumentiMargine)
             } else {
-                Button {
-                    stato.cercaOvunque()
-                } label: {
-                    HStack(spacing: Misure.Barra.spazioCerca) {
-                        Text("Cerca").font(Tipo.barraOra).foregroundColor(Colori.Barra.testoSecondario)
-                        Text("⌘ K").font(Tipo.barraTasto).foregroundColor(Colori.Barra.tasto)
+                PulsanteBarra(aiuto: "Cerca in Prisma (⌘K)", azione: { stato.cercaOvunque() }) {
+                    HStack(spacing: m.pulsanteBarraSpazio) {
+                        Image(systemName: "magnifyingglass").font(Tema.Testo.Shell.simboloBarra)
+                        Text("Cerca").font(Tema.Testo.Shell.pulsanteBarra)
+                        TastoBarra(testo: "⌘K")
                     }
-                    .incisione(Colori.Barra.incisione)
+                    .modifier(FormaPulsanteBarra())
                 }
-                .buttonStyle(StileSemplice())
-                .help("Cerca in Prisma")
 
-                Button {
-                    stato.alternaNotifiche()
-                } label: {
-                    SimboloCampanella()
-                        .stroke(Colori.Barra.testo, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-                        .frame(width: Misure.Barra.icona, height: Misure.Barra.icona)
-                        .incisione(Colori.Barra.incisione)
+                PulsanteBarra(aiuto: "Centro notifiche", azione: { stato.alternaNotifiche() }) {
+                    Image(systemName: "bell")
+                        .font(Tema.Testo.Shell.simboloBarra)
+                        .frame(width: Tema.Misura.iconaBarra, height: Tema.Misura.iconaBarra)
                         .overlay(alignment: .topTrailing) {
                             let n = stato.notificheNuove
-                            if n > 0 { Badge(numero: n, grande: false).offset(x: 6, y: -5) }
+                            if n > 0 {
+                                Badge(numero: n, grande: false)
+                                    .offset(x: m.badgeSpostamento.width, y: m.badgeSpostamento.height)
+                            }
                         }
+                        .modifier(FormaPulsanteBarra())
                 }
-                .buttonStyle(StileSemplice())
-                .help("Centro notifiche")
             }
 
-            Button {
-                stato.blocca()
-            } label: {
-                SimboloLucchetto()
-                    .stroke(Colori.Barra.testo, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-                    .frame(width: Misure.Barra.icona, height: Misure.Barra.icona)
-                    .incisione(Colori.Barra.incisione)
+            PulsanteBarra(aiuto: "Schermata di benvenuto", azione: { stato.blocca() }) {
+                Image(systemName: "lock")
+                    .font(Tema.Testo.Shell.simboloBarra)
+                    .frame(width: Tema.Misura.iconaBarra, height: Tema.Misura.iconaBarra)
+                    .modifier(FormaPulsanteBarra())
             }
-            .buttonStyle(StileSemplice())
-            .help("Schermata di benvenuto")
 
-            Button {
-                if stato.inModoCliente { stato.esciModoCliente() } else { stato.entraModoCliente() }
-            } label: {
+            PulsanteBarra(aiuto: stato.inModoCliente ? "Esci dalla modalità cliente (⌥⌘M)"
+                                                     : "Modalità cliente: mostra solo il cliente attivo, per girare lo schermo (⌥⌘M)",
+                          azione: { if stato.inModoCliente { stato.esciModoCliente() } else { stato.entraModoCliente() } }) {
                 Image(systemName: stato.inModoCliente ? "person.fill.checkmark" : "person.crop.rectangle")
-                    .font(Tipo.barraOra)
-                    .foregroundColor(Colori.Barra.testo)
-                    .incisione(Colori.Barra.incisione)
+                    .font(Tema.Testo.Shell.simboloBarra)
+                    .frame(height: Tema.Misura.iconaBarra)
+                    .modifier(FormaPulsanteBarra())
             }
-            .buttonStyle(StileSemplice())
-            .help(stato.inModoCliente ? "Esci dalla modalità cliente (⌥⌘M)" : "Modalità cliente: mostra solo il cliente attivo, per girare lo schermo (⌥⌘M)")
 
-            Button {
-                stato.apri(.impostazioni)
-            } label: {
-                Text(stato.inizialiUtente)
-                    .font(Tipo.barraAvatar)
-                    .foregroundColor(Colori.Barra.testo)
-                    .incisione(.white)
-                    .frame(width: Misure.Barra.avatar, height: Misure.Barra.avatar)
-                    .background(Circle().fill(Gradienti.avatarUtente))
-                    .overlay(alignment: .top) {
-                        Circle().trim(from: 0.62, to: 0.88).stroke(Color.white, lineWidth: 1).padding(1.5)
-                    }
-                    .overlay(Circle().strokeBorder(Colori.Barra.avatarBordo, lineWidth: 1))
-                    .shadow(color: Colori.Barra.incisione, radius: 0, x: 0, y: 1)
+            PulsanteBarra(aiuto: "Impostazioni", sfondoAlPassaggio: false, azione: { stato.apri(.impostazioni) }) {
+                AvatarUtente(iniziali: stato.inizialiUtente)
+                    .padding(.horizontal, m.strumentiMargine)
             }
-            .buttonStyle(StileSemplice())
-            .help("Impostazioni")
         }
+        .foregroundColor(Tema.Colore.inchiostro)
+        .padding(m.strumentiMargine)
+        .frame(height: Tema.Misura.barraStrumenti)
+        .vetro(.leggero, forma: .capsula)
+    }
+}
+
+/// Pulsante della barra: capsula che si schiarisce al passaggio del mouse (--chip), senza altre decorazioni.
+private struct PulsanteBarra<Etichetta: View>: View {
+    let aiuto: String
+    var sfondoAlPassaggio = true
+    let azione: () -> Void
+    @ViewBuilder let etichetta: () -> Etichetta
+    @State var sopra = false
+
+    var body: some View {
+        Button(action: azione) {
+            etichetta()
+                .background {
+                    if sfondoAlPassaggio && sopra {
+                        Capsule(style: .continuous).fill(Tema.Colore.chip)
+                    }
+                }
+                .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(StileSemplice())
+        .onHover { s in withAnimation(Tema.Moto.passaggio) { sopra = s } }
+        .help(aiuto)
+    }
+}
+
+/// Misura dei pulsanti dentro la capsula degli strumenti (alti 26, larghi almeno 28, margini 8).
+private struct FormaPulsanteBarra: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, Tema.Misura.Shell.pulsanteBarraMargine)
+            .frame(minWidth: Tema.Misura.Shell.pulsanteBarraMinimo, minHeight: Tema.Misura.pulsanteBarra)
+    }
+}
+
+/// Tasto della scorciatoia (kbd): pozzetto arrotondato con il testo secondario.
+struct TastoBarra: View {
+    let testo: String
+
+    var body: some View {
+        Text(testo)
+            .font(Tema.Testo.Shell.tastoBarra)
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+            .padding(Tema.Misura.Shell.tastoMargine)
+            .background(RoundedRectangle(cornerRadius: Tema.Raggio.tasto, style: .continuous).fill(Tema.Colore.pozzetto))
+    }
+}
+
+/// Avatar del consulente (.me): cerchio azzurro con le iniziali, filo chiaro in alto e ombra leggera.
+private struct AvatarUtente: View {
+    let iniziali: String
+
+    var body: some View {
+        let lato = Tema.Misura.avatarBarra
+        Text(iniziali)
+            .font(Tema.Testo.Shell.avatarBarra)
+            .foregroundColor(Tema.Colore.Shell.avatarTesto)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(width: lato, height: lato)
+            .background {
+                Circle()
+                    .fill(RadialGradient(colors: [Tema.Colore.Shell.avatarAlto, Tema.Colore.Shell.avatarBasso],
+                                         center: UnitPoint(x: 0.3, y: 0.25), startRadius: 0, endRadius: lato))
+                    .ombraTema(Tema.Ombra.Shell.avatarBarra)
+            }
+            .overlay(alignment: .top) {
+                // inset 0 1px 0 rgba(255,255,255,.5)
+                Circle()
+                    .trim(from: 0.6, to: 0.9)
+                    .stroke(Tema.Colore.Shell.avatarLuce, lineWidth: Tema.Misura.Shell.filoAvatar)
+                    .padding(Tema.Misura.Shell.filoAvatar / 2)
+                    .allowsHitTesting(false)
+            }
     }
 }
 

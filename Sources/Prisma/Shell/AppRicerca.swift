@@ -95,7 +95,7 @@ struct AppRicerca: View {
         .padding(.horizontal, 12)
         .frame(height: Misure.Ricerca.campoAltezza)
         .frame(maxWidth: Misure.Ricerca.larghezzaMassima)
-        .background(RoundedRectangle(cornerRadius: Misure.Ricerca.campoRaggio).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: Misure.Ricerca.campoRaggio).fill(Tema.Colore.scheda))
         .overlay(RoundedRectangle(cornerRadius: Misure.Ricerca.campoRaggio).strokeBorder(Colori.Ricerca.campoBordo, lineWidth: 1))
         .ombraCSS(Colori.Ricerca.barraLuce, y: 1, sfocatura: 0)
         .padding(Misure.Ricerca.barraMargine)

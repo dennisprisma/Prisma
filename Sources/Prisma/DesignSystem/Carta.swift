@@ -1,13 +1,15 @@
 import AppKit
 import SwiftUI
 
-// Carta stampata dei prospetti e dei report (.docs-paper del template: carta avorio,
-// intestazione in Georgia blu ardesia con filetto doppio, corpo in Helvetica Neue).
-// Su carta i colori sono più asciutti che a schermo: niente trame, poco inchiostro.
+// Carta stampata dei prospetti di dettaglio: carta avorio, testata con il logo di Prisma e
+// filetto blu ardesia, testi in SF. Su carta i colori sono più asciutti che a schermo: niente trame,
+// poco inchiostro. Colori sempre fissi e opachi (mai i colori dinamici del tema): la carta resta chiara.
 
 extension Colori {
     enum Carta {
         static let foglio = Color(hex: "#fffefa")
+        /// Il logo di Prisma nella testata: sempre scuro su carta.
+        static let logo = Tema.Colore.logoStampa
         static let intestazione = Color(hex: "#395269")
         static let filettoForte = Color(hex: "#314e63")
         static let filetto = Color(hex: "#ddd8ca")
@@ -37,49 +39,43 @@ extension Colori {
 }
 
 extension Tipo {
-    /// Caratteri della carta: Georgia per titoli e cifre in evidenza, Helvetica Neue per il resto.
-    /// Ogni carattere ha il suo gemello AppKit, usato dall'impaginazione per misurare i testi.
+    /// Caratteri della carta: SF del sistema, alle dimensioni fisse della pagina (non seguono la Dimensione
+    /// del testo). Ogni carattere ha il suo gemello AppKit, usato dall'impaginazione per misurare i testi.
     enum Carta {
-        static let serif = "Georgia"
-        static let sans = "Helvetica Neue"
-
-        static func font(_ nome: String, _ dimensione: CGFloat, grassetto: Bool = false) -> Font {
-            Font.custom(nome, fixedSize: dimensione).weight(grassetto ? .bold : .regular)
+        static func font(_ dimensione: CGFloat, grassetto: Bool = false) -> Font {
+            Font.system(size: dimensione, weight: grassetto ? .bold : .regular)
         }
 
-        static func nsFont(_ nome: String, _ dimensione: CGFloat, grassetto: Bool = false) -> NSFont {
-            let base = NSFont(name: nome, size: dimensione) ?? NSFont.systemFont(ofSize: dimensione)
-            return grassetto ? NSFontManager.shared.convert(base, toHaveTrait: .boldFontMask) : base
+        static func nsFont(_ dimensione: CGFloat, grassetto: Bool = false) -> NSFont {
+            NSFont.systemFont(ofSize: dimensione, weight: grassetto ? .bold : .regular)
         }
 
-        static let marchio = font(serif, 20)
-        static let testata = font(serif, 12)
-        static let testataPiccola = font(sans, 5.8)
-        static let data = font(sans, 8)
-        static let occhiello = font(sans, 7, grassetto: true)
-        static let titolo = font(serif, 23)
-        static let sottotitolo = font(sans, 9.5)
-        static let firma = font(sans, 8.5)
-        static let corrente = font(serif, 9)
-        static let numeroSezione = font(serif, 11)
-        static let sezione = font(serif, 14)
-        static let indicatoreEtichetta = font(sans, 6.5, grassetto: true)
-        static let indicatoreValore = font(serif, 16)
-        static let indicatoreNota = font(sans, 7)
-        static let voceEtichetta = font(sans, 6.5, grassetto: true)
-        static let voceValore = font(sans, 9)
-        static let tabellaTesta = font(sans, 6.5, grassetto: true)
-        static let tabella = font(sans, 8)
-        static let tabellaForte = font(sans, 8, grassetto: true)
-        static let testo = font(sans, 9)
-        static let nota = font(sans, 7)
-        static let assi = font(sans, 6.5)
-        static let piede = font(sans, 6.5)
+        static let testataPiccola = font(5.8)
+        static let data = font(8)
+        static let occhiello = font(7, grassetto: true)
+        static let titolo = font(23)
+        static let sottotitolo = font(9.5)
+        static let firma = font(8.5)
+        static let corrente = font(9)
+        static let numeroSezione = font(11)
+        static let sezione = font(14)
+        static let indicatoreEtichetta = font(6.5, grassetto: true)
+        static let indicatoreValore = font(16)
+        static let indicatoreNota = font(7)
+        static let voceEtichetta = font(6.5, grassetto: true)
+        static let voceValore = font(9)
+        static let tabellaTesta = font(6.5, grassetto: true)
+        static let tabella = font(8)
+        static let tabellaForte = font(8, grassetto: true)
+        static let testo = font(9)
+        static let nota = font(7)
+        static let assi = font(6.5)
+        static let piede = font(6.5)
 
         // Gemelli per le misure
-        static let nsVoceValore = nsFont(sans, 9)
-        static let nsTesto = nsFont(sans, 9)
-        static let nsNota = nsFont(sans, 7)
+        static let nsVoceValore = nsFont(9)
+        static let nsTesto = nsFont(9)
+        static let nsNota = nsFont(7)
     }
 }
 
@@ -96,6 +92,9 @@ extension Misure {
         static let testataPrima: CGFloat = 156
         /// Intestazione corrente delle pagine successive.
         static let testataCorrente: CGFloat = 30
+        /// Altezza del simbolo del logo nella testata della prima pagina e in quella corrente.
+        static let logoTestata: CGFloat = 14
+        static let logoCorrente: CGFloat = 8.5
         static let piede: CGFloat = 24
         static let spazioBlocchi: CGFloat = 8
 

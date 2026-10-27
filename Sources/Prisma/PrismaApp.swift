@@ -42,10 +42,10 @@ struct PrismaApp: App {
         Window("Prisma", id: "prisma") {
             ShellView()
                 .environmentObject(stato)
-                // Il tema iOS 5 è chiaro: con il Mac in modalità scura i controlli di sistema (pulsanti, menu)
-                // prenderebbero lo stile scuro e sparirebbero sugli sfondi chiari di Prisma
-                .preferredColorScheme(.light)
-                .onAppear { NSApp.appearance = NSAppearance(named: .aqua) }
+                // Aspetto scelto in Impostazioni (Automatico = segue il Mac). Si cambia l'aspetto dell'app
+                // e non preferredColorScheme, che su macOS non torna bene ad «Automatico»
+                .onAppear { PrismaApp.applicaAspetto(stato.dati.impostazioni.aspetto) }
+                .onChange(of: stato.dati.impostazioni.aspetto) { PrismaApp.applicaAspetto($0) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
@@ -84,5 +84,10 @@ struct PrismaApp: App {
             }
             CommandGroup(replacing: .newItem) {}
         }
+    }
+
+    /// Chiaro, scuro o come il Mac: vale per tutta l'app (i PDF restano comunque chiari).
+    @MainActor static func applicaAspetto(_ aspetto: AspettoInterfaccia) {
+        NSApp.appearance = aspetto.aspettoMac
     }
 }

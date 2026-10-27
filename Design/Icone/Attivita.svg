@@ -1,35 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" fill="none" role="img" aria-label="Attività"><title>Attività</title><defs><linearGradient id="tasks-__base" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#777f88"/><stop offset="1" stop-color="#343a41"/></linearGradient><linearGradient id="tasks-__rim" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.92"/><stop offset="0.4" stop-color="#fff" stop-opacity="0.12"/><stop offset="0.75" stop-color="#000" stop-opacity="0.05"/><stop offset="1" stop-color="#000" stop-opacity="0.6"/></linearGradient><linearGradient id="tasks-__glass" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity="0.07"/><stop offset="0.82" stop-color="#fff" stop-opacity="0.015"/><stop offset="1" stop-color="#fff" stop-opacity="0.018900000000000004"/></linearGradient><radialGradient id="tasks-__shade" cx="45%" cy="30%" r="75%"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.16"/></radialGradient><clipPath id="tasks-__clip"><rect x="8" y="6" width="240" height="240" rx="43"/></clipPath><linearGradient id="tasks-steel" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0" stop-color="#f4f6f8"/><stop offset="0.08" stop-color="#a9adb1"/><stop offset="0.2" stop-color="#e1e4e4"/><stop offset="0.55" stop-color="#7a8085"/><stop offset="0.85" stop-color="#ced0d0"/><stop offset="1" stop-color="#5b6064"/></linearGradient><linearGradient id="tasks-innerSteel" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#404449"/><stop offset="0.5" stop-color="#c4c9ca"/><stop offset="1" stop-color="#f2f4f4"/></linearGradient><linearGradient id="tasks-paper" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#fffef8"/><stop offset="0.5" stop-color="#f8f4e8"/><stop offset="1" stop-color="#ede7d9"/></linearGradient><linearGradient id="tasks-green" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0" stop-color="#9ccd6e"/><stop offset="0.33" stop-color="#5b9c3b"/><stop offset="0.7" stop-color="#3b7f2a"/><stop offset="1" stop-color="#255919"/></linearGradient><linearGradient id="tasks-lineInk" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0" stop-color="#afb0a7"/><stop offset="1" stop-color="#72766e"/></linearGradient><filter id="tasks-paperGrain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".62" numOctaves="3" seed="16" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.07"/></feComponentTransfer><feBlend in="SourceGraphic" mode="soft-light"/></filter><filter id="tasks-metalGrain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".62" numOctaves="3" seed="40" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.07"/></feComponentTransfer><feBlend in="SourceGraphic" mode="soft-light"/></filter><filter id="tasks-bezelShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.55"/></filter><filter id="tasks-checkShadow" x="-50%" y="-50%" width="200%" height="210%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.28"/></filter></defs>
- <rect x="8" y="11" width="240" height="240" rx="44" fill="#000" opacity=".08"/><rect x="8" y="9" width="240" height="240" rx="43" fill="#000" opacity=".15"/>
- <g clip-path="url(#tasks-__clip)"><rect x="8" y="6" width="240" height="240" rx="43" fill="url(#tasks-__base)"/>
-  <rect x="20" y="18" width="216" height="218" rx="27" fill="#22282e" filter="url(#tasks-bezelShadow)"/>
-  <rect x="21" y="18" width="214" height="216" rx="26" fill="url(#tasks-steel)" stroke="#3b4249" stroke-width="1" filter="url(#tasks-metalGrain)"/>
-  <rect x="23" y="20" width="210" height="212" rx="24" stroke="#fff" stroke-opacity=".8" stroke-width="1"/>
-  <rect x="29" y="26" width="198" height="199" rx="17" fill="url(#tasks-innerSteel)"/>
-  <rect x="32" y="29" width="192" height="192" rx="14" fill="url(#tasks-paper)" stroke="#777e7b" stroke-width="1" filter="url(#tasks-paperGrain)"/>
-  <path d="M34 47Q34 31 48 31H209Q222 31 222 45" stroke="#b9b6a9" stroke-opacity=".5" stroke-width="2"/>
-  <path d="M87 31V220" stroke="#d7978c" stroke-width="1.2"/>
-  <path d="M90 31V220" stroke="#e4b4a7" stroke-width=".7"/>
-  <path d="M33 102H223 M33 155H223 M33 208H223" stroke="#bdc3c1" stroke-width="1"/>
-  <path d="M33 103H223 M33 156H223 M33 209H223" stroke="#fff" stroke-opacity=".9" stroke-width="1"/>
-  <g fill="url(#tasks-lineInk)">
-    <rect x="104" y="64" width="100" height="5.5" rx="2"/>
-    <rect x="104" y="77" width="76" height="3.5" rx="1.5" opacity=".64"/>
-    <rect x="104" y="117" width="91" height="5.5" rx="2"/>
-    <rect x="104" y="130" width="105" height="3.5" rx="1.5" opacity=".64"/>
-    <rect x="104" y="170" width="102" height="5.5" rx="2"/>
-    <rect x="104" y="183" width="65" height="3.5" rx="1.5" opacity=".64"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Attività</title>
+  <defs>
+    <linearGradient id="lgGlass" x1="0" y1="0" x2=".45" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="lgBeam" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <radialGradient id="lgEveOrb" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#F3D7FF"/><stop offset=".35" stop-color="#B28DF4"/><stop offset=".72" stop-color="#6964D8"/><stop offset="1" stop-color="#3C3D92"/></radialGradient>
+    <linearGradient id="fondo" x1="0.342" y1="-0.092" x2="0.658" y2="1.092"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E4E8EE"/></linearGradient>
+    <linearGradient id="riflesso" x1="0.399" y1="-0.07" x2="0.601" y2="1.07"><stop offset="0" stop-color="#fff" stop-opacity=".36"/><stop offset=".42" stop-color="#fff" stop-opacity=".07"/><stop offset=".62" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="forma"><rect x="16" y="12" width="480" height="480" rx="112.8"/></clipPath>
+    <linearGradient id="sfumaX" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.031" stop-color="#fff"/><stop offset="0.969" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="sfumaY" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.023" stop-color="#fff"/><stop offset="0.961" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="bordoX" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="url(#sfumaX)"/></mask>
+    <mask id="bordoY" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="url(#sfumaY)"/></mask>
+    <filter id="sfocaOmbra" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="33.6"/></filter>
+    <mask id="luce" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect x="16" y="12" width="480" height="480" rx="112.8" fill="#fff"/><rect x="16" y="12" width="480" height="480" rx="112.8" transform="translate(0 9.6)" fill="#000"/></mask>
+    <mask id="buio" maskUnits="userSpaceOnUse" x="-50" y="-50" width="612" height="612"><rect x="-50" y="-50" width="612" height="612" fill="#fff"/><rect x="16" y="12" width="480" height="480" rx="112.8" transform="translate(0 -9.6)" fill="#000"/></mask>
+    <filter id="sfocaBuio" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4.8"/></filter>
+    <filter id="ombraGlifo" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="7.2" stdDeviation="4.8" flood-color="#000" flood-opacity=".22"/></filter>
+  </defs>
+  <style>
+    .g1 { fill: url(#lgGlass); }
+    .g2 { fill: #fff; fill-opacity: .5; }
+    .gs { stroke: rgba(0,0,0,.24); }
+    .g3 { fill: #3E9A68; }
+    .gk { fill: #1C1C1E; }
+    .gl { stroke: rgba(0,0,0,.2); fill: none; }
+    .gt { fill: #fff; font: 800 13px/1 ui-rounded, 'SF Pro Rounded', -apple-system, 'Inter Display', Inter, sans-serif; letter-spacing: -.4px; }
+    .gtk { fill: #1C1C1E; font: 600 7.5px/1 ui-rounded, 'SF Pro Rounded', -apple-system, 'Inter Display', Inter, sans-serif; }
+    .gt-mon { font: 700 10.5px/1 -apple-system, 'SF Pro Text', 'Helvetica Neue', Inter, sans-serif; letter-spacing: .08em; }
+    .gt-day { font: 300 30px/1 -apple-system, 'SF Pro Display', 'Helvetica Neue', 'Inter Display', Inter, sans-serif; letter-spacing: -1px; }
+    .gw { fill: #fff; }
+    .gws { stroke: #fff; }
+  </style>
+  <g mask="url(#bordoX)"><g mask="url(#bordoY)"><rect x="30.4" y="50.4" width="451.2" height="451.2" rx="98.4" fill="#000" fill-opacity=".32" filter="url(#sfocaOmbra)"/></g></g>
+  <rect x="16" y="12" width="480" height="480" rx="112.8" fill="url(#fondo)"/>
+  <g clip-path="url(#forma)">
+    <rect x="0" y="0" width="512" height="512" fill="#fff" fill-opacity=".55" mask="url(#luce)"/>
+    <rect x="16" y="12" width="480" height="480" rx="112.8" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="9.6"/>
+    <g filter="url(#sfocaBuio)"><rect x="-50" y="-50" width="612" height="612" fill="#000" fill-opacity=".14" mask="url(#buio)"/></g>
   </g>
-  <path d="M40 68L51 79L73 52L80 58L52 92L33 74Z" fill="#244d1d" opacity=".22" transform="translate(0 2)"/>
-  <path d="M40 68L51 79L73 52L80 58L52 92L33 74Z" fill="url(#tasks-green)" stroke="#356a26" stroke-width=".8" filter="url(#tasks-checkShadow)"/>
-  <path d="M35 74L40 70L51 82L74 55L77 58" stroke="#c6e79e" stroke-opacity=".9" stroke-width="1.2"/><path d="M40 121L51 132L73 105L80 111L52 145L33 127Z" fill="#244d1d" opacity=".22" transform="translate(0 2)"/>
-  <path d="M40 121L51 132L73 105L80 111L52 145L33 127Z" fill="url(#tasks-green)" stroke="#356a26" stroke-width=".8" filter="url(#tasks-checkShadow)"/>
-  <path d="M35 127L40 123L51 135L74 108L77 111" stroke="#c6e79e" stroke-opacity=".9" stroke-width="1.2"/><path d="M40 174L51 185L73 158L80 164L52 198L33 180Z" fill="#244d1d" opacity=".22" transform="translate(0 2)"/>
-  <path d="M40 174L51 185L73 158L80 164L52 198L33 180Z" fill="url(#tasks-green)" stroke="#356a26" stroke-width=".8" filter="url(#tasks-checkShadow)"/>
-  <path d="M35 180L40 176L51 188L74 161L77 164" stroke="#c6e79e" stroke-opacity=".9" stroke-width="1.2"/>
-  <path d="M46 229H209" stroke="#f6f7f4" stroke-opacity=".9" stroke-width="1"/>
-  
- <rect x="8" y="6" width="240" height="240" rx="43" fill="url(#tasks-__shade)"/>
- <path d="M8 49Q8 6 51 6H205Q248 6 248 49V101Q128 143 8 101Z" fill="url(#tasks-__glass)"/>
- </g>
- <rect x="9.5" y="7.5" width="237" height="237" rx="42" fill="none" stroke="url(#tasks-__rim)" stroke-width="2"/>
- <rect x="8" y="6" width="240" height="240" rx="43" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="1.2"/></svg>
+  <g filter="url(#ombraGlifo)"><g transform="translate(16 12) scale(7.5)"><circle class="g3" cx="18" cy="19" r="5.2"/><path d="m15.6 19 1.7 1.7 3.2-3.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect class="gk" x="27" y="17.3" width="22" height="3.4" rx="1.7" opacity=".28"/><circle class="g3" cx="18" cy="32" r="5.2"/><path d="m15.6 32 1.7 1.7 3.2-3.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect class="gk" x="27" y="30.3" width="18" height="3.4" rx="1.7" opacity=".28"/><circle class="gs" cx="18" cy="45" r="4.4" fill="none" stroke-width="1.6"/><rect class="gk" x="27" y="43.3" width="20" height="3.4" rx="1.7" opacity=".28"/></g></g>
+  <rect x="16" y="12" width="480" height="480" rx="112.8" fill="url(#riflesso)"/>
+</svg>

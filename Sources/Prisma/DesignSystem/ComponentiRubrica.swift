@@ -1,128 +1,89 @@
 import SwiftUI
 
-/// Pulsante principale aqua dell'intestazione ("Nuovo cliente").
+extension Tema.Misura.Componenti {
+    /// Pulsante principale dell'intestazione ("Nuovo cliente") e pulsante piccolo ("Modifica").
+    static let margineAqua = EdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14)
+    static let marginePiccolo = EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)
+    /// Barra delle schede del dossier.
+    static let barraSchedeDossier: CGFloat = 44
+    static let margineSchedeDossier: CGFloat = 17
+    /// Fila delle metriche e riga etichetta/valore.
+    static let etichettaCampo: CGFloat = 150
+    static let rigaCampo: CGFloat = 8
+    /// Scheda di collegamento a un'app del dossier.
+    static let schedaCollegata = EdgeInsets(top: 9, leading: 10, bottom: 9, trailing: 10)
+    static let contatoreScheda: CGFloat = 20
+}
+
+/// Pulsante principale dell'intestazione ("Nuovo cliente"): capsula piena dell'accento.
 struct StileAqua: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Tipo.pulsanteAqua)
-            .foregroundColor(Colori.Rubrica.aquaTesto)
-            .incisione(Colori.Rubrica.aquaIncisione)
-            .padding(.horizontal, 12)
-            .frame(height: Misure.Pulsante.altezzaAqua)
-            .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu).fill(Gradienti.aqua))
-            .luceInterna(Colori.Rubrica.aquaLuce, raggio: Misure.Pulsante.raggioBlu)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu).strokeBorder(Colori.Rubrica.aquaBordo, lineWidth: 1))
-            .brightness(configuration.isPressed ? -0.08 : 0)
-            .contentShape(Rectangle())
+        CorpoPulsante(etichetta: configuration.label, aspetto: .principale, premuto: configuration.isPressed,
+                      margine: Tema.Misura.Componenti.margineAqua, altezza: Misure.Pulsante.altezzaAqua)
     }
 }
 
-/// Pulsante piccolo in cuoio chiaro ("Modifica" del dossier).
+/// Pulsante piccolo ("Modifica" del dossier): capsula di vetro.
 struct StileCuoioChiaro: ButtonStyle {
-    /// Altezza fissa, per affiancarlo a un pulsante aqua (nil: quanto il testo più il margine).
+    /// Altezza fissa, per affiancarlo a un pulsante principale (nil: quanto il testo più il margine).
     var altezza: CGFloat? = nil
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Tipo.pulsanteCuoio)
-            .foregroundColor(Colori.Rubrica.pulsanteTesto)
-            .incisione(Colori.Rubrica.pulsanteIncisione)
-            .padding(.horizontal, 9)
-            .padding(.vertical, altezza == nil ? 5 : 0)
-            .frame(height: altezza)
-            .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).fill(Gradienti.pulsanteCuoio))
-            .luceInterna(Colori.Rubrica.pulsanteLuce, raggio: Misure.Pulsante.raggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).strokeBorder(Colori.Rubrica.pulsanteBordo, lineWidth: 1))
-            .brightness(configuration.isPressed ? -0.08 : 0)
-            .contentShape(Rectangle())
+        CorpoPulsante(etichetta: configuration.label, aspetto: .vetro, premuto: configuration.isPressed,
+                      margine: Tema.Misura.Componenti.marginePiccolo, altezza: altezza)
     }
 }
 
-/// Schede del dossier in cuoio (.clients-tabs).
+/// Schede del dossier: controllo a segmenti del tema in una barra con il filo sotto.
 struct SchedeRubrica<Valore: Hashable>: View {
     let opzioni: [(Valore, String)]
     @Binding var selezione: Valore
 
     var body: some View {
-        // Nelle finestre strette le schede si stringono (come il template sotto i 700 px)
-        // e, se ancora non bastano, scorrono di lato: mai una parola spezzata a metà.
+        // Nelle finestre strette le schede si stringono e, se ancora non bastano, scorrono di lato:
+        // mai una parola spezzata a metà.
         ViewThatFits(in: .horizontal) {
-            riga(spazio: Misure.Rubrica.spazioSchede, margine: Misure.Rubrica.schedaMargine, font: Tipo.schedaRubrica)
-            riga(spazio: Misure.Rubrica.spazioSchedeStretto, margine: Misure.Rubrica.schedaMargineStretto, font: Tipo.schedaRubricaStretta)
+            riga(compatto: false)
+            riga(compatto: true)
             ScrollView(.horizontal, showsIndicators: false) {
-                riga(spazio: Misure.Rubrica.spazioSchedeStretto, margine: Misure.Rubrica.schedaMargineStretto, font: Tipo.schedaRubricaStretta)
+                riga(compatto: true)
             }
         }
-        .padding(.horizontal, 17)
-        .frame(height: Misure.Rubrica.schedaAltezza + 1)
-        .background(Gradienti.schedeRubrica)
-        .luceInterna(Colori.Rubrica.schedeLuce)
-        .bordoBasso(Colori.Rubrica.schedeBordo)
+        .padding(.horizontal, Tema.Misura.Componenti.margineSchedeDossier)
+        .frame(height: Tema.Misura.Componenti.barraSchedeDossier)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
+        }
     }
 
-    private func riga(spazio: CGFloat, margine: CGFloat, font: Font) -> some View {
-        HStack(spacing: spazio) {
-            ForEach(Array(opzioni.enumerated()), id: \.offset) { _, opzione in
-                scheda(opzione, margine: margine, font: font)
-            }
+    private func riga(compatto: Bool) -> some View {
+        HStack(spacing: 0) {
+            ControlloSegmenti(opzioni: opzioni, selezione: $selezione, compatto: compatto)
+                .fixedSize()
             Spacer(minLength: 0)
         }
     }
-
-    private func scheda(_ opzione: (Valore, String), margine: CGFloat, font: Font) -> some View {
-        let attiva = opzione.0 == selezione
-        return Button {
-            selezione = opzione.0
-        } label: {
-            Text(opzione.1)
-                .font(font)
-                .lineLimit(1)
-                .fixedSize()
-                .foregroundColor(attiva ? Colori.Rubrica.schedaAttivaTesto : Colori.Rubrica.schedaTesto)
-                .incisione(attiva ? Colori.Rubrica.schedaAttivaIncisione : Color.white.opacity(0.4))
-                .padding(.horizontal, margine)
-                .frame(height: Misure.Rubrica.schedaAltezza)
-                .background(
-                    RoundedRectangle(cornerRadius: Misure.Pulsante.raggio)
-                        .fill(attiva ? Gradienti.schedaRubricaAttiva : Gradienti.schedaRubrica)
-                )
-                .overlay(alignment: .top) {
-                    if attiva {
-                        LinearGradient(colors: [Colori.Rubrica.schedaAttivaOmbra, .clear], startPoint: .top, endPoint: .bottom)
-                            .frame(height: 3)
-                            .clipShape(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio))
-                    }
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: Misure.Pulsante.raggio)
-                        .strokeBorder(attiva ? Colori.Rubrica.schedaAttivaBordo : Colori.Rubrica.schedaBordo, lineWidth: 1)
-                )
-        }
-        .buttonStyle(StileSemplice())
-    }
 }
 
-/// Occhiello di sezione del dossier ("IL QUADRO D'INSIEME").
+/// Occhiello di sezione del dossier ("Il quadro d'insieme").
 struct OcchielloSezione: View {
     let titolo: String
     var nota: String? = nil
 
     var body: some View {
         HStack {
-            Text(titolo.uppercased())
-                .font(Tipo.sezioneOcchiello)
-                .tracking(0.4)
-                .foregroundColor(Colori.Rubrica.occhiello)
-                .incisione(Color.white.opacity(0.53))
+            Text(titolo)
+                .font(Tema.Testo.occhiello)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
             Spacer()
             if let nota {
-                Text(nota).font(Tipo.sezioneSottile).foregroundColor(Colori.Rubrica.sottile)
+                Text(nota).font(Tema.Testo.didascalia).foregroundColor(Tema.Colore.inchiostroTerziario)
             }
         }
     }
 }
 
-/// Fascia di metriche con filetti sopra e sotto (.clients-metrics).
+/// Fila di metriche in tessere del tema (.tiles), tutte alte uguali.
 struct FasciaMetriche: View {
     struct Metrica: Identifiable {
         let id = UUID()
@@ -134,43 +95,28 @@ struct FasciaMetriche: View {
     let metriche: [Metrica]
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            ForEach(Array(metriche.enumerated()), id: \.element.id) { i, m in
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(m.etichetta).font(Tipo.metricaEtichetta).foregroundColor(Colori.Rubrica.metricaEtichetta)
+        HStack(alignment: .top, spacing: Tema.Misura.Componenti.spazioTessere) {
+            ForEach(metriche) { m in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(m.etichetta).font(Tema.Testo.secondario).foregroundColor(Tema.Colore.inchiostroSecondario)
                     Text(m.valore)
-                        .font(Tipo.metricaValore)
-                        .tracking(-0.8)
-                        .foregroundColor(Colori.Rubrica.metricaValore)
+                        .font(Tema.Testo.valoreTessera)
+                        .tracking(Tema.Testo.Componenti.spaziaturaValore)
+                        .foregroundColor(Tema.Colore.inchiostro)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    Text(m.nota).font(Tipo.metricaEtichetta).foregroundColor(Colori.Rubrica.metricaNota).lineLimit(1)
+                    Text(m.nota).font(Tema.Testo.didascalia).foregroundColor(Tema.Colore.inchiostroSecondario).lineLimit(1)
                 }
-                .padding(.leading, i == 0 ? 0 : 18)
-                .padding(.trailing, 18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .leading) {
-                    if i > 0 { Rectangle().fill(Colori.Rubrica.filo).frame(width: 1) }
-                }
+                .padding(Tema.Misura.Componenti.tessera)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .vetro(.sottile, forma: .arrotondata(Tema.Raggio.tessera))
             }
         }
-        .padding(.vertical, 9)
-        .overlay(alignment: .top) {
-            VStack(spacing: 0) {
-                Rectangle().fill(Colori.Rubrica.filo).frame(height: 1)
-                Rectangle().fill(Color.white).frame(height: 1)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            VStack(spacing: 0) {
-                Rectangle().fill(Colori.Rubrica.filo).frame(height: 1)
-                Rectangle().fill(Color.white).frame(height: 1)
-            }
-        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
-/// Riga etichetta/valore della scheda (anagrafica, profilo).
+/// Riga etichetta/valore della scheda (anagrafica, profilo), come le coppie .kv del tema.
 struct RigaCampo: View {
     let etichetta: String
     let valore: String
@@ -179,21 +125,23 @@ struct RigaCampo: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
             Text(etichetta)
-                .font(Tipo.campoEtichetta)
-                .foregroundColor(Colori.Rubrica.secondario)
-                .frame(width: 150, alignment: .leading)
+                .font(Tema.Testo.corpo)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .frame(width: Tema.Misura.Componenti.etichettaCampo, alignment: .leading)
             Text(valore.isEmpty ? vuoto : valore)
-                .font(Tipo.campoValore)
-                .foregroundColor(valore.isEmpty ? Colori.Rubrica.secondario : Colori.Rubrica.testo)
+                .font(Tema.Testo.corpo)
+                .foregroundColor(valore.isEmpty ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 9)
-        .bordoBasso(Colori.Rubrica.filo)
+        .padding(.vertical, Tema.Misura.Componenti.rigaCampo)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
+        }
     }
 }
 
-/// Scheda di collegamento a un'app del dossier (.clients-app-link).
+/// Scheda di collegamento a un'app del dossier: tessera del tema, più chiara al passaggio del mouse.
 struct SchedaAppCollegata: View {
     let app: AppPrisma
     let sottotitolo: String
@@ -201,27 +149,29 @@ struct SchedaAppCollegata: View {
     let azione: () -> Void
 
     var body: some View {
+        let m = Tema.Misura.Componenti.self
+        let forma = FormaVetro.arrotondata(Tema.Raggio.tessera)
         Button(action: azione) {
             HStack(spacing: 10) {
                 IconaApp(app: app, lato: Misure.Rubrica.iconaApp)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(app.titolo).font(Tipo.schedaAppTitolo).foregroundColor(Colori.Rubrica.testo).lineLimit(1)
-                    Text(sottotitolo).font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario).lineLimit(1)
+                    Text(app.titolo).font(Tema.Testo.titolo).foregroundColor(Tema.Colore.inchiostro).lineLimit(1)
+                    Text(sottotitolo).font(Tema.Testo.secondario).foregroundColor(Tema.Colore.inchiostroSecondario).lineLimit(1)
                 }
                 Spacer(minLength: 4)
                 if let conteggio {
                     Text("\(conteggio)")
-                        .font(Tipo.rigaSecondario)
-                        .foregroundColor(Colori.Rubrica.conteggioTesto)
-                        .frame(minWidth: 18, minHeight: 18)
-                        .background(Circle().fill(Colori.Rubrica.conteggio))
+                        .font(Tema.Testo.chipPiccolo)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                        .frame(minWidth: m.contatoreScheda, minHeight: m.contatoreScheda)
+                        .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
+            .padding(m.schedaCollegata)
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.schedaApp))
-            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Rubrica.schedaAppBordo, lineWidth: 1))
+            .fondoPassaggio(forma, sopra: Tema.Colore.chip)
+            .vetro(.sottile, forma: forma)
+            .contentShape(forma)
         }
         .buttonStyle(StileSemplice())
     }

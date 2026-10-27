@@ -3,9 +3,9 @@ import SwiftUI
 private typealias T = Tipo.Report
 private typealias D = Misure.Documento
 
-// La veste comune dei report per i clienti (A4 orizzontale), nell'identità di Prisma: copertina in
-// cuoio come il dossier del cliente, pagine di carta avorio come le slide di Presentazioni del
-// template, testata ◈ PRISMA, capitoli numerati, piede con il motto.
+// La veste comune dei report per i clienti (A4 orizzontale), nell'identità di Prisma: copertina blu
+// notte con il logo bianco, pagine di carta avorio come le slide di Presentazioni, testata con il logo,
+// capitoli numerati, piede con il motto. Colori fissi: il report resta chiaro anche con l'app in scuro.
 
 /// Mette in fila copertina e pagine interne: numera le pagine e applica la tavolozza di Prisma.
 enum ImpaginaReport {
@@ -35,7 +35,7 @@ extension EnvironmentValues {
 }
 
 /// La cornice di una pagina interna, come le slide di Presentazioni del template: testata con il
-/// marchio e l'intestazione, carta avorio nei suoi toni, filigrana ◈, piede con il motto e il numero.
+/// logo e l'intestazione, carta avorio nei suoi toni, logo in filigrana, piede con il motto e il numero.
 struct CorniceReport<Contenuto: View>: View {
     @Environment(\.paletteDocumento) private var C
     let intestazione: String
@@ -49,12 +49,14 @@ struct CorniceReport<Contenuto: View>: View {
             ZStack(alignment: .bottomTrailing) {
                 RadialGradient(colors: [tono.0, tono.1], center: UnitPoint(x: 0.1, y: 0.05), startRadius: 0, endRadius: D.report.width)
                 if numero % 4 == 0 {
-                    Text(verbatim: "◈").font(T.filigrana).foregroundColor(C.marchio.opacity(0.06))
-                        .padding(.trailing, 30).padding(.bottom, 20)
+                    LogoPrisma(colore: Colori.Documento.logo)
+                        .frame(height: D.logoFiligrana)
+                        .opacity(Colori.Documento.filigrana)
+                        .padding(.trailing, 30).padding(.bottom, 26)
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .center) {
-                        Text(verbatim: "◈ PRISMA").font(T.marchio).tracking(3).foregroundColor(C.marchio)
+                        LogoPrismaConNome(colore: Colori.Documento.logo, altezza: D.logoReport)
                         Spacer()
                         Text(verbatim: intestazione.uppercased()).font(T.testata).tracking(1.6)
                             .foregroundColor(C.tenue).lineLimit(1)
@@ -106,8 +108,8 @@ struct TestaReport: View {
     }
 }
 
-/// Copertina in cuoio come il dossier del cliente: impuntura, marchio impresso, cartellini di carta,
-/// il consulente con le etichette dei canali.
+/// Copertina blu notte del tema (#0F2433 → #1E3A4F): logo bianco, titolo, cartellini bianchi,
+/// il consulente con le etichette dei canali (opache, da stampa).
 struct CopertinaReport: View {
     @Environment(\.paletteDocumento) private var C
     let occhiello: String
@@ -122,24 +124,22 @@ struct CopertinaReport: View {
     var body: some View {
         FoglioDocumento(formato: D.report, sfondo: C.copertina) {
             ZStack {
-                Materiale.Pelle()
-                    .frame(width: D.report.width, height: D.report.height)
-                    .clipped()
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(C.cucitura.opacity(0.6), style: StrokeStyle(lineWidth: 1.3, dash: [6, 4]))
-                    .padding(18)
+                LinearGradient(colors: [C.copertina, C.copertinaFine], startPoint: .topLeading, endPoint: .bottomTrailing)
+                // Il logo grande in filigrana, in basso a destra, tagliato dal bordo del foglio
+                LogoPrisma(colore: Colori.Documento.logoCopertina)
+                    .frame(height: D.logoCopertinaFiligrana)
+                    .opacity(Colori.Documento.filigranaCopertina)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .offset(x: D.logoCopertinaFiligrana * 0.18, y: D.logoCopertinaFiligrana * 0.16)
+                RoundedRectangle(cornerRadius: D.copertinaRaggio)
+                    .strokeBorder(C.copertinaFilo, lineWidth: 0.8)
+                    .padding(D.copertinaCornice)
                 HStack(alignment: .center, spacing: 36) {
                     VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 8) {
-                            Text(verbatim: "◈").font(T.copertinaMarchio)
-                            Text(verbatim: "PRISMA").font(T.copertinaMarchio).tracking(4)
-                        }
-                        .foregroundColor(C.copertinaTesto)
-                        .shadow(color: Color.black.opacity(0.45), radius: 0, x: 0, y: -1)
+                        LogoPrismaConNome(colore: Colori.Documento.logoCopertina, altezza: D.logoCopertina)
                         Spacer(minLength: 0)
-                        OcchielloDoc(testo: occhiello, font: T.copertinaOcchiello, colore: C.copertinaTesto.opacity(0.75))
+                        OcchielloDoc(testo: occhiello, font: T.copertinaOcchiello, colore: C.copertinaTesto)
                         Text(verbatim: titolo).font(T.copertinaTitolo).foregroundColor(.white)
-                            .shadow(color: Color.black.opacity(0.4), radius: 0, x: 0, y: -1)
                             .lineLimit(3).minimumScaleFactor(0.7).padding(.top, 12)
                         // Larghezza limitata: le righe del sottotitolo vanno a capo bilanciate
                         Text(verbatim: sottotitolo).font(T.copertinaSottotitolo).italic().foregroundColor(C.copertinaTesto)
@@ -170,7 +170,7 @@ struct CopertinaReport: View {
         }
     }
 
-    /// Cartellino di carta avorio sul cuoio.
+    /// Cartellino bianco sul blu notte.
     private func cartellino(_ titolo: String, _ righe: [String]) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             OcchielloDoc(testo: titolo, font: T.copertinaEtichetta, colore: C.copertinaEtichetta)
@@ -179,9 +179,8 @@ struct CopertinaReport: View {
         .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
         // L'ombra va solo al cartoncino, non alle scritte
-        .background(RoundedRectangle(cornerRadius: 4).fill(C.copertinaRiquadro)
-            .shadow(color: C.ombraCartellino, radius: 3, x: 0, y: 2))
-        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(C.ombraCartellino, lineWidth: 0.8))
+        .background(RoundedRectangle(cornerRadius: D.cartellinoRaggio).fill(C.copertinaRiquadro)
+            .shadow(color: C.ombraCartellino, radius: D.cartellinoOmbra, x: 0, y: D.cartellinoOmbraY))
     }
 }
 

@@ -390,8 +390,15 @@ enum Istantanee {
             s.blocca()
         }),
         ("64-app-aperte", { s in
+            // Ogni scheda con il suo contesto: Agenda filtrata su Marco, Note su Sofia, Posizioni sul
+            // portafoglio, Prodotti senza cliente, Clienti sul cliente attivo
+            s.filtroClienteAgenda = "marco"
+            s.filtroClienteNote = "sofia"
             s.apri(.agenda)
             s.apri(.note)
+            s.portafoglio = true
+            s.apri(.posizioni)
+            s.apri(.prodotti)
             s.apri(.clienti)
             s.riduci(.agenda)
             s.pannelloAppAperte = true
@@ -420,6 +427,33 @@ enum Istantanee {
             s.areaAnalisi = .protezione
             s.apri(.analisi360)
         }),
+        // Le impostazioni di aspetto (chiaro, scuro, sfondo, pioggia)
+        ("90-impostazioni-aspetto", { s in
+            s.apri(.impostazioni)
+            s.schedaImpostazioni = .esperienza
+        }),
+        // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
+        ("1-scrivania-scuro", { _ in }),
+        ("2-posizioni-scuro", { $0.apri(.posizioni) }),
+        ("4-finestra-non-ingrandita-scuro", { s in
+            s.apri(.clienti)
+            s.alternaIngrandimento(.clienti)
+        }),
+        ("5-clienti-panoramica-scuro", { $0.apri(.clienti) }),
+        ("63-benvenuto-scuro", { s in
+            s.apri(.clienti)
+            s.blocca()
+        }),
+        ("64-app-aperte-scuro", { s in
+            s.filtroClienteAgenda = "marco"
+            s.apri(.agenda)
+            s.apri(.clienti)
+            s.pannelloAppAperte = true
+        }),
+        ("90-impostazioni-aspetto-scuro", { s in
+            s.apri(.impostazioni)
+            s.schedaImpostazioni = .esperienza
+        }),
     ]
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:
@@ -428,6 +462,8 @@ enum Istantanee {
     /// - "renderer": ImageRenderer di SwiftUI (richiede Metal)
     static func genera(in cartella: URL, metodo: String, solo: Set<String>? = nil) -> Int32 {
         _ = NSApplication.shared
+        // I PNG non catturano i materiali di sistema né il vetro di macOS 26: vetro disegnato, più coprente
+        Vetro.semplificato = true
         do {
             try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
         } catch {
@@ -437,17 +473,22 @@ enum Istantanee {
         for scena in scene where solo?.contains(scena.nome) ?? true {
             let stato = StatoShell(persistente: false)
             let misura = scena.nome.hasSuffix("-schermo-basso") ? dimensioneBassa : dimensione
+            // Le scene "-scuro" in aspetto scuro: finestra, ambiente SwiftUI e impostazione
+            let scuro = scena.nome.hasSuffix("-scuro")
+            if scuro { stato.dati.impostazioni.aspetto = .scuro }
             scena.prepara(stato)
             stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
             let vista = ShellView()
                 .environmentObject(stato)
                 .environment(\.modoIstantanea, true)
+                .environment(\.colorScheme, scuro ? .dark : .light)
                 .frame(width: misura.width, height: misura.height)
+            let aspetto = NSAppearance(named: scuro ? .darkAqua : .aqua)
             let png: Data?
             switch metodo {
-            case "renderer": png = conRenderer(vista)
-            case "livello": png = conFinestra(vista, livello: true, misura: misura)
-            default: png = conFinestra(vista, livello: false, misura: misura)
+            case "renderer": png = conRenderer(vista, aspetto: aspetto)
+            case "livello": png = conFinestra(vista, livello: true, misura: misura, aspetto: aspetto)
+            default: png = conFinestra(vista, livello: false, misura: misura, aspetto: aspetto)
             }
             guard let png else {
                 print("ERRORE: istantanea \(scena.nome) non disegnata (metodo \(metodo))")
@@ -464,17 +505,30 @@ enum Istantanee {
         return 0
     }
 
-    private static func conRenderer<V: View>(_ vista: V) -> Data? {
+    /// Disegna con l'aspetto dato (chiaro o scuro): i colori dinamici del tema si risolvono così.
+    private static func conAspetto(_ aspetto: NSAppearance?, _ disegna: () -> Void) {
+        if let aspetto {
+            aspetto.performAsCurrentDrawingAppearance(disegna)
+        } else {
+            disegna()
+        }
+    }
+
+    private static func conRenderer<V: View>(_ vista: V, aspetto: NSAppearance?) -> Data? {
         let renderer = ImageRenderer(content: vista)
         renderer.scale = 2
-        guard let cg = renderer.cgImage else { return nil }
+        var immagine: CGImage?
+        conAspetto(aspetto) { immagine = renderer.cgImage }
+        guard let cg = immagine else { return nil }
         return pngVerificato(NSBitmapImageRep(cgImage: cg))
     }
 
-    private static func conFinestra<V: View>(_ vista: V, livello: Bool, misura: CGSize) -> Data? {
+    private static func conFinestra<V: View>(_ vista: V, livello: Bool, misura: CGSize, aspetto: NSAppearance?) -> Data? {
         let host = NSHostingView(rootView: vista)
         host.frame = NSRect(origin: .zero, size: misura)
+        host.appearance = aspetto
         let finestra = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        finestra.appearance = aspetto
         finestra.contentView = host
         finestra.setFrameOrigin(NSPoint(x: -20000, y: -20000))
         finestra.orderFront(nil)
@@ -492,17 +546,15 @@ enum Istantanee {
                   let contesto = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
             let cg = contesto.cgContext
             cg.scaleBy(x: scala, y: scala)
-            if !host.isFlipped {
-                strato.render(in: cg)
-            } else {
+            if host.isFlipped {
                 cg.translateBy(x: 0, y: misura.height)
                 cg.scaleBy(x: 1, y: -1)
-                strato.render(in: cg)
             }
+            conAspetto(aspetto) { strato.render(in: cg) }
             return pngVerificato(rep)
         }
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
-        host.cacheDisplay(in: host.bounds, to: rep)
+        conAspetto(aspetto) { host.cacheDisplay(in: host.bounds, to: rep) }
         return pngVerificato(rep)
     }
 

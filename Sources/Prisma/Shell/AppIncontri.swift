@@ -498,7 +498,7 @@ struct FoglioRighe: View {
             }
         }
         .padding(4)
-        .background(Color.white.opacity(0.35))
+        .background(Tema.Colore.chip)
         .overlay(Rectangle().strokeBorder(Colori.Incontri.filo, lineWidth: 1))
     }
 }

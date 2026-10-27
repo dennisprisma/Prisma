@@ -1,13 +1,28 @@
 import AppKit
 import SwiftUI
 
-/// Il menu a tendina di Prisma (.os-select del template): l'etichetta è disegnata come i pulsanti
-/// e il clic apre il menu del Mac con la voce scelta spuntata, nella posizione del puntatore.
-/// Al posto del `Picker` di sistema, che sullo stile iOS 5 stona.
+extension Tema.Misura.Componenti {
+    /// Menu a tendina: altezza come i pulsanti piccoli del tema, margini della capsula.
+    static let altezzaTendina: CGFloat = 28
+    static let margineSinistroTendina: CGFloat = 12
+    static let margineDestroTendina: CGFloat = 10
+    static let spazioTendina: CGFloat = 8
+}
+
+extension Tema.Testo.Componenti {
+    /// Le frecce su e giù a destra dell'etichetta del menu a tendina.
+    static let frecciaTendina = Font.system(size: 8, weight: .bold)
+}
+
+/// Il menu a tendina di Prisma: l'etichetta è una capsula come i pulsanti del tema e il clic apre
+/// il menu del Mac con la voce scelta spuntata, nella posizione del puntatore.
+/// Al posto del `Picker` di sistema.
 ///
 ///     MenuTendina(selezione: $canale, opzioni: [(.alleanza, "Alleanza"), (.indipendente, "Indipendente")])
 ///     MenuTendina(selezione: $area, opzioni: AreaPosizione.allCases.map { ($0, $0.nome) }, stile: .carta, larghezza: 160)
 struct MenuTendina<Valore: Hashable>: View {
+    /// `vetro`: capsula di vetro chiaro (.btn); `carta`: pozzetto come i campi (.field);
+    /// `scuro`: capsula di vetro più coprente, per i fondi scuri.
     enum Stile { case vetro, carta, scuro }
 
     @Binding var selezione: Valore
@@ -20,50 +35,43 @@ struct MenuTendina<Valore: Hashable>: View {
     private var etichetta: String { opzioni.first { $0.0 == selezione }?.1 ?? "" }
 
     var body: some View {
+        let m = Tema.Misura.Componenti.self
         Button(action: apri) {
-            HStack(spacing: Misure.Tendina.spazio) {
-                Text(verbatim: etichetta)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: larghezza == nil ? nil : .infinity, alignment: .leading)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: Misure.Tendina.freccia, weight: .bold))
-                    .foregroundColor(stile == .scuro ? Colori.Tendina.scuroFreccia : Colori.Tendina.freccia)
-            }
-            .font(Tipo.pulsanteVetro)
-            .foregroundColor(testo)
-            .padding(Misure.Tendina.margine)
-            .frame(width: larghezza, height: Misure.Tendina.altezza)
-            .background(fondo)
-            .contentShape(Rectangle())
+            fondo(
+                HStack(spacing: m.spazioTendina) {
+                    Text(verbatim: etichetta)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: larghezza == nil ? nil : .infinity, alignment: .leading)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(Tema.Testo.Componenti.frecciaTendina)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                }
+                .font(Tema.Testo.pulsantePiccolo)
+                .foregroundColor(Tema.Colore.inchiostro)
+                .padding(.leading, m.margineSinistroTendina)
+                .padding(.trailing, m.margineDestroTendina)
+                .frame(width: larghezza, height: m.altezzaTendina)
+            )
+            .contentShape(FormaVetro.capsula)
         }
         .buttonStyle(.plain)
         .opacity(attivo ? 1 : 0.5)
         .accessibilityLabel(etichetta)
     }
 
-    private var testo: Color {
-        switch stile {
-        case .vetro: return Colori.Pulsante.testo
-        case .carta: return Colori.Tendina.cartaTesto
-        case .scuro: return Colori.Tendina.scuroTesto
-        }
-    }
-
-    @ViewBuilder private var fondo: some View {
-        let forma = RoundedRectangle(cornerRadius: Misure.Tendina.raggio)
+    @ViewBuilder private func fondo<V: View>(_ contenuto: V) -> some View {
         switch stile {
         case .vetro:
-            forma.fill(Gradienti.vetro)
-                .luceInterna(.white, raggio: Misure.Tendina.raggio)
-                .overlay(forma.strokeBorder(Colori.Pulsante.vetroBordo, lineWidth: 1))
-                .ombraCSS(Colori.Pulsante.vetroOmbra, y: 1, sfocatura: 2)
-        case .carta:
-            forma.fill(Colori.Tendina.cartaFondo)
-                .overlay(forma.strokeBorder(Colori.Tendina.cartaBordo, lineWidth: 1))
+            contenuto.vetro(.chip, forma: .capsula)
         case .scuro:
-            forma.fill(Colori.Tendina.scuroFondo)
-                .overlay(forma.strokeBorder(Colori.Tendina.scuroBordo, lineWidth: 1))
+            contenuto.vetro(.chip, forma: .capsula, riempimento: Tema.Colore.chipSopra)
+        case .carta:
+            contenuto
+                .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
+                .overlay {
+                    FormaVetro.capsula.strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo).allowsHitTesting(false)
+                }
         }
     }
 

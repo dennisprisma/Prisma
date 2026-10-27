@@ -1,5 +1,15 @@
 import SwiftUI
 
+extension Tema.Misura.Componenti {
+    /// Pulsanti delle azioni del dettaglio.
+    static let margineAzione = EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
+}
+
+extension Tema.Testo.Componenti {
+    /// Il giorno nella tessera grande dell'agenda.
+    static let giornoTarghetta = Tema.Testo.sf(28, .semibold, arrotondato: true)
+}
+
 /// Calendario dell'agenda: settimane da lunedì, nomi italiani.
 enum CalendarioAgenda {
     static let cal: Calendar = {
@@ -39,92 +49,52 @@ enum CalendarioAgenda {
     }
 }
 
-/// Fascia in cuoio chiaro cucito dell'agenda (.ag-leather).
+/// Fascia in testa all'agenda: una scheda del tema (.card) che si stende per tutta la larghezza.
 struct CuoioAgenda<Contenuto: View>: View {
     @ViewBuilder let contenuto: () -> Contenuto
 
     var body: some View {
-        let forma = RettangoloAngoli(altoSinistra: Misure.Agenda.cuoioRaggio, altoDestra: Misure.Agenda.cuoioRaggio)
         contenuto()
             .padding(Misure.Agenda.cuoioMargine)
             .frame(maxWidth: .infinity)
-            .background(
-                ZStack {
-                    Gradienti.cuoioAgenda
-                    Materiale.Trama(nome: "Grana")
-                }
-                .clipShape(forma)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 5)
-                    .strokeBorder(Colori.Agenda.cuoioCucitura, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
-                    .shadow(color: Colori.Agenda.cuoioCucituraOmbra, radius: 0, x: 0, y: 1)
-                    .opacity(0.8)
-                    .padding(Misure.Agenda.cucitura)
-                    .allowsHitTesting(false)
-            )
-            .luceInterna(Colori.Agenda.cuoioLuce, raggio: Misure.Agenda.cuoioRaggio)
-            .ombraInternaBasso(Colori.Agenda.cuoioLuceBasso)
-            .overlay(forma.stroke(Colori.Agenda.cuoioBordo, lineWidth: 1))
+            .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
     }
 }
 
-/// Targhetta con la data, leggermente ruotata (.ag-date-badge).
+/// Tessera con la data del giorno (.dt in grande): mese rosso, giorno, giorno della settimana.
 struct TarghettaData: View {
     let giorno: Date
 
     var body: some View {
+        let forma = FormaVetro.arrotondata(Tema.Raggio.tessera)
         VStack(spacing: 0) {
             Text(Formati.meseBreve.string(from: giorno).uppercased())
-                .font(Tipo.targhettaMese)
-                .tracking(1.5)
-                .foregroundColor(.white)
-                .incisione(Colori.Agenda.targhettaRossoIncisione, y: -1)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 3)
-                .background(Gradienti.targhettaRossa)
-                .luceInterna(Colori.Agenda.targhettaRossoLuce)
-                .bordoBasso(Colori.Agenda.targhettaRossoBordo)
+                .font(Tema.Testo.meseTessera)
+                .tracking(Tema.Testo.spaziatura(0.04, 9.5))
+                .foregroundColor(Tema.Colore.rosso)
+                .padding(.top, 6)
             Text(Formati.giorno.string(from: giorno))
-                .font(Tipo.targhettaGiorno)
-                .foregroundColor(Colori.Agenda.targhettaTesto)
-                .padding(.top, 1)
+                .font(Tema.Testo.Componenti.giornoTarghetta)
+                .foregroundColor(Tema.Colore.inchiostro)
             Text(Formati.giornoSettimana.string(from: giorno))
-                .font(Tipo.targhettaSettimana)
-                .foregroundColor(Colori.Agenda.targhettaTesto)
-                .padding(.bottom, 4)
+                .font(Tema.Testo.didascalia)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.bottom, 6)
         }
         .frame(width: Misure.Agenda.targhetta)
-        .background(Colori.Agenda.targhettaCarta)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Agenda.targhettaBordo, lineWidth: 1))
-        .shadow(color: Colori.Agenda.targhettaOmbra1, radius: 0, x: 0, y: 1)
-        .shadow(color: Colori.Agenda.targhettaOmbra2, radius: 0, x: 0, y: 2)
-        .ombraCSS(Colori.Agenda.targhettaOmbra3, x: 1, y: 3, sfocatura: 3)
-        .rotationEffect(.degrees(3))
+        .background { forma.fill(Tema.Colore.tesseraData).ombraTema(Tema.Ombra.tesseraData) }
+        .overlay { forma.strokeBorder(Tema.Colore.bordoChip, lineWidth: Tema.Misura.filo).allowsHitTesting(false) }
     }
 }
 
-/// Anelli cromati della rilegatura (.ag-rings).
+/// Gli anelli della rilegatura non ci sono più nel tema: resta lo spazio, vuoto.
 struct AnelliAgenda: View {
     var body: some View {
-        GeometryReader { geo in
-            HStack(spacing: 0) {
-                ForEach(0..<Misure.Agenda.anelli, id: \.self) { i in
-                    if i > 0 { Spacer(minLength: 0) }
-                    RoundedRectangle(cornerRadius: Misure.Agenda.anello.width / 2)
-                        .fill(Gradienti.anelloAgenda)
-                        .overlay(RoundedRectangle(cornerRadius: Misure.Agenda.anello.width / 2)
-                            .strokeBorder(Colori.Agenda.anelloBordo, lineWidth: 1))
-                        .luceInterna(Color.white.opacity(0.45), raggio: Misure.Agenda.anello.width / 2)
-                        .frame(width: Misure.Agenda.anello.width, height: Misure.Agenda.anello.height)
-                        .ombraCSS(Colori.Agenda.anelloOmbra, x: 1, y: 1, sfocatura: 2)
-                }
-            }
-            .padding(.horizontal, geo.size.width * Misure.Agenda.rientroAnelli)
-        }
-        .frame(height: Misure.Agenda.anello.height)
-        .allowsHitTesting(false)
+        Color.clear
+            .frame(height: Misure.Agenda.anello.height)
+            .allowsHitTesting(false)
     }
 }
 
@@ -144,47 +114,49 @@ struct Rigatura: Shape {
     }
 }
 
-/// Voce "etichetta · valore" del dettaglio (le righe <dl> del template).
+/// Voce "etichetta · valore" del dettaglio (.kv del tema).
 struct VoceDettaglio<Valore: View>: View {
     let etichetta: String
     var larghezza: CGFloat = Misure.Agenda.etichettaVoce
-    var coloreEtichetta = Colori.Agenda.voceEtichetta
-    var coloreBordo = Colori.Agenda.voceBordo
+    var coloreEtichetta: Color = Tema.Colore.inchiostroSecondario
+    var coloreBordo: Color = Tema.Colore.separatore
     @ViewBuilder let valore: () -> Valore
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
             Text(etichetta)
-                .font(Tipo.voceEtichetta)
+                .font(Tema.Testo.corpo)
                 .foregroundColor(coloreEtichetta)
                 .frame(width: larghezza, alignment: .leading)
             valore()
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 6)
-        .bordoBasso(coloreBordo)
+        .padding(.vertical, 7)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(coloreBordo).frame(height: Tema.Misura.filo)
+        }
     }
 }
 
-/// Etichetta minuscola in maiuscoletto ("✓ Concluso", "Scade").
+/// Etichetta di stato in capsula ("✓ Concluso", "Scade"), come le pillole del tema.
 struct EtichettaStato: View {
     let testo: String
     let colore: Color
     let fondo: Color
 
     var body: some View {
-        Text(testo.uppercased())
-            .font(Tipo.etichettaStato)
-            .tracking(0.4)
+        Text(testo)
+            .font(Tema.Testo.pill)
             .foregroundColor(colore)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 3)
-            .background(RoundedRectangle(cornerRadius: 3).fill(fondo))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .frame(height: Tema.Misura.pill)
+            .background { FormaVetro.capsula.fill(fondo) }
             .fixedSize()
     }
 }
 
-/// Pulsante di vetro che riempie la sua cella (azioni del dettaglio).
+/// Pulsante che riempie la sua cella (azioni del dettaglio): principale o di vetro.
 struct PulsanteAzione: View {
     let titolo: String
     var principale = false
@@ -206,7 +178,7 @@ struct PulsanteAzione: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 6)))
+            .buttonStyle(StileVetro(margine: Tema.Misura.Componenti.margineAzione))
         }
     }
 }

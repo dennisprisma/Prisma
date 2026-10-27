@@ -1,98 +1,135 @@
 import SwiftUI
 
-/// Dock delle applicazioni (#os-dock): Scrivania, divisore e le 16 app sul ripiano di vetro.
+/// Dock delle applicazioni (tema «Liquid Glass»): capsula di vetro sottile con la Scrivania, il divisore
+/// e le app. Le icone (50 pt) si ingrandiscono dal basso attorno al puntatore, fino a 1,55 volte.
 struct Dock: View {
     @EnvironmentObject var stato: StatoShell
+    /// Ingrandimento di ogni icona, Scrivania compresa, nell'ordine del dock (vuoto = tutte normali).
+    @State var ingrandimenti: [CGFloat] = []
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: Misure.Dock.spazio) {
-            ElementoDock(titolo: "Scrivania", etichetta: "Scrivania", attivo: stato.appAttiva == nil, inEsecuzione: false) {
+        let elenco = AppPrisma.allCases.filter { stato.appConsentita($0) }
+        let numero = elenco.count + 1
+        let lato = Tema.Misura.dockIcona
+        HStack(alignment: .bottom, spacing: Dock.spazio) {
+            ElementoDock(titolo: "Scrivania", etichetta: "Scrivania", ingrandimento: ingrandimento(0, di: numero),
+                         attivo: stato.appAttiva == nil, inEsecuzione: false) {
                 stato.mostraScrivania()
             } icona: {
-                ImmagineNitida(percorso: "Icone/Prisma.png", lato: Misure.Dock.icona, riservaIngrandimento: Misure.Dock.ingrandimento)
+                ImmagineNitida(percorso: "Icone/Prisma.png", lato: lato, riservaIngrandimento: Tema.Misura.dockIngrandimento)
             }
             DivisoreDock()
-            ForEach(Array(AppPrisma.allCases.enumerated()), id: \.element) { indice, app in
-                if stato.appConsentita(app) {
-                    ElementoDock(
-                        titolo: app.titolo,
-                        etichetta: app.nomeDock,
-                        scorciatoia: indice < 9 ? "⌥ \(indice + 1)" : nil,
-                        attivo: stato.appAttiva == app,
-                        inEsecuzione: stato.aperta(app)
-                    ) {
-                        stato.apri(app)
-                    } icona: {
-                        IconaApp(app: app, lato: Misure.Dock.icona, riservaIngrandimento: Misure.Dock.ingrandimento)
-                    }
+            ForEach(Array(elenco.enumerated()), id: \.element) { indice, app in
+                ElementoDock(
+                    titolo: app.titolo,
+                    etichetta: app.nomeDock,
+                    scorciatoia: Dock.scorciatoia(app),
+                    ingrandimento: ingrandimento(indice + 1, di: numero),
+                    attivo: stato.appAttiva == app,
+                    inEsecuzione: stato.aperta(app)
+                ) {
+                    stato.apri(app)
+                } icona: {
+                    IconaApp(app: app, lato: lato, riservaIngrandimento: Tema.Misura.dockIngrandimento)
                 }
             }
         }
-        .padding(EdgeInsets(top: Misure.Dock.margineAlto, leading: Misure.Dock.margineOrizzontale,
-                            bottom: Misure.Dock.margineBasso, trailing: Misure.Dock.margineOrizzontale))
-        .background(alignment: .bottom) { RipianoDock() }
-    }
-}
-
-/// Ripiano in prospettiva (`#os-dock::before` con rotateX) e filo di luce frontale (`::after`).
-struct RipianoDock: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                Trapezio(rientro: Misure.Dock.ripianoRientro)
-                    .fill(Gradienti.ripiano)
-                Trapezio(rientro: Misure.Dock.ripianoRientro)
-                    .stroke(Colori.Dock.ripianoBordo, lineWidth: 1)
-                Trapezio(rientro: Misure.Dock.ripianoRientro)
-                    .stroke(Color.white, lineWidth: 1)
-                    .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .init(x: 0.5, y: 0.12)))
+        .padding(.vertical, Dock.margine)
+        .padding(.horizontal, Dock.margineLato)
+        .vetro(.leggero, forma: .arrotondata(Tema.Raggio.dock))
+        .onContinuousHover(coordinateSpace: CoordinateSpace.local) { fase in
+            switch fase {
+            case .active(let punto):
+                aggiorna(punto.x, numero: numero)
+            case .ended:
+                withAnimation(Tema.Moto.Shell.ritornoDock) { ingrandimenti = [] }
             }
-            .frame(height: Misure.Dock.ripianoAltezza)
-            Rectangle()
-                .fill(Colori.Dock.ripianoFondo)
-                .frame(height: 4)
-                .overlay(alignment: .top) {
-                    Rectangle().fill(Colori.Dock.filo).frame(height: 1)
-                        .shadow(color: Colori.Dock.filoOmbra, radius: 0, x: 0, y: 1)
-                }
         }
-        .padding(.horizontal, -Misure.Dock.ripianoSporgenza)
-        .ombraCSS(Colori.Dock.ripianoOmbra, y: 6, sfocatura: 9)
-        .allowsHitTesting(false)
+    }
+
+    private func ingrandimento(_ i: Int, di numero: Int) -> CGFloat {
+        ingrandimenti.count == numero ? ingrandimenti[i] : 1
+    }
+
+    /// Ricalcola gli ingrandimenti con il puntatore in `x` (coordinate del dock come è disegnato ora).
+    /// Il dock cresce attorno al suo centro: qualche passaggio fa coincidere l'icona ingrandita con il puntatore.
+    private func aggiorna(_ x: CGFloat, numero: Int) {
+        let attuali = ingrandimenti.count == numero ? ingrandimenti : Array(repeating: 1, count: numero)
+        let puntatore = x - Dock.disposizione(attuali).larghezza / 2
+        var nuovi = attuali
+        for _ in 0..<Tema.Misura.Shell.passiIngrandimento {
+            nuovi = Dock.disposizione(nuovi).centri.map { Dock.ingrandimento(distanza: abs(puntatore - $0)) }
+        }
+        ingrandimenti = nuovi
+    }
+
+    // MARK: Misure del dock
+
+    /// Spazio fra le icone e margini (in frazioni del lato dell'icona, come nel tema).
+    static var spazio: CGFloat { Tema.Misura.dockIcona * Tema.Misura.dockSpazioQuota }
+    static var margine: CGFloat { Tema.Misura.dockIcona * Tema.Misura.dockMargineQuota }
+    static var margineLato: CGFloat { margine + Tema.Misura.Shell.margineDockLato }
+    /// Il divisore: un filo con il suo margine (oltre lo spazio fra gli elementi).
+    static var rientroDivisore: CGFloat { max(0, Tema.Misura.Shell.divisoreMargine - spazio) }
+    static var larghezzaDivisore: CGFloat { Tema.Misura.filo * 2 + 2 * rientroDivisore }
+
+    /// Ingrandimento di un'icona a una certa distanza dal puntatore: 1 + (max − 1) · cos²(d / portata · π/2).
+    static func ingrandimento(distanza: CGFloat) -> CGFloat {
+        let portata = Tema.Misura.dockPortata * Tema.Misura.dockIcona
+        guard distanza < portata else { return 1 }
+        let c = cos(distanza / portata * .pi / 2)
+        return 1 + (Tema.Misura.dockIngrandimento - 1) * c * c
+    }
+
+    /// Centri delle icone rispetto al centro del dock e larghezza del dock, con gli ingrandimenti dati.
+    static func disposizione(_ ingrandimenti: [CGFloat]) -> (centri: [CGFloat], larghezza: CGFloat) {
+        var x = margineLato
+        var centri: [CGFloat] = []
+        for (i, k) in ingrandimenti.enumerated() {
+            let w = Tema.Misura.dockIcona * k
+            centri.append(x + w / 2)
+            x += w + spazio
+            // Dopo la Scrivania c'è il divisore
+            if i == 0 { x += larghezzaDivisore + spazio }
+        }
+        let larghezza = x - spazio + margineLato
+        return (centri.map { $0 - larghezza / 2 }, larghezza)
+    }
+
+    /// ⌥1…⌥9 per le prime nove app.
+    static func scorciatoia(_ app: AppPrisma) -> String? {
+        guard let i = AppPrisma.allCases.firstIndex(of: app), i < 9 else { return nil }
+        return "⌥\(i + 1)"
+    }
+
+    /// Altezza sotto l'icona: nome e puntino dell'app aperta.
+    static var altezzaSotto: CGFloat {
+        let m = Tema.Misura.Shell.self
+        return m.etichettaSpazio + m.etichettaDock + m.puntinoSpazio + Tema.Misura.puntinoDock
     }
 }
 
-struct Trapezio: Shape {
-    let rientro: CGFloat
-
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: r.minX + rientro, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX - rientro, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
-        p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
-        p.closeSubpath()
-        return p
-    }
-}
-
+/// Il divisore fra la Scrivania e le app: un filo verticale che sfuma in alto e in basso.
 struct DivisoreDock: View {
     var body: some View {
         Rectangle()
-            .fill(Gradienti.divisoreDock)
-            .frame(width: 1, height: Misure.Dock.icona)
-            .shadow(color: Color.white.opacity(0.4), radius: 0, x: 1, y: 0)
-            .padding(.horizontal, 1)
-            .padding(.bottom, 8)
+            .fill(LinearGradient(colors: [Tema.Colore.pozzettoScuro.opacity(0), Tema.Colore.pozzettoScuro,
+                                          Tema.Colore.pozzettoScuro.opacity(0)],
+                                 startPoint: .top, endPoint: .bottom))
+            .frame(width: Tema.Misura.filo * 2, height: Tema.Misura.dockIcona)
+            .padding(.horizontal, Dock.rientroDivisore)
+            .padding(.bottom, Dock.altezzaSotto)
     }
 }
 
-/// Elemento del dock con ingrandimento al passaggio, suggerimento e puntino di esecuzione.
+/// Elemento del dock: l'icona che si ingrandisce dal basso, il nome sotto, il puntino se l'app è aperta,
+/// il suggerimento con la scorciatoia al passaggio del mouse.
 struct ElementoDock<Icona: View>: View {
     let titolo: String
     /// Il nome breve sotto l'icona.
     let etichetta: String
     var scorciatoia: String? = nil
+    var ingrandimento: CGFloat = 1
     let attivo: Bool
     let inEsecuzione: Bool
     let azione: () -> Void
@@ -100,40 +137,41 @@ struct ElementoDock<Icona: View>: View {
     @State var sopra = false
 
     var body: some View {
+        let lato = Tema.Misura.dockIcona
+        let m = Tema.Misura.Shell.self
         Button(action: azione) {
             VStack(spacing: 0) {
-            ZStack(alignment: .bottom) {
+                // L'icona si disegna sempre a 50 pt e si ingrandisce con una scala: la bitmap resta quella
                 icona()
-                    .frame(width: Misure.Dock.icona, height: Misure.Dock.icona)
-                    .ombraCSS(Colori.Dock.iconaOmbra, y: 2, sfocatura: 2)
-                    .scaleEffect(sopra ? Misure.Dock.ingrandimento : 1, anchor: .bottom)
-                    .padding(.bottom, 4)
-                    .frame(width: Misure.Dock.elemento, height: Misure.Dock.elemento)
-                if inEsecuzione || attivo {
-                    Ellipse()
-                        .fill(Colori.Dock.puntino)
-                        .frame(width: 5, height: 3)
-                        .shadow(color: Colori.Dock.puntinoAlone, radius: 2)
-                }
+                    .frame(width: lato, height: lato)
+                    .scaleEffect(ingrandimento, anchor: .bottom)
+                    .frame(width: lato * ingrandimento, height: lato, alignment: .bottom)
+                Text(etichetta)
+                    .font(Tema.Testo.Shell.etichettaDock)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    .lineLimit(1)
+                    // Mai rimpicciolito: un nome lungo («Impostazioni») sborda appena dalla cella dell'icona
+                    .fixedSize()
+                    .frame(width: lato * ingrandimento, height: m.etichettaDock)
+                    .padding(.top, m.etichettaSpazio)
+                Circle()
+                    .fill(Tema.Colore.Shell.puntinoDock)
+                    .frame(width: Tema.Misura.puntinoDock, height: Tema.Misura.puntinoDock)
+                    .opacity(inEsecuzione || attivo ? 1 : 0)
+                    .padding(.top, m.puntinoSpazio)
             }
-            Text(etichetta)
-                .font(Tipo.dockEtichetta)
-                .foregroundColor(Colori.Dock.etichetta)
-                .shadow(color: Colori.Dock.etichettaOmbra, radius: 1, x: 0, y: 1)
-                .lineLimit(1)
-                // Mai rimpicciolita: un nome lungo («Impostazioni») sborda appena dalla cella dell'icona,
-                // che resta larga quanto l'icona (con 17 app il dock deve stare anche in uno schermo da 1280 punti)
-                .fixedSize()
-                .frame(width: Misure.Dock.elemento, height: Misure.Dock.etichetta)
-            }
+            .contentShape(Rectangle())
         }
-        .buttonStyle(StileSemplice())
-        .onHover { s in withAnimation(Animazioni.passaggio) { sopra = s } }
+        .buttonStyle(StileIconaDock())
+        .onHover { s in withAnimation(Tema.Moto.passaggio) { sopra = s } }
         .overlay(alignment: .top) {
             if sopra {
                 SuggerimentoDock(testo: titolo, scorciatoia: scorciatoia)
                     .fixedSize()
-                    .offset(y: -32)
+                    // Il fondo del suggerimento sta sopra l'icona ingrandita
+                    .alignmentGuide(VerticalAlignment.top) { d in
+                        d[VerticalAlignment.bottom] + lato * (ingrandimento - 1) + m.suggerimentoDistanza
+                    }
                     .transition(.opacity)
                     .allowsHitTesting(false)
             }
@@ -142,37 +180,29 @@ struct ElementoDock<Icona: View>: View {
     }
 }
 
+/// Icona premuta: più scura (brightness .82 del tema).
+private struct StileIconaDock: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .brightness(configuration.isPressed ? Tema.Misura.Shell.premutoDock : 0)
+    }
+}
+
+/// Suggerimento sopra l'icona: capsula di vetro sottile con il nome e la scorciatoia.
 struct SuggerimentoDock: View {
     let testo: String
     let scorciatoia: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                Text(testo)
-                if let s = scorciatoia {
-                    Text(s).font(Tipo.sistema(9)).opacity(0.7)
-                }
+        HStack(spacing: Tema.Misura.Shell.pulsanteBarraSpazio) {
+            Text(testo)
+                .font(Tema.Testo.Shell.suggerimentoDock)
+                .foregroundColor(Tema.Colore.inchiostro)
+            if let s = scorciatoia {
+                TastoBarra(testo: s)
             }
-            .font(Tipo.dockSuggerimento)
-            .foregroundColor(.white)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .background(RoundedRectangle(cornerRadius: 4).fill(Colori.Dock.suggerimento))
-            Triangolo()
-                .fill(Colori.Dock.suggerimento)
-                .frame(width: 10, height: 5)
         }
-    }
-}
-
-struct Triangolo: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: r.minX, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
-        p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
-        p.closeSubpath()
-        return p
+        .padding(Tema.Misura.Shell.suggerimentoMargine)
+        .vetro(.leggero, forma: .capsula)
     }
 }

@@ -5,8 +5,8 @@ private typealias D = Misure.Documento
 
 /// Il report di una valutazione d'investimento: A4 orizzontale, una pagina per messaggio, da lasciare
 /// al cliente. I contenuti seguono il report di Denis su Orizzonte Valore (ottobre 2026); la veste è
-/// quella di Prisma: carta avorio delle slide di Presentazioni, Georgia, testata ◈ PRISMA, capitoli
-/// numerati, copertina in cuoio come il dossier del cliente, etichetta del canale sempre in vista.
+/// quella di Prisma: carta avorio delle slide di Presentazioni, testi in SF, testata con il logo, capitoli
+/// numerati, copertina blu notte con il logo bianco, etichetta del canale sempre in vista.
 enum ReportValutazione {
     static func pagine(_ t: TestiValutazione) -> [AnyView] {
         var slide: [AnyView] = [AnyView(SlideProposta(t: t))]

@@ -79,10 +79,37 @@ struct AppImpostazioni: View {
 
     private var esperienza: some View {
         VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
+            gruppoAspetto
             gruppoProfilo
             gruppoEve
             gruppoVoce
             gruppoPDF
+        }
+    }
+
+    /// Aspetto chiaro, scuro o come il Mac; lo sfondo d'acqua animato o fermo e quanta pioggia cade.
+    /// Si salvano con le altre impostazioni e valgono subito.
+    private var gruppoAspetto: some View {
+        GruppoImpostazioni(titolo: "Aspetto") {
+            RigaImpostazione(titolo: "Aspetto", sottotitolo: "Automatico segue il Mac, di giorno e di sera") {
+                ControlloSegmenti(opzioni: AspettoInterfaccia.allCases.map { ($0, $0.nome) },
+                                  selezione: $stato.dati.impostazioni.aspetto)
+                    .fixedSize()
+            }
+            RigaImpostazione(titolo: "Sfondo", sottotitolo: "L'acqua della scrivania con le gocce al rallentatore; si ferma da sola quando non si vede") {
+                ControlloSegmenti(opzioni: [(true, "Animato"), (false, "Fermo")],
+                                  selezione: $stato.dati.impostazioni.sfondoAnimato)
+                    .fixedSize()
+            }
+            RigaImpostazione(titolo: "Pioggia", sottotitolo: stato.dati.impostazioni.sfondoAnimato
+                                ? "Quante gocce cadono sull'acqua"
+                                : "Con lo sfondo fermo non piove", ultima: true) {
+                ControlloSegmenti(opzioni: IntensitaPioggia.allCases.map { ($0, $0.nome) },
+                                  selezione: $stato.dati.impostazioni.pioggia)
+                    .fixedSize()
+                    .disabled(!stato.dati.impostazioni.sfondoAnimato)
+                    .opacity(stato.dati.impostazioni.sfondoAnimato ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
+            }
         }
     }
 
@@ -403,13 +430,8 @@ struct AppImpostazioni: View {
 
     private var informazioni: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ImmagineNitida(percorso: "Icone/Prisma.png", lato: Misure.Impostazioni.iconaInformazioni)
+            LogoPrismaConNome(colore: Tema.Colore.logo, altezza: Tema.Misura.Shell.logoImpostazioni)
                 .padding(.bottom, 20)
-            Text("CLASSIC EDITION")
-                .font(Tipo.informazioniOcchiello)
-                .tracking(1.8)
-                .foregroundColor(Colori.Impostazioni.informazioniOcchiello)
-                .padding(.bottom, 8)
             Text("Il tuo spazio.\nTutto a portata di mano.")
                 .font(Tipo.informazioniTitolo)
                 .foregroundColor(Colori.Impostazioni.informazioniTitolo)
@@ -425,10 +447,9 @@ struct AppImpostazioni: View {
                 .foregroundColor(Colori.Impostazioni.nota)
                 .lineSpacing(3)
         }
-        .incisione(.white)
         .padding(Misure.Impostazioni.informazioniMargine)
         .overlay(alignment: .leading) {
-            Rectangle().fill(Colori.Impostazioni.informazioniFilo).frame(width: 1)
+            Rectangle().fill(Colori.Impostazioni.informazioniFilo).frame(width: Tema.Misura.filo)
         }
     }
 }

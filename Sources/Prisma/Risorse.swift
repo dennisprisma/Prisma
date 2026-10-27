@@ -51,6 +51,8 @@ enum Risorse {
             print("ERRORE: \(nomeBundle) non trovato in Contents/Resources")
             return 1
         }
+        // Icona della Scrivania nel dock, base e riflesso dell'icona Agenda, simbolo Alleanza delle etichette.
+        // Le vecchie trame e la foto dello sfondo restano nel pacchetto finché non si tolgono dal repository.
         let necessarie = ["Icone/Prisma.png", "Icone/Agenda_base.png", "Icone/Agenda_vetro.png",
                           "Sfondi/Gocce.jpg", "Materiali/Grana.png", "Materiali/Lino_trama.png",
                           "Materiali/Pelle.png", "Materiali/Pelle_punti.png", "Loghi/Alleanza_simbolo.png"]
@@ -62,16 +64,18 @@ enum Risorse {
             print("ERRORE: icona \(app.icona) mancante")
             return 1
         }
-        // Le icone ridotte ai pixel di uno schermo Retina con il dock ingrandito devono uscire intere
-        let latoDock = CGSize(width: Misure.Dock.icona, height: Misure.Dock.icona)
-        let pixelAttesi = Int((Misure.Dock.icona * 2 * Misure.Dock.ingrandimento).rounded())
+        // Le icone ridotte ai pixel di uno schermo Retina con il dock ingrandito (fino a 1,55 volte) devono uscire intere
+        let latoIcona = Tema.Misura.dockIcona
+        let ingrandimento = Tema.Misura.dockIngrandimento
+        let latoDock = CGSize(width: latoIcona, height: latoIcona)
+        let pixelAttesi = Int((latoIcona * 2 * ingrandimento).rounded())
         for app in AppPrisma.allCases {
             // La bitmap vera (cgImage(forProposedRect:) ridisegnerebbe l'immagine ai punti dello schermo del server)
-            guard let img = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * Misure.Dock.ingrandimento),
+            guard let img = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * ingrandimento),
                   let rep = img.representations.first,
                   rep.pixelsWide == pixelAttesi, rep.pixelsHigh == pixelAttesi,
-                  abs(img.size.width - Misure.Dock.icona) < 0.5 else {
-                let trovato = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * Misure.Dock.ingrandimento)
+                  abs(img.size.width - latoIcona) < 0.5 else {
+                let trovato = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * ingrandimento)
                 print("ERRORE: icona \(app.icona) non ridotta ai pixel dello schermo (attesi \(pixelAttesi) px, trovati \(trovato?.representations.first?.pixelsWide ?? -1) px, \(trovato?.size.width ?? -1) pt)")
                 return 1
             }
@@ -179,7 +183,7 @@ struct ImmagineNitida: View {
     let percorso: String
     /// Spazio in punti; l'immagine vi si adatta mantenendo le proporzioni (`.infinity` = libero).
     let misura: CGSize
-    /// Riserva per gli ingrandimenti animati (`scaleEffect`): 1,13 nel dock.
+    /// Riserva per gli ingrandimenti animati (`scaleEffect`): 1,55 nel dock.
     var riservaIngrandimento: CGFloat = 1
     @Environment(\.displayScale) private var scala
 

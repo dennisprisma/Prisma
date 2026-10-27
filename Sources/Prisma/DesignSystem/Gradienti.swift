@@ -14,25 +14,24 @@ extension LinearGradient {
         LinearGradient(colors: [alto, basso], startPoint: .top, endPoint: .bottom)
     }
 
-    /// Gradiente "lucido" a quattro fermate con il salto netto a metà (pulsanti e badge 2011).
+    /// Gradiente a quattro fermate con un salto a metà (nel tema i colori sono quasi uguali: niente lucido 2011).
     static func lucido(_ colori: [Color], salto: (CGFloat, CGFloat)) -> LinearGradient {
         verticale([(colori[0], 0), (colori[1], salto.0), (colori[2], salto.1), (colori[3], 1)])
     }
 }
 
-/// Gradienti ricorrenti del template.
+/// Gradienti ricorrenti. Nel tema «Liquid Glass» quasi tutti diventano tinte piatte o sfumature morbide
+/// (i colori vengono da `Colori`, che seguono l'aspetto chiaro o scuro): i nomi restano quelli di prima.
 enum Gradienti {
-    /// --apple-bezel: pulsanti di vetro e segmenti non premuti.
-    static let vetro = LinearGradient.verticale([
-        (Color(hex: "#fdfdfd"), 0), (Color(hex: "#fafafa"), 0.42),
-        (Color(hex: "#efefef"), 0.60), (Color(hex: "#e5e5e5"), 1),
-    ])
+    /// Pulsanti di vetro e segmenti non premuti: il chip del tema, appena più chiaro in alto.
+    static let vetro = LinearGradient.verticale(Tema.Colore.chipSopra, Tema.Colore.chip)
 
     static let barra = LinearGradient.verticale(Colori.Barra.sfondoAlto, Colori.Barra.sfondoBasso)
 
-    static let avatarUtente = LinearGradient.verticale(Color(hex: "#f7f7f7"), Color(hex: "#c0c4c8"))
+    /// Avatar del consulente nella barra (.me del tema).
+    static let avatarUtente = LinearGradient.verticale(Color(hex: "#8FB3CF"), Color(hex: "#36607F"))
 
-    /// Velo sopra lo sfondo della scrivania: linear-gradient(110deg, …).
+    /// Ex velo sopra la foto della scrivania: ora trasparente (lo sfondo è l'acqua).
     static let veloSfondo = LinearGradient(
         colors: [Colori.Sfondo.veloInizio, Colori.Sfondo.veloFine],
         startPoint: UnitPoint(x: 0.03, y: 0.33), endPoint: UnitPoint(x: 0.97, y: 0.67)
@@ -43,7 +42,7 @@ enum Gradienti {
     static let data = LinearGradient.verticale(Colori.Colonna.dataAlto, Colori.Colonna.dataBasso)
     static let dataMese = LinearGradient.verticale(Colori.Colonna.dataMeseAlto, Colori.Colonna.dataMeseBasso)
     static let lino = LinearGradient.verticale(Colori.Lino.alto, Colori.Lino.basso)
-    /// --prisma-leather: la base della pelle; sopra vanno la puntinatura, il riflesso e la grana.
+    /// Ex pelle: nel tema è trasparente (vedi Materiale.Pelle).
     static let pelle = LinearGradient.verticale([
         (Colori.Colonna.pelleAlto, 0), (Colori.Colonna.pelleMezzo, 0.46), (Colori.Colonna.pelleBasso, 1),
     ])
@@ -52,11 +51,8 @@ enum Gradienti {
     static let pannelloWidget = LinearGradient.verticale(Colori.Widget.pannelloAlto, Colori.Widget.pannelloBasso)
     static let casella = LinearGradient.verticale(Colori.Colonna.casellaAlto, Colori.Colonna.casellaBasso)
 
-    /// Ripiano del dock.
-    static let ripiano = LinearGradient.verticale([
-        (Color(r: 232, g: 237, b: 241, a: 0.62), 0), (Color(r: 190, g: 198, b: 205, a: 0.52), 0.45),
-        (Color(r: 139, g: 152, b: 163, a: 0.65), 0.85), (Color(r: 239, g: 242, b: 245, a: 0.85), 1),
-    ])
+    /// Ex ripiano del dock: il vetro sottile del tema (riempimento senza materiali).
+    static let ripiano = LinearGradient.verticale(Colori.Dock.ripianoFondo, Colori.Dock.ripianoFondo)
 
     static let divisoreDock = LinearGradient.verticale([
         (Color.clear, 0), (Colori.Dock.divisoreMezzo, 0.5), (Colori.Dock.divisoreBasso, 1),
@@ -84,7 +80,7 @@ enum Gradienti {
         .verticale(t.alto, t.basso)
     }
 
-    /// Pulsanti dei semafori: radial-gradient(at 50% 88%, …).
+    /// Pulsanti dei semafori: radial-gradient(at 50% 88%, …) (nel tema i tre colori sono uguali: tinta piatta).
     static func semaforo(_ colori: [Color], fermate: (CGFloat, CGFloat, CGFloat), lato: CGFloat) -> RadialGradient {
         RadialGradient(
             gradient: Gradient(stops: [
@@ -120,10 +116,8 @@ enum Gradienti {
     static let aqua = LinearGradient.lucido(Colori.Rubrica.aqua, salto: (0.48, 0.49))
 
     static let railAnalisi = LinearGradient.verticale(Colori.Analisi.railAlto, Colori.Analisi.railBasso)
-    /// --prisma-lion-control
-    static let controlloLion = LinearGradient.verticale([
-        (Color.white, 0), (Color(hex: "#f5f5f5"), 0.48), (Color(hex: "#dedede"), 0.49), (Color(hex: "#efefef"), 1),
-    ])
+    /// Fondo dei segmenti delle analisi: il pozzetto del tema.
+    static let controlloLion = LinearGradient.verticale(Tema.Colore.pozzetto, Tema.Colore.pozzetto)
     static let segAnalisiAttivo = LinearGradient.verticale(Colori.Analisi.segAttivoAlto, Colori.Analisi.segAttivoBasso)
     static let navAnalisi = LinearGradient.verticale(Colori.Analisi.navAlto, Colori.Analisi.navBasso)
     static let kpi = LinearGradient.verticale(Colori.Analisi.kpiAlto, Colori.Analisi.kpiBasso)
@@ -153,7 +147,7 @@ enum Gradienti {
         (Colori.Agenda.cuoioAlto, 0), (Colori.Agenda.cuoioMezzo, 0.48), (Colori.Agenda.cuoioBasso, 1),
     ])
     static let targhettaRossa = LinearGradient.verticale(Colori.Agenda.targhettaRossoAlto, Colori.Agenda.targhettaRossoBasso)
-    /// --apple-2011-paper: bordi appena più scuri ai lati.
+    /// Ex carta dell'Agenda: la scheda del tema.
     static let cartaAgenda = LinearGradient(stops: [
         .init(color: Colori.Agenda.cartaBordo, location: 0), .init(color: Colori.Agenda.carta, location: 0.03),
         .init(color: Colori.Agenda.carta, location: 0.98), .init(color: Colori.Agenda.cartaBordo, location: 1),
@@ -202,7 +196,7 @@ enum Gradienti {
     static let testataAttivita = LinearGradient.verticale(Colori.Attivita.testataAlto, Colori.Attivita.testataBasso)
     static let progressoAttivita = LinearGradient.verticale(Colori.Attivita.progressoAlto, Colori.Attivita.progressoBasso)
     static let metalloAttivita = LinearGradient.verticale(Colori.Attivita.metalloAlto, Colori.Attivita.metalloBasso)
-    static let spunta = LinearGradient.verticale(Colori.Attivita.spuntaAlto, .white)
+    static let spunta = LinearGradient.verticale(Colori.Attivita.spuntaAlto, Colori.Attivita.spuntaAlto)
     static let spuntaFatta = LinearGradient.verticale(Colori.Attivita.spuntaFattaAlto, Colori.Attivita.spuntaFattaBasso)
     static let dettaglioAttivita = LinearGradient(stops: [
         .init(color: Colori.Attivita.dettaglioAlto, location: 0), .init(color: Colori.Attivita.dettaglioFondo, location: 0.05),

@@ -127,10 +127,18 @@ struct Impostazioni: Codable, Equatable {
     var guidaNascosta = false
     /// Dimensione dei testi dell'interfaccia (si applica all'avvio).
     var dimensioneTesto = DimensioneTesto.normale
+    /// Aspetto dell'interfaccia: segue il Mac, sempre chiaro o sempre scuro (i PDF restano chiari).
+    var aspetto = AspettoInterfaccia.automatico
+    /// Lo sfondo d'acqua della scrivania si muove (no = «Sfondo fermo»).
+    var sfondoAnimato = true
+    /// Quanta pioggia cade sull'acqua della scrivania.
+    var pioggia = IntensitaPioggia.leggera
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto }
+    private enum CodingKeys: String, CodingKey {
+        case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -143,6 +151,49 @@ struct Impostazioni: Codable, Equatable {
         pdf = (try? c.decodeIfPresent(ImpostazioniPDF.self, forKey: .pdf)) ?? ImpostazioniPDF()
         guidaNascosta = (try? c.decodeIfPresent(Bool.self, forKey: .guidaNascosta)) ?? false
         dimensioneTesto = (try? c.decodeIfPresent(DimensioneTesto.self, forKey: .dimensioneTesto)) ?? .normale
+        // Impostazioni del tema: gli archivi di prima non le hanno
+        aspetto = (try? c.decodeIfPresent(AspettoInterfaccia.self, forKey: .aspetto)) ?? .automatico
+        sfondoAnimato = (try? c.decodeIfPresent(Bool.self, forKey: .sfondoAnimato)) ?? true
+        pioggia = (try? c.decodeIfPresent(IntensitaPioggia.self, forKey: .pioggia)) ?? .leggera
+    }
+}
+
+/// Aspetto dell'interfaccia (Impostazioni → Aspetto).
+enum AspettoInterfaccia: String, Codable, CaseIterable, Identifiable {
+    case automatico, chiaro, scuro
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .automatico: return "Automatico"
+        case .chiaro: return "Chiaro"
+        case .scuro: return "Scuro"
+        }
+    }
+}
+
+/// Quanta pioggia cade sull'acqua della scrivania.
+enum IntensitaPioggia: String, Codable, CaseIterable, Identifiable {
+    case leggera, media, forte
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .leggera: return "Leggera"
+        case .media: return "Media"
+        case .forte: return "Forte"
+        }
+    }
+
+    /// Forza della pioggia per lo sfondo animato (come FORZE nel prototipo approvato).
+    var forza: Double {
+        switch self {
+        case .leggera: return 0.14
+        case .media: return 0.3
+        case .forte: return 0.55
+        }
     }
 }
 

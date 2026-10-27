@@ -12,8 +12,8 @@ extension Misure.Rubrica {
 }
 
 extension Misure.Pulsante {
-    /// Altezza del pulsante aqua; anche il cuoio chiaro che gli sta accanto.
-    static let altezzaAqua: CGFloat = 28
+    /// Altezza del pulsante principale dell'intestazione (pulsante piccolo del tema); anche quello che gli sta accanto.
+    static let altezzaAqua: CGFloat = Tema.Misura.pulsantePiccolo
 }
 
 extension Misure.Strumenti {
@@ -38,10 +38,10 @@ extension Misure {
 
 extension Tipo {
     /// Schede del dossier nelle finestre strette (.clients-tabs button a 520 px: 10 px).
-    static let schedaRubricaStretta = Tipo.contenuto(10, .bold)
+    static let schedaRubricaStretta = Tipo.contenuto(10.5, .semibold)
 }
 
 extension Colori.Scrivania {
-    /// Indicazioni in fondo alla scrivania: più piene di .os-desktop-foot per leggerle sul lino.
-    static let piedeLeggibile = Color(r: 227, g: 239, b: 245, a: 0.9)
+    /// Indicazioni in fondo alla scrivania, direttamente sullo sfondo d'acqua (piede del tema).
+    static let piedeLeggibile = Tema.Colore.inchiostroSfondoSecondario
 }

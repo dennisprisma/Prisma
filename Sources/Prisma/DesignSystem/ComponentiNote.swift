@@ -1,81 +1,82 @@
 import SwiftUI
 import AppKit
 
-// App Note (.os-app-notes del template): il blocco giallo di iOS con la rilegatura in cuoio
-// cucito, l'indice delle note a sinistra e la pagina a righe con il margine rosso.
+// App Note nel tema Liquid Glass: l'indice delle note a sinistra sul vetro della barra laterale,
+// la nota su una scheda chiara con righe appena accennate, i pulsanti in capsula di vetro.
 
 extension Colori {
     enum Note {
-        static let fondoAlto = Color(hex: "#e5e1d8")
-        static let fondoBasso = Color(hex: "#d6d1c6")
-        static let taccuinoBordo = Color(hex: "#4c3320")
-        static let taccuinoOmbra1 = Color(hex: "#f7e8ba")
-        static let taccuinoOmbra2 = Color(hex: "#b4a070")
-        static let taccuinoOmbra3 = Color(hex: "#806d46")
-        static let taccuinoOmbra4 = Color(r: 57, g: 38, b: 13, a: 0.34)
-        // Rilegatura (--ios5-binding)
-        static let cuoioAlto = Color(hex: "#765842")
-        static let cuoioMezzo = Color(hex: "#5b3c2b")
-        static let cuoioBasso = Color(hex: "#422919")
-        static let cuoioBordo = Color(hex: "#382316")
-        static let cuoioLuce = Color(hex: "#b89777")
-        static let cuoioTesto = Color(hex: "#f1dfbe")
-        static let cuoioIncisione = Color(hex: "#2b190c")
-        static let cucitura = Color(hex: "#d6b286")
-        static let cucituraOmbra = Color(hex: "#281606")
-        static let contatore = Color(r: 93, g: 66, b: 42, a: 0.47)
-        static let contatoreBordo = Color(r: 77, g: 53, b: 31, a: 0.54)
-        static let stato = Color(hex: "#e0ccaa")
-        static let statoModificato = Color(hex: "#ffe89f")
-        // Pulsanti in cuoio scuro (--ios5-button-bg)
-        static let pulsanteAlto = Color(hex: "#947253")
-        static let pulsanteMezzoAlto = Color(hex: "#725039")
-        static let pulsanteMezzoBasso = Color(hex: "#583a27")
-        static let pulsanteBasso = Color(hex: "#78543a")
-        static let pulsanteBordo = Color(hex: "#342116")
-        static let pulsanteTesto = Color(hex: "#f6e7cb")
-        static let pulsanteFissato = Color(hex: "#ffd982")
+        // Fondo dell'app: il vetro della finestra
+        static let fondoAlto = Color.clear
+        static let fondoBasso = Color.clear
+        static let taccuinoBordo = Tema.Colore.bordoScheda
+        static let taccuinoOmbra1 = Color.clear
+        static let taccuinoOmbra2 = Color.clear
+        static let taccuinoOmbra3 = Color.clear
+        static let taccuinoOmbra4 = Color(r: 8, g: 40, b: 60, a: 0.1)
+        // Testate (erano la rilegatura in cuoio)
+        static let cuoioAlto = Color.clear
+        static let cuoioMezzo = Color.clear
+        static let cuoioBasso = Color.clear
+        static let cuoioBordo = Tema.Colore.separatore
+        static let cuoioLuce = Color.clear
+        static let cuoioTesto = Tema.Colore.inchiostro
+        static let cuoioIncisione = Color.clear
+        static let cucitura = Color.clear
+        static let cucituraOmbra = Color.clear
+        static let contatore = Tema.Colore.pozzetto
+        static let contatoreBordo = Color.clear
+        static let stato = Tema.Colore.inchiostroSecondario
+        static let statoModificato = Tema.Colore.testoProposta
+        // Pulsanti (capsule di vetro)
+        static let pulsanteAlto = Tema.Colore.chip
+        static let pulsanteMezzoAlto = Tema.Colore.chip
+        static let pulsanteMezzoBasso = Tema.Colore.chip
+        static let pulsanteBasso = Tema.Colore.chip
+        static let pulsanteBordo = Tema.Colore.bordoChip
+        static let pulsanteTesto = Tema.Colore.inchiostro
+        static let pulsanteFissato = Tema.Colore.testoProposta
         // Indice
-        static let indiceSinistra = Color(hex: "#eed99a")
-        static let indiceCentro = Color(hex: "#fff0b6")
-        static let indiceDestra = Color(hex: "#b9a46d")
-        static let indiceBordo = Color(hex: "#a48b51")
-        static let campo = Color(hex: "#fff9df")
-        static let campoBordo = Color(hex: "#d7c794")
-        static let voceTesto = Color(hex: "#463b26")
-        static let voceSecondario = Color(hex: "#776443")
-        static let voceBordo = Color(r: 199, g: 175, b: 112, a: 0.5)
-        static let voceLuce = Color(r: 255, g: 255, b: 255, a: 0.6)
-        static let voceFondo = Color(r: 255, g: 243, b: 182, a: 0.1)
-        static let selezioneAlto = Color(hex: "#f3d87c")
-        static let selezioneBasso = Color(hex: "#e6bd4b")
-        static let selezioneTesto = Color(hex: "#463215")
-        static let selezioneLuce = Color(hex: "#fff0b5")
-        static let selezioneBordo = Color(hex: "#b58c29")
-        static let fissata = Color(hex: "#b48a37")
-        static let piedeIndice = Color(hex: "#927943")
-        static let piedeIndiceBordo = Color(hex: "#c6b277")
+        static let indiceSinistra = Tema.Colore.laterale
+        static let indiceCentro = Tema.Colore.laterale
+        static let indiceDestra = Tema.Colore.laterale
+        static let indiceBordo = Tema.Colore.separatore
+        static let campo = Tema.Colore.pozzetto
+        static let campoBordo = Tema.Colore.separatore
+        static let voceTesto = Tema.Colore.inchiostro
+        static let voceSecondario = Tema.Colore.inchiostroSecondario
+        static let voceBordo = Tema.Colore.separatore
+        static let voceLuce = Color.clear
+        static let voceFondo = Color.clear
+        static let selezioneAlto = Tema.Colore.selezione
+        static let selezioneBasso = Tema.Colore.selezione
+        static let selezioneTesto = Tema.Colore.inchiostro
+        static let selezioneLuce = Color.clear
+        static let selezioneBordo = Color.clear
+        static let fissata = Tema.Colore.arancio
+        static let piedeIndice = Tema.Colore.inchiostroTerziario
+        static let piedeIndiceBordo = Tema.Colore.separatore
         // Pagina
-        static let paginaSinistra = Color(r: 200, g: 170, b: 92, a: 0.4)
-        static let paginaChiara = Color(hex: "#fff3b7")
-        static let paginaCentro = Color(hex: "#fff5c4")
-        static let paginaDestra = Color(hex: "#eee0a6")
-        static let paginaOmbra = Color(r: 114, g: 86, b: 23, a: 0.35)
-        static let margine1 = Color(r: 206, g: 114, b: 112, a: 0.38)
-        static let margine2 = Color(r: 206, g: 114, b: 112, a: 0.3)
-        static let righe = Color(r: 135, g: 156, b: 156, a: 0.31)
-        static let lineaCliente = Color(hex: "#c9b36d")
-        static let etichetta = Color(hex: "#806b36")
-        static let collegamento = Color(hex: "#655127")
-        static let titolo = Color(hex: "#302717")
-        static let testo = Color(hex: "#443420")
-        static let segnaposto = Color(hex: "#b4a064")
-        static let azioniAlto = Color(hex: "#f8eabe")
-        static let azioniBasso = Color(hex: "#e6d18c")
-        static let azioniBordo = Color(hex: "#bba160")
-        static let vuotoIcona = Color(hex: "#c9b474")
-        static let vuotoTitolo = Color(hex: "#ab9456")
-        static let vuotoTesto = Color(hex: "#baa76e")
+        static let paginaSinistra = Tema.Colore.scheda
+        static let paginaChiara = Tema.Colore.scheda
+        static let paginaCentro = Tema.Colore.scheda
+        static let paginaDestra = Tema.Colore.scheda
+        static let paginaOmbra = Color.clear
+        static let margine1 = Color(r: 255, g: 59, b: 48, a: 0.22)
+        static let margine2 = Color(r: 255, g: 59, b: 48, a: 0.14)
+        static let righe = Tema.Colore.separatore
+        static let lineaCliente = Tema.Colore.separatore
+        static let etichetta = Tema.Colore.inchiostroSecondario
+        static let collegamento = Tema.Colore.link
+        static let titolo = Tema.Colore.inchiostro
+        static let testo = Tema.Colore.inchiostro
+        static let segnaposto = Tema.Colore.inchiostroTerziario
+        static let azioniAlto = Color.clear
+        static let azioniBasso = Color.clear
+        static let azioniBordo = Tema.Colore.separatore
+        static let vuotoIcona = Tema.Colore.inchiostroTerziario
+        static let vuotoTitolo = Tema.Colore.inchiostroSecondario
+        static let vuotoTesto = Tema.Colore.inchiostroTerziario
     }
 }
 
@@ -100,84 +101,74 @@ extension Gradienti {
 extension Misure {
     enum Note {
         static let indice: CGFloat = 235
-        static let raggio: CGFloat = 5
-        static let etichetta = EdgeInsets(top: 17, leading: 18, bottom: 16, trailing: 18)
-        static let barra = EdgeInsets(top: 12, leading: 20, bottom: 14, trailing: 20)
+        static let raggio: CGFloat = Tema.Raggio.scheda
+        static let etichetta = EdgeInsets(top: 14, leading: 16, bottom: 12, trailing: 16)
+        static let barra = EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
         static let campoAltezza: CGFloat = 30
-        static let voce = EdgeInsets(top: 13, leading: 16, bottom: 13, trailing: 16)
+        static let voce = EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
         static let carta = EdgeInsets(top: 15, leading: 45, bottom: 12, trailing: 29)
         static let margine: CGFloat = 32
-        static let riga: CGFloat = 30
-        /// Altezza di una riga di testo in Noteworthy 16 come la misura l'editor (NSLayoutManager):
+        /// Corpo del testo della nota (15, come nel tema) e passo delle righe (15 × 1,6).
+        static let corpoTesto: CGFloat = 15
+        static let riga: CGFloat = 24
+        /// Altezza di una riga di testo nel carattere della nota come la misura l'editor (NSLayoutManager):
         /// con l'interlinea ogni riga è alta `riga` e il testo resta sulle righe della pagina.
         static let altezzaTesto: CGFloat = {
-            let f = NSFont(name: "Noteworthy-Light", size: 16) ?? .systemFont(ofSize: 16)
+            let f = NSFont.systemFont(ofSize: Misure.Note.corpoTesto)
             return NSLayoutManager().defaultLineHeight(for: f)
         }()
         static let interlinea: CGFloat = max(0, riga - altezzaTesto)
         /// La prima riga della pagina, appena sotto la prima riga di testo.
         static let primaRiga: CGFloat = altezzaTesto + 2
-        static let azioni = EdgeInsets(top: 12, leading: 26, bottom: 13, trailing: 20)
-        static let avatar: CGFloat = 27
+        static let azioni = EdgeInsets(top: 10, leading: 26, bottom: 10, trailing: 20)
+        static let avatar: CGFloat = 24
         static let minimaPagina: CGFloat = 340
+        /// Pulsanti in capsula della barra della pagina.
+        static let pulsante = EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)
     }
 }
 
 extension Tipo {
-    static let noteEtichetta = Tipo.sistema(12, .bold)
-    static let noteContatore = Tipo.sistema(10, .bold)
-    static let noteVoceTitolo = Tipo.sistema(14, .bold)
-    static let noteVoceTesto = Tipo.sistema(11)
-    static let noteVoceData = Tipo.sistema(9)
-    static let notePiede = Tipo.sistema(10)
-    static let noteStato = Tipo.sistema(10)
-    static let notePulsante = Tipo.sistema(11, .semibold)
-    static let notePer = Tipo.sistema(8, .medium)
-    static let noteCliente = Tipo.sistema(11, .semibold)
-    static let noteCollegamento = Tipo.sistema(10)
-    static let noteTitolo = Font.custom("Noteworthy-Bold", fixedSize: 26)
-    static let noteTesto = Font.custom("Noteworthy-Light", fixedSize: 16)
-    static let notePiedePagina = Tipo.sistema(8, .medium)
-    static let noteDidascalia = Tipo.sistema(9)
-    static let noteVuotoIcona = Tipo.sistema(50)
-    static let noteVuotoTitolo = Font.custom("Georgia", fixedSize: 25)
-    static let noteVuotoTesto = Tipo.sistema(12)
+    static let noteEtichetta = Tema.Testo.sf(12, .semibold)
+    static let noteContatore = Tema.Testo.sf(11, .semibold)
+    static let noteVoceTitolo = Tema.Testo.sf(13, .semibold)
+    static let noteVoceTesto = Tema.Testo.sf(12)
+    static let noteVoceData = Tema.Testo.sf(11.5)
+    static let notePiede = Tema.Testo.sf(11.5)
+    static let noteStato = Tema.Testo.sf(11.5)
+    static let notePulsante = Tema.Testo.sf(12.5, .medium)
+    static let notePer = Tema.Testo.sf(10.5, .semibold)
+    static let noteCliente = Tema.Testo.sf(12, .semibold)
+    static let noteCollegamento = Tema.Testo.sf(12)
+    static let noteTitolo = Tema.Testo.titoloNota
+    /// Il testo della nota: corpo fisso, perché le righe della pagina si contano su questo carattere.
+    static let noteTesto = Font.system(size: Misure.Note.corpoTesto)
+    static let notePiedePagina = Tema.Testo.sf(11, .medium)
+    static let noteDidascalia = Tema.Testo.sf(11.5)
+    static let noteVuotoIcona = Tema.Testo.sf(50)
+    static let noteVuotoTitolo = Tema.Testo.sf(19, .bold)
+    static let noteVuotoTesto = Tema.Testo.sf(13)
 }
 
-/// Pulsante in cuoio scuro della barra della pagina (.notes-sheet-toolbar .os-btn).
+/// Pulsante della barra della pagina: capsula di vetro (.btn); `evidenziato` (nota fissata) in ambra.
 struct StileCuoioNote: ButtonStyle {
     var evidenziato = false
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Tipo.notePulsante)
-            .foregroundColor(evidenziato ? Colori.Note.pulsanteFissato : Colori.Note.pulsanteTesto)
-            .incisione(Colori.Note.cuoioIncisione, y: -1)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).fill(Gradienti.pulsanteNote))
-            .luceInterna(Colori.Note.cuoioLuce.opacity(0.6), raggio: Misure.Pulsante.raggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).strokeBorder(Colori.Note.pulsanteBordo, lineWidth: 1))
-            .brightness(configuration.isPressed ? -0.08 : 0)
-            .contentShape(Rectangle())
+        CorpoPulsante(etichetta: configuration.label
+                        .font(Tipo.notePulsante)
+                        .foregroundColor(evidenziato ? Colori.Note.pulsanteFissato : Colori.Note.pulsanteTesto),
+                      aspetto: .vetro, premuto: configuration.isPressed, margine: Misure.Note.pulsante)
     }
 }
 
-/// Cuoio della rilegatura con la cucitura tratteggiata in basso.
+/// Testata dell'indice e della pagina (era la rilegatura in cuoio): trasparente sul vetro, filo sotto.
 struct CuoioNote: View {
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Gradienti.cuoioNote
-            Materiale.Trama(nome: "Grana")
-            Rectangle()
-                .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                .foregroundColor(Colori.Note.cucitura.opacity(0.85))
-                .frame(height: 0.5)
-                .shadow(color: Colori.Note.cucituraOmbra, radius: 0, x: 0, y: 1)
-                .padding(.bottom, 5)
-        }
-        .luceInterna(Colori.Note.cuoioLuce)
-        .bordoBasso(Colori.Note.cuoioBordo)
+        Color.clear
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Colori.Note.cuoioBordo).frame(height: Tema.Misura.filo)
+            }
     }
 }
 
