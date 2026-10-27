@@ -111,6 +111,9 @@ enum ProvaCarico {
         print("INFO Agenda: mese raggruppato in \(secondi(agenda))")
         controlla(uguali, "Agenda: mese raggruppato uguale al calcolo giorno per giorno")
 
+        // Promemoria del Mac: date e testi (calcolo puro, senza il Centro notifiche di macOS)
+        for (ok, descrizione) in ProvaPromemoria.verifiche() { controlla(ok, descrizione) }
+
         // Memoria
         let mb = memoriaMB()
         print("INFO Memoria occupata: \(Int(mb)) MB")

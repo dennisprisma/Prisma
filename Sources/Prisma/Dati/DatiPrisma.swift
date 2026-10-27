@@ -133,11 +133,14 @@ struct Impostazioni: Codable, Equatable {
     var sfondoAnimato = true
     /// Quanta pioggia cade sull'acqua della scrivania.
     var pioggia = IntensitaPioggia.leggera
+    /// Promemoria nel Centro notifiche del Mac (spenti finché non li accendi).
+    var promemoria = ImpostazioniPromemoria()
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
+        case promemoria
     }
 
     init(from decoder: Decoder) throws {
@@ -155,6 +158,8 @@ struct Impostazioni: Codable, Equatable {
         aspetto = (try? c.decodeIfPresent(AspettoInterfaccia.self, forKey: .aspetto)) ?? .automatico
         sfondoAnimato = (try? c.decodeIfPresent(Bool.self, forKey: .sfondoAnimato)) ?? true
         pioggia = (try? c.decodeIfPresent(IntensitaPioggia.self, forKey: .pioggia)) ?? .leggera
+        // Promemoria del Mac: gli archivi di prima non li hanno
+        promemoria = (try? c.decodeIfPresent(ImpostazioniPromemoria.self, forKey: .promemoria)) ?? ImpostazioniPromemoria()
     }
 }
 
@@ -263,6 +268,51 @@ struct ImpostazioniPDF: Codable, Equatable {
     static let lunghezzaMinima = 6
 }
 
+/// Promemoria nel Centro notifiche del Mac: appuntamenti, attività, scadenze delle posizioni e compleanni.
+/// Spenti di partenza: il permesso di macOS si chiede solo quando li accendi. Letti con tolleranza
+/// (gli archivi di prima non li hanno); il permesso di macOS non sta nell'archivio.
+struct ImpostazioniPromemoria: Codable, Equatable {
+    var attivi = false
+    var appuntamenti = true
+    var attivita = true
+    var scadenze = true
+    var compleanni = true
+    /// Quanti minuti prima dell'inizio arriva il promemoria di un appuntamento.
+    var anticipoMinuti = 30
+    /// Il nome del cliente nel promemoria (spento: solo l'ora e cosa fare).
+    var nomiClienti = true
+
+    /// Gli anticipi che si possono scegliere.
+    static let anticipi = [15, 30, 60]
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case attivi, appuntamenti, attivita, scadenze, compleanni, anticipoMinuti, nomiClienti
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        attivi = (try? c.decodeIfPresent(Bool.self, forKey: .attivi)) ?? false
+        appuntamenti = (try? c.decodeIfPresent(Bool.self, forKey: .appuntamenti)) ?? true
+        attivita = (try? c.decodeIfPresent(Bool.self, forKey: .attivita)) ?? true
+        scadenze = (try? c.decodeIfPresent(Bool.self, forKey: .scadenze)) ?? true
+        compleanni = (try? c.decodeIfPresent(Bool.self, forKey: .compleanni)) ?? true
+        let anticipo = (try? c.decodeIfPresent(Int.self, forKey: .anticipoMinuti)) ?? 30
+        anticipoMinuti = ImpostazioniPromemoria.anticipi.contains(anticipo) ? anticipo : 30
+        nomiClienti = (try? c.decodeIfPresent(Bool.self, forKey: .nomiClienti)) ?? true
+    }
+
+    /// «15 minuti», «30 minuti», «1 ora».
+    static func nomeAnticipo(_ minuti: Int) -> String {
+        if minuti >= 60, minuti % 60 == 0 {
+            let ore = minuti / 60
+            return ore == 1 ? "1 ora" : "\(ore) ore"
+        }
+        return "\(minuti) minuti"
+    }
+}
+
 /// Impostazioni di Eve (comprese nel backup).
 struct ImpostazioniEve: Codable, Equatable {
     /// Quando Eve risponde anche a voce.
@@ -331,6 +381,13 @@ struct ImpostazioniBackup: Codable, Equatable {
     /// L'ultimo tentativo e l'errore dell'ultimo backup non riuscito (disco scollegato, cartella piena…).
     var ultimoTentativo: Date?
     var ultimoErrore: String?
+    /// I backup si proteggono con una password (che sta nel Portachiavi del Mac, mai qui).
+    /// Opzionale: gli archivi di prima non hanno il campo e si leggono lo stesso.
+    var protetto: Bool?
+
+    /// true se i nuovi backup vanno protetti con la password.
+    var cifrato: Bool { protetto == true }
+    static let lunghezzaMinimaPassword = 8
 
     /// true se l'ultimo backup riuscito ha più di 8 giorni (o non c'è): va segnalato.
     var inRitardo: Bool {

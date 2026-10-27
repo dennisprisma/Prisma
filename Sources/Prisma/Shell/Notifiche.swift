@@ -242,3 +242,152 @@ extension StatoShell {
         }
     }
 }
+
+// MARK: - Promemoria del Mac
+
+/// Un promemoria per il Centro notifiche del Mac, ricavato dai dati come le notifiche qui sopra.
+/// Calcolo puro, senza UserNotifications: lo controlla `ProvaPromemoria`, lo consegna `PromemoriaMac`.
+/// Nei testi niente cifre patrimoniali: il nome del cliente (se scelto) e cosa fare.
+struct PromemoriaPianificato: Equatable {
+    /// Comincia con «prisma-» e contiene la data: se un appuntamento si sposta l'id cambia e il vecchio si toglie.
+    let id: String
+    let titolo: String
+    let corpo: String
+    /// Raggruppa i promemoria nel Centro notifiche: agenda, attivita, posizioni, clienti.
+    let gruppo: String
+    /// Quando arriva.
+    let data: Date
+    /// Dove porta il clic.
+    let destinazione: DestinazioneRicerca?
+}
+
+extension MotoreNotifiche {
+    /// Gli identificativi dei promemoria di Prisma nel Centro notifiche.
+    static let prefissoPromemoria = "prisma-"
+    /// macOS tiene al massimo 64 promemoria in sospeso per app: Prisma pianifica i 50 più vicini.
+    static let massimoPromemoria = 50
+    /// Attività, scadenze e compleanni arrivano a quest'ora del giorno.
+    static let oraPromemoria = 9
+    /// Le scadenze delle posizioni in essere: 30 e 7 giorni prima e il giorno stesso.
+    static let giorniPrimaScadenza = [30, 7, 0]
+
+    /// I promemoria futuri (dopo `adesso`), dal più vicino, al massimo `massimoPromemoria`.
+    /// Guarda tutti i clienti (non solo quello della modalità cliente) e non legge `impostazioni.attivi`:
+    /// se e quando consegnarli lo decide chi chiama.
+    static func promemoria(_ dati: DatiPrisma, impostazioni: ImpostazioniPromemoria,
+                           adesso: Date = Date(), cal: Calendar = .current) -> [PromemoriaPianificato] {
+        let scelte = impostazioni
+        let nomi = Dictionary(dati.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
+        func nome(_ id: String) -> String? {
+            guard let n = nomi[id], !n.isEmpty else { return nil }
+            return n
+        }
+        func allOra(_ giorno: Date) -> Date? {
+            cal.date(bySettingHour: oraPromemoria, minute: 0, second: 0, of: giorno)
+        }
+        func epoca(_ d: Date) -> Int { Int(d.timeIntervalSince1970) }
+        let dettagli = "apri Prisma per i dettagli"
+        var elenco: [PromemoriaPianificato] = []
+
+        // Appuntamenti ancora da fare: qualche minuto prima dell'inizio
+        if scelte.appuntamenti {
+            let anticipo = ImpostazioniPromemoria.nomeAnticipo(scelte.anticipoMinuti)
+            for a in dati.appuntamenti where a.stato == .pianificato {
+                let quando = Appuntamento.alMinuto(a.inizio.addingTimeInterval(-TimeInterval(scelte.anticipoMinuti * 60)))
+                guard quando > adesso else { continue }
+                let ora = Formati.ora.string(from: a.inizio)
+                let cosa = a.titolo.trimmingCharacters(in: .whitespacesAndNewlines)
+                let titolo: String
+                let corpo: String
+                if scelte.nomiClienti {
+                    titolo = "Alle \(ora) · \(cosa.isEmpty ? a.tipo.nome : cosa)"
+                    corpo = ["Tra \(anticipo)", nome(a.clienteId) ?? "", a.luogo.trimmingCharacters(in: .whitespacesAndNewlines)]
+                        .filter { !$0.isEmpty }.joined(separator: " · ")
+                } else {
+                    titolo = "Appuntamento alle \(ora)"
+                    corpo = "Tra \(anticipo) · \(dettagli)"
+                }
+                elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)appuntamento-\(a.id)-\(epoca(quando))",
+                                                    titolo: titolo, corpo: corpo, gruppo: "agenda",
+                                                    data: quando, destinazione: .appuntamento(a.id)))
+            }
+        }
+        // Attività da fare: la mattina del giorno di scadenza
+        if scelte.attivita {
+            for t in dati.attivita where !t.completata {
+                guard let quando = allOra(cal.startOfDay(for: t.scadenza)), quando > adesso else { continue }
+                let cosa = t.titolo.trimmingCharacters(in: .whitespacesAndNewlines)
+                let titolo: String
+                var parti: [String] = []
+                if scelte.nomiClienti {
+                    titolo = cosa.isEmpty ? "Un'attività da fare oggi" : cosa
+                    if let n = nome(t.clienteId) {
+                        parti = [n, "da fare oggi"]
+                    } else {
+                        parti = ["Da fare oggi"]
+                    }
+                } else {
+                    titolo = "Un'attività da fare oggi"
+                    parti = ["Apri Prisma per i dettagli"]
+                }
+                if t.priorita == .alta { parti.append("priorità alta") }
+                elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)attivita-\(t.id)-\(epoca(quando))",
+                                                    titolo: titolo, corpo: parti.joined(separator: " · "), gruppo: "attivita",
+                                                    data: quando, destinazione: .attivita(t.id)))
+            }
+        }
+        // Posizioni in essere che scadono: il capitale da reinvestire, la copertura da rinnovare
+        if scelte.scadenze {
+            for p in dati.posizioni where p.stato == .inEssere {
+                guard let scadenza = p.scadenza else { continue }
+                let giornoScadenza = cal.startOfDay(for: scadenza)
+                for giorni in giorniPrimaScadenza {
+                    guard let giorno = cal.date(byAdding: .day, value: -giorni, to: giornoScadenza),
+                          let quando = allOra(giorno), quando > adesso else { continue }
+                    let fra = giorni == 0 ? "scade oggi" : "scade tra \(giorni) giorni"
+                    let cosa = p.nome.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let titolo: String
+                    let corpo: String
+                    if scelte.nomiClienti {
+                        titolo = "\(cosa.isEmpty ? "Una posizione" : cosa) \(fra)"
+                        corpo = [nome(p.clienteId) ?? "", p.canale.nomeBreve, Formati.dataEstesa.string(from: scadenza)]
+                            .filter { !$0.isEmpty }.joined(separator: " · ")
+                    } else {
+                        titolo = "Una posizione \(fra)"
+                        corpo = "\(p.canale.nomeBreve) · \(dettagli)"
+                    }
+                    elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)scadenza-\(p.id)-\(giorni)-\(epoca(scadenza))",
+                                                        titolo: titolo, corpo: corpo, gruppo: "posizioni",
+                                                        data: quando, destinazione: .posizione(p.id)))
+                }
+            }
+        }
+        // Compleanni dei clienti: la mattina del giorno
+        if scelte.compleanni {
+            let oggi = cal.startOfDay(for: adesso)
+            for c in dati.clienti {
+                guard let nascita = c.dataNascita, let giorno = prossimoCompleanno(nascita, da: oggi, cal: cal),
+                      let quando = allOra(giorno), quando > adesso else { continue }
+                let anno = cal.component(.year, from: giorno)
+                let anni = anno - cal.component(.year, from: nascita)
+                guard anni > 0 else { continue }
+                let titolo = scelte.nomiClienti && !c.nome.isEmpty ? "Oggi \(c.nome) compie \(anni) anni" : "Oggi un cliente compie gli anni"
+                let corpo = scelte.nomiClienti ? "Un pensiero fa piacere" : "Apri Prisma per vedere chi"
+                elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)compleanno-\(c.id)-\(anno)",
+                                                    titolo: titolo, corpo: corpo, gruppo: "clienti",
+                                                    data: quando, destinazione: .cliente(c.id)))
+            }
+        }
+
+        // Dal più vicino; un identificativo una volta sola; al massimo `massimoPromemoria`
+        let ordinati = elenco.sorted { a, b in a.data != b.data ? a.data < b.data : a.id < b.id }
+        var visti = Set<String>()
+        var scelti: [PromemoriaPianificato] = []
+        for v in ordinati {
+            guard visti.insert(v.id).inserted else { continue }
+            scelti.append(v)
+            if scelti.count == massimoPromemoria { break }
+        }
+        return scelti
+    }
+}
