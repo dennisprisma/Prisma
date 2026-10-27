@@ -143,7 +143,7 @@ extension AppPosizioni {
                 .buttonStyle(StileSemplice())
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 
     // MARK: - Scadenze
@@ -355,9 +355,8 @@ extension AppPosizioni {
     private func rigaPortafoglio<C: View>(testa: Bool, alternata: Bool = false, @ViewBuilder _ contenuto: () -> C) -> some View {
         HStack(spacing: 0) { contenuto() }
             .frame(maxWidth: .infinity)
-            .background(testa ? AnyShapeStyle(Gradienti.testaTabella)
-                        : AnyShapeStyle(alternata ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale))
-            .overlay(alignment: .top) { if testa { Rectangle().fill(Color.white).frame(height: 1) } }
+            .background(testa ? Colori.Analisi.tabellaTestaAlto
+                        : (alternata ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale))
             .bordoBasso(testa ? Colori.Analisi.tabellaTestaBordo : Colori.Analisi.tabellaRiga)
     }
 
@@ -365,7 +364,6 @@ extension AppPosizioni {
         Text(t)
             .font(Tipo.tabellaTesta)
             .foregroundColor(Colori.Analisi.tabellaTesta)
-            .incisione(.white)
             .lineLimit(1)
             .padding(Misure.Analisi.testaMargine)
             .frame(maxWidth: larghezza ?? .infinity, alignment: destra ? .trailing : .leading)
@@ -418,6 +416,6 @@ extension AppPosizioni {
                     .padding(8).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 }

@@ -44,27 +44,11 @@ extension ContenutoApp {
         switch app {
         case .impostazioni: FondoRighe()
         case .clienti: Colori.Rubrica.fondoApp
-        case .note:
-            ZStack {
-                Gradienti.fondoNote
-                Materiale.Trama(nome: "Grana")
-            }
+        case .note: Gradienti.fondoNote
         case .agenda: Colori.Agenda.fondoApp
-        case .incontri:
-            ZStack {
-                Gradienti.fondoIncontri
-                Materiale.Trama(nome: "Grana")
-            }
-        case .eve:
-            ZStack {
-                Gradienti.linoEve
-                Materiale.Trama(nome: "Lino_trama")
-            }
-        case .attivita:
-            ZStack {
-                Gradienti.linoAttivita
-                Materiale.Trama(nome: "Lino_trama")
-            }
+        case .incontri: Gradienti.fondoIncontri
+        case .eve: Gradienti.linoEve
+        case .attivita: Gradienti.linoAttivita
         default: Colori.IntestazioneApp.corpo
         }
     }
@@ -115,12 +99,10 @@ struct IntestazioneApp<Azioni: View>: View {
             Spacer()
             azioni()
         }
-        .incisione(Colori.IntestazioneApp.incisione)
         .padding(.horizontal, Misure.IntestazioneApp.margineOrizzontale)
         .padding(.vertical, Misure.IntestazioneApp.margineVerticale)
         .frame(minHeight: 46)
         .background(Gradienti.intestazioneApp)
-        .luceInterna(Colori.IntestazioneApp.luce)
         .bordoBasso(Colori.IntestazioneApp.bordo)
     }
 }
@@ -136,7 +118,6 @@ struct AppSegnaposto: View {
     var body: some View {
         VStack(spacing: 12) {
             IconaApp(app: app, lato: Misure.Scrivania.icona)
-                .ombraCSS(Colori.Scrivania.iconaOmbra1, y: 2, sfocatura: 1)
             Text(app.titolo)
                 .font(Tipo.pannelloTitolo)
                 .foregroundColor(Colori.Pannello.titolo)
@@ -158,8 +139,7 @@ struct AppSegnaposto: View {
             }
         }
         .padding(28)
-        .background(RoundedRectangle(cornerRadius: Misure.Pannello.raggio).fill(Colori.Pannello.sfondo))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Pannello.raggio).strokeBorder(Colori.Pannello.bordo, lineWidth: 1))
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
     }
 }
 

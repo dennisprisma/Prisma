@@ -144,7 +144,7 @@ struct AppAnalisi360: View {
                         .font(Tipo.chip)
                         .foregroundColor(confermata ? Colori.Strumenti.rischioPresenteTesto : Colori.Strumenti.schedaNumero)
                 }
-                Text(area.nome).font(Tipo.schedaAreaTitolo).foregroundColor(Colori.Strumenti.schedaTitolo).incisione(.white)
+                Text(area.nome).font(Tipo.schedaAreaTitolo).foregroundColor(Colori.Strumenti.schedaTitolo)
                 Text(valore).font(Tipo.schedaAreaValore).foregroundColor(Colori.Strumenti.schedaValore)
                     .lineLimit(1).minimumScaleFactor(0.7)
                 Text(nota).font(Tipo.schedaAreaNota).foregroundColor(Colori.Strumenti.schedaNota).lineLimit(2)
@@ -163,19 +163,7 @@ struct AppAnalisi360: View {
             }
             .padding(EdgeInsets(top: 12, leading: 17, bottom: 10, trailing: 17))
             .frame(maxWidth: .infinity, minHeight: Misure.Strumenti.schedaArea, alignment: .topLeading)
-            .background(
-                ZStack {
-                    Gradienti.schedaArea
-                    Materiale.Trama(nome: "Grana")
-                }
-            )
-            .overlay(alignment: .leading) {
-                Rectangle().fill(Colori.Analisi.area(area.areaPosizioni)).frame(width: 3)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Colori.Strumenti.schedaBordo, lineWidth: 1))
-            .shadow(color: Colori.Strumenti.schedaOmbra1, radius: 0, x: 0, y: 1)
-            .shadow(color: Colori.Strumenti.schedaOmbra2, radius: 0, x: 0, y: 2)
+            .schedaColorata(Colori.Analisi.area(area.areaPosizioni))
         }
         .buttonStyle(StileSemplice())
     }
@@ -258,11 +246,9 @@ struct AppAnalisi360: View {
                 Text(stato.analisiSalvata(cliente) ? "Salvate nel dossier" : "Dalle posizioni").font(Tipo.chip)
             }
             .foregroundColor(Colori.Strumenti.ipotesiTesto)
-            .incisione(.white)
             .padding(.horizontal, 12)
             .frame(height: 36)
             .background(Gradienti.testaIpotesi)
-            .luceInterna(.white)
             .bordoBasso(Colori.Strumenti.ipotesiBordo)
             ScrollView {
                 VStack(spacing: 0) {
@@ -419,8 +405,15 @@ struct AppAnalisi360: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(RoundedRectangle(cornerRadius: 2).fill(coperto ? Colori.Strumenti.rischioPresenteFondo : Colori.Strumenti.rischioAssenteFondo))
-                            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(coperto ? Colori.Strumenti.rischioPresenteBordo : Colori.Strumenti.rischioAssenteBordo, lineWidth: 1))
+                            .background {
+                                FormaVetro.arrotondata(Tema.Raggio.Strumenti.casellaRischio)
+                                    .fill(coperto ? Colori.Strumenti.rischioPresenteFondo : Colori.Strumenti.rischioAssenteFondo)
+                            }
+                            .overlay {
+                                FormaVetro.arrotondata(Tema.Raggio.Strumenti.casellaRischio)
+                                    .strokeBorder(coperto ? Colori.Strumenti.rischioPresenteBordo : Colori.Strumenti.rischioAssenteBordo,
+                                                  lineWidth: Tema.Misura.filo)
+                            }
                     }
                 }
             }

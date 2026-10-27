@@ -98,6 +98,6 @@ struct PannelloSuccessione: View {
                 .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 }

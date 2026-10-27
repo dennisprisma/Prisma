@@ -176,7 +176,8 @@ extension StatoShell {
     }
 }
 
-/// La striscia della guida sulla scrivania: a che punto sei e il prossimo passo.
+/// La striscia della guida sulla scrivania: a che punto sei e il prossimo passo,
+/// in una capsula di vetro leggero come i pulsanti della scrivania.
 struct StrisciaGuida: View {
     @EnvironmentObject var stato: StatoShell
     @State private var elenco = false
@@ -185,12 +186,13 @@ struct StrisciaGuida: View {
         let passi = stato.passiGuida
         let fatti = passi.filter(\.fatto).count
         let prossimo = passi.first { !$0.fatto }
-        HStack(spacing: 12) {
-            Text("✦").font(Tipo.contenuto(14, .bold)).foregroundColor(Colori.Widget.guidaSimbolo)
+        HStack(spacing: Tema.Misura.PannelliShell.guidaSpazio) {
+            Text("✦").font(Tema.Testo.PannelliShell.simboloGuida).foregroundColor(Tema.Colore.accento)
             Text("Comincia con i tuoi dati · \(fatti) di \(passi.count)")
-                .font(Tipo.sistema(11, .semibold)).foregroundColor(Colori.Pulsante.testo)
+                .font(Tema.Testo.PannelliShell.titoloGuida).foregroundColor(Tema.Colore.inchiostro)
+                .lineLimit(1)
             Text(prossimo.map { "Prossimo passo: \($0.titolo.prefix(1).lowercased() + $0.titolo.dropFirst())." } ?? "Fatto tutto.")
-                .font(Tipo.sistema(11)).foregroundColor(Colori.Widget.secondario)
+                .font(Tema.Testo.PannelliShell.testoGuida).foregroundColor(Tema.Colore.inchiostroSecondario)
                 .lineLimit(1)
             Spacer(minLength: 8)
             if let p = prossimo {
@@ -202,20 +204,19 @@ struct StrisciaGuida: View {
             Button {
                 stato.dati.impostazioni.guidaNascosta = true
             } label: {
-                Text("✕").font(Tipo.chip).foregroundColor(Colori.Widget.secondario)
+                Text("✕")
+                    .font(Tema.Testo.PannelliShell.chiudiGuida)
+                    .foregroundColor(Tema.Colore.inchiostroTerziario)
+                    .frame(width: Tema.Misura.Componenti.pulsanteMinimo, height: Tema.Misura.Componenti.pulsanteMinimo)
+                    .fondoPassaggio(.capsula)
             }
             .buttonStyle(StileSemplice())
             .help("Nascondi la guida (torna da Impostazioni → Esperienza)")
         }
-        .incisione(Color.white.opacity(0.6))
-        .padding(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 8))
-        // Una barra di bezel, come i pulsanti di vetro: non una banda bianca che spezza la scrivania
+        .padding(Tema.Misura.PannelliShell.guida)
         .frame(maxWidth: .infinity)
         .frame(height: Misure.Widget.striscia)
-        .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).fill(Gradienti.vetro))
-        .luceInterna(.white, raggio: Misure.Pulsante.raggio)
-        .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).strokeBorder(Colori.Pulsante.vetroBordo, lineWidth: 1))
-        .ombraCSS(Colori.Pulsante.vetroOmbra, y: 1, sfocatura: 2)
+        .vetro(.leggero, forma: .capsula)
         .popover(isPresented: $elenco, arrowEdge: .bottom) { ElencoGuida().environmentObject(stato) }
     }
 }
@@ -226,16 +227,19 @@ struct ElencoGuida: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Comincia con i tuoi dati").font(Tipo.rigaTitolo).padding(.bottom, 8)
+            Text("Comincia con i tuoi dati")
+                .font(Tema.Testo.titolo)
+                .foregroundColor(Tema.Colore.inchiostro)
+                .padding(.bottom, 8)
             ForEach(Array(stato.passiGuida.enumerated()), id: \.element.id) { i, p in
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: p.fatto ? "checkmark.circle.fill" : "\(i + 1).circle")
-                        .foregroundColor(p.fatto ? Colori.Analisi.okTesto : Colori.Analisi.navBasso)
+                        .foregroundColor(p.fatto ? Tema.Colore.testoInEssere : Tema.Colore.inchiostroTerziario)
                         .font(Tipo.contenuto(15, .regular))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(p.titolo).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
-                            .strikethrough(p.fatto, color: Colori.Analisi.kpiNota)
-                        Text(p.dettaglio).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                        Text(p.titolo).font(Tema.Testo.titolo).foregroundColor(Tema.Colore.inchiostro)
+                            .strikethrough(p.fatto, color: Tema.Colore.inchiostroSecondario)
+                        Text(p.dettaglio).font(Tema.Testo.didascalia).foregroundColor(Tema.Colore.inchiostroSecondario)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 8)
@@ -246,7 +250,7 @@ struct ElencoGuida: View {
                     }
                 }
                 .padding(.vertical, 7)
-                .bordoBasso(Colori.Analisi.tabellaRiga)
+                .bordoBasso(Tema.Colore.separatore)
             }
         }
         .padding(16)

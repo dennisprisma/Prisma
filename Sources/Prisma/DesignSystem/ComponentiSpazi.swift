@@ -6,18 +6,12 @@ import SwiftUI
 extension Colori {
     enum Spazi {
         static let velo = Tema.Colore.velo
-        static let corniceAlto = Tema.Colore.riempimentoPannelloColorato
-        static let corniceBasso = Tema.Colore.riempimentoPannelloColorato
-        static let corniceBordo = Tema.Colore.bordoVetro
-        static let corniceLuce = Tema.Colore.riflessoAlto
+        /// Vetro del pannello con riempimento coprente.
+        static let fondo = Tema.Colore.PannelliShell.coprente
         static let titolo = Tema.Colore.inchiostro
-        static let titoloIncisione = Color.clear
         static let sottotitolo = Tema.Colore.inchiostroSecondario
-        static let interno = Color.clear
-        static let internoBordo = Color.clear
-        static let scheda = Tema.Colore.chip
-        static let schedaBordo = Tema.Colore.bordoChip
-        static let schedaOmbra = Color(r: 8, g: 40, b: 60, a: 0.18)
+        /// Le schede degli spazi (.card del tema), evidenziate al passaggio del mouse.
+        static let schedaSopra = Tema.Colore.rigaSopra
         static let nome = Tema.Colore.inchiostro
         static let app = Tema.Colore.inchiostroSecondario
         static let pronto = Tema.Colore.inchiostroTerziario
@@ -29,16 +23,13 @@ extension Colori {
         static let finestraBasso = Tema.Colore.finestraColorata
         static let finestraBordo = Tema.Colore.bordoScheda
         static let sezione = Tema.Colore.inchiostroSecondario
-        static let sezioneIncisione = Color.clear
         static let elimina = Tema.Colore.inchiostroTerziario
-        static let piede = Color.clear
         static let piedeBordo = Tema.Colore.separatore
         static let piedeTesto = Tema.Colore.inchiostroSecondario
     }
 }
 
 extension Gradienti {
-    static let corniceSpazi = LinearGradient.verticale(Colori.Spazi.corniceAlto, Colori.Spazi.corniceBasso)
     static let schermoSpazi = LinearGradient(colors: [Colori.Spazi.schermoAlto, Colori.Spazi.schermoBasso],
                                              startPoint: .topLeading, endPoint: .bottomTrailing)
     static let finestraSpazi = LinearGradient.verticale(Colori.Spazi.finestraAlto, Colori.Spazi.finestraBasso)
@@ -56,6 +47,7 @@ extension Misure {
         static let colonna: CGFloat = 220
         static let spazioSchede: CGFloat = 12
         static let raggioScheda: CGFloat = Tema.Raggio.schedaApp
+        static let margineScheda: CGFloat = 10
         static let miniatura = CGSize(width: 196, height: 112)
         static let raggioMiniatura: CGFloat = Tema.Raggio.miniatura
         static let staccoMiniatura: CGFloat = 2

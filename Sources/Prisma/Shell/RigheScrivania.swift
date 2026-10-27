@@ -30,10 +30,7 @@ struct RigaAppuntamento: View {
             .frame(maxWidth: .infinity)
             .overlay(alignment: .bottom) {
                 if !ultima {
-                    VStack(spacing: 0) {
-                        Rectangle().fill(Colori.Colonna.rigaBordo).frame(height: 1)
-                        Rectangle().fill(Colori.Colonna.rigaLuce).frame(height: 1)
-                    }
+                    Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
                 }
             }
         }
@@ -69,35 +66,32 @@ struct RigaAttivita: View {
                     .lineLimit(2)
                 Text([cliente?.nome, scadenza].compactMap { $0 }.joined(separator: " · "))
                     .font(Tipo.rigaSecondario)
-                    .foregroundColor(scadenza == "Scaduta" ? Colori.Analisi.erroreTesto : Colori.Colonna.rigaSecondario)
+                    .foregroundColor(scadenza == "Scaduta" ? Tema.Colore.scadenzaOra : Colori.Colonna.rigaSecondario)
             }
             Spacer(minLength: 0)
         }
         .padding(.vertical, 13)
         .overlay(alignment: .bottom) {
             if !ultima {
-                VStack(spacing: 0) {
-                    Rectangle().fill(Colori.Colonna.rigaBordo).frame(height: 1)
-                    Rectangle().fill(Colori.Colonna.rigaLuce).frame(height: 1)
-                }
+                Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
             }
         }
     }
 }
 
-/// La casella delle attività (.os-desk-check): quadrata, con il gradiente chiaro e l'ombra interna.
+/// La casella delle attività (la spunta del tema): un cerchio col filo, pieno dell'accento quando è fatta.
 struct CasellaSpunta: View {
     let spuntata: Bool
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: Misure.Widget.casellaRaggio).fill(Gradienti.casella)
-            RoundedRectangle(cornerRadius: Misure.Widget.casellaRaggio)
-                .fill(LinearGradient(colors: [Colori.Colonna.casellaOmbra, .clear], startPoint: .top, endPoint: .center))
-                .padding(1)
-            RoundedRectangle(cornerRadius: Misure.Widget.casellaRaggio).strokeBorder(Colori.Colonna.casellaBordo, lineWidth: 1)
+            Circle().fill(spuntata ? Tema.Colore.accento : Tema.Colore.chip)
             if spuntata {
-                Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundColor(Colori.Colonna.collegamento)
+                Image(systemName: "checkmark")
+                    .font(Tema.Testo.PannelliShell.spunta)
+                    .foregroundColor(Tema.Colore.Componenti.testoSuColore)
+            } else {
+                Circle().strokeBorder(Tema.Colore.pozzettoScuro, lineWidth: 1)
             }
         }
         .frame(width: Misure.Widget.casella, height: Misure.Widget.casella)
@@ -130,7 +124,7 @@ struct ElencoClienti: View {
                     aperto = false
                 } label: {
                     HStack(spacing: 10) {
-                        AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: 28)
+                        AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: Tema.Misura.PannelliShell.avatarElenco)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(c.nome).font(Tipo.rigaNome).foregroundColor(Colori.Colonna.rigaNome)
                             Text(c.tema).font(Tipo.rigaSecondario).foregroundColor(Colori.Colonna.rigaSecondario)
@@ -145,13 +139,15 @@ struct ElencoClienti: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(StileSemplice())
+                .fondoPassaggio(.arrotondata(Tema.Raggio.vocePopover), selezionata: c.id == stato.clienteAttivoId)
+                .padding(.horizontal, 4)
                 if c.id != stato.clienti.last?.id {
-                    Rectangle().fill(Colori.Colonna.rigaBordo).frame(height: 1)
+                    Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
+                        .padding(.horizontal, 12)
                 }
             }
         }
-        .frame(width: 270)
+        .frame(width: Tema.Misura.PannelliShell.elencoClienti)
         .padding(.vertical, 4)
-        .background(Colori.Colonna.sfondo)
     }
 }

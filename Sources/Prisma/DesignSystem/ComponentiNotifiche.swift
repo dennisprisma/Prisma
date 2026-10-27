@@ -5,19 +5,16 @@ import SwiftUI
 
 extension Colori {
     enum Notifiche {
-        static let bordo = Tema.Colore.bordoVetro
-        static let ombra = Color(r: 8, g: 40, b: 60, a: 0.22)
-        static let luce = Tema.Colore.riflessoAlto
+        /// Vetro del pannello con riempimento coprente: il contenuto dietro non si legge attraverso.
+        static let fondo = Tema.Colore.PannelliShell.coprente
         static let occhiello = Tema.Colore.inchiostroSecondario
         static let chiudi = Tema.Colore.inchiostroTerziario
         static let separatore = Tema.Colore.separatore
         static let titolo = Tema.Colore.inchiostro
         static let sottotitolo = Tema.Colore.inchiostroSecondario
         static let gruppo = Tema.Colore.inchiostroSecondario
-        static let voceAlto = Tema.Colore.chip
-        static let voceBasso = Tema.Colore.chip
-        static let voceBordo = Tema.Colore.bordoChip
-        static let voceLuce = Tema.Colore.riflessoAlto
+        /// Le notifiche sono schede del tema (.nt): più chiare al passaggio del mouse.
+        static let voceSopra = Tema.Colore.rigaSopra
         static let voceTitolo = Tema.Colore.inchiostro
         static let voceDettaglio = Tema.Colore.inchiostroSecondario
         static let freccia = Tema.Colore.inchiostroTerziario
@@ -25,10 +22,6 @@ extension Colori {
         static let piede = Tema.Colore.inchiostroTerziario
         static let vuoto = Tema.Colore.inchiostroSecondario
     }
-}
-
-extension Gradienti {
-    static let voceNotifica = LinearGradient.verticale(Colori.Notifiche.voceAlto, Colori.Notifiche.voceBasso)
 }
 
 extension Misure {

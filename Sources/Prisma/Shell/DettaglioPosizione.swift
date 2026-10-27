@@ -104,13 +104,12 @@ struct DettaglioPosizione: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 40)
-        .background(Gradienti.kpi)
-        .bordoBasso(Colori.Analisi.kpiBordo)
+        .bordoBasso(Colori.Analisi.tabellaRiga)
     }
 
     private var intestazione: some View {
         HStack(alignment: .center, spacing: 14) {
-            RoundedRectangle(cornerRadius: 6)
+            FormaVetro.capsula
                 .fill(Colori.Analisi.area(posizione.area))
                 .frame(width: 8, height: 46)
             VStack(alignment: .leading, spacing: 3) {
@@ -122,7 +121,6 @@ struct DettaglioPosizione: View {
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.Analisi.kpiNota)
             }
-            .incisione(.white)
             Spacer()
             EtichettaCanale(canale: posizione.canale)
             PillolaStato(posizione: posizione)
@@ -308,7 +306,7 @@ struct DettaglioPosizione: View {
                 testa("Guadagno", 100)
                 testa("Rendimento", 90)
             }
-            .background(Gradienti.testaTabella)
+            .background(Colori.Analisi.tabellaTestaAlto)
             .bordoBasso(Colori.Analisi.tabellaTestaBordo)
             // Dal più recente, al massimo otto periodi
             ForEach(Array(a.periodi.reversed().prefix(8).enumerated()), id: \.offset) { i, q in
@@ -330,7 +328,7 @@ struct DettaglioPosizione: View {
                 .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 
     // MARK: - Proiezione
@@ -391,7 +389,7 @@ struct DettaglioPosizione: View {
                 testa("Guadagno netto", 130)
                 testa("In euro di oggi", 130)
             }
-            .background(Gradienti.testaTabella)
+            .background(Colori.Analisi.tabellaTestaAlto)
             .bordoBasso(Colori.Analisi.tabellaTestaBordo)
             ForEach(Array(scenari.enumerated()), id: \.offset) { i, s in
                 HStack(spacing: 0) {
@@ -408,7 +406,7 @@ struct DettaglioPosizione: View {
                 .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 
     private func metodo(_ p: ParametriProiezione) -> some View {
@@ -429,8 +427,7 @@ struct DettaglioPosizione: View {
             .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 4).fill(Gradienti.kpi))
-        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.kpi), riempimento: Colori.Analisi.kpiAlto)
     }
 
     // MARK: - Protezione
@@ -468,7 +465,6 @@ struct DettaglioPosizione: View {
         Text(t)
             .font(Tipo.tabellaTesta)
             .foregroundColor(Colori.Analisi.tabellaTesta)
-            .incisione(.white)
             .padding(Misure.Analisi.testaMargine)
             .frame(maxWidth: larghezza ?? .infinity, alignment: larghezza == nil ? .leading : .trailing)
             .frame(width: larghezza)
@@ -518,16 +514,18 @@ struct ScalaRischio: View {
     let valore: Int?
 
     var body: some View {
+        let forma = FormaVetro.arrotondata(Tema.Raggio.Dossier.casellaRischio)
         HStack(spacing: 3) {
             ForEach(1...7, id: \.self) { i in
                 Text("\(i)")
                     .font(Tipo.chip)
-                    .foregroundColor(i == valore ? .white : Colori.Analisi.chipTesto)
+                    .foregroundColor(i == valore ? Tema.Colore.Componenti.testoSuColore : Colori.Analisi.chipTesto)
                     .frame(width: 19, height: 18)
-                    .background(RoundedRectangle(cornerRadius: 2)
-                        .fill(i == valore ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Colori.Analisi.chip)))
-                    .overlay(RoundedRectangle(cornerRadius: 2)
-                        .strokeBorder(i == valore ? Colori.Analisi.navBordoBasso : Colori.Analisi.chipBordo, lineWidth: 1))
+                    .background { forma.fill(i == valore ? Colori.Analisi.navAlto : Colori.Analisi.chip) }
+                    .overlay {
+                        forma.strokeBorder(i == valore ? Colori.Analisi.navBordoBasso : Colori.Analisi.chipBordo, lineWidth: Tema.Misura.filo)
+                            .allowsHitTesting(false)
+                    }
             }
             if valore == nil {
                 Text("non indicato").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).padding(.leading, 4)

@@ -212,7 +212,7 @@ struct PannelloAppAperte: View {
             }
         }
         .padding(m.appAperteMargine)
-        .vetro(.pannello, forma: .arrotondata(Tema.Raggio.appAperte))
+        .vetro(.pannello, forma: .arrotondata(Tema.Raggio.appAperte), riempimento: Tema.Colore.PannelliShell.coprente)
     }
 
     @ViewBuilder private var griglia: some View {

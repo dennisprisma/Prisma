@@ -235,6 +235,10 @@ struct CampoTestoLungo: View {
         TextEditor(text: $testo)
             .font(Tipo.campoValore)
             .frame(height: 84)
-            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Rubrica.libroBordo.opacity(0.5), lineWidth: 1))
+            .overlay {
+                FormaVetro.arrotondata(Tema.Raggio.Dossier.campoLungo)
+                    .strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo)
+                    .allowsHitTesting(false)
+            }
     }
 }

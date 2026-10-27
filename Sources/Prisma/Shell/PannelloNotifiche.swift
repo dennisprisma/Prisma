@@ -65,11 +65,10 @@ struct PannelloNotifiche: View {
             }
             .frame(width: Misure.Notifiche.larghezza)
             .frame(maxHeight: .infinity)
-            .background(Materiale.Lino())
-            .clipShape(RoundedRectangle(cornerRadius: Misure.Notifiche.raggio))
-            .luceInterna(Colori.Notifiche.luce, raggio: Misure.Notifiche.raggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Notifiche.raggio).strokeBorder(Colori.Notifiche.bordo, lineWidth: 1))
-            .ombraCSS(Colori.Notifiche.ombra, y: 9, sfocatura: 40)
+            // Il contenuto si taglia prima del vetro (dopo taglierebbe le ombre); il riempimento è coprente:
+            // la scrivania dietro non si legge attraverso il pannello
+            .clipShape(FormaVetro.arrotondata(Misure.Notifiche.raggio))
+            .vetro(.pannello, forma: .arrotondata(Misure.Notifiche.raggio), riempimento: Colori.Notifiche.fondo)
             .padding(.top, Misure.Notifiche.alto)
             .padding(.trailing, Misure.Notifiche.destra)
             .padding(.bottom, Misure.Notifiche.basso)
@@ -98,10 +97,10 @@ struct PannelloNotifiche: View {
                 Text("›").font(Tipo.notificaFreccia).foregroundColor(Colori.Notifiche.freccia)
             }
             .padding(Misure.Notifiche.voce)
-            .background(RoundedRectangle(cornerRadius: Misure.Notifiche.raggioVoce).fill(Gradienti.voceNotifica))
-            .luceInterna(Colori.Notifiche.voceLuce, raggio: Misure.Notifiche.raggioVoce)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Notifiche.raggioVoce).strokeBorder(Colori.Notifiche.voceBordo, lineWidth: 1))
-            .contentShape(Rectangle())
+            // La notifica è una scheda del tema (.nt), evidenziata al passaggio del mouse
+            .fondoPassaggio(.arrotondata(Misure.Notifiche.raggioVoce), sopra: Colori.Notifiche.voceSopra)
+            .vetro(.sottile, forma: .arrotondata(Misure.Notifiche.raggioVoce))
+            .contentShape(FormaVetro.arrotondata(Misure.Notifiche.raggioVoce))
         }
         .buttonStyle(StileSemplice())
         .padding(Misure.Notifiche.marginiVoce)

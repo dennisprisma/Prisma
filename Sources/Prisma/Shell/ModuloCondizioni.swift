@@ -183,7 +183,7 @@ struct ModuloCondizioni: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Colori.Documento.prisma.parte(c.wrappedValue.tipo).opacity(0.12)))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: Tema.Misura.filo))
     }
 
     private func aggiungi(_ tipo: ComponenteContratto.Tipo) {

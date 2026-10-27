@@ -199,7 +199,7 @@ struct AppConfronti: View {
             HStack(spacing: 8) {
                 Text(lettera)
                     .font(Tipo.ipotesiTitolo)
-                    .foregroundColor(.white)
+                    .foregroundColor(Tema.Colore.Componenti.testoSuColore)
                     .frame(width: 22, height: 22)
                     .background(Circle().fill(colore))
                 VStack(alignment: .leading, spacing: 1) {
@@ -212,13 +212,9 @@ struct AppConfronti: View {
             MenuTendina(selezione: Binding(get: { e.voce }, set: { scegli($0) }),
                         opzioni: voci.map { v in (v.voce, "\(v.titolo) — \(v.sottotitolo)") })
         }
-        .padding(12)
+        .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 12))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Gradienti.kpi))
-        .overlay(alignment: .leading) {
-            Rectangle().fill(colore).frame(width: 3).padding(.vertical, 1)
-        }
-        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .schedaColorata(colore)
     }
 
     private func verdetto(_ a: ElementoConfronto, _ b: ElementoConfronto, _ ea: EsitoProiezione, _ eb: EsitoProiezione,
@@ -244,8 +240,7 @@ struct AppConfronti: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Colori.Analisi.tabellaAlternata))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.chipBordo, lineWidth: 1))
+        .background { FormaVetro.arrotondata(Tema.Raggio.Strumenti.riquadro).fill(Tema.Colore.pozzetto) }
     }
 
     /// Riga della tabella: B rispetto ad A, con il verso "meno è meglio" per costi e imposte.

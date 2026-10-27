@@ -354,7 +354,7 @@ struct AppIncontri: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: scelta ? "checkmark.square.fill" : "square")
                     .foregroundColor(scelta ? Colori.Analisi.navBasso : Colori.Incontri.secondario)
-                    .font(.system(size: 14))
+                    .font(Tema.Testo.Strumenti.spunta)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(etichetta(p)).font(Tipo.bisognoArea).foregroundColor(colore(p))
@@ -371,9 +371,15 @@ struct AppIncontri: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(9)
-            .background(RoundedRectangle(cornerRadius: 3).fill(scelta ? Colori.Incontri.citazioneFondo : Color.clear))
-            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Incontri.filo, lineWidth: 1))
+            .padding(EdgeInsets(top: 9, leading: 11, bottom: 9, trailing: 11))
+            .background {
+                FormaVetro.arrotondata(Tema.Raggio.Strumenti.proposta)
+                    .fill(scelta ? Colori.Incontri.citazioneFondo : Color.clear)
+            }
+            .overlay {
+                FormaVetro.arrotondata(Tema.Raggio.Strumenti.proposta)
+                    .strokeBorder(Colori.Incontri.filo, lineWidth: Tema.Misura.filo)
+            }
         }
         .buttonStyle(StileSemplice())
     }
@@ -457,30 +463,24 @@ struct AppIncontri: View {
     }
 }
 
-/// Carta del quaderno degli incontri (.meeting-topic-grid > article).
+/// Scheda del quaderno degli incontri (.meeting-topic-grid > article): il vetro sottile del tema.
+/// Il contenuto (anche quello che scorre) si taglia alla forma prima del vetro, come vuole il tema.
 struct CartaIncontro: ViewModifier {
     func body(content: Content) -> some View {
-        content
-            .background(
-                ZStack {
-                    Gradienti.cartaIncontri
-                    Materiale.Trama(nome: "Grana")
-                }
-                .clipShape(RoundedRectangle(cornerRadius: Misure.Incontri.raggio))
-            )
-            .overlay(RoundedRectangle(cornerRadius: Misure.Incontri.raggio).strokeBorder(Colori.Incontri.cartaBordo, lineWidth: 1))
-            .shadow(color: .white, radius: 0, x: 0, y: 1)
+        let forma = FormaVetro.arrotondata(Tema.Raggio.Strumenti.scheda)
+        return content
+            .clipShape(forma)
+            .vetro(.sottile, forma: forma)
     }
 }
 
-/// Foglio a righe su cui si scrive a mano (Noteworthy), come le Note di iOS 5.
+/// Il campo in cui si scrivono domande, appunti e decisioni: pozzetto arrotondato del tema.
 struct FoglioRighe: View {
     @Binding var testo: String
     var solaLettura = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Rigatura(passo: Misure.Incontri.rigatura).fill(Colori.Incontri.rigatura)
             if solaLettura {
                 ScrollView {
                     Text(testo.isEmpty ? "—" : testo)
@@ -498,7 +498,6 @@ struct FoglioRighe: View {
             }
         }
         .padding(4)
-        .background(Tema.Colore.chip)
-        .overlay(Rectangle().strokeBorder(Colori.Incontri.filo, lineWidth: 1))
+        .pozzettoTestoLungo()
     }
 }

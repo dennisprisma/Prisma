@@ -143,6 +143,7 @@ struct AppProdotti: View {
                             .buttonStyle(StileSemplice())
                     }
                 }
+                .padding(.vertical, Tema.Misura.Strumenti.margineElenco)
             }
         }
         .background(Gradienti.railAnalisi)
@@ -151,8 +152,9 @@ struct AppProdotti: View {
     private func rigaElenco(_ p: Prodotto, attiva: Bool) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
-                RoundedRectangle(cornerRadius: 2).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
-                Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(attiva ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                RoundedRectangle(cornerRadius: Tema.Raggio.quadratinoCanale, style: .continuous)
+                    .fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
+                Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
                 Spacer(minLength: 4)
                 EtichettaCanale(canale: p.canale, compatta: true)
             }
@@ -160,16 +162,14 @@ struct AppProdotti: View {
                 Text([p.area.nome, p.costoAnnuo.map { "costo \(Formati.percentuale($0))" } ?? "", p.sri.map { "SRI \($0)" } ?? ""]
                         .filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(Tipo.chip)
-                    .foregroundColor(attiva ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota)
+                    .foregroundColor(Colori.Analisi.kpiNota)
                 if p.daVerificare {
-                    Text("DA VERIFICARE").font(Tipo.chip).foregroundColor(attiva ? .white : Colori.Analisi.attenzioneTesto)
+                    Text("DA VERIFICARE").font(Tipo.chip).foregroundColor(Colori.Analisi.attenzioneTesto)
                 }
             }
         }
         .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(attiva ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
-        .bordoBasso(Colori.Strumenti.ipotesiRiga)
+        .voceElencoStrumento(attiva: attiva)
     }
 
     // MARK: - Dettaglio
@@ -183,13 +183,12 @@ struct AppProdotti: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .center, spacing: 14) {
-                    RoundedRectangle(cornerRadius: 6).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 46)
+                    Capsule(style: .continuous).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 46)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(p.nome).font(Tipo.profiloNome).tracking(-0.4).foregroundColor(Colori.Analisi.kpiValore)
                         Text([p.area.nome, p.tipologia, p.emittente].filter { !$0.isEmpty }.joined(separator: " · "))
                             .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                     }
-                    .incisione(.white)
                     Spacer()
                     EtichettaCanale(canale: p.canale)
                 }

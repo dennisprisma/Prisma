@@ -308,7 +308,6 @@ struct AppImpostazioni: View {
             Text("I dati restano su questo Mac. Non c'è nessuna sincronizzazione cloud: i backup vanno solo nella cartella che scegli tu.")
                 .font(Tipo.informazioniTesto)
                 .foregroundColor(Colori.Impostazioni.nota)
-                .incisione(Colori.Impostazioni.notaIncisione)
                 .padding(.horizontal, 4)
 
             HStack(spacing: 28) {
@@ -381,7 +380,6 @@ struct AppImpostazioni: View {
             Text("\(n)").font(Tipo.numero).foregroundColor(Colori.Impostazioni.numero)
             Text(etichetta).font(Tipo.numeroEtichetta).foregroundColor(Colori.Impostazioni.numeroEtichetta)
         }
-        .incisione(.white)
     }
 
     private func scegliCartella() {

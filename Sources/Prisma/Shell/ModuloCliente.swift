@@ -1,36 +1,36 @@
 import SwiftUI
 
-/// Cornice dei moduli (.os-dialog): barra del titolo grigia, contenuto, piede con i pulsanti.
+/// Cornice dei moduli (tema Liquid Glass): testa con il titolo, contenuto su una scheda chiara,
+/// piede con i pulsanti; fili da 0,5 pt, colori che seguono l'aspetto chiaro o scuro.
 struct CorniceModulo<Contenuto: View, Piede: View>: View {
     let titolo: String
     @ViewBuilder let contenuto: () -> Contenuto
     @ViewBuilder let piede: () -> Piede
 
     var body: some View {
+        let m = Tema.Misura.PannelliShell.self
         VStack(spacing: 0) {
             Text(titolo)
-                .font(Tipo.moduloTitolo)
-                .foregroundColor(Colori.Finestra.titoloTesto)
-                .incisione(Colori.Finestra.titoloIncisione)
+                .font(Tema.Testo.PannelliShell.titoloModulo)
+                .foregroundColor(Tema.Colore.inchiostro)
                 .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(LinearGradient.verticale(Colori.Modulo.titoloAlto, Colori.Modulo.titoloBasso))
-                .bordoBasso(Colori.Modulo.titoloBordo)
+                .frame(height: m.testaModulo)
+                .bordoBasso(Tema.Colore.separatore)
             ScrollView {
                 contenuto()
-                    .padding(24)
+                    .padding(m.margineModulo)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .background(Colori.Rubrica.carta)
-            HStack(spacing: 9) {
+            .background(Tema.Colore.scheda)
+            HStack(spacing: m.spazioPiedeModulo) {
                 piede()
             }
-            .padding(.horizontal, 20)
-            .frame(height: 52)
+            .padding(.horizontal, m.marginePiedeModulo)
+            .frame(height: m.piedeModulo)
             .frame(maxWidth: .infinity)
-            .background(LinearGradient.verticale(Colori.Modulo.piedeAlto, Colori.Modulo.piedeBasso))
-            .bordoAlto(Colori.Modulo.piedeBordo)
+            .bordoAlto(Tema.Colore.separatore)
         }
+        .background(Tema.Colore.finestraPiena)
     }
 }
 
@@ -40,11 +40,11 @@ struct CampoModulo<Controllo: View>: View {
     @ViewBuilder let controllo: () -> Controllo
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
+        HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.PannelliShell.spazioCampoModulo) {
             Text(etichetta)
                 .font(Tipo.campoEtichetta)
-                .foregroundColor(Colori.Rubrica.secondario)
-                .frame(width: 150, alignment: .trailing)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .frame(width: Tema.Misura.PannelliShell.etichettaModulo, alignment: .trailing)
             controllo()
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

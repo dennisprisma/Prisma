@@ -23,16 +23,13 @@ struct AppClienti: View {
             dossier
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay(alignment: .leading) {
-                    LinearGradient(colors: [Colori.Rubrica.divisoreOmbra, .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: 5)
+                    Rectangle().fill(Colori.Rubrica.divisoreOmbra)
+                        .frame(width: Tema.Misura.filo)
                         .allowsHitTesting(false)
                 }
         }
-        .background(Colori.Rubrica.carta)
-        .clipShape(RoundedRectangle(cornerRadius: Misure.Rubrica.raggioLibro))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Rubrica.raggioLibro).strokeBorder(Colori.Rubrica.libroBordo, lineWidth: 1))
-        .shadow(color: Colori.Rubrica.libroRiflesso, radius: 0, x: 0, y: 1)
-        .ombraCSS(Colori.Rubrica.libroOmbra, y: 2, sfocatura: 3)
+        .clipShape(FormaVetro.arrotondata(Tema.Raggio.scheda))
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
         .sheet(item: $modulo) { c in
             ModuloCliente(
                 bozza: c,
@@ -67,15 +64,13 @@ struct AppClienti: View {
                     .font(Tipo.indiceTitolo)
                     .tracking(0.6)
                     .foregroundColor(Colori.Rubrica.indiceTitolo)
-                    .incisione(Color.white.opacity(0.53))
                 Spacer()
                 Text("\(stato.clienti.count)")
                     .font(Tipo.contatore)
                     .foregroundColor(Colori.Rubrica.contatoreTesto)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill(Gradienti.contatoreRubrica))
-                    .overlay(Capsule().strokeBorder(Colori.Rubrica.contatoreBordo, lineWidth: 1))
+                    .background(FormaVetro.capsula.fill(Colori.Rubrica.contatoreAlto))
             }
             .padding(EdgeInsets(top: 9, leading: 13, bottom: 7, trailing: 13))
 
@@ -85,7 +80,7 @@ struct AppClienti: View {
                 .padding(EdgeInsets(top: 7, leading: 11, bottom: 7, trailing: 11))
 
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: Tema.Misura.Dossier.spazioVoci) {
                     ForEach(elenco) { c in
                         RigaRubrica(cliente: c, selezionato: c.id == stato.clienteAttivoId) {
                             stato.clienteAttivoId = c.id
@@ -98,12 +93,12 @@ struct AppClienti: View {
                             .padding(16)
                     }
                 }
+                .padding(.horizontal, Tema.Misura.Dossier.margineElenco)
             }
             Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "contatto" : "contatti") · sempre a portata di mano")
                 .font(Tipo.rubricaPiede)
                 .tracking(0.6)
                 .foregroundColor(Colori.Rubrica.piede)
-                .incisione(Color.white.opacity(0.47))
                 .multilineTextAlignment(.center)
                 .padding(8)
                 .frame(maxWidth: .infinity)
@@ -247,8 +242,12 @@ struct AppClienti: View {
                 .scrollIndicators(.never)
                 .padding(10)
                 .frame(minHeight: 260)
-                .background(RoundedRectangle(cornerRadius: 3).fill(Tema.Colore.scheda))
-                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Rubrica.schedaAppBordo, lineWidth: 1))
+                .background { FormaVetro.arrotondata(Tema.Raggio.Dossier.campoLungo).fill(Tema.Colore.pozzetto) }
+                .overlay {
+                    FormaVetro.arrotondata(Tema.Raggio.Dossier.campoLungo)
+                        .strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo)
+                        .allowsHitTesting(false)
+                }
             OcchielloSezione(titolo: "Nel taccuino", nota: "Le note dell'app Note")
                 .padding(.top, 8)
             let note = stato.noteCliente(c.id).filter { !$0.vuota }
@@ -322,29 +321,27 @@ struct RigaRubrica: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(cliente.nome)
                         .font(Tipo.rubricaNome)
-                        .foregroundColor(selezionato ? .white : Colori.Rubrica.rigaNome)
+                        .foregroundColor(Colori.Rubrica.rigaNome)
                     Text(cliente.tema)
                         .font(Tipo.rubricaTema)
-                        .foregroundColor(selezionato ? Colori.Rubrica.selezioneTema : Colori.Rubrica.rigaTema)
+                        .foregroundColor(Colori.Rubrica.rigaTema)
                 }
                 .lineLimit(1)
-                .incisione(selezionato ? Colori.Rubrica.selezioneIncisione : .clear, y: -1)
                 Spacer(minLength: 2)
                 if cliente.preferito {
                     Text("★")
                         .font(Tipo.contenuto(14, .bold))
-                        .foregroundColor(selezionato ? Colori.Rubrica.stellaSelezione : Colori.Rubrica.stella)
+                        .foregroundColor(Colori.Rubrica.stella)
                 } else {
                     Text("›")
                         .font(Tipo.rubricaFreccia)
-                        .foregroundColor(selezionato ? .white : Colori.Rubrica.rigaFreccia)
+                        .foregroundColor(Colori.Rubrica.rigaFreccia)
                 }
             }
             .padding(Misure.Rubrica.margineRiga)
             .frame(maxWidth: .infinity)
-            .background(selezionato ? AnyShapeStyle(Gradienti.selezioneRubrica) : AnyShapeStyle(Color.clear))
-            .bordoAlto(selezionato ? Colori.Rubrica.selezioneBordoAlto : Colori.Rubrica.rigaLuce)
-            .bordoBasso(selezionato ? Colori.Rubrica.selezioneBordoBasso : Colori.Rubrica.rigaBordo)
+            // Voce scelta come nelle barre laterali del tema: accento appena accennato, angoli tondi
+            .fondoPassaggio(.arrotondata(Tema.Raggio.voceLaterale), sopra: Tema.Colore.rigaSopra, selezionata: selezionato)
             .contentShape(Rectangle())
         }
         .buttonStyle(StileSemplice())
@@ -358,11 +355,16 @@ struct CampoRicerca: View {
     let segnaposto: String
 
     var body: some View {
+        // Il campo di ricerca del tema: pozzetto in capsula con un filo sottile
+        let forma = FormaVetro.capsula
         HStack(spacing: 6) {
-            Text("⌕").font(Tipo.contenuto(18)).foregroundColor(Colori.Rubrica.cerca)
+            Image(systemName: "magnifyingglass")
+                .font(Tema.Testo.secondario)
+                .foregroundColor(Colori.Rubrica.cerca)
             TextField(segnaposto, text: $testo)
                 .textFieldStyle(.plain)
                 .font(Tipo.sistema(12))
+                .foregroundColor(Tema.Colore.inchiostro)
             if !testo.isEmpty {
                 Button { testo = "" } label: {
                     Image(systemName: "xmark.circle.fill").foregroundColor(Colori.Rubrica.cerca)
@@ -370,17 +372,10 @@ struct CampoRicerca: View {
                 .buttonStyle(StileSemplice())
             }
         }
-        .padding(.horizontal, 8)
-        .frame(height: 30)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Tema.Colore.scheda))
-        .overlay(alignment: .top) {
-            LinearGradient(colors: [Color.black.opacity(0.13), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 2)
-                .padding(.horizontal, 1)
-                .allowsHitTesting(false)
-        }
-        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Pulsante.segmentoBordo, lineWidth: 1))
-        .shadow(color: Color.white.opacity(0.4), radius: 0, x: 0, y: 1)
+        .padding(.horizontal, Tema.Misura.Componenti.margineCampo)
+        .frame(height: Tema.Misura.Componenti.campoPiccolo)
+        .background { forma.fill(Tema.Colore.pozzetto) }
+        .overlay { forma.strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo).allowsHitTesting(false) }
     }
 }
 
@@ -395,23 +390,18 @@ struct IntestazioneDossier: View {
         HStack(spacing: 12) {
             AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: Misure.Rubrica.avatarProfilo)
                 .padding(Misure.Rubrica.cornicesAvatar)
-                .background(Circle().fill(Colori.Rubrica.avatarCornice))
-                .ombraCSS(Colori.Rubrica.avatarOmbra, y: 1, sfocatura: 2)
             VStack(alignment: .leading, spacing: 2) {
                 Text("DOSSIER PERSONALE")
                     .font(Tipo.profiloOcchiello)
                     .tracking(0.7)
                     .foregroundColor(Colori.Rubrica.profiloOcchiello)
-                    .incisione(Colori.Rubrica.profiloOcchielloIncisione)
                 Text(cliente.nome)
                     .font(Tipo.profiloNome)
                     .tracking(-0.5)
                     .foregroundColor(Colori.Rubrica.profiloNome)
-                    .incisione(Colori.Rubrica.profiloNomeIncisione)
                 Text(cliente.tema)
                     .font(Tipo.profiloTema)
                     .foregroundColor(Colori.Rubrica.profiloOcchiello)
-                    .incisione(Colori.Rubrica.profiloOcchielloIncisione)
             }
             .lineLimit(1)
             Spacer()
@@ -424,7 +414,6 @@ struct IntestazioneDossier: View {
                 Text(cliente.preferito ? "★" : "☆")
                     .font(Tipo.stellaGrande)
                     .foregroundColor(cliente.preferito ? Colori.Rubrica.stellaGrande : Colori.Rubrica.stellaVuota)
-                    .ombraCSS(Color.black.opacity(cliente.preferito ? 0.4 : 0), y: 1, sfocatura: 2)
             }
             .buttonStyle(StileSemplice())
             .help(cliente.preferito ? "Togli dai preferiti" : "Aggiungi ai preferiti")
@@ -433,15 +422,7 @@ struct IntestazioneDossier: View {
         }
         .padding(Misure.Rubrica.margineProfilo)
         .frame(minHeight: 86)
-        .background(
-            ZStack {
-                Gradienti.selleria
-                Materiale.Trama(nome: "Grana")
-            }
-        )
-        .luceInterna(Colori.Rubrica.selleriaLuce, bordo: 0)
-        .ombraInternaBasso(Colori.Rubrica.selleriaLuceBasso, spessore: 1, bordo: 3)
-        .bordoBasso(Colori.Rubrica.selleriaBordo, spessore: 3)
+        .bordoBasso(Colori.Rubrica.selleriaBordo)
     }
 }
 

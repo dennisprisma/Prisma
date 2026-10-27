@@ -119,7 +119,7 @@ struct ModuloValutazione: View {
                     .textFieldStyle(.roundedBorder).lineLimit(2...3)
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: 4).fill(Colori.Documento.prisma.scenarioFondo(t)))
+            .background { FormaVetro.arrotondata(Tema.Raggio.Dossier.riquadro).fill(Tema.Colore.Dossier.fondoScenario(t)) }
         }
     }
 }

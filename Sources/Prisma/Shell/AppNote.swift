@@ -3,7 +3,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 /// App Note: il taccuino personale. A sinistra l'indice con ricerca e filtro per cliente,
-/// a destra la pagina gialla a righe. Ogni nota appartiene a un cliente e si salva da sola.
+/// a destra la pagina a righe appena accennate. Ogni nota appartiene a un cliente e si salva da sola.
 struct AppNote: View {
     @EnvironmentObject var stato: StatoShell
     @State private var modulo: Attivita?
@@ -27,13 +27,15 @@ struct AppNote: View {
                 } else { vuoto }
             }
             .frame(minWidth: Misure.Note.minimaPagina, maxWidth: .infinity, maxHeight: .infinity)
-            .background(ZStack { Gradienti.paginaNote; Materiale.Trama(nome: "Grana") })
+            .background(Colori.Note.paginaCentro)
         }
-        .clipShape(RoundedRectangle(cornerRadius: Misure.Note.raggio))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Note.raggio).strokeBorder(Colori.Note.taccuinoBordo, lineWidth: 1))
-        .ombraCSS(Colori.Note.taccuinoOmbra1, y: 1, sfocatura: 0)
-        .ombraCSS(Colori.Note.taccuinoOmbra3, y: 4, sfocatura: 0)
-        .ombraCSS(Colori.Note.taccuinoOmbra4, y: 6, sfocatura: 9)
+        // La scheda del tema: angoli tondi e filo da 0,5 pt (il contenuto si taglia prima del contorno)
+        .clipShape(FormaVetro.arrotondata(Misure.Note.raggio))
+        .overlay {
+            FormaVetro.arrotondata(Misure.Note.raggio)
+                .strokeBorder(Colori.Note.taccuinoBordo, lineWidth: Tema.Misura.filo)
+                .allowsHitTesting(false)
+        }
         .sheet(item: $modulo) { a in
             ModuloAttivita(bozza: a, nuova: true, salva: { stato.salvaAttivita($0) }, elimina: {})
                 .environmentObject(stato)
@@ -62,11 +64,9 @@ struct AppNote: View {
                     .font(Tipo.noteContatore)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill(Colori.Note.contatore))
-                    .overlay(Capsule().strokeBorder(Colori.Note.contatoreBordo, lineWidth: 1))
+                    .background(FormaVetro.capsula.fill(Colori.Note.contatore))
             }
             .foregroundColor(Colori.Note.cuoioTesto)
-            .incisione(Colori.Note.cuoioIncisione, y: -1)
             .padding(Misure.Note.etichetta)
             .background(CuoioNote())
 
@@ -85,8 +85,8 @@ struct AppNote: View {
                 }
                 .padding(.horizontal, 10)
                 .frame(height: Misure.Note.campoAltezza)
-                .background(Capsule().fill(Colori.Note.campo))
-                .overlay(Capsule().strokeBorder(Colori.Note.campoBordo, lineWidth: 1))
+                .background(FormaVetro.capsula.fill(Colori.Note.campo))
+                .overlay(FormaVetro.capsula.strokeBorder(Colori.Note.campoBordo, lineWidth: Tema.Misura.filo).allowsHitTesting(false))
                 MenuTendina(selezione: $stato.filtroClienteNote,
                             opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
                             stile: .carta)
@@ -108,22 +108,22 @@ struct AppNote: View {
                 Spacer(minLength: 0)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: Tema.Misura.Dossier.spazioVoci) {
                         ForEach(elenco) { n in voce(n, selezionata: n.id == scelta) }
                     }
+                    .padding(.horizontal, Tema.Misura.Dossier.margineElenco)
                 }
             }
 
             Text("\(elenco.count) \(elenco.count == 1 ? "nota" : "note") · il tuo taccuino")
                 .font(Tipo.notePiede)
                 .foregroundColor(Colori.Note.piedeIndice)
-                .incisione(Color.white.opacity(0.4))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .bordoAlto(Colori.Note.piedeIndiceBordo)
         }
-        .background(ZStack { Gradienti.indiceNote; Materiale.Trama(nome: "Grana") })
-        .overlay(alignment: .trailing) { Rectangle().fill(Colori.Note.indiceBordo).frame(width: 1) }
+        .background(Colori.Note.indiceCentro)
+        .overlay(alignment: .trailing) { Rectangle().fill(Colori.Note.indiceBordo).frame(width: Tema.Misura.filo) }
     }
 
     private func voce(_ n: Nota, selezionata: Bool) -> some View {
@@ -144,13 +144,12 @@ struct AppNote: View {
                     .foregroundColor(selezionata ? Colori.Note.selezioneTesto : Colori.Note.voceSecondario)
             }
             .foregroundColor(selezionata ? Colori.Note.selezioneTesto : Colori.Note.voceTesto)
-            .incisione(Color.white.opacity(selezionata ? 0.45 : 0))
             .multilineTextAlignment(.leading)
             .padding(Misure.Note.voce)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selezionata ? AnyShapeStyle(Gradienti.selezioneNote) : AnyShapeStyle(Colori.Note.voceFondo))
-            .bordoAlto(selezionata ? Colori.Note.selezioneLuce : Colori.Note.voceLuce)
-            .bordoBasso(selezionata ? Colori.Note.selezioneBordo : Colori.Note.voceBordo)
+            // Voce scelta come nelle barre laterali del tema: accento appena accennato, angoli tondi
+            .fondoPassaggio(.arrotondata(Tema.Raggio.voceLaterale), sopra: Tema.Colore.rigaSopra,
+                            selezionata: selezionata, selezione: Colori.Note.selezioneAlto)
             .contentShape(Rectangle())
         }
         .buttonStyle(StileSemplice())
@@ -261,7 +260,6 @@ struct AppNote: View {
                 .help("Salva una copia di testo dove scegli tu")
         }
         .padding(Misure.Note.azioni)
-        .background(ZStack { Gradienti.azioniNote; Materiale.Trama(nome: "Grana") })
         .bordoAlto(Colori.Note.azioniBordo)
     }
 

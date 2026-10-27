@@ -52,9 +52,12 @@ struct AppDocumenti: View {
         }
         .overlay {
             if sopra {
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Colori.Analisi.navBasso, style: StrokeStyle(lineWidth: 3, dash: [8, 5]))
-                    .background(Colori.Analisi.navBasso.opacity(0.06))
+                FormaVetro.arrotondata(Tema.Raggio.Strumenti.rilascio)
+                    .strokeBorder(Tema.Colore.accento,
+                                  style: StrokeStyle(lineWidth: Tema.Misura.Strumenti.bordoRilascio, dash: Tema.Misura.Strumenti.trattiRilascio))
+                    .background {
+                        FormaVetro.arrotondata(Tema.Raggio.Strumenti.rilascio).fill(Tema.Colore.Strumenti.rilascio)
+                    }
                     .allowsHitTesting(false)
             }
         }
@@ -123,6 +126,7 @@ struct AppDocumenti: View {
                             .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).padding(12)
                     }
                 }
+                .padding(.vertical, Tema.Misura.Strumenti.margineElenco)
             }
         }
         .background(Gradienti.railAnalisi)
@@ -132,14 +136,14 @@ struct AppDocumenti: View {
         let confermati = d.campi.filter(\.confermato).count
         return HStack(alignment: .top, spacing: 9) {
             Image(systemName: d.tipo == .kid ? "doc.text.magnifyingglass" : d.tipo == .polizza ? "doc.richtext" : "doc.text")
-                .font(.system(size: 16))
-                .foregroundColor(attiva ? .white : Colori.Analisi.navBasso)
+                .font(Tema.Testo.Strumenti.iconaDocumento)
+                .foregroundColor(Colori.Analisi.navBasso)
                 .frame(width: 20)
             VStack(alignment: .leading, spacing: 2) {
-                Text(d.titolo).font(Tipo.tabellaCellaForte).foregroundColor(attiva ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                Text(d.titolo).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
                 Text("\(d.tipo.breve) · \(d.pagine) \(d.pagine == 1 ? "pagina" : "pagine") · \(Formati.dataBreve.string(from: d.importatoIl))")
                     .font(Tipo.chip)
-                    .foregroundColor(attiva ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota)
+                    .foregroundColor(Colori.Analisi.kpiNota)
                 HStack(spacing: 5) {
                     if stato.documentiInLettura.contains(d.id) {
                         ProgressView().controlSize(.mini)
@@ -151,19 +155,17 @@ struct AppDocumenti: View {
                     }
                 }
                 .font(Tipo.chip)
-                .foregroundColor(attiva ? Color.white.opacity(0.85) : (d.lettura == .illeggibile ? Colori.Analisi.erroreTesto : Colori.Analisi.kpiNota))
+                .foregroundColor(d.lettura == .illeggibile ? Colori.Analisi.erroreTesto : Colori.Analisi.kpiNota)
             }
             Spacer(minLength: 0)
         }
         .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(attiva ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
-        .bordoBasso(Colori.Strumenti.ipotesiRiga)
+        .voceElencoStrumento(attiva: attiva)
     }
 
     private var zonaRilascio: some View {
         VStack(spacing: 10) {
-            Image(systemName: "tray.and.arrow.down").font(.system(size: 40, weight: .light)).foregroundColor(Colori.Analisi.lineaTratteggiata)
+            Image(systemName: "tray.and.arrow.down").font(Tema.Testo.Strumenti.iconaRilascio).foregroundColor(Colori.Analisi.lineaTratteggiata)
             Text("Trascina qui KID, polizze ed estratti conto").font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
             Text("Prisma legge il testo sul Mac, trova i dati e ti chiede di confermarli prima di metterli nel dossier.")
                 .font(Tipo.strumentoTesto).foregroundColor(Colori.Analisi.kpiNota)
@@ -356,8 +358,7 @@ struct AppDocumenti: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Gradienti.kpi))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .riquadroStrumento()
     }
 
     private func usa(_ d: Documento) -> some View {
@@ -403,8 +404,7 @@ struct AppDocumenti: View {
             }
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Gradienti.kpi))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .riquadroStrumento()
     }
 
     private func proponiCanaleEArea(_ d: Documento) {
@@ -444,15 +444,13 @@ struct AppDocumenti: View {
                 }
             }
             Text(pagine[n - 1].isEmpty ? "(pagina vuota)" : pagine[n - 1])
-                .font(.system(size: 12, design: .monospaced))
+                .font(Tema.Testo.Strumenti.testoLetto)
                 .foregroundColor(Colori.Analisi.tabellaTesto)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Tema.Colore.scheda)
-                .overlay(Rectangle().strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
-                .shadow(color: Color.black.opacity(0.08), radius: 2, x: 0, y: 1)
+                .riquadroStrumento()
         }
     }
 }

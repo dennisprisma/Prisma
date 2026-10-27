@@ -226,7 +226,8 @@ struct ModificatoreVetro: ViewModifier {
         if #available(macOS 26.0, *) {
             return AnyView(
                 content
-                    .background { forma.fill(veloNativo) }
+                    // Un riempimento scelto (pannelli che galleggiano sopra altro contenuto) resta anche sul vetro di Apple
+                    .background { forma.fill(riempimentoScelto ?? veloNativo) }
                     .glassEffect(vetroDiSistema, in: forma)
                     .background {
                         if ombraNativa { OmbreVetro(forma: forma, strati: strati) }

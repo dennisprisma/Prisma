@@ -102,7 +102,6 @@ struct AppSimulazioni: View {
                     Text("Ipotesi modificate: salvale come nuovo scenario").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
                 }
             }
-            .incisione(.white)
             Spacer()
             if stato.schedaSimulazioni == .simulatore {
                 Button("Nuova ipotesi") {
@@ -152,7 +151,7 @@ struct AppSimulazioni: View {
                                       valore: Binding(get: { Double(b.wrappedValue.anni) }, set: { b.wrappedValue.anni = max(1, Int($0.rounded())) }),
                                       unita: "anni", intervallo: 1...40, passo: 1)
                     ComandoSimulatore(etichetta: "Rendimento annuo", valore: b.rendimento, unita: "%", intervallo: -10...20, passo: 0.1, decimali: 1)
-                    Rectangle().fill(Colori.Strumenti.consoleBordo).frame(height: 1).shadow(color: .white, radius: 0, x: 0, y: 1)
+                    Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
                     ComandoSimulatore(etichetta: "Costo d'ingresso", valore: b.costoIngresso, unita: "%", intervallo: 0...10, passo: 0.5, decimali: 1)
                     ComandoSimulatore(etichetta: "Costo annuo", valore: b.costoAnnuo, unita: "%", intervallo: 0...5, passo: 0.05, decimali: 2)
                     ComandoSimulatore(etichetta: "Imposte sul guadagno", valore: b.aliquota, unita: "%", intervallo: 0...43, passo: 0.5, decimali: 1)
@@ -161,7 +160,6 @@ struct AppSimulazioni: View {
                         Text("Canale dell'ipotesi")
                             .font(Tipo.consoleEtichetta)
                             .foregroundColor(Colori.Strumenti.consoleEtichetta)
-                            .incisione(.white)
                         SegmentiAnalisi(opzioni: [(Canale?.none, "Nessuno"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")],
                                         selezione: b.canale)
                     }
@@ -170,7 +168,6 @@ struct AppSimulazioni: View {
             }
             .frame(width: Misure.Strumenti.console)
             .background(Gradienti.console)
-            .luceInterna(.white)
             .bordoDestro(Colori.Strumenti.consoleBordo)
 
             ScrollView {
@@ -195,12 +192,7 @@ struct AppSimulazioni: View {
                 }
                 .padding(EdgeInsets(top: 20, leading: 22, bottom: 20, trailing: 22))
             }
-            .background(
-                ZStack {
-                    Colori.Strumenti.carta
-                    Rigatura(passo: Misure.Strumenti.rigaCarta).fill(Colori.Strumenti.cartaRiga)
-                }
-            )
+            .background(Colori.Strumenti.carta)
         }
     }
 
@@ -214,7 +206,6 @@ struct AppSimulazioni: View {
                 Text(Formati.euro(e.netto))
                     .font(Tipo.risultatoGrande)
                     .foregroundColor(Colori.Strumenti.risultato)
-                    .incisione(.white)
                 HStack(spacing: 6) {
                     Text("Al termine di \(s.anni) \(s.anni == 1 ? "anno" : "anni")")
                     if let c = s.canale { EtichettaCanale(canale: c, compatta: true) }
@@ -232,7 +223,7 @@ struct AppSimulazioni: View {
                 dettaglio("Costi e imposte", Formati.euro(e.costi + e.imposte), nota: "i costi tolgono \(Formati.euro(impatto))", ultimo: true)
             }
             .fixedSize(horizontal: false, vertical: true)
-            .overlay(Rectangle().strokeBorder(Colori.Strumenti.risultatoBordo, lineWidth: 1))
+            .riquadroStrumento()
         }
     }
 
@@ -246,7 +237,7 @@ struct AppSimulazioni: View {
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .trailing) {
-            if !ultimo { Rectangle().fill(Colori.Strumenti.risultatoBordo).frame(width: 1) }
+            if !ultimo { Rectangle().fill(Colori.Strumenti.risultatoBordo).frame(width: Tema.Misura.filo).padding(.vertical, 8) }
         }
     }
 

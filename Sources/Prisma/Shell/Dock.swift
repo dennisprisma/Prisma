@@ -68,7 +68,11 @@ struct Dock: View {
     /// Spazio fra le icone e margini (in frazioni del lato dell'icona, come nel tema).
     static var spazio: CGFloat { Tema.Misura.dockIcona * Tema.Misura.dockSpazioQuota }
     static var margine: CGFloat { Tema.Misura.dockIcona * Tema.Misura.dockMargineQuota }
-    static var margineLato: CGFloat { margine + Tema.Misura.Shell.margineDockLato }
+    /// Il margine laterale tiene dentro la capsula anche i nomi lunghi sotto la prima e l'ultima icona
+    /// («Impostazioni» è più largo dell'icona): l'ingrandimento lo conta in `disposizione`, come prima.
+    static var margineLato: CGFloat {
+        margine + Tema.Misura.Shell.margineDockLato + Tema.Misura.PannelliShell.etichetteDockLato * Tipo.fattore
+    }
     /// Il divisore: un filo con il suo margine (oltre lo spazio fra gli elementi).
     static var rientroDivisore: CGFloat { max(0, Tema.Misura.Shell.divisoreMargine - spazio) }
     static var larghezzaDivisore: CGFloat { Tema.Misura.filo * 2 + 2 * rientroDivisore }
@@ -150,7 +154,8 @@ struct ElementoDock<Icona: View>: View {
                     .font(Tema.Testo.Shell.etichettaDock)
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
                     .lineLimit(1)
-                    // Mai rimpicciolito: un nome lungo («Impostazioni») sborda appena dalla cella dell'icona
+                    // Mai rimpicciolito: un nome lungo («Impostazioni») sborda appena dalla cella dell'icona,
+                    // ma resta dentro la capsula grazie al margine laterale del dock (`Dock.margineLato`)
                     .fixedSize()
                     .frame(width: lato * ingrandimento, height: m.etichettaDock)
                     .padding(.top, m.etichettaSpazio)

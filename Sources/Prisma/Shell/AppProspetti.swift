@@ -41,7 +41,8 @@ struct AppProspetti: View {
                                                 scala: min(1, (geo.size.width - 40) / documento.formato.width))
                             }
                         }
-                        .background(LinearGradient(colors: [Colori.Carta.tavoloAlto, Colori.Carta.tavoloBasso], startPoint: .top, endPoint: .bottom))
+                        .background(LinearGradient(colors: [Tema.Colore.Strumenti.tavoloAlto, Tema.Colore.Strumenti.tavoloBasso],
+                                                   startPoint: .top, endPoint: .bottom))
                     } else {
                         vuoto
                     }
@@ -217,7 +218,7 @@ struct AppProspetti: View {
 
     private func sceltaResoconto(report: Bool) -> some View {
         let voci = report
-            ? ["Copertina in cuoio con il patrimonio netto", "Il quadro: aree e canali in una pagina",
+            ? ["Copertina con il patrimonio netto", "Il quadro: aree e canali in una pagina",
                "Come sta andando: versato, valore, risultato", "Quanto incasseresti oggi, dopo le imposte",
                "Posizione per posizione, in schede",
                "Le tutele, i prossimi 12 mesi, i costi", "In sintesi e prossimi passi"]
@@ -413,15 +414,12 @@ struct AppProspetti: View {
                     stato.prospetto = .obiettivo(o.id, report: report)
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(o.titolo).font(Tipo.tabellaCellaForte).foregroundColor(o.id == id ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                        Text(o.titolo).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
                         Text("\(Formati.euro(o.importo)) · \(Formati.dataBreve.string(from: o.scadenza)) · \(Int((a.quota * 100).rounded()))%")
-                            .font(Tipo.chip).foregroundColor(o.id == id ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota)
+                            .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
                     }
                     .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(o.id == id ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
-                    .bordoBasso(Colori.Strumenti.ipotesiRiga)
-                    .contentShape(Rectangle())
+                    .voceElencoStrumento(attiva: o.id == id)
                 }
                 .buttonStyle(StileSemplice())
             }
@@ -444,7 +442,7 @@ struct AppProspetti: View {
 
     private func sceltaProtezione(report: Bool) -> some View {
         let voci = report
-            ? ["Copertina in cuoio: famiglia, fabbisogno, tutele", "La tua famiglia e ciò che le serve", "Se ti succedesse qualcosa",
+            ? ["Copertina: famiglia, fabbisogno, tutele", "La tua famiglia e ciò che le serve", "Se ti succedesse qualcosa",
                "Se non potessi lavorare", "La mappa delle tutele", "Quanto costa proteggersi, in sintesi"]
             : ["Famiglia, fabbisogno caso morte e divario", "Invalidità, malattia e riserva", "Mappa dei rischi coperti e scoperti",
                "Coperture per canale, costo per 1.000 €", "Scadenze da verificare", "Premi, detrazione del 19%, metodo e firme"]
@@ -474,7 +472,7 @@ struct AppProspetti: View {
 
     private func sceltaPrevidenza(report: Bool) -> some View {
         let voci = report
-            ? ["Copertina in cuoio: pensione, divario, piani", "Quanto ti servirà: il divario", "Cosa hai già: la rendita dei piani",
+            ? ["Copertina: pensione, divario, piani", "Quanto ti servirà: il divario", "Cosa hai già: la rendita dei piani",
                "Come colmare il resto, con la proposta", "Il vantaggio fiscale dei versamenti", "Le tasse sulla pensione, in sintesi"]
             : ["Divario, rendita dei piani e versamento che manca", "Ogni piano alla pensione con l'aliquota di allora",
                "Deducibilità e risparmio IRPEF", "Aliquota della prestazione nel tempo", "Uscite di oggi per causa, al centesimo",
@@ -584,18 +582,15 @@ struct AppProspetti: View {
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(p?.nome ?? "Prodotto non trovato").font(Tipo.tabellaCellaForte)
-                    .foregroundColor(attiva ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                    .foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
                 Text("\(Formati.euro(v.premio)) · \(v.intestatari) · \(Formati.dataBreve.string(from: v.data))")
-                    .font(Tipo.chip).foregroundColor(attiva ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota).lineLimit(1)
+                    .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
             }
             Spacer(minLength: 4)
             if let p { EtichettaCanale(canale: p.canale, compatta: true) }
         }
         .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(attiva ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
-        .bordoBasso(Colori.Strumenti.ipotesiRiga)
-        .contentShape(Rectangle())
+        .voceElencoStrumento(attiva: attiva)
     }
 
     private func sceltaPosizione(_ id: String) -> some View {
@@ -622,18 +617,15 @@ struct AppProspetti: View {
     private func rigaPosizione(_ p: Posizione, attiva: Bool) -> some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(attiva ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
                 Text("\(p.area.nome) · \(Formati.euro(p.stato == .inEssere ? p.valore : p.versamentoIniziale + p.premioAnnuo))")
-                    .font(Tipo.chip).foregroundColor(attiva ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota)
+                    .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
             }
             Spacer(minLength: 4)
             EtichettaCanale(canale: p.canale, compatta: true)
         }
         .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(attiva ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
-        .bordoBasso(Colori.Strumenti.ipotesiRiga)
-        .contentShape(Rectangle())
+        .voceElencoStrumento(attiva: attiva)
     }
 
     private func sceltaConfronto(_ a: VoceConfronto, _ b: VoceConfronto) -> some View {
@@ -736,22 +728,22 @@ struct AppProspetti: View {
     }
 }
 
-/// Le pagine di un documento su un tavolo di lino chiaro, come la sala di lettura dei Documenti del template.
+/// Le pagine di un documento sul tavolo dell'anteprima (gettone del tema, chiaro o scuro): i fogli restano chiari.
 private struct TavoloDocumento: View {
     let documento: DocumentoStampabile
     let scala: CGFloat
 
     var body: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: Tema.Misura.Strumenti.spazioFogli) {
             ForEach(Array(documento.pagine.enumerated()), id: \.offset) { _, pagina in
                 pagina
                     .frame(width: documento.formato.width, height: documento.formato.height)
                     .scaleEffect(scala, anchor: .top)
                     .frame(width: documento.formato.width * scala, height: documento.formato.height * scala, alignment: .top)
-                    .shadow(color: Colori.Carta.ombraFoglio, radius: 5, x: 0, y: 3)
+                    .ombraTema(Tema.Ombra.Strumenti.foglio)
             }
         }
-        .padding(.vertical, 20)
+        .padding(.vertical, Tema.Misura.Strumenti.margineTavolo)
         .frame(maxWidth: .infinity)
     }
 }
@@ -784,8 +776,7 @@ private struct PannelloCommento: View {
                     .scrollContentBackground(.hidden)
                     .padding(4)
                     .frame(height: 210)
-                    .background(RoundedRectangle(cornerRadius: Misure.Strumenti.raggio).fill(Colori.Strumenti.carta))
-                    .overlay(RoundedRectangle(cornerRadius: Misure.Strumenti.raggio).strokeBorder(Colori.Strumenti.schedaBordo, lineWidth: 1))
+                    .pozzettoTestoLungo()
                     // Mentre Eve scrive non si modifica: il suo testo sostituirebbe quello digitato
                     .disabled(stato.eveInCorso)
                 HStack {
