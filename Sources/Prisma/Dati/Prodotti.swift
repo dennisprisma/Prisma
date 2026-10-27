@@ -23,6 +23,10 @@ struct Prodotto: Identifiable, Codable, Hashable {
     var note = ""
     /// Condizioni dettagliate del contratto (parti, penali, bollo, KID), per le valutazioni di riscatto.
     var condizioni: CondizioniContratto?
+    /// Incidenza annua dei costi dichiarata nel KID (RIY, % annuo al periodo raccomandato).
+    var incidenzaCostiKID: Double?
+    /// Periodo di detenzione raccomandato dal KID, in anni (se mancano le condizioni dettagliate).
+    var periodoRaccomandato: Int?
 
     init(nome: String, canale: Canale, area: AreaPosizione) {
         self.nome = nome
@@ -34,6 +38,9 @@ struct Prodotto: Identifiable, Codable, Hashable {
     var mesiDallaVerifica: Int? {
         verificatoIl.flatMap { Calendar.current.dateComponents([.month], from: $0, to: Date()).month }
     }
+
+    /// Periodo raccomandato: quello della scheda o, se manca, quello delle condizioni del contratto.
+    var periodoConsigliato: Int? { periodoRaccomandato ?? condizioni?.periodoRaccomandato }
 
     /// Una scheda più vecchia di un anno va riletta sul KID aggiornato.
     var daVerificare: Bool { (mesiDallaVerifica ?? 99) >= 12 }
@@ -58,6 +65,8 @@ struct Prodotto: Identifiable, Codable, Hashable {
         p.aliquotaFiscale = aliquotaFiscale
         p.sri = sri
         p.garanzie = garanzie
+        p.incidenzaCostiKID = incidenzaCostiKID
+        p.periodoRaccomandato = periodoConsigliato
         p.prodottoId = id
         p.note = fonte.isEmpty ? "" : "Dati dalla scheda prodotto: \(fonte)"
         return p
@@ -66,6 +75,7 @@ struct Prodotto: Identifiable, Codable, Hashable {
     private enum CodingKeys: String, CodingKey {
         case id, nome, canale, area, emittente, tipologia, rendimentoAtteso, costoIngresso, costoAnnuo, aliquotaFiscale, sri
         case garanzie, liquidabilita, fonte, verificatoIl, note, condizioni
+        case incidenzaCostiKID, periodoRaccomandato
     }
 
     init(from decoder: Decoder) throws {
@@ -87,6 +97,8 @@ struct Prodotto: Identifiable, Codable, Hashable {
         verificatoIl = try c.decodeIfPresent(Date.self, forKey: .verificatoIl)
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         condizioni = try? c.decodeIfPresent(CondizioniContratto.self, forKey: .condizioni)
+        incidenzaCostiKID = try? c.decodeIfPresent(Double.self, forKey: .incidenzaCostiKID)
+        periodoRaccomandato = try? c.decodeIfPresent(Int.self, forKey: .periodoRaccomandato)
     }
 }
 

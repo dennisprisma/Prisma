@@ -45,7 +45,15 @@ struct TestiCosti {
     /// Cosa offre in cambio una posizione: garanzie e coperture del contratto, o la sua natura.
     static func inCambio(_ p: Posizione) -> String {
         if !p.garanzie.isEmpty { return p.garanzie }
-        if p.gestioneSeparata { return "Capitale garantito e rendimenti consolidati ogni anno." }
+        if p.gestioneSeparata {
+            // Dai dati della posizione: consolidamento e minimo garantito, se indicati
+            let minimo = (p.minimoGarantito ?? 0) > 0 ? ", minimo garantito \(CifreDoc.percento(p.minimoGarantito ?? 0, decimali: 2)) l'anno" : ""
+            switch p.consolidamento {
+            case .some(false): return "Capitale garantito a scadenza e in caso di decesso\(minimo)."
+            case .some(true): return "Capitale garantito e rendimenti consolidati ogni anno\(minimo)."
+            case .none: return "Capitale garantito dalla gestione separata\(minimo)."
+            }
+        }
         if p.regime == .polizza { return "Polizza vita: beneficiari designati, fuori dall'asse ereditario." }
         if p.regime == .previdenza { return "Previdenza: versamenti deducibili, imposte ridotte alla pensione." }
         return "Gestione professionale e diversificazione."

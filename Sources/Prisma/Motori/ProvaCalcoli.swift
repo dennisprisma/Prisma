@@ -1084,6 +1084,112 @@ enum ProvaCalcoli {
             verifica("Patrimonio: un obiettivo già passato non è lungo la strada", MotorePatrimonio.calcola([casa], obiettivi: [passato]).traguardi.isEmpty ? 1 : 0, 1)
         }
 
+        // 27. Dati nuovi per i motori: letture con i ripieghi e compatibilità dell'archivio
+        do {
+            let scheda = DatiDemo.orizzonteValore() // penali [3,5; 2,5; 1,0] dal 2° anno, blocco di 12 mesi
+            var p = Posizione(clienteId: "prova", canale: .alleanza, stato: .inEssere, area: .risparmio, nome: "Penali")
+            p.penali = [2.5, 2, 1.5, 1]
+            // Convenzione di CondizioniContratto.penale(anno:): anno 2 = primo valore; nel 1° anno e dopo l'ultimo, zero
+            verifica("Penali della posizione: 2° anno", p.penale(anno: 2, prodotto: scheda), 2.5)
+            verifica("Penali della posizione: 5° anno", p.penale(anno: 5, prodotto: scheda), 1)
+            verifica("Penali della posizione: dal 6° anno nessuna", p.penale(anno: 6, prodotto: scheda), 0)
+            verifica("Penali della posizione: nel 1° anno nessuna (c'è il blocco)", p.penale(anno: 1, prodotto: scheda), 0)
+            p.penali = nil
+            verifica("Penali dalla scheda prodotto: 3° anno", p.penale(anno: 3, prodotto: scheda), 2.5)
+            verifica("Penali: senza posizione né scheda nessuna", p.penale(anno: 3, prodotto: nil), 0)
+            p.penali = []
+            verifica("Penali: la posizione senza penali prevale sulla scheda", p.penale(anno: 3, prodotto: scheda), 0)
+            verifica("Blocco del riscatto dalla scheda", Double(p.bloccoRiscatto(prodotto: scheda) ?? -1), 12)
+            verifica("Blocco del riscatto: non indicato", p.bloccoRiscatto(prodotto: nil) == nil ? 1 : 0, 1)
+            p.mesiBloccoRiscatto = 6
+            verifica("Blocco del riscatto della posizione", Double(p.bloccoRiscatto(prodotto: scheda) ?? -1), 6)
+
+            // Durata residua: 18 mesi esatti da una data fissa; dopo la scadenza zero; senza scadenza nil
+            let inizio = Date(timeIntervalSinceReferenceDate: 800_000_000)
+            p.scadenza = Calendar.current.date(byAdding: .month, value: 18, to: inizio)
+            verifica("Durata residua: 18 mesi", Double(p.mesiResidui(al: inizio) ?? -1), 18)
+            let dopo = Calendar.current.date(byAdding: .day, value: 40, to: p.scadenza ?? inizio) ?? inizio
+            verifica("Durata residua: scaduta", Double(p.mesiResidui(al: dopo) ?? -1), 0)
+            p.scadenza = nil
+            verifica("Durata residua: senza scadenza", p.mesiResidui(al: inizio) == nil ? 1 : 0, 1)
+
+            // Dati di prova coerenti: rata alla francese = D·i / (1 − (1+i)^−n), i = tasso/12, n = mesi residui.
+            // A mano: Giulia 95.000 € al 3,8% per 216 mesi ≈ 607,92 € (indicata 610); Marco 130.000 € al 3,6% per
+            // 192 mesi ≈ 891,69 € (890); Laura 6.000 € al 3,8% per 24 mesi ≈ 260,02 € (260); Sofia 40.000 € al 3,6%
+            // per 96 mesi ≈ 480,16 € (480)
+            for m in DatiDemo.posizioni() where m.area == .debiti {
+                guard let tasso = m.tassoDebito, let anni = m.anniAllaScadenza, let d = m.controvalore else { continue }
+                let i = tasso / 100 / 12
+                let rata = d * i / (1 - pow(1 + i, -Double(anni * 12)))
+                verifica("Dati di prova: rata di «\(m.nome)» (\(m.clienteId)) dal tasso", rata, m.premio, tolleranza: 3)
+            }
+
+            // Pensione: aliquota di computo indicata o del tipo di lavoratore; sistema misto prima del 1996
+            verifica("Lavoro: aliquota del dipendente", DatiLavoro(tipo: .dipendente).aliquota ?? -1, 33)
+            verifica("Lavoro: aliquota della Gestione separata", DatiLavoro(tipo: .gestioneSeparata).aliquota ?? -1, 25)
+            verifica("Lavoro: aliquota indicata dal consulente", DatiLavoro(tipo: .autonomo, aliquotaContributiva: 24.48).aliquota ?? -1, 24.48)
+            verifica("Lavoro: cassa professionale non stimata", DatiLavoro(tipo: .cassaProfessionale).aliquota == nil ? 1 : 0, 1)
+            verifica("Lavoro: contributi dal 1993, sistema misto", DatiLavoro(annoPrimoContributo: 1993).sistemaMisto ? 1 : 0, 1)
+            verifica("Lavoro: contributi dal 1996, contributivo puro", DatiLavoro(annoPrimoContributo: 1996).sistemaMisto ? 1 : 0, 0)
+            verifica("Lavoro: anno non indicato, non misto", DatiLavoro().sistemaMisto ? 1 : 0, 0)
+            let clientiDemo = DatiDemo.clienti()
+            let giuliaDemo = clientiDemo.first { $0.id == "giulia" }
+            verifica("Lavoro: reddito da lavoro di Giulia dal reddito complessivo", giuliaDemo?.profilo.redditoDaLavoro ?? -1, 32_000)
+            var profilo = ProfiloInvestitore()
+            profilo.redditoLordoAnnuo = 50_000
+            profilo.lavoro = DatiLavoro(redditoLavoro: 42_000)
+            verifica("Lavoro: il reddito da lavoro indicato prevale", profilo.redditoDaLavoro ?? -1, 42_000)
+
+            // Archivio: i campi nuovi sopravvivono ad andata e ritorno; quelli illeggibili non scartano nulla
+            let posizioniDemo = DatiDemo.posizioni()
+            let posizioniLette = (try? Archivio.codificatore.encode(posizioniDemo)).flatMap { try? Archivio.decodificatore.decode([Posizione].self, from: $0) }
+            verifica("Archivio: posizioni di prova identiche dopo andata e ritorno", posizioniLette == posizioniDemo ? 1 : 0, 1)
+            let andrea = posizioniLette?.first { $0.clienteId == "andrea" && $0.area == .risparmio }
+            verifica("Archivio: penali della proposta di Andrea conservate", andrea?.penali == [2.5, 2, 1.5, 1] ? 1 : 0, 1)
+            let clientiLetti = (try? Archivio.codificatore.encode(clientiDemo)).flatMap { try? Archivio.decodificatore.decode([Cliente].self, from: $0) }
+            verifica("Archivio: clienti di prova identici dopo andata e ritorno", clientiLetti == clientiDemo ? 1 : 0, 1)
+            let marcoLetto = clientiLetti?.first { $0.id == "marco" }
+            verifica("Archivio: montante contributivo di Marco conservato", marcoLetto?.profilo.lavoro?.montanteContributivo ?? -1, 265_000)
+            verifica("Archivio: reddito di Elena conservato", marcoLetto?.famiglia.first?.redditoNettoAnnuo ?? -1, 16_000)
+            var etf = DatiDemo.prodotti().first { $0.id == "prodotto-etf-globale" } ?? DatiDemo.orizzonteValore()
+            var gs = ComponenteContratto(tipo: .gestioneSeparata, nome: "Prova", quota: 100)
+            gs.minimoGarantito = 0.5
+            gs.consolidamento = false
+            gs.retrocessione = 85
+            var condizioni = CondizioniContratto()
+            condizioni.componenti = [gs]
+            etf.condizioni = condizioni
+            let etfLetto = (try? Archivio.codificatore.encode(etf)).flatMap { try? Archivio.decodificatore.decode(Prodotto.self, from: $0) }
+            verifica("Archivio: scheda prodotto identica dopo andata e ritorno", etfLetto == etf ? 1 : 0, 1)
+            verifica("Archivio: incidenza dei costi del KID conservata", etfLetto?.incidenzaCostiKID ?? -1, 0.2)
+            verifica("Archivio: retrocessione della gestione separata conservata", etfLetto?.condizioni?.componenti.first?.retrocessione ?? -1, 85)
+            verifica("Archivio: la proposta dalla scheda porta il periodo raccomandato", Double(etf.proposta(per: "prova").periodoRaccomandato ?? -1), 5)
+            // Un archivio di prima (senza i campi nuovi) si legge; un movimento o un tipo di lavoratore illeggibile diventano valori vuoti
+            let vecchia = Posizione(clienteId: "prova", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Vecchia")
+            let grezzo = (try? Archivio.codificatore.encode(vecchia)).flatMap { try? JSONSerialization.jsonObject(with: $0) }
+            var oggetto: [String: Any] = (grezzo as? [String: Any]) ?? [:]
+            let lettaVecchia = (try? JSONSerialization.data(withJSONObject: oggetto)).flatMap { try? Archivio.decodificatore.decode(Posizione.self, from: $0) }
+            verifica("Archivio: posizione senza i campi nuovi letta", lettaVecchia?.movimenti == nil && lettaVecchia?.nome == "Vecchia" ? 1 : 0, 1)
+            let movimentiGrezzi: [[String: Any]] = [["data": "non è una data", "importo": "mille"],
+                                                    ["data": "2025-01-01T00:00:00Z", "importo": 500]]
+            oggetto["movimenti"] = movimentiGrezzi
+            let conMovimenti = (try? JSONSerialization.data(withJSONObject: oggetto)).flatMap { try? Archivio.decodificatore.decode(Posizione.self, from: $0) }
+            verifica("Archivio: movimenti illeggibili non scartano la posizione", Double(conMovimenti?.movimenti?.count ?? -1), 2)
+            verifica("Archivio: importo illeggibile diventa zero", conMovimenti?.movimenti?.first?.importo ?? -1, 0)
+            verifica("Archivio: movimento leggibile conservato", conMovimenti?.movimenti?.last?.importo ?? -1, 500)
+            let lavoroIgnoto = try? Archivio.decodificatore.decode(DatiLavoro.self, from: Data(#"{"tipo":"pilota","anniContributi":12}"#.utf8))
+            verifica("Archivio: tipo di lavoratore sconosciuto ignorato", lavoroIgnoto != nil && lavoroIgnoto?.tipo == nil ? 1 : 0, 1)
+            verifica("Archivio: anni di contributi conservati", lavoroIgnoto?.anniContributi ?? -1, 12)
+        }
+
+        // Prove dei miglioramenti dei motori, in file separati: gli errori si sommano a quelli qui sopra
+        let verificaEsterna = VerificaCalcoli { nome, ottenuto, atteso, tolleranza in
+            verifica(nome, ottenuto, atteso, tolleranza: tolleranza)
+        }
+        ProvaCalcoliRendimenti.esegui(verificaEsterna)
+        ProvaCalcoliRischio.esegui(verificaEsterna)
+        ProvaCalcoliFamiglia.esegui(verificaEsterna)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0
@@ -1091,4 +1197,41 @@ enum ProvaCalcoli {
         print("ERRORE: \(errori) verifiche non riuscite")
         return 1
     }
+}
+
+/// La funzione `verifica` di `ProvaCalcoli.esegui()`, passata alle prove che stanno in file separati
+/// (`ProvaCalcoliRendimenti`, `ProvaCalcoliRischio`, `ProvaCalcoliFamiglia`): ogni verifica stampa
+/// «OK» o «ERRORE» e un errore si somma allo stesso contatore del riepilogo finale.
+/// Si chiama come quella originale: `verifica("nome", ottenuto, atteso)` o con `tolleranza: 1`.
+struct VerificaCalcoli {
+    let controlla: (String, Double, Double, Double) -> Void
+
+    func callAsFunction(_ nome: String, _ ottenuto: Double, _ atteso: Double, tolleranza: Double = 0.01) {
+        controlla(nome, ottenuto, atteso, tolleranza)
+    }
+
+    /// Una condizione che deve essere vera (come `verifica(nome, condizione ? 1 : 0, 1)`).
+    func vero(_ nome: String, _ condizione: Bool) {
+        controlla(nome, condizione ? 1 : 0, 1, 0.01)
+    }
+}
+
+/// Aiuti comuni per scrivere i casi delle prove nei file separati.
+enum AiutiProva {
+    /// Una posizione di prova in essere, canale indipendente, con il valore indicato.
+    static func posizione(_ nome: String, _ area: AreaPosizione, _ valore: Double,
+                          canale: Canale = .indipendente, _ modifica: (inout Posizione) -> Void = { _ in }) -> Posizione {
+        var p = Posizione(clienteId: "prova", canale: canale, stato: .inEssere, area: area, nome: nome)
+        p.controvalore = valore
+        modifica(&p)
+        return p
+    }
+
+    /// Una data fissa (calendario gregoriano, ore 12 per evitare i salti dell'ora legale): prove riproducibili.
+    static func data(_ anno: Int, _ mese: Int, _ giorno: Int) -> Date {
+        Calendar(identifier: .gregorian).date(from: DateComponents(year: anno, month: mese, day: giorno, hour: 12)) ?? Date()
+    }
+
+    /// Oggi all'inizio del giorno, come `oggi` di `ProvaCalcoli`.
+    static var oggi: Date { Calendar(identifier: .gregorian).startOfDay(for: Date()) }
 }

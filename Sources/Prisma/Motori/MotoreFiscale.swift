@@ -28,8 +28,9 @@ enum RegoleFiscali {
 
     /// Imposta annua sui rendimenti dentro i fondi pensione (12,5% sulla parte in titoli di Stato).
     static let previdenzaRendimenti = 20.0
-    /// Limite annuo di deducibilità dei contributi alla previdenza complementare.
-    /// Dal 2026 è di 5.300 € (prima 5.164,57 €).
+    /// Limite annuo di deducibilità dei contributi alla previdenza complementare (art. 10, c. 1, lett. e-bis,
+    /// TUIR e art. 8, c. 4, D.Lgs. 252/2005). Dal 2026 è di 5.300 € (legge di bilancio 2026; prima 5.164,57 €).
+    /// Comprende i contributi del lavoratore e del datore di lavoro, non il TFR (`DeducibilitaPrevidenza`).
     static let limiteDeducibilita = 5_300.0
     /// Scaglioni IRPEF dal 2026 (legge di bilancio 2026: secondo scaglione dal 35% al 33%):
     /// (fino a, aliquota). L'ultimo vale oltre.
@@ -47,7 +48,7 @@ enum RegoleFiscali {
     static func premiDetraibili(_ coperture: [Posizione]) -> Double {
         let vita = coperture.filter { [.vita, .invalidita, .infortuni].contains($0.rischio ?? .altro) }.reduce(0) { $0 + $1.premioAnnuo }
         let ltc = coperture.filter { $0.rischio == .ltc }.reduce(0) { $0 + $1.premioAnnuo }
-        return min(min(vita, limitePremiVita) + ltc, limitePremiLTC)
+        return detraibili(vita: vita, ltc: ltc)
     }
 
     /// Aliquota IRPEF marginale di un reddito complessivo lordo annuo.
@@ -257,11 +258,11 @@ enum MotoreFiscale {
         let trattenuto = centesimi((p.trattenuto ?? 0) / 100 * valore)
         let bolloAnno = bolloAnnuo(p, valore: valore)
 
-        // Penale dalle condizioni del contratto, se il prodotto le ha
+        // Penale dalle condizioni del contratto: quelle della posizione se indicate, altrimenti della scheda prodotto
         var penale = 0.0
-        if let c = prodotto?.condizioni, let inizio = p.decorrenza, regime == .polizza {
+        if let inizio = p.decorrenza, regime == .polizza {
             let anno = (Calendar.current.dateComponents([.year], from: inizio, to: data).year ?? 0) + 1
-            let percento = c.penale(anno: anno)
+            let percento = p.penale(anno: anno, prodotto: prodotto)
             if percento > 0 {
                 penale = centesimi(valore * percento / 100)
                 note.append("Penale di riscatto del \(CifreDoc.penale(percento)) nel \(anno)° anno, dalle condizioni del contratto.")
@@ -356,12 +357,12 @@ enum Semplificazioni {
     static let previdenza = [
         "Prestazione mostrata tutta in capitale: alla pensione di norma al massimo il 50% si può ritirare in capitale, il resto diventa rendita.",
         "Rendita mensile stimata dividendo il netto per gli anni di integrazione, senza coefficienti di conversione né rendimento durante l'erogazione.",
-        "Non considerati: TFR conferito al fondo, contributi del datore di lavoro (contano nel limite di deducibilità), quote maturate prima del 2007, 12,5% sulla parte in titoli di Stato dei rendimenti del fondo.",
+        "TFR conferito e contributi del datore di lavoro (questi ultimi nel limite di deducibilità) considerati solo se indicati nella posizione; 12,5% sui rendimenti del fondo solo sulla quota in titoli di Stato indicata; quote maturate prima del 2007 non distinte.",
         "Risparmio IRPEF calcolato sul reddito lordo indicato, scaglione per scaglione, senza detrazioni e addizionali.",
     ]
     static let protezione = [
         "Detrazione del 19% calcolata sui premi della famiglia insieme, non per singolo contribuente; i premi infortuni contati per intero (è detraibile solo la parte caso morte e invalidità permanente oltre il 5%).",
-        "Non applicati i limiti alla detrazione per i redditi oltre 75.000 € e la riduzione oltre 120.000 €; i premi vanno pagati con mezzi tracciabili.",
+        "Non applicati il tetto alle spese detraibili per i redditi oltre 75.000 € (art. 16-ter TUIR) e, nel totale della famiglia, la riduzione oltre 120.000 € (applicata nella detrazione per persona del fisco delle polizze); i premi vanno pagati con mezzi tracciabili.",
     ]
     static let liquidita = [
         "Rendimenti dei salvadanai indicativi, con un'unica aliquota del 26% (i titoli di Stato sono al 12,5%) e senza bollo.",
@@ -370,6 +371,6 @@ enum Semplificazioni {
         "Nuovi versamenti ipotizzati al rendimento dell'obiettivo con imposta del 26% sul guadagno, senza bollo né costi del prodotto.",
     ]
     static let resoconto: [(String, String)] = [
-        ("Semplificazioni", "rendimento dei versamenti con i versamenti distribuiti in modo uniforme mese per mese; minusvalenze non compensate tra posizioni; bollo maturato delle polizze stimato sul valore di oggi."),
+        ("Semplificazioni", "senza i movimenti reali, date dei versamenti ricostruite dal calendario dei premi e dallo storico del versato; minusvalenze non compensate tra posizioni; bollo maturato delle polizze stimato sul valore di oggi."),
     ]
 }

@@ -24,6 +24,10 @@ struct PianoPrevidenza: Identifiable {
     let nettoReale: Double
     let renditaMensile: Double
     let punti: [PuntoProiezione]
+    /// Contributo annuo del datore di lavoro e TFR conferito ogni anno (entrano nel montante; il primo conta
+    /// nel limite di deducibilità, il secondo no).
+    var contributoDatore: Double = 0
+    var tfrConferito: Double = 0
 }
 
 /// Il piano pensionistico del cliente: divario, piani, vantaggio fiscale, scenari.
@@ -52,14 +56,22 @@ struct EsitoPianoPrevidenziale {
     let aliquotaMarginale: Double?
     var contributiInEssere: Double { inEssere.reduce(0) { $0 + $1.versamentoAnnuo } }
     var contributiProposte: Double { proposte.reduce(0) { $0 + $1.versamentoAnnuo } }
-    var deducibiliOggi: Double { min(RegoleFiscali.limiteDeducibilita, contributiInEssere) }
-    var deducibiliConProposte: Double { min(RegoleFiscali.limiteDeducibilita, contributiInEssere + contributiProposte) }
+    /// Contributi del datore di lavoro: contano nel limite di deducibilità insieme a quelli del cliente
+    /// (art. 8, c. 4, D.Lgs. 252/2005), ma non sono una deduzione del cliente. Il TFR non conta.
+    var datoreInEssere: Double { inEssere.reduce(0) { $0 + $1.contributoDatore } }
+    var datoreProposte: Double { proposte.reduce(0) { $0 + $1.contributoDatore } }
+    var tfrConferito: Double { piani.reduce(0) { $0 + $1.tfrConferito } }
+    /// Parte del limite che resta ai contributi del cliente, oggi e con le proposte.
+    var limiteClienteOggi: Double { max(0, RegoleFiscali.limiteDeducibilita - datoreInEssere) }
+    var limiteClienteConProposte: Double { max(0, RegoleFiscali.limiteDeducibilita - datoreInEssere - datoreProposte) }
+    var deducibiliOggi: Double { min(limiteClienteOggi, contributiInEssere) }
+    var deducibiliConProposte: Double { min(limiteClienteConProposte, contributiInEssere + contributiProposte) }
     var risparmioOggi: Double { reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: deducibiliOggi) } ?? 0 }
     var risparmioConProposte: Double { reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: deducibiliConProposte) } ?? 0 }
-    var spazioResiduo: Double { max(0, RegoleFiscali.limiteDeducibilita - contributiInEssere - contributiProposte) }
+    var spazioResiduo: Double { max(0, limiteClienteConProposte - contributiInEssere - contributiProposte) }
     /// IRPEF in più risparmiata usando tutto lo spazio che resta.
     var risparmioPossibile: Double {
-        reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: RegoleFiscali.limiteDeducibilita) } .map { $0 - risparmioConProposte } ?? 0
+        reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: limiteClienteConProposte) } .map { $0 - risparmioConProposte } ?? 0
     }
     /// Quanto costa davvero versare: contributi meno il risparmio d'imposta, al mese.
     var costoNettoMensile: Double { (contributiInEssere + contributiProposte - risparmioConProposte) / 12 }
@@ -70,6 +82,11 @@ struct EsitoPianoPrevidenziale {
     /// Rendita mensile complessiva con le proposte, con rendimenti più bassi, attesi o più alti.
     let scenari: [(nome: String, scarto: Double, rendita: Double)]
     let note: [String]
+    /// Pensione pubblica stimata con il metodo contributivo (se il cliente ha i dati del lavoro): affiancata a
+    /// `pensionePubblica`, che resta quella dell'Analisi 360 e vince nel divario.
+    var stimaPensione: StimaPensione? = nil
+    /// Divario mensile se la pensione pubblica fosse quella stimata.
+    var divarioStimato: Double? { stimaPensione.map { $0.divario(obiettivo: redditoDesiderato) } }
 }
 
 /// Calcoli del piano previdenziale. Importi mensili in euro di oggi, come nell'Analisi 360.
@@ -86,7 +103,8 @@ enum MotorePrevidenza {
         let inEssere = previdenza.filter { $0.stato == .inEssere }
         // La partecipazione conta dalla prima adesione a qualsiasi forma complementare
         let anniGia = inEssere.map { MotoreFiscale.anniPartecipazione($0, data: data) }.max() ?? 0
-        let contributiTotali = previdenza.reduce(0) { $0 + $1.premioAnnuo }
+        // Nel limite contano i contributi del cliente e del datore di lavoro, non il TFR
+        let contributiTotali = previdenza.reduce(0) { $0 + $1.premioAnnuo + max(0, $1.contributoDatore ?? 0) }
         let quotaDedotta = contributiTotali > RegoleFiscali.limiteDeducibilita ? RegoleFiscali.limiteDeducibilita / contributiTotali : 1
         if quotaDedotta < 1 {
             note.append("I versamenti superano il limite di deducibilità di \(CifreDoc.euroCentesimi(RegoleFiscali.limiteDeducibilita)) l'anno: la parte in eccesso non si deduce e non si tassa alla prestazione.")
@@ -95,10 +113,24 @@ enum MotorePrevidenza {
         func piano(_ p: Posizione, scarto: Double) -> PianoPrevidenza {
             let lordo = (p.rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito) + scarto
             // I rendimenti si tassano ogni anno dentro il fondo, sul risultato al netto dei costi
-            let netto = RegoleFiscali.rendimentoNettoPrevidenza(lordo: lordo, costo: p.costoComplessivo ?? 0)
+            // (20%, 12,5% sulla parte in titoli di Stato se indicata)
+            let netto = RegoleFiscali.rendimentoNettoPrevidenza(lordo: lordo, costo: p.costoComplessivo ?? 0, quotaTitoliStato: p.quotaTitoliStato)
             let inEssere = p.stato == .inEssere
             let capitale = inEssere ? p.valore : p.versamentoIniziale
-            let par = ParametriProiezione(capitaleIniziale: capitale, versamento: p.premio, frequenza: p.frequenza, anni: anni,
+            // Contributo del datore e TFR entrano nel fondo con i versamenti del cliente
+            let datore = max(0, p.contributoDatore ?? 0)
+            let tfr = max(0, p.tfrConferito ?? 0)
+            var versamento = p.premio
+            var frequenza = p.frequenza
+            if datore + tfr > 0 {
+                if frequenza.volteAllAnno > 0 {
+                    versamento += (datore + tfr) / Double(frequenza.volteAllAnno)
+                } else {
+                    frequenza = .mensile
+                    versamento = (datore + tfr) / 12
+                }
+            }
+            let par = ParametriProiezione(capitaleIniziale: capitale, versamento: versamento, frequenza: frequenza, anni: anni,
                                           rendimento: netto, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: 0,
                                           aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: !inEssere)
             let e = MotoreProiezione.calcola(par)
@@ -106,14 +138,18 @@ enum MotorePrevidenza {
             let versatoPassato = inEssere ? (p.totaleVersato ?? p.versamentoIniziale) : 0
             let futuri = e.versato - (inEssere ? capitale : 0)
             let dedottiPassati = max(0, versatoPassato - (p.contributiNonDedotti ?? 0))
-            let dedotti = min(e.lordo, dedottiPassati + futuri * quotaDedotta)
+            // Alla prestazione si tassano i contributi dedotti (cliente e datore, nel limite) e tutto il TFR
+            let annui = p.premioAnnuo + datore + tfr
+            let quotaTFR = annui > 0 ? tfr / annui : 0
+            let dedotti = min(e.lordo, dedottiPassati + futuri * (1 - quotaTFR) * quotaDedotta + futuri * quotaTFR)
             let aliquota = RegoleFiscali.aliquotaPrevidenza(anni: gia + anni)
             let imposta = MotoreFiscale.centesimi(max(0, dedotti) * aliquota / 100)
             let reale = (e.lordo - imposta) / pow(1 + IpotesiCalcolo.inflazione / 100, Double(anni))
             return PianoPrevidenza(posizione: p, anniOggi: gia, anniAllaPensione: gia + anni, valoreOggi: capitale,
                                    versamentoAnnuo: p.premioAnnuo, rendimentoNetto: netto, montante: e.lordo,
                                    versatoTotale: versatoPassato + futuri, dedotti: dedotti, aliquota: aliquota, imposta: imposta,
-                                   nettoReale: reale, renditaMensile: reale / mesi, punti: e.punti)
+                                   nettoReale: reale, renditaMensile: reale / mesi, punti: e.punti,
+                                   contributoDatore: datore, tfrConferito: tfr)
         }
 
         let piani = previdenza.map { piano($0, scarto: 0) }
@@ -145,7 +181,7 @@ enum MotorePrevidenza {
         if piani.contains(where: { $0.posizione.contributiNonDedotti == nil && !$0.proposta }) {
             note.append("Dove non sono indicati i contributi non dedotti si considerano tutti dedotti.")
         }
-        note.append("Rendimenti dei piani al netto dell'imposta del \(CifreDoc.condizione(RegoleFiscali.previdenzaRendimenti)) che il fondo paga ogni anno; importi riportati in euro di oggi con un'inflazione del \(CifreDoc.condizione(IpotesiCalcolo.inflazione)) annuo.")
+        note.append("Rendimenti dei piani al netto dell'imposta del \(CifreDoc.condizione(RegoleFiscali.previdenzaRendimenti)) che il fondo paga ogni anno (\(CifreDoc.condizione(RegoleFiscali.titoliStato)) sulla parte in titoli di Stato, se indicata nella posizione); importi riportati in euro di oggi con un'inflazione del \(CifreDoc.condizione(IpotesiCalcolo.inflazione)) annuo.")
         note.append("Rendita indicativa: il netto alla pensione diviso per \(analisi.anniIntegrazione) anni di integrazione, senza rivalutazione; la rendita vera dipende dai coefficienti di conversione del piano.")
 
         return EsitoPianoPrevidenziale(
@@ -153,6 +189,7 @@ enum MotorePrevidenza {
             anniIntegrazione: analisi.anniIntegrazione, piani: piani, versamentoMancante: mancante, rendimentoReale: analisi.rendimentoReale,
             reddito: reddito, aliquotaMarginale: reddito.map { RegoleFiscali.aliquotaMarginale(reddito: $0) },
             serieInEssere: serie(piani.filter { !$0.proposta }), serieConProposte: serie(piani),
-            scenari: scenari, note: note + Semplificazioni.previdenza + Semplificazioni.comuni)
+            scenari: scenari, note: note + Semplificazioni.previdenza + Semplificazioni.comuni,
+            stimaPensione: cliente.flatMap { MotorePensionePubblica.stima(cliente: $0, previdenza: analisi, data: data) })
     }
 }

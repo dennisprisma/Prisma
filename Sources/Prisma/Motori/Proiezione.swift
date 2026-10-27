@@ -39,8 +39,8 @@ struct ParametriProiezione: Equatable {
         rendimento = p.rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito
         // Il costo d'ingresso si applica solo ai versamenti futuri di una posizione in essere.
         costoIngresso = p.costoIngresso ?? 0
-        // Il trattenuto sul rendimento pesa come un costo annuo
-        costoAnnuo = (p.costoAnnuo ?? 0) + (p.trattenuto ?? 0)
+        // Il trattenuto sul rendimento pesa come un costo annuo (con la retrocessione: la parte non retrocessa)
+        costoAnnuo = (p.costoAnnuo ?? 0) + MotoreGestioneSeparata.trattenuto(p)
         ingressoSulCapitale = !inEssere
         // Le imposte secondo il regime, come nel resto di Prisma (MotoreFiscale)
         switch p.regime {
@@ -55,13 +55,21 @@ struct ParametriProiezione: Equatable {
         case .previdenza:
             // Rendimenti tassati ogni anno nel fondo; alla prestazione si tassano i contributi dedotti
             aliquotaFiscale = 0
-            tassazioneAnnua = RegoleFiscali.previdenzaRendimenti
+            // (12,5% sulla parte in titoli di Stato, se indicata: come nel piano previdenziale)
+            tassazioneAnnua = RegoleFiscali.aliquotaRendimentiPrevidenza(quotaTitoliStato: p.quotaTitoliStato)
             aliquotaSulVersato = RegoleFiscali.aliquotaPrevidenza(anni: (inEssere ? MotoreFiscale.anniPartecipazione(p) : 0) + anni)
             nonDedotti = p.contributiNonDedotti ?? 0
         case .esente:
             aliquotaFiscale = 0
         }
         capitaleGarantito = p.gestioneSeparata
+        if p.gestioneSeparata {
+            // Gestione separata: minimo garantito e consolidamento dei rendimenti (senza dati: come prima,
+            // il capitale non scende mai); senza consolidamento la garanzia vale solo alla scadenza
+            minimoGarantito = p.minimoGarantito
+            consolidamento = p.consolidamento ?? true
+            if !consolidamento { mesiGaranzia = p.anniAllaScadenza.map { $0 * 12 } }
+        }
     }
 
     init(capitaleIniziale: Double, versamento: Double, frequenza: Frequenza, anni: Int, rendimento: Double,
@@ -90,6 +98,14 @@ struct ParametriProiezione: Equatable {
     var nonDedotti: Double = 0
     /// Ramo I: la gestione separata non accredita rendimenti negativi, il capitale non scende.
     var capitaleGarantito = false
+    /// Gestione separata: rendimento minimo garantito annuo (%) accreditato anche quando il rendimento netto
+    /// è più basso; nil = solo il capitale (come prima).
+    var minimoGarantito: Double? = nil
+    /// Gestione separata: true = rendimenti consolidati, il valore non scende mai (più il minimo garantito);
+    /// false = garanzia solo alla scadenza (`mesiGaranzia`), il valore può scendere prima.
+    var consolidamento = true
+    /// Mesi dall'inizio della proiezione alla scadenza, dove vale la garanzia senza consolidamento.
+    var mesiGaranzia: Int? = nil
     /// Durata esatta in mesi, quando non è un numero intero di anni (obiettivi): prevale su `anni`.
     var mesiEsatti: Int? = nil
 
@@ -143,6 +159,10 @@ enum MotoreProiezione {
         var saldo = p.capitaleIniziale - costi
         var versato = p.versatoIniziale ?? p.capitaleIniziale
         var imposteMaturate = 0.0
+        // Gestione separata: crescita mensile del minimo garantito e capitale garantito alla scadenza
+        // (versamenti al netto dell'ingresso, rivalutati al minimo), per la garanzia senza consolidamento
+        let minimoMensile = pow(1 + max(0, p.minimoGarantito ?? 0) / 100, 1.0 / 12)
+        var garantito = (p.versatoIniziale ?? p.capitaleIniziale) * (1 - ingresso)
         var punti = [PuntoProiezione(anno: 0, versato: versato, valore: saldo)]
 
         for mese in 0..<mesi {
@@ -150,12 +170,21 @@ enum MotoreProiezione {
                 versato += p.versamento
                 costi += p.versamento * ingresso
                 saldo += p.versamento * (1 - ingresso)
+                garantito += p.versamento * (1 - ingresso)
             }
             let prima = saldo
             saldo *= crescita
             var dopoCosti = saldo * mantenimento
-            // Ramo I: il rendimento accreditato non è mai negativo
-            if p.capitaleGarantito { dopoCosti = max(dopoCosti, prima) }
+            garantito *= minimoMensile
+            if p.capitaleGarantito {
+                if p.consolidamento {
+                    // Ramo I: il rendimento accreditato non è mai negativo (né sotto il minimo garantito)
+                    dopoCosti = max(dopoCosti, prima * minimoMensile)
+                } else if let g = p.mesiGaranzia, mese + 1 == g {
+                    // Senza consolidamento: alla scadenza almeno i versamenti netti rivalutati al minimo
+                    dopoCosti = max(dopoCosti, garantito)
+                }
+            }
             costi += max(0, saldo - dopoCosti)
             saldo = dopoCosti
             // Depositi e fondi pensione: imposta sul risultato del periodo, al netto dei costi

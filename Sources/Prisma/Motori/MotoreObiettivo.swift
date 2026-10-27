@@ -76,8 +76,9 @@ enum MotoreObiettivo {
                                           rendimento: rendimento, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: costo,
                                           aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: false).perMesi(mesiProiezione)
             par.capitaleGarantito = p.gestioneSeparata
-            // Fondi pensione: imposta del 20% sui rendimenti dentro il fondo, come nel piano previdenziale
-            if p.regime == .previdenza { par.tassazioneAnnua = RegoleFiscali.previdenzaRendimenti }
+            // Fondi pensione: imposta del 20% sui rendimenti dentro il fondo (12,5% sulla parte in titoli di Stato,
+            // se indicata), come nel piano previdenziale
+            if p.regime == .previdenza { par.tassazioneAnnua = RegoleFiscali.aliquotaRendimentiPrevidenza(quotaTitoliStato: p.quotaTitoliStato) }
             let anniProiezione = mesiProiezione / 12
             let e = MotoreProiezione.calcola(par)
             // Imposta sul guadagno alla scadenza, secondo il regime (i conti sono già netti)

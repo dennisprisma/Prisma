@@ -74,6 +74,43 @@ struct AnalisiCosti {
     var vuota: Bool { voci.isEmpty && senzaDati.isEmpty }
 }
 
+/// L'incidenza annua dei costi come nel KID (RIY, «reduction in yield»): di quanto i costi del prodotto
+/// abbassano il rendimento medio annuo, per uscite dopo 1 anno, a metà e alla fine del periodo raccomandato.
+/// Il RIY calcolato da Prisma resta separato da quello dichiarato nel KID, per confrontarli.
+struct IncidenzaCostiKID {
+    struct Periodo: Hashable {
+        /// Anni dell'uscita.
+        let anni: Int
+        /// Rendimento medio annuo senza costi e con i costi, prima delle imposte (%).
+        let senzaCosti: Double
+        let conCosti: Double
+        /// Euro tolti dai costi all'uscita: valore senza costi − valore con i costi (penale compresa).
+        let costi: Double
+        /// Incidenza annua dei costi (punti percentuali l'anno).
+        var riy: Double { senzaCosti - conCosti }
+    }
+
+    let posizione: Posizione
+    let periodoRaccomandato: Int
+    /// Le uscite del KID (1 anno, metà se il periodo è di almeno 10 anni, fine).
+    let periodi: [Periodo]
+    /// Anno per anno, da 1 al periodo raccomandato.
+    let annoPerAnno: [Periodo]
+    /// RIY dichiarato nel KID (della posizione o della scheda prodotto).
+    let dichiarato: Double?
+
+    /// RIY calcolato al periodo raccomandato.
+    var calcolato: Double? { periodi.last?.riy }
+    /// Calcolato meno dichiarato (punti): positivo se i costi pesano più di quanto dice il KID.
+    var scarto: Double? {
+        guard let c = calcolato, let d = dichiarato else { return nil }
+        return c - d
+    }
+
+    /// Nota di metodo per prospetti e schede.
+    static let metodo = "Incidenza annua dei costi come nel KID (RIY): rendimento medio annuo senza costi meno quello con i costi del prodotto (ingresso, gestione, trattenuto della gestione separata, penale e costo d'uscita), sui versamenti alle loro date, prima delle imposte e senza il bollo. Uscite dopo 1 anno, a metà del periodo raccomandato (da 10 anni in su) e alla fine. Il RIY del KID resta quello dichiarato: Prisma lo confronta con il suo calcolo."
+}
+
 enum MotoreCosti {
     /// Sotto l'1% l'anno è contenuto, oltre il 2% è alto.
     static let sogliaBasso = 1.0
@@ -157,6 +194,78 @@ enum MotoreCosti {
             }
         }
         return (con, senza)
+    }
+
+    // MARK: - Incidenza annua dei costi come nel KID (RIY)
+
+    /// Le uscite del KID: dopo 1 anno, a metà del periodo raccomandato (arrotondata per eccesso, solo da 10 anni
+    /// in su, come nel Regolamento delegato UE 2021/2268) e alla fine del periodo raccomandato.
+    static func periodiKID(_ raccomandato: Int) -> [Int] {
+        let n = max(1, raccomandato)
+        var periodi = [1]
+        if n >= 10 { periodi.append(Int((Double(n) / 2).rounded(.up))) }
+        if n > 1 { periodi.append(n) }
+        return periodi
+    }
+
+    /// L'incidenza annua dei costi di una posizione come nel KID: la proiezione con i costi del prodotto (ingresso,
+    /// gestione, trattenuto o retrocessione della gestione separata, penale dell'anno e costo d'uscita) e senza,
+    /// prima delle imposte e senza il bollo (sono imposte, non costi); RIY = rendimento medio annuo senza costi −
+    /// rendimento con i costi, sui flussi alle loro date (versamento iniziale e premi periodici). Una posizione in
+    /// essere parte dal valore di oggi, con l'ingresso solo sui versamenti futuri; una proposta dal versamento iniziale.
+    /// Periodo raccomandato: della posizione, della scheda, la scadenza o 10 anni. nil senza versamenti.
+    static func incidenzaKID(_ p: Posizione, prodotto: Prodotto? = nil, anni: Int? = nil, data: Date = Date()) -> IncidenzaCostiKID? {
+        guard p.area.proiettabile, p.stato != .chiusa else { return nil }
+        let indicato: Int? = anni ?? p.periodoRaccomandato ?? prodotto?.periodoConsigliato
+        let orizzonte: Int = indicato ?? p.anniAllaScadenza ?? IpotesiCalcolo.orizzontePredefinito
+        let raccomandato = min(max(1, orizzonte), 40)
+        var con = ParametriProiezione(posizione: p)
+        con.anni = raccomandato
+        con.mesiEsatti = nil
+        con.aliquotaFiscale = 0
+        con.tassazioneAnnua = 0
+        con.aliquotaSulVersato = 0
+        con.nonDedotti = 0
+        con.inflazione = 0
+        // Solo i costi del prodotto: il bollo che `ParametriProiezione` aggiunge al costo annuo è un'imposta
+        con.costoAnnuo = max(0, p.costoAnnuo ?? 0) + MotoreGestioneSeparata.trattenuto(p)
+        guard con.capitaleIniziale > 0 || (con.versamento > 0 && con.frequenza.volteAllAnno > 0) else { return nil }
+        var senza = con
+        senza.costoIngresso = 0
+        senza.costoAnnuo = 0
+        let puntiCon = MotoreProiezione.calcola(con).punti
+        let puntiSenza = MotoreProiezione.calcola(senza).punti
+
+        // Anno di contratto del riscatto dopo k anni: per le penali (in essere: dagli anni già trascorsi)
+        let cal = Calendar.current
+        let trascorsi: Int? = p.stato == .inEssere
+            ? p.decorrenza.map { cal.dateComponents([.year], from: $0, to: data).year ?? 0 }
+            : 0
+        let uscita = max(0, p.costoUscita ?? 0)
+        let ogniMesi = con.frequenza.volteAllAnno > 0 ? 12 / con.frequenza.volteAllAnno : 0
+
+        var annoPerAnno: [IncidenzaCostiKID.Periodo] = []
+        for k in 1...raccomandato {
+            guard k < puntiCon.count, k < puntiSenza.count else { break }
+            // Flussi del cliente: il capitale all'inizio e i premi ai loro mesi (anni prima dell'uscita)
+            let mesiTotali = 12 * k
+            var flussi: [(anni: Double, importo: Double)] = [(anni: Double(k), importo: con.capitaleIniziale)]
+            if ogniMesi > 0, con.versamento > 0 {
+                for mese in stride(from: 0, to: mesiTotali, by: ogniMesi) {
+                    flussi.append((anni: Double(mesiTotali - mese) / 12, importo: con.versamento))
+                }
+            }
+            let penale = (trascorsi.map { p.penale(anno: $0 + k + 1, prodotto: prodotto) } ?? 0) + uscita
+            let finaleCon = puntiCon[k].valore * (1 - min(penale, 100) / 100)
+            let finaleSenza = puntiSenza[k].valore
+            guard let rSenza = Rendimenti.tasso(flussi, valoreFinale: finaleSenza),
+                  let rCon = Rendimenti.tasso(flussi, valoreFinale: finaleCon) else { continue }
+            annoPerAnno.append(.init(anni: k, senzaCosti: rSenza, conCosti: rCon, costi: max(0, finaleSenza - finaleCon)))
+        }
+        guard !annoPerAnno.isEmpty else { return nil }
+        let periodi = periodiKID(raccomandato).compactMap { n in annoPerAnno.first { $0.anni == n } }
+        return IncidenzaCostiKID(posizione: p, periodoRaccomandato: raccomandato, periodi: periodi, annoPerAnno: annoPerAnno,
+                                 dichiarato: p.incidenzaCostiKID ?? prodotto?.incidenzaCostiKID)
     }
 
     /// Le righe per Eve e per le schede.

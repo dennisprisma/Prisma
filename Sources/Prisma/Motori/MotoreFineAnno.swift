@@ -59,11 +59,14 @@ enum MotoreFineAnno {
         let piani = mie.filter { $0.regime == .previdenza }
         let contributi = piani.reduce(0) { $0 + $1.premioAnnuo }
         let limite = RegoleFiscali.limiteDeducibilita
-        let spazio = max(0, limite - contributi)
-        let eccedenza = max(0, contributi - limite)
+        // I contributi del datore di lavoro contano nel limite (il TFR no): al cliente resta il limite meno quelli
+        let datore = piani.reduce(0) { $0 + max(0, $1.contributoDatore ?? 0) }
+        let limiteCliente = max(0, limite - datore)
+        let spazio = max(0, limiteCliente - contributi)
+        let eccedenza = max(0, contributi - limiteCliente)
         let reddito = cliente.profilo.redditoLordoAnnuo
-        let risparmioOggi = reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: min(contributi, limite)) } ?? 0
-        let risparmioPieno = reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: limite) } ?? 0
+        let risparmioOggi = reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: min(contributi, limiteCliente)) } ?? 0
+        let risparmioPieno = reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: limiteCliente) } ?? 0
         let detraibili = RegoleFiscali.premiDetraibili(mie.filter { $0.area == .protezione && !$0.scaduta })
         let bollo = mie.reduce(0) { $0 + MotoreFiscale.bolloAnnuo($1, valore: $1.valore) }
 
@@ -73,7 +76,8 @@ enum MotoreFineAnno {
                 "un versamento aggiuntivo di \(euro(spazio)) entro il 31 dicembre farebbe risparmiare circa \(euro(risparmioPieno - risparmioOggi)) di IRPEF (aliquota marginale \(CifreDoc.condizione(RegoleFiscali.aliquotaMarginale(reddito: r))))."
             } ?? "manca il reddito nel profilo per stimare il risparmio d'imposta."
             scadenze.append(ScadenzaFiscale(tipo: .deduzione, data: fineAnno, titolo: "Versamenti deducibili entro il 31 dicembre",
-                                            dettaglio: "Contributi dell'anno circa \(euro(contributi)) su \(euro(limite)) deducibili: " + quanto,
+                                            dettaglio: "Contributi dell'anno circa \(euro(contributi)) su \(euro(limite)) deducibili"
+                                                + (datore > 0 ? " (\(euro(datore)) del datore di lavoro contano nel limite)" : "") + ": " + quanto,
                                             importo: reddito == nil ? nil : risparmioPieno - risparmioOggi))
         }
         let dichiarati = piani.reduce(0) { $0 + ($1.contributiNonDedotti ?? 0) }

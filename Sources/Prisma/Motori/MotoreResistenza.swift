@@ -70,6 +70,14 @@ struct ProvaResistenza {
     let propensione: ProfiloInvestitore.Propensione?
     /// Quota del patrimonio finanziario con il capitale garantito o senza rischio di mercato.
     let quotaProtetta: Double
+    /// Le crisi vere del passato (2008, 2020, 2022) applicate alle posizioni di oggi, per classe di attivo.
+    /// Non entrano nel giudizio, che resta quello dello scenario sui mercati.
+    var crisi: [EsitoCrisi] = []
+
+    /// La crisi del passato che farebbe perdere di più al patrimonio di oggi (nil se nessuna lo tocca).
+    var crisiPeggiore: EsitoCrisi? {
+        crisi.filter { !$0.voci.isEmpty }.max { $0.perdita < $1.perdita }
+    }
 
     func scenario(_ t: Tipo) -> Scenario? { scenari.first { $0.tipo == t } }
 
@@ -136,7 +144,8 @@ enum MotoreResistenza {
             patrimonioNetto: riepilogo.patrimonioNetto,
             sopportabile: profilo?.propensione.map(sopportabile),
             propensione: profilo?.propensione,
-            quotaProtetta: finanziario > 0 ? protetta / finanziario : 0)
+            quotaProtetta: finanziario > 0 ? protetta / finanziario : 0,
+            crisi: MotoreResistenza.crisi(posizioni, profilo: profilo))
     }
 
     /// La parte del valore esposta ai mercati: niente per conti e gestioni separate,
@@ -145,8 +154,9 @@ enum MotoreResistenza {
         if p.area == .liquidita || p.gestioneSeparata { return 0 }
         // Previdenza in gestione separata (PIP di Ramo I): il valore non scende
         if p.area == .previdenza, (p.tipologia + " " + p.garanzie).lowercased().contains("gestione separata") { return 0 }
-        // Multiramo senza la quota indicata: tutta esposta, come per il bollo (stima prudente)
-        if p.multiramo { return 1 - min(max(p.quotaGestioneSeparata ?? 0, 0), 100) / 100 }
+        // Multiramo senza la quota indicata: metà in gestione separata, come dice il metodo
+        // (per il bollo invece resta tutta soggetta, stima prudente in `Posizione.quotaBollo`)
+        if p.multiramo { return 1 - min(max(p.quotaGestioneSeparata ?? quotaGestioneSeparataPredefinita, 0), 100) / 100 }
         return 1
     }
 
@@ -157,7 +167,10 @@ enum MotoreResistenza {
         let calo = caloPerSRI[sri] ?? 0
         guard calo > 0 else { return nil }
         var motivo = p.sri == nil ? "SRI non indicato, stimato \(sri) su 7 dall'area" : "SRI \(sri) su 7: calo del \(CifreDoc.condizione(calo))"
-        if esposta < 1 { motivo += "; \(CifreDoc.percento((1 - esposta) * 100, decimali: 0)) in gestione separata, garantita" }
+        if esposta < 1 {
+            let stimata = p.multiramo && p.quotaGestioneSeparata == nil ? " (stimato)" : ""
+            motivo += "; \(CifreDoc.percento((1 - esposta) * 100, decimali: 0)) in gestione separata\(stimata), garantita"
+        }
         return .init(posizione: p, perdita: p.valore * esposta * calo / 100, motivo: motivo)
     }
 
@@ -188,6 +201,15 @@ enum MotoreResistenza {
         }
         if r.patrimonioFinanziario > 0 {
             righe.append("Capitale garantito o senza rischio di mercato: il \(CifreDoc.percento(r.quotaProtetta * 100, decimali: 0)) del patrimonio finanziario.")
+        }
+        // In fondo e su una riga: le crisi vere del passato sul patrimonio di oggi
+        let crisi = r.crisi.filter { !$0.voci.isEmpty }
+        if !crisi.isEmpty, r.patrimonioFinanziario > 0 {
+            let elenco = crisi.map { k -> String in
+                let euro = k.perdita >= 0 ? Formati.meno + Formati.euro(k.perdita) : "+" + Formati.euro(-k.perdita)
+                return "\(k.crisi.anno) \(euro) (\(CifreDoc.percento(-k.quota * 100)))"
+            }
+            righe.append("Se tornassero le crisi del passato (stime indicative): " + elenco.joined(separator: ", ") + ".")
         }
         return righe
     }

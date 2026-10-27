@@ -52,6 +52,13 @@ enum DatiDemo {
                 c.telefono = "+39 333 000 1001"
                 c.canali = [.alleanza, .indipendente]
                 c.famiglia = [Familiare(nome: "Luca Ferri", relazione: .convivente, dataNascita: nascita(1987, 7, 2))]
+                c.famiglia[0].id = "fam-giulia-luca"
+                c.famiglia[0].redditoNettoAnnuo = 24_000
+                c.famiglia[0].lavoro = DatiLavoro(tipo: .dipendente, redditoLavoro: 33_000, crescitaReddito: 1,
+                                                  anniContributi: 13, annoPrimoContributo: 2013)
+                c.profilo.redditoNettoAnnuo = 23_500
+                c.profilo.lavoro = DatiLavoro(tipo: .dipendente, crescitaReddito: 1, anniContributi: 11,
+                                              annoPrimoContributo: 2015, etaPensione: 67)
                 c.profilo.propensione = .moderata
                 c.profilo.orizzonteAnni = 10
                 c.profilo.esperienza = .base
@@ -75,6 +82,15 @@ enum DatiDemo {
                     Familiare(nome: "Anna Bianchi", relazione: .figlia, dataNascita: nascita(2012, 9, 1), aCarico: true),
                     Familiare(nome: "Pietro Bianchi", relazione: .figlio, dataNascita: nascita(2016, 2, 11), aCarico: true),
                 ]
+                c.famiglia[0].id = "fam-marco-elena"
+                c.famiglia[1].id = "fam-marco-anna"
+                c.famiglia[2].id = "fam-marco-pietro"
+                c.famiglia[0].redditoNettoAnnuo = 16_000
+                c.famiglia[0].lavoro = DatiLavoro(tipo: .dipendente, redditoLavoro: 21_000, crescitaReddito: 0.5,
+                                                  anniContributi: 18, annoPrimoContributo: 2006)
+                c.profilo.redditoNettoAnnuo = 31_500
+                c.profilo.lavoro = DatiLavoro(tipo: .dipendente, crescitaReddito: 1, anniContributi: 22,
+                                              annoPrimoContributo: 2004, montanteContributivo: 265_000, etaPensione: 67)
                 c.profilo.propensione = .moderata
                 c.profilo.orizzonteAnni = 15
                 c.profilo.esperienza = .media
@@ -97,6 +113,8 @@ enum DatiDemo {
                 c.profilo.orizzonteAnni = 8
                 c.profilo.esperienza = .media
                 c.profilo.obiettivi = "Avviare un progetto indipendente e costruire la previdenza integrativa."
+                c.profilo.lavoro = DatiLavoro(tipo: .gestioneSeparata, crescitaReddito: 1.5, anniContributi: 15,
+                                              annoPrimoContributo: 2010, etaPensione: 67)
             case "andrea":
                 c.profilo.redditoLordoAnnuo = 27_000
                 c.dataNascita = nascita(1996, 1, 18)
@@ -108,6 +126,8 @@ enum DatiDemo {
                 c.profilo.propensione = .prudente
                 c.profilo.esperienza = .nessuna
                 c.profilo.obiettivi = "Da definire al primo incontro."
+                c.profilo.lavoro = DatiLavoro(tipo: .dipendente, crescitaReddito: 1.5, anniContributi: 5,
+                                              annoPrimoContributo: 2020, etaPensione: 67)
             case "sofia":
                 c.profilo.redditoLordoAnnuo = 36_000
                 c.dataNascita = nascita(1968, 10, 9)
@@ -117,6 +137,11 @@ enum DatiDemo {
                 c.telefono = "+39 333 000 1005"
                 c.canali = [.alleanza, .indipendente]
                 c.famiglia = [Familiare(nome: "Marta Romano", relazione: .figlia, dataNascita: nascita(1999, 5, 27))]
+                c.famiglia[0].id = "fam-sofia-marta"
+                c.famiglia[0].redditoNettoAnnuo = 19_000
+                // Contributi dal 1993: sistema misto, la stima contributiva è solo indicativa
+                c.profilo.lavoro = DatiLavoro(tipo: .dipendente, crescitaReddito: 0.5, anniContributi: 33,
+                                              annoPrimoContributo: 1993, etaPensione: 67)
                 c.profilo.propensione = .prudente
                 c.profilo.orizzonteAnni = 12
                 c.profilo.esperienza = .elevata
@@ -309,6 +334,7 @@ enum DatiDemo {
                 $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.costoAnnuo = 1.2; $0.aliquotaFiscale = 20; $0.sri = 2
                 $0.garanzie = "Capitale garantito a scadenza e in caso di decesso; consolidamento annuo dei rendimenti."
                 $0.liquidabilita = "Riscatto dopo il primo anno, con penali decrescenti fino al quinto."
+                $0.periodoRaccomandato = 10
             },
             p("prodotto-previdenza-pip", "Piano previdenziale integrativo", .alleanza, .previdenza) {
                 $0.emittente = alleanza; $0.tipologia = "Piano individuale pensionistico (PIP)"
@@ -333,6 +359,7 @@ enum DatiDemo {
                 $0.rendimentoAtteso = 5; $0.costoAnnuo = 0.2; $0.aliquotaFiscale = 26; $0.sri = 4
                 $0.garanzie = "Nessuna garanzia di capitale."
                 $0.liquidabilita = "Liquidabile in borsa ogni giorno di mercato aperto."
+                $0.incidenzaCostiKID = 0.2; $0.periodoRaccomandato = 5
             },
             p("prodotto-fondo-pensione", "Fondo pensione aperto", .indipendente, .previdenza) {
                 $0.emittente = "Gestore indipendente"; $0.tipologia = "Fondo pensione aperto, comparto bilanciato"
@@ -344,6 +371,7 @@ enum DatiDemo {
                 $0.emittente = "SGR indipendente"; $0.tipologia = "Fondo comune obbligazionario"
                 $0.rendimentoAtteso = 3; $0.costoAnnuo = 1.1; $0.aliquotaFiscale = 20; $0.sri = 2
                 $0.liquidabilita = "Rimborso in pochi giorni lavorativi."
+                $0.incidenzaCostiKID = 1.15; $0.periodoRaccomandato = 3
             },
         ]
     }
@@ -511,6 +539,7 @@ enum DatiDemo {
                 $0.premio = 150; $0.frequenza = .mensile; $0.totaleVersato = 7_200; $0.controvalore = 7_650
                 $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.trattenuto = 1.2; $0.quotaTitoliStato = 60; $0.aliquotaFiscale = 20
                 $0.garanzie = "Capitale garantito a scadenza e in caso di decesso; consolidamento annuo dei rendimenti."
+                $0.minimoGarantito = 0; $0.consolidamento = true; $0.assicuratoId = "giulia"
             },
             p("giulia", .alleanza, .inEssere, .protezione, "Temporanea caso morte") {
                 $0.tipologia = "Temporanea caso morte a capitale costante"; $0.emittente = alleanza
@@ -518,17 +547,20 @@ enum DatiDemo {
                 $0.beneficiari = "Luca Ferri"; $0.decorrenza = anni(-2); $0.scadenza = anni(20)
                 $0.premio = 22; $0.frequenza = .mensile; $0.capitaleAssicurato = 150_000; $0.rischio = .vita
                 $0.controvalore = 0
+                $0.assicuratoId = "giulia"; $0.capitaleDecrescente = false
             },
             p("giulia", .indipendente, .inEssere, .investimento, "ETF azionario globale") {
                 $0.tipologia = "ETF con piano di accumulo"; $0.emittente = "Banca online"
                 $0.decorrenza = anni(-3); $0.versamentoIniziale = 20_000; $0.premio = 300; $0.frequenza = .mensile
                 $0.totaleVersato = 30_800; $0.controvalore = 36_400
                 $0.rendimentoAtteso = 5; $0.costoAnnuo = 0.2; $0.aliquotaFiscale = 26; $0.sri = 4
+                $0.quotaAzionaria = 100
             },
             p("giulia", .indipendente, .inEssere, .investimento, "Fondo obbligazionario euro") {
                 $0.tipologia = "Fondo comune obbligazionario"; $0.emittente = "SGR indipendente"
                 $0.decorrenza = anni(-2); $0.versamentoIniziale = 20_000; $0.totaleVersato = 20_000; $0.controvalore = 21_000
                 $0.rendimentoAtteso = 3; $0.costoAnnuo = 1.1; $0.aliquotaFiscale = 20; $0.sri = 2
+                $0.quotaAzionaria = 0
             },
             p("giulia", .indipendente, .inEssere, .liquidita, "Conto corrente e conto deposito") {
                 $0.emittente = "Banca"; $0.controvalore = 24_000
@@ -539,6 +571,8 @@ enum DatiDemo {
             p("giulia", .indipendente, .inEssere, .debiti, "Mutuo casa") {
                 $0.tipologia = "Mutuo a tasso fisso"; $0.emittente = "Banca"; $0.decorrenza = anni(-7); $0.scadenza = anni(18)
                 $0.premio = 610; $0.frequenza = .mensile; $0.controvalore = 95_000
+                // 95.000 € al 3,8% per 216 mesi: rata alla francese di circa 608 € (coerente con i 610 € indicati)
+                $0.tassoDebito = 3.8
             },
             p("giulia", .alleanza, .proposta, .previdenza, "Piano previdenziale integrativo") {
                 $0.tipologia = "Piano individuale pensionistico (PIP)"; $0.emittente = alleanza
@@ -556,17 +590,20 @@ enum DatiDemo {
                 $0.decorrenza = anni(-6); $0.scadenza = anni(6); $0.versamentoIniziale = 50_000
                 $0.totaleVersato = 50_000; $0.controvalore = 54_300
                 $0.rendimentoAtteso = 2.8; $0.trattenuto = 1.3; $0.quotaTitoliStato = 60; $0.aliquotaFiscale = 20
+                $0.minimoGarantito = 0; $0.consolidamento = true; $0.assicuratoId = "marco"
             },
             p("marco", .alleanza, .inEssere, .investimento, "Polizza multiramo") {
                 $0.tipologia = "Polizza multiramo (Ramo I e Ramo III)"; $0.emittente = alleanza
                 $0.numeroContratto = "AL-2021-118842"; $0.decorrenza = anni(-5); $0.versamentoIniziale = 60_000
                 $0.totaleVersato = 60_000; $0.controvalore = 62_000
                 $0.rendimentoAtteso = 4; $0.costoAnnuo = 1.8; $0.aliquotaFiscale = 24; $0.sri = 3
+                $0.quotaAzionaria = 35
             },
             p("marco", .alleanza, .inEssere, .protezione, "Temporanea caso morte") {
                 $0.tipologia = "Temporanea caso morte a capitale costante"; $0.emittente = alleanza
                 $0.beneficiari = "Elena Bianchi"; $0.decorrenza = anni(-3); $0.scadenza = anni(15)
                 $0.premio = 45; $0.frequenza = .mensile; $0.capitaleAssicurato = 300_000; $0.rischio = .vita; $0.controvalore = 0
+                $0.assicuratoId = "marco"; $0.capitaleDecrescente = false
             },
             p("marco", .alleanza, .inEssere, .protezione, "Infortuni famiglia") {
                 $0.tipologia = "Polizza infortuni del nucleo"; $0.emittente = alleanza
@@ -579,12 +616,15 @@ enum DatiDemo {
                 $0.decorrenza = anni(-10); $0.scadenza = anni(20); $0.premio = 250; $0.frequenza = .mensile
                 $0.totaleVersato = 30_000; $0.controvalore = 38_000; $0.contributiNonDedotti = 2_000
                 $0.rendimentoAtteso = 3.2; $0.costoAnnuo = 1.5; $0.aliquotaFiscale = 15
+                $0.quotaAzionaria = 20; $0.assicuratoId = "marco"
             },
             p("marco", .alleanza, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 35_000 },
             p("marco", .alleanza, .inEssere, .immobili, "Casa di abitazione") { $0.controvalore = 280_000 },
             p("marco", .alleanza, .inEssere, .debiti, "Mutuo casa") {
                 $0.tipologia = "Mutuo a tasso variabile"; $0.scadenza = anni(16); $0.premio = 890; $0.frequenza = .mensile
                 $0.controvalore = 130_000
+                // 130.000 € al 3,6% per 192 mesi: rata di circa 892 €; cointestato a metà con Elena
+                $0.tassoDebito = 3.6; $0.quotaDebito = 50
             },
             p("marco", .alleanza, .proposta, .risparmio, "Piano per gli studi di Anna") {
                 $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
@@ -598,6 +638,7 @@ enum DatiDemo {
             p("laura", .indipendente, .inEssere, .previdenza, "Fondo pensione aperto") {
                 $0.tipologia = "Fondo pensione aperto, comparto bilanciato"; $0.emittente = "Gestore indipendente"
                 $0.decorrenza = anni(-4); $0.scadenza = anni(26); $0.premio = 150; $0.frequenza = .mensile
+                $0.quotaAzionaria = 50; $0.assicuratoId = "laura"
                 // Trasferito da un fondo negoziale: gli anni di partecipazione contano dalla prima adesione
                 $0.primaAdesione = anni(-17); $0.contributiNonDedotti = 0
                 $0.totaleVersato = 14_400; $0.controvalore = 18_000
@@ -606,15 +647,19 @@ enum DatiDemo {
             p("laura", .indipendente, .inEssere, .investimento, "ETF azionario globale") {
                 $0.tipologia = "ETF"; $0.emittente = "Banca online"; $0.decorrenza = anni(-3)
                 $0.versamentoIniziale = 22_000; $0.totaleVersato = 22_000; $0.controvalore = 27_000
+                $0.quotaAzionaria = 100
                 $0.rendimentoAtteso = 5; $0.costoAnnuo = 0.2; $0.aliquotaFiscale = 26; $0.sri = 4
             },
             p("laura", .indipendente, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 19_000 },
             p("laura", .indipendente, .inEssere, .debiti, "Prestito personale") {
                 $0.scadenza = anni(2); $0.premio = 260; $0.frequenza = .mensile; $0.controvalore = 6_000
+                // 6.000 € al 3,8% per 24 mesi: rata di circa 260 €
+                $0.tassoDebito = 3.8
             },
             p("laura", .indipendente, .proposta, .protezione, "Infortuni e invalidità professionale") {
                 $0.tipologia = "Polizza infortuni e invalidità permanente"; $0.emittente = "Compagnia (mercato)"
                 $0.premio = 420; $0.frequenza = .annuale; $0.capitaleAssicurato = 150_000; $0.rischio = .invalidita
+                $0.assicuratoId = "laura"
                 $0.controvalore = 0; $0.esito = .bozza
             },
 
@@ -623,12 +668,15 @@ enum DatiDemo {
             p("andrea", .alleanza, .proposta, .risparmio, "Piano di risparmio rivalutabile") {
                 $0.tipologia = "Polizza rivalutabile a premi ricorrenti (Ramo I)"; $0.emittente = alleanza
                 $0.scadenza = anni(15); $0.premio = 100; $0.frequenza = .mensile
+                $0.minimoGarantito = 0; $0.consolidamento = true; $0.assicuratoId = "andrea"
+                $0.penali = [2.5, 2, 1.5, 1]; $0.mesiBloccoRiscatto = 12
                 $0.rendimentoAtteso = 2.5; $0.costoIngresso = 3; $0.trattenuto = 1.2; $0.aliquotaFiscale = 20
                 $0.esito = .bozza
             },
             p("andrea", .alleanza, .proposta, .protezione, "Temporanea caso morte") {
                 $0.tipologia = "Temporanea caso morte a capitale costante"; $0.emittente = alleanza
                 $0.scadenza = anni(25); $0.premio = 12; $0.frequenza = .mensile; $0.capitaleAssicurato = 100_000
+                $0.assicuratoId = "andrea"; $0.capitaleDecrescente = false
                 $0.rischio = .vita; $0.controvalore = 0; $0.esito = .bozza
             },
 
@@ -637,25 +685,31 @@ enum DatiDemo {
                 $0.tipologia = "Polizza rivalutabile a premio unico (Ramo I)"; $0.emittente = alleanza
                 $0.numeroContratto = "AL-2016-009311"; $0.decorrenza = anni(-10); $0.scadenza = data(70)
                 $0.versamentoIniziale = 35_000; $0.totaleVersato = 35_000; $0.controvalore = 41_000
+                $0.minimoGarantito = 1; $0.consolidamento = true; $0.assicuratoId = "sofia"
                 $0.rendimentoAtteso = 2.5; $0.trattenuto = 1.3; $0.quotaTitoliStato = 60; $0.aliquotaFiscale = 20
                 $0.note = "In scadenza: valutare il reinvestimento."
             },
             p("sofia", .alleanza, .inEssere, .protezione, "Non autosufficienza") {
                 $0.tipologia = "Polizza LTC a vita intera"; $0.emittente = alleanza; $0.decorrenza = anni(-5)
                 $0.premio = 600; $0.frequenza = .annuale; $0.capitaleAssicurato = 30_000; $0.rischio = .ltc; $0.controvalore = 0
+                $0.assicuratoId = "sofia"
             },
             p("sofia", .indipendente, .inEssere, .investimento, "Portafoglio di fondi") {
                 $0.tipologia = "Fondi comuni bilanciati"; $0.emittente = "SGR indipendenti"; $0.decorrenza = anni(-6)
                 $0.versamentoIniziale = 28_000; $0.totaleVersato = 28_000; $0.controvalore = 32_000
+                $0.quotaAzionaria = 50
                 $0.rendimentoAtteso = 3.5; $0.costoAnnuo = 1.4; $0.aliquotaFiscale = 26; $0.sri = 3
             },
             p("sofia", .indipendente, .inEssere, .liquidita, "Liquidità") { $0.controvalore = 27_000 },
             p("sofia", .indipendente, .inEssere, .immobili, "Casa di abitazione") { $0.controvalore = 180_000 },
-            p("sofia", .indipendente, .inEssere, .debiti, "Mutuo") { $0.scadenza = anni(8); $0.premio = 480; $0.frequenza = .mensile; $0.controvalore = 40_000 },
+            p("sofia", .indipendente, .inEssere, .debiti, "Mutuo") { $0.scadenza = anni(8); $0.premio = 480; $0.frequenza = .mensile; $0.controvalore = 40_000
+                $0.tassoDebito = 3.6 // 40.000 € al 3,6% per 96 mesi: rata di circa 480 €
+            },
             p("sofia", .indipendente, .proposta, .investimento, "Obbligazionario a scadenza 2030") {
                 $0.tipologia = "Fondo obbligazionario a scadenza"; $0.emittente = "SGR indipendente"
                 $0.scadenza = anni(4); $0.versamentoIniziale = 40_000
                 $0.rendimentoAtteso = 3.2; $0.costoAnnuo = 0.6; $0.aliquotaFiscale = 20; $0.sri = 2
+                $0.quotaAzionaria = 0; $0.periodoRaccomandato = 4; $0.incidenzaCostiKID = 0.7
                 $0.esito = .presentata; $0.note = "Ipotesi di reinvestimento della polizza in scadenza."
             },
         ])

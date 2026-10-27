@@ -146,7 +146,7 @@ enum MotoreSostituzione {
             switch p.regime {
             // Interessi dei depositi tassati all'accredito, rendimenti dei fondi pensione tassati ogni anno nel fondo
             case .deposito: par.tassazioneAnnua = p.aliquotaFiscale ?? RegoleFiscali.ordinaria
-            case .previdenza: par.tassazioneAnnua = RegoleFiscali.previdenzaRendimenti
+            case .previdenza: par.tassazioneAnnua = RegoleFiscali.aliquotaRendimentiPrevidenza(quotaTitoliStato: p.quotaTitoliStato)
             case .polizza, .fondo, .esente: break
             }
             par.capitaleGarantito = p.gestioneSeparata
