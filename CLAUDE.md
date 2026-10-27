@@ -9,7 +9,7 @@ Moduli:
 - Eve: assistente AI che legge documenti, prospetti e dati, li capisce e fornisce spiegazioni, dati, report e risposte in chat
 Tutto resta in locale sul Mac: niente server, niente cloud.
 
-**Principio permanente:** Prisma è e resterà sempre prima di tutto un'app di **analisi**: analisi delle posizioni dei clienti (in essere e in proposta) e delle possibilità di investimento, risparmio, previdenza e assicurazione. L'intelligenza artificiale (Eve) e ogni altra funzione sono al servizio di questa analisi, mai il contrario. Nell'interfaccia il fulcro è l'app **Posizioni** (ex "Analisi" del template), subito dopo Clienti nel dock e sulla scrivania.
+**Principio permanente:** Prisma è e resterà sempre prima di tutto un'app di **analisi**: analisi delle posizioni dei clienti (in essere e in proposta) e delle possibilità di investimento, risparmio, previdenza e assicurazione. L'intelligenza artificiale (Eve) e ogni altra funzione sono al servizio di questa analisi, mai il contrario. Nell'interfaccia il fulcro è l'app **Posizioni** (ex "Analisi" del primo template), subito dopo Clienti nel dock e sulla scrivania.
 
 ## Regole di sviluppo (vincolanti)
 - Niente Xcode, niente .xcodeproj, niente asset catalog compilati con Xcode. Il progetto è solo Swift Package Manager (Package.swift).
@@ -24,15 +24,19 @@ Tutto resta in locale sul Mac: niente server, niente cloud.
 
 ## Grafica (priorità assoluta)
 - La grafica la decide l'utente. Le fonti ufficiali sono:
-  - Design/template.html → struttura, layout, colori, font, spaziature, componenti
-  - Design/Icone/ → icone dell'interfaccia e icona dell'app
-- Il template è il punto di partenza e l'identità grafica: il tema è iOS 5 di Apple (skeuomorfico). Nuove schermate, funzioni ed elementi si possono aggiungere purché coerenti con questo stile.
-- Struttura scelta: un'unica finestra Prisma che riproduce barra superiore, scrivania, dock e finestre interne del template.
-- Canale sempre riconoscibile: Alleanza = etichetta blu lucida (con logo Alleanza, se fornito dall'utente); indipendente = etichetta in cuoio chiaro con la scritta "Denis Vicenzoni · Consulenza finanziaria".
+  - Design/tema-liquid-glass.html → tema **Liquid Glass**: struttura, layout, colori chiari e scuri, vetro, font, spaziature, componenti, icone delle app
+  - Design/Logo/ → il logo di Prisma (triangolo diviso in tre spicchi, #0F2433; bianco sugli sfondi scuri)
+  - Design/Icone/ → icone delle app in vetro (generate dal tema con `genera-icone.js`) e icona dell'app (AppIcon.png)
+- Il tema Liquid Glass è l'identità grafica (dal 27 ottobre 2026 sostituisce il tema iOS 5 di Design/template.html, che resta solo come storico). Nuove schermate, funzioni ed elementi si possono aggiungere purché coerenti con questo stile.
+- Aspetto chiaro, scuro o automatico (scelta in Impostazioni). I documenti PDF restano sempre su carta bianca, chiari, con colori opachi e fissi: niente vetro sui documenti.
+- Struttura scelta: un'unica finestra Prisma con barra superiore, scrivania, dock e finestre interne in vetro.
+- Sfondo della scrivania: acqua vista dall'alto con gocce al rallentatore (prototipo approvato: «pioggia leggera»), disegnata in Metal. Si ferma quando la scrivania è coperta, quando la finestra non si vede, in risparmio energetico, con «Riduci movimento» o se l'utente sceglie lo sfondo fermo. Nelle istantanee si usa il fermo-immagine.
+- Canale sempre riconoscibile: Alleanza = etichetta in vetro blu (#2563EB) con il logo Alleanza; indipendente = etichetta in vetro color cuoio (#B06E12) con la scritta "Denis Vicenzoni · Consulenza finanziaria" (nelle versioni compatte resta il colore del canale).
 - L'icona Agenda mostra la data del giorno (mese e giorno disegnati dall'app sopra l'icona senza data).
-- Dati di prova: i 5 clienti del template, per valutare i motori di calcolo.
-- Tutti i colori, font, misure, raggi e ombre vanno centralizzati in Sources/Prisma/DesignSystem/ e ricavati dal template: mai valori sparsi nel codice.
-- Le icone vanno convertite nel formato adatto a SwiftUI senza Xcode (es. PDF/PNG caricati dalle risorse) mantenendo l'aspetto originale.
+- Dati di prova: i 5 clienti del template (più i 30 clienti fittizi caricabili da Impostazioni), per valutare i motori di calcolo.
+- Tutti i colori, font, misure, raggi, ombre e superfici di vetro vanno centralizzati in Sources/Prisma/DesignSystem/ e ricavati dal tema: mai valori sparsi nel codice.
+- Le icone vanno convertite nel formato adatto a SwiftUI senza Xcode (PNG caricati dalle risorse) mantenendo l'aspetto originale; il logo è disegnato in vettoriale (LogoPrisma).
+- Le API di macOS 26 (vetro nativo) vanno protette con `#if compiler(>=6.2)` e `if #available(macOS 26.0, *)`, con un ripiego per macOS 13-25.
 
 ## Dati e privacy
 - I dati dei clienti sono personali e patrimoniali: restano sul Mac, mai inviati a servizi esterni.
@@ -41,7 +45,7 @@ Tutto resta in locale sul Mac: niente server, niente cloud.
 
 ## Eve (assistente AI)
 - Unico motore di intelligenza artificiale: **Qwen** sul Mac (Ollama su 127.0.0.1, modello qwen3:4b), dietro il protocollo Swift `MotoreEve`. Niente modello Apple. Se Qwen non è pronto Eve lo dice e non risponde; i calcoli di Prisma preparano le cifre esatte che Qwen racconta.
-- Eve estrae dati strutturati e spiega; calcoli e impaginazione di report e prospetti li fa l'app con modelli grafici fissi coerenti col template.
+- Eve estrae dati strutturati e spiega; calcoli e impaginazione di report e prospetti li fa l'app con modelli grafici fissi coerenti col tema.
 - Prompt, istruzioni e configurazioni di Eve stanno nel repository, cartella Eve/.
 
 ## Lingua
