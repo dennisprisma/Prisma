@@ -169,7 +169,12 @@ enum StampaCarta {
                 .environment(\.colorScheme, .light))
             renderer.proposedSize = ProposedViewSize(d.formato)
             contesto.beginPDFPage(nil)
-            renderer.render { _, disegna in disegna(contesto) }
+            // Anche i colori di AppKit si risolvono in chiaro, qualunque sia l'aspetto dell'app
+            if let chiaro = NSAppearance(named: .aqua) {
+                chiaro.performAsCurrentDrawingAppearance { renderer.render { _, disegna in disegna(contesto) } }
+            } else {
+                renderer.render { _, disegna in disegna(contesto) }
+            }
             contesto.endPDFPage()
         }
         contesto.closePDF()
