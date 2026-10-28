@@ -643,20 +643,24 @@ struct ScalaRischio: View {
 
     var body: some View {
         let forma = FormaVetro.arrotondata(Tema.Raggio.Dossier.casellaRischio)
-        HStack(spacing: 3) {
-            ForEach(1...7, id: \.self) { i in
-                Text("\(i)")
-                    .font(Tipo.chip)
-                    .foregroundColor(i == valore ? Tema.Colore.Componenti.testoSuColore : Colori.Analisi.chipTesto)
-                    .frame(width: 19, height: 18)
-                    .background { forma.fill(i == valore ? Colori.Analisi.navAlto : Colori.Analisi.chip) }
-                    .overlay {
-                        forma.strokeBorder(i == valore ? Colori.Analisi.navBordoBasso : Colori.Analisi.chipBordo, lineWidth: Tema.Misura.filo)
-                            .allowsHitTesting(false)
-                    }
+        // «non indicato» sotto la scala: nelle colonne strette non va a capo lettera per lettera
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 3) {
+                ForEach(1...7, id: \.self) { i in
+                    Text("\(i)")
+                        .font(Tipo.chip)
+                        .foregroundColor(i == valore ? Tema.Colore.Componenti.testoSuColore : Colori.Analisi.chipTesto)
+                        .frame(width: 19, height: 18)
+                        .background { forma.fill(i == valore ? Colori.Analisi.navAlto : Colori.Analisi.chip) }
+                        .overlay {
+                            forma.strokeBorder(i == valore ? Colori.Analisi.navBordoBasso : Colori.Analisi.chipBordo, lineWidth: Tema.Misura.filo)
+                                .allowsHitTesting(false)
+                        }
+                }
             }
             if valore == nil {
-                Text("non indicato").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).padding(.leading, 4)
+                Text("non indicato").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
+                    .lineLimit(1).fixedSize()
             }
         }
     }
