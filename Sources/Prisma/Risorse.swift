@@ -88,11 +88,28 @@ enum Risorse {
 }
 
 extension Risorse {
+    /// Un'immagine già ridotta, i suoi pixel e quando è servita l'ultima volta.
+    private struct VoceNitida {
+        let immagine: NSImage
+        let pixel: Int
+        var uso: Int
+    }
+
+    /// Un'immagine da preparare fuori dal thread principale.
+    private struct LavoroNitido {
+        let chiave: String
+        let percorso: String
+        let larghezza: Int?
+        let altezza: Int?
+        let scala: CGFloat
+    }
+
     /// Immagini già ridotte ai pixel dello schermo: chiave "percorso#LxA" (pixel del riquadro richiesto).
     /// Solo dal thread principale (SwiftUI valuta i body lì).
-    private static var cacheNitide: [String: NSImage] = [:]
+    private static var cacheNitide: [String: VoceNitida] = [:]
     private static var pixelInCache = 0
-    /// Oltre questo budget (≈ 12 MB a 4 byte per pixel) la cache si svuota: il Mac ha 8 GB.
+    private static var orologioUso = 0
+    /// Oltre questo budget (≈ 12 MB a 4 byte per pixel) si tolgono le immagini usate meno di recente: il Mac ha 8 GB.
     private static let limitePixelCache = 3_000_000
 
     /// L'immagine della risorsa ridotta con CoreGraphics ai pixel esatti con cui verrà mostrata.
@@ -107,40 +124,98 @@ extension Risorse {
     ///   d'ingrandimento (1,13 nel dock) così l'icona resta nitida anche ingrandita
     static func immagineNitida(_ percorso: String, in misura: CGSize, scala: CGFloat) -> NSImage? {
         let scala = max(1, scala)
-        let riquadro = (larghezza: vincolo(misura.width, scala), altezza: vincolo(misura.height, scala))
-        guard riquadro.larghezza != nil || riquadro.altezza != nil else { return nil }
-        let chiave = "\(percorso)#\(riquadro.larghezza ?? 0)x\(riquadro.altezza ?? 0)"
-        if let pronta = cacheNitide[chiave] { return pronta }
+        let larghezza = vincolo(misura.width, scala)
+        let altezza = vincolo(misura.height, scala)
+        guard larghezza != nil || altezza != nil else { return nil }
+        let chiave = chiaveNitida(percorso, larghezza: larghezza, altezza: altezza)
+        if var voce = cacheNitide[chiave] {
+            orologioUso += 1
+            voce.uso = orologioUso
+            cacheNitide[chiave] = voce
+            return voce.immagine
+        }
+        guard let ridotta = riduzione(percorso, larghezza: larghezza, altezza: altezza) else { return nil }
+        let immagine = nitida(ridotta, scala: scala)
+        metti(immagine, pixel: ridotta.width * ridotta.height, chiave: chiave)
+        return immagine
+    }
 
-        // La sorgente non va in cache: dopo la riduzione i 512 px non servono più
+    /// Prepara fuori dal thread principale le immagini che si disegneranno presto (dock, finestre, «app aperte»):
+    /// stessi argomenti di `immagineNitida`. Si chiama dal thread principale; le immagini entrano nella cache
+    /// sul thread principale, solo se nel frattempo non ci sono già.
+    static func preparaNitide(_ richieste: [(percorso: String, misura: CGSize, scala: CGFloat)]) {
+        var lavori: [LavoroNitido] = []
+        var viste = Set<String>()
+        for r in richieste {
+            let scala = max(1, r.scala)
+            let larghezza = vincolo(r.misura.width, scala)
+            let altezza = vincolo(r.misura.height, scala)
+            guard larghezza != nil || altezza != nil else { continue }
+            let chiave = chiaveNitida(r.percorso, larghezza: larghezza, altezza: altezza)
+            guard cacheNitide[chiave] == nil, viste.insert(chiave).inserted else { continue }
+            lavori.append(LavoroNitido(chiave: chiave, percorso: r.percorso, larghezza: larghezza, altezza: altezza, scala: scala))
+        }
+        guard !lavori.isEmpty else { return }
+        DispatchQueue.global(qos: .utility).async {
+            var pronte: [(chiave: String, ridotta: CGImage, scala: CGFloat)] = []
+            for l in lavori {
+                // Un pool per immagine: GCD svuota il suo solo alla fine del blocco (i PNG decodificati sono da 512 px)
+                autoreleasepool {
+                    guard let ridotta = Risorse.riduzione(l.percorso, larghezza: l.larghezza, altezza: l.altezza) else { return }
+                    pronte.append((chiave: l.chiave, ridotta: ridotta, scala: l.scala))
+                }
+            }
+            DispatchQueue.main.async {
+                for p in pronte where Risorse.cacheNitide[p.chiave] == nil {
+                    Risorse.metti(Risorse.nitida(p.ridotta, scala: p.scala), pixel: p.ridotta.width * p.ridotta.height,
+                                  chiave: p.chiave)
+                }
+            }
+        }
+    }
+
+    private static func chiaveNitida(_ percorso: String, larghezza: Int?, altezza: Int?) -> String {
+        "\(percorso)#\(larghezza ?? 0)x\(altezza ?? 0)"
+    }
+
+    /// Decodifica e riduzione ai pixel del riquadro: niente stato condiviso, va bene anche fuori dal thread principale.
+    /// La sorgente non va in cache: dopo la riduzione i 512 px non servono più.
+    private static func riduzione(_ percorso: String, larghezza: Int?, altezza: Int?) -> CGImage? {
         guard let url = cartella?.appendingPathComponent(percorso),
               let originale = NSImage(contentsOf: url),
               let sorgente = originale.cgImage(forProposedRect: nil, context: nil, hints: nil),
               sorgente.width > 0, sorgente.height > 0 else { return nil }
 
-        let fattore = min(riquadro.larghezza.map { CGFloat($0) / CGFloat(sorgente.width) } ?? .infinity,
-                          riquadro.altezza.map { CGFloat($0) / CGFloat(sorgente.height) } ?? .infinity)
+        let fattore = min(larghezza.map { CGFloat($0) / CGFloat(sorgente.width) } ?? .infinity,
+                          altezza.map { CGFloat($0) / CGFloat(sorgente.height) } ?? .infinity)
         let pixel = (larghezza: max(1, Int((CGFloat(sorgente.width) * fattore).rounded())),
                      altezza: max(1, Int((CGFloat(sorgente.height) * fattore).rounded())))
-        guard let ridotta = riduci(sorgente, a: pixel) else { return nil }
+        return riduci(sorgente, a: pixel)
+    }
 
-        // Punti = pixel del riquadro / scala dello schermo (la riserva d'ingrandimento resta nei pixel).
-        // Rappresentazione bitmap esplicita: NSImage(cgImage:size:) dichiara i pixel pari ai punti
-        // e perderebbe la densità; la bitmap invece porta i 118 px veri sotto i 52 pt.
-        let punti = NSSize(width: CGFloat(pixel.larghezza) / scala, height: CGFloat(pixel.altezza) / scala)
+    /// Punti = pixel del riquadro / scala dello schermo (la riserva d'ingrandimento resta nei pixel).
+    /// Rappresentazione bitmap esplicita: NSImage(cgImage:size:) dichiara i pixel pari ai punti
+    /// e perderebbe la densità; la bitmap invece porta i 118 px veri sotto i 52 pt.
+    private static func nitida(_ ridotta: CGImage, scala: CGFloat) -> NSImage {
+        let punti = NSSize(width: CGFloat(ridotta.width) / scala, height: CGFloat(ridotta.height) / scala)
         let bitmap = NSBitmapImageRep(cgImage: ridotta)
         bitmap.size = punti
         let immagine = NSImage(size: punti)
         immagine.addRepresentation(bitmap)
         immagine.cacheMode = .never
-
-        if pixelInCache + pixel.larghezza * pixel.altezza > limitePixelCache {
-            cacheNitide.removeAll()
-            pixelInCache = 0
-        }
-        cacheNitide[chiave] = immagine
-        pixelInCache += pixel.larghezza * pixel.altezza
         return immagine
+    }
+
+    /// Mette in cache; oltre il budget toglie le immagini usate meno di recente, mai tutta la cache in un colpo.
+    private static func metti(_ immagine: NSImage, pixel: Int, chiave: String) {
+        while pixelInCache + pixel > limitePixelCache,
+              let vecchia = cacheNitide.min(by: { $0.value.uso < $1.value.uso }) {
+            pixelInCache -= vecchia.value.pixel
+            cacheNitide.removeValue(forKey: vecchia.key)
+        }
+        orologioUso += 1
+        cacheNitide[chiave] = VoceNitida(immagine: immagine, pixel: pixel, uso: orologioUso)
+        pixelInCache += pixel
     }
 
     private static func vincolo(_ punti: CGFloat, _ scala: CGFloat) -> Int? {

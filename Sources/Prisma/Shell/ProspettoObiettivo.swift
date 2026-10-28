@@ -17,11 +17,12 @@ enum ProspettoObiettivo {
     }
 
     /// Gli scenari con le probabilità (Monte Carlo con seme fisso: stesso risultato a ogni stampa), con le stesse
-    /// ipotesi del piano. Si calcolano qui, per il documento, mai negli spunti di Eve. nil con meno di un anno
-    /// alla scadenza o senza niente da parte né posizioni collegate.
+    /// ipotesi del piano. Si calcolano qui, per il documento, mai negli spunti di Eve, e passano dalla cache di
+    /// Obiettivi: prospetto e report non rifanno i 1.000 percorsi. nil con meno di un anno alla scadenza o senza
+    /// niente da parte né posizioni collegate.
     static func probabilita(_ t: TestiObiettivo) -> EsitoMonteCarlo? {
         guard t.e.mesi >= 12, !t.e.contributi.isEmpty || t.o.accantonato != 0 else { return nil }
-        let mc = MotoreMonteCarlo.obiettivo(t.o, posizioni: t.e.contributi.map(\.posizione), data: t.data)
+        let mc = CacheMotoriAnalisi.scenari(t.o, posizioni: t.e.contributi.map(\.posizione), data: t.data)
         return mc.anni.count >= 2 ? mc : nil
     }
 }

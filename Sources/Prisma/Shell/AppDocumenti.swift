@@ -181,17 +181,29 @@ struct AppDocumenti: View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    TextField("Titolo", text: Binding(get: { d.titolo }, set: { stato.rinominaDocumento(d.id, titolo: $0, tipo: d.tipo) }))
-                        .textFieldStyle(.plain)
-                        .font(Tipo.profiloNome)
-                        .foregroundColor(Colori.Analisi.kpiValore)
+                    // Il titolo passa all'archivio poco dopo l'ultimo tasto, con il tipo di quel momento
+                    TestoRinviato(testo: Binding(get: { d.titolo },
+                                                 set: { stato.rinominaDocumento(d.id, titolo: $0, tipo: stato.documento(d.id)?.tipo ?? d.tipo) }),
+                                  salvaOra: { stato.salvaOra() }) { bozza in
+                        TextField("Titolo", text: bozza)
+                            .textFieldStyle(.plain)
+                            .font(Tipo.profiloNome)
+                            .foregroundColor(Colori.Analisi.kpiValore)
+                    }
+                    .id(d.id)
                     Text(meta(d)).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 }
                 Spacer()
-                MenuTendina(selezione: Binding(get: { d.tipo }, set: { stato.rinominaDocumento(d.id, titolo: d.titolo, tipo: $0) }),
+                MenuTendina(selezione: Binding(get: { d.tipo }, set: { (tipo: Documento.Tipo) in
+                                TestiRinviati.scriviOra()
+                                stato.rinominaDocumento(d.id, titolo: stato.documento(d.id)?.titolo ?? d.titolo, tipo: tipo)
+                            }),
                             opzioni: Documento.Tipo.allCases.map { ($0, $0.nome) }, larghezza: 210)
                 if !d.tipo.creatoDaPrisma {
-                    Button("✦ Chiedi a Eve") { stato.spiegaDocumentoConEve(d.id) }
+                    Button("✦ Chiedi a Eve") {
+                        TestiRinviati.scriviOra()
+                        stato.spiegaDocumentoConEve(d.id)
+                    }
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                         .disabled(stato.eveInCorso || stato.documentiInLettura.contains(d.id))
                         .help("Eve spiega il documento con le pagine e lo confronta con il dossier")
@@ -200,7 +212,10 @@ struct AppDocumenti: View {
                     Button("Apri") { NSWorkspace.shared.open(url) }
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                     if !d.tipo.creatoDaPrisma {
-                        Button("Rileggi") { stato.leggiDocumento(d.id) }
+                        Button("Rileggi") {
+                            TestiRinviati.scriviOra()
+                            stato.leggiDocumento(d.id)
+                        }
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                             .disabled(stato.documentiInLettura.contains(d.id))
                     }
@@ -260,7 +275,10 @@ struct AppDocumenti: View {
                 TitoloStrumento(occhiello: "Dal documento al dossier", titolo: "Conferma i dati",
                                 testo: "Solo i dati confermati entrano nelle schede e nelle posizioni. Puoi correggere un valore: diventa confermato.")
                 Spacer()
-                Button("Conferma tutti") { for c in d.campi { stato.confermaCampo(d.id, c.chiave, true) } }
+                Button("Conferma tutti") {
+                    TestiRinviati.scriviOra()
+                    for c in d.campi { stato.confermaCampo(d.id, c.chiave, true) }
+                }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
             }
             TabellaStrumento {
@@ -271,7 +289,11 @@ struct AppDocumenti: View {
             } righe: {
                 ForEach(Array(d.campi.enumerated()), id: \.element.id) { i, c in
                     RigaStrumento(indice: i) {
-                        Button { stato.confermaCampo(d.id, c.chiave, !c.confermato) } label: {
+                        Button {
+                            // Un valore appena corretto si conferma da solo: prima lui, poi la spunta che si vede
+                            TestiRinviati.scriviOra()
+                            stato.confermaCampo(d.id, c.chiave, !c.confermato)
+                        } label: {
                             Image(systemName: c.confermato ? "checkmark.square.fill" : "square")
                                 .foregroundColor(c.confermato ? Colori.Analisi.navBasso : Colori.Analisi.kpiNota)
                                 .frame(width: 34)
@@ -285,9 +307,14 @@ struct AppDocumenti: View {
                         .frame(width: 220, alignment: .leading)
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 4) {
-                                TextField("", text: Binding(get: { c.valore }, set: { stato.modificaCampo(d.id, c.chiave, valore: $0) }))
-                                    .font(Tipo.tabellaCella)
-                                    .campoTesto()
+                                // Il valore passa all'archivio (e si conferma) poco dopo l'ultimo tasto
+                                TestoRinviato(testo: Binding(get: { c.valore }, set: { stato.modificaCampo(d.id, c.chiave, valore: $0) }),
+                                              salvaOra: { stato.salvaOra() }) { bozza in
+                                    TextField("", text: bozza)
+                                        .font(Tipo.tabellaCella)
+                                        .campoTesto()
+                                }
+                                .id("\(d.id)-\(c.id)")
                                 if !c.chiave.unita.isEmpty {
                                     Text(c.chiave.unita).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                                 }
@@ -340,7 +367,10 @@ struct AppDocumenti: View {
                         Button("✓ Nello storico di «\(p.nome)» ↗") { stato.apriPosizione(p) }
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                     } else {
-                        Button("Registra il valore") { if let p = scelta { stato.registraValore(daDocumento: d.id, posizione: p.id) } }
+                        Button("Registra il valore") {
+                            TestiRinviati.scriviOra()
+                            if let p = scelta { stato.registraValore(daDocumento: d.id, posizione: p.id) }
+                        }
                             .buttonStyle(StileBlu())
                             .disabled(valore == nil || scelta == nil || stato.solaLettura)
                             .opacity(valore == nil ? 0.5 : 1)
@@ -384,7 +414,10 @@ struct AppDocumenti: View {
                         }
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                     } else {
-                        Button("Crea la scheda prodotto") { stato.creaProdotto(da: d.id, canale: canale, area: area) }
+                        Button("Crea la scheda prodotto") {
+                            TestiRinviati.scriviOra()
+                            stato.creaProdotto(da: d.id, canale: canale, area: area)
+                        }
                             .buttonStyle(StileBlu())
                             .disabled(confermati == 0)
                     }
@@ -392,7 +425,10 @@ struct AppDocumenti: View {
                         Button("Posizione «\(p.nome)» ↗") { stato.apriPosizione(p) }
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                     } else {
-                        Button("Crea la posizione in essere") { stato.creaPosizione(da: d.id, canale: canale, area: area) }
+                        Button("Crea la posizione in essere") {
+                            TestiRinviati.scriviOra()
+                            stato.creaPosizione(da: d.id, canale: canale, area: area)
+                        }
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                             .disabled(confermati == 0)
                     }

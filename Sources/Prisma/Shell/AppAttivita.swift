@@ -191,7 +191,8 @@ struct AppAttivita: View {
             .background(Colori.Attivita.titoloElencoFondo)
             .bordoBasso(Colori.Attivita.titoloElencoBordo)
             ScrollView {
-                VStack(spacing: 0) {
+                // Pigro: con molti clienti le attività aperte sono centinaia, si impaginano solo quelle in vista
+                LazyVStack(spacing: 0) {
                     ForEach(voci) { t in
                         RigaRegistroAttivita(
                             attivita: t,

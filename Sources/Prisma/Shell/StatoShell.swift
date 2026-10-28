@@ -28,10 +28,31 @@ final class StatoShell: ObservableObject {
     }
 
     /// Dati dell'archivio locale: ogni modifica viene salvata da sola.
-    @Published var dati: DatiPrisma
+    @Published var dati: DatiPrisma {
+        didSet {
+            versioneDati &+= 1
+            // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
+            if dati.note != oldValue.note { versioneNote &+= 1 }
+            if !dati.stessiCalcoli(di: oldValue) { versioneCalcoli &+= 1 }
+        }
+    }
+    /// Cresce a ogni modifica dei dati (salvataggio, segno della cache del dossier per Eve). Non pubblicata.
+    private(set) var versioneDati = 0
+    /// Cresce quando cambia qualcosa che entra nei calcoli e nei documenti: tutto tranne le note del taccuino,
+    /// le conversazioni con Eve, gli spazi di lavoro, il cliente attivo e le impostazioni che non toccano i
+    /// calcoli (DatiPrisma.stessiCalcoli). È la chiave delle cache di DerivatiDati. Non pubblicata.
+    private(set) var versioneCalcoli = 0
+    /// Cresce quando cambiano le note del taccuino (le leggono i documenti, per esempio il fascicolo). Non pubblicata.
+    private(set) var versioneNote = 0
 
-    /// Finestre aperte; l'ultima è quella in primo piano.
-    @Published private(set) var finestre: [Finestra] = []
+    /// Finestre interne, pannelli e blocco (StatoShellFinestre.swift ne inoltra le proprietà con i nomi di sempre):
+    /// cambiarli non pubblica StatoShell, così le app aperte e i widget non si ricalcolano.
+    let sistema = StatoFinestre()
+    /// Titoli e abilitazioni del menu Vai (li osserva solo ComandiPrisma).
+    let menu = StatoMenu()
+    /// Dati ricavati dall'archivio, tenuti da parte per `versioneCalcoli` (DerivatiDati.swift).
+    let derivati = DerivatiDati()
+
     @Published private(set) var avviso: String?
     @Published var schermoIntero = false
     @Published var schedaImpostazioni: SchedaImpostazioni = .esperienza
@@ -46,7 +67,8 @@ final class StatoShell: ObservableObject {
     @Published var fascicoloAppuntamento: String?
     /// Il documento mostrato a tutto schermo all'incontro (nil se non si presenta).
     @Published var presentazione: Presentazione?
-    /// Le analisi del dossier dell'ultimo cliente mostrato (vedi `analisiDossier`): non pubblicate, è solo una cache.
+    /// L'ultima analisi del dossier calcolata, con la versione dei dati (non pubblicata). La cache vera è in
+    /// DerivatiDati: questa resta come segno per la prova di Eve.
     var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
     // Il portafoglio parla di tutti i clienti: in modalità cliente resta chiuso
@@ -113,8 +135,7 @@ final class StatoShell: ObservableObject {
     @Published var filtroClienteNote: String?
     @Published var ricercaNote = ""
 
-    // Centro notifiche
-    @Published var pannelloNotifiche = false
+    // Centro notifiche (il pannello aperto o chiuso sta in `sistema`)
     /// Le notifiche, ricalcolate poco dopo ogni modifica dei dati e una volta al minuto
     /// (non a ogni disegno della barra in alto).
     @Published private(set) var notifiche: [Notifica] = []
@@ -126,13 +147,6 @@ final class StatoShell: ObservableObject {
 
     /// Eve parla del portafoglio (tutti i clienti) invece che del cliente attivo.
     @Published var evePortafoglio = false { didSet { if evePortafoglio && modoCliente != nil { evePortafoglio = false } } }
-
-    /// La schermata di benvenuto copre le finestre (il lucchetto in alto).
-    @Published var bloccato = false
-    @Published var pannelloAppAperte = false
-
-    /// Il pannello degli spazi di lavoro è aperto.
-    @Published var pannelloSpazi = false
 
     // Ricerca (⌘K)
     @Published var testoRicerca = ""
@@ -156,8 +170,21 @@ final class StatoShell: ObservableObject {
     /// Conversazioni non conservate nell'archivio (se l'utente lo sceglie nelle impostazioni).
     @Published var conversazioniTemporanee: [String: [MessaggioEve]] = [:]
     /// La voce e l'orecchio di Eve: nascono alla prima parola (niente microfono finché non serve).
-    lazy var voceEve = VoceEve()
-    lazy var ascoltoEve = AscoltoEve()
+    /// Chi vuole solo fermarli (blocco, Eve chiusa) usa `…SeNata`/`…SeNato`, così non li fa nascere.
+    private(set) var voceEveSeNata: VoceEve?
+    private(set) var ascoltoEveSeNato: AscoltoEve?
+    var voceEve: VoceEve {
+        if let v = voceEveSeNata { return v }
+        let v = VoceEve()
+        voceEveSeNata = v
+        return v
+    }
+    var ascoltoEve: AscoltoEve {
+        if let a = ascoltoEveSeNato { return a }
+        let a = AscoltoEve()
+        ascoltoEveSeNato = a
+        return a
+    }
     /// La prossima risposta di Eve si dice anche a voce (la domanda è arrivata a voce).
     var rispostaAVoce = false
     /// Conversazione a voce in corso: dopo ogni risposta Eve torna ad ascoltare, finché non le dici «basta».
@@ -200,18 +227,24 @@ final class StatoShell: ObservableObject {
     /// Un backup protetto da ripristinare, in attesa della password.
     @Published var ripristinoDaSbloccare: RichiestaPasswordBackup?
 
-    /// Area disponibile per le finestre (sotto la barra, sopra il dock), aggiornata dalla vista.
-    /// Area delle finestre interne (sotto la barra, sopra il dock). Pubblicata: quando cambia la
-    /// dimensione della finestra di Prisma le finestre interne si ridisegnano subito, senza finire sotto il dock.
-    @Published var area: CGRect = CGRect(x: 0, y: 0, width: 1200, height: 700)
+    /// Area delle finestre interne (sotto la barra, sopra il dock), aggiornata dalla vista. Non pubblicata:
+    /// la shell disegna le finestre con la sua area (ShellView), questa serve alle azioni (aprire, spostare, affiancare).
+    var area: CGRect = CGRect(x: 0, y: 0, width: 1200, height: 700)
 
     /// false nelle istantanee: niente disco, niente animazioni.
     let persistente: Bool
 
     private var lavoroAvviso: DispatchWorkItem?
-    private var abbonamenti = Set<AnyCancellable>()
-    private var timerBackup: Timer?
+    /// Le sottoscrizioni dello stato (anche quelle di RipresaSistema.swift).
+    var abbonamenti = Set<AnyCancellable>()
+    /// Il controllo del backup automatico, quando il Mac è libero (al posto di un timer orario).
+    private var attivitaBackup: NSBackgroundActivityScheduler?
+    /// Il salvataggio in background (Archivio.swift): generazione 0 = i dati letti all'avvio.
+    private let salvataggio = SalvataggioArchivio()
     private var salvataggioSospeso = false
+    /// Stop del Mac o schermo spento (RipresaSistema.swift): i lavori a tempo aspettano il risveglio.
+    private(set) var lavoriInPausa = false
+    private var ripresaLavori: DispatchWorkItem?
     /// Archivio di una versione più recente di Prisma: niente salvataggi né backup automatici.
     private(set) var solaLettura = false
     /// Archivio di una versione più recente: neanche il ripristino di un backup è sicuro.
@@ -220,14 +253,16 @@ final class StatoShell: ObservableObject {
     init(persistente: Bool = true) {
         self.persistente = persistente
         if persistente {
-            let caricati = Archivio.carica()
+            // La lettura parte già in PrismaApp.init (AvvioArchivio): qui di solito è pronta
+            let avvio = AvvioArchivio.attendi()
+            let caricati = avvio.esito
             dati = caricati.dati
             // Prima di disegnare qualcosa: i caratteri dell'interfaccia nascono con questa misura
             Tipo.fattore = caricati.dati.impostazioni.dimensioneTesto.fattore
             salvataggioSospeso = caricati.solaLettura
             solaLettura = caricati.solaLettura
             ripristinoBloccato = caricati.bloccaRipristino
-            copieNonLeggibili = Archivio.copieNonLeggibili.count
+            copieNonLeggibili = avvio.copieNonLeggibili
             if let a = caricati.avviso {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
             }
@@ -240,19 +275,47 @@ final class StatoShell: ObservableObject {
             aggiornaElencoBackup()
             // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
             avviaPromemoria()
-            // I file rimasti da un'importazione interrotta vanno nel Cestino; solo con l'archivio
-            // letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
+            // L'aspetto scelto vale prima del primo disegno: niente lampo chiaro con l'aspetto scuro
+            NSApplication.shared.appearance = StatoShell.aspettoMac(dati.impostazioni.aspetto)
+            // Stop del Mac e risveglio (RipresaSistema.swift)
+            avviaRipresa()
+            // I file rimasti da un'importazione interrotta vanno nel Cestino (il disco lavora in background);
+            // solo con l'archivio letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
             if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-                    guard let self, self.documentiInLettura.isEmpty else { return }
-                    let tolti = self.pulisciDocumentiOrfani(nelCestino: true)
-                    if tolti > 0 { self.mostraAvviso("\(tolti) \(tolti == 1 ? "file non più usato spostato" : "file non più usati spostati") nel Cestino") }
+                DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPulizia) { [weak self] in
+                    guard let self, !self.lavoriInPausa else { return }
+                    self.pulisciDocumentiOrfaniInBackground()
                 }
             }
         } else {
             dati = DatiPrisma.demo()
         }
         avviaNotifiche()
+        collegaMenu()
+    }
+
+    deinit {
+        // Il run loop trattiene il timer: senza questo resterebbe acceso dopo uno stato delle prove o delle istantanee
+        timerNotifiche?.invalidate()
+    }
+
+    /// Il menu Vai segue blocco, modalità cliente, presentazione e conversazione a voce, senza osservare StatoShell.
+    private func collegaMenu() {
+        Publishers.CombineLatest4(sistema.$bloccato, $modoCliente.map { $0 != nil },
+                                  $presentazione.map { $0 != nil }, $conversazioneAVoce)
+            .sink { [weak self] b, m, p, v in
+                self?.menu.aggiorna(bloccato: b, inModoCliente: m, inPresentazione: p, conversazioneAVoce: v)
+            }
+            .store(in: &abbonamenti)
+    }
+
+    /// L'aspetto da dare all'app (nil = segue il Mac); come `AspettoInterfaccia.aspettoMac`, fuori dal MainActor.
+    static func aspettoMac(_ aspetto: AspettoInterfaccia) -> NSAppearance? {
+        switch aspetto {
+        case .automatico: return nil
+        case .chiaro: return NSAppearance(named: .aqua)
+        case .scuro: return NSAppearance(named: .darkAqua)
+        }
     }
 
     // MARK: - Lettura
@@ -276,19 +339,6 @@ final class StatoShell: ObservableObject {
     }
 
     var clienteAttivo: Cliente? { clienti.first { $0.id == clienteAttivoId } }
-
-    var finestreVisibili: [Finestra] { finestre.filter { !$0.ridotta } }
-
-    /// App in primo piano (nil = scrivania).
-    var appAttiva: AppPrisma? { finestreVisibili.last?.app }
-
-    /// La scrivania non si vede: la copre una finestra ingrandita (resta solo una cornice di pochi punti)
-    /// o una presentazione. Allora lo sfondo d'acqua si ferma. Con la schermata di benvenuto lo sfondo si vede.
-    var scrivaniaCoperta: Bool {
-        if presentazione != nil { return true }
-        if bloccato { return false }
-        return finestreVisibili.contains { $0.ingrandita }
-    }
 
     /// Di chi parla la finestra di un'app: il suo cliente, tutti i clienti (filtri vuoti, portafoglio)
     /// o nil se l'app non riguarda i clienti. Le app del dossier mostrano il cliente attivo;
@@ -323,213 +373,6 @@ final class StatoShell: ObservableObject {
         case .impostazioni:
             return nil
         }
-    }
-
-    func aperta(_ app: AppPrisma) -> Bool { finestre.contains { $0.app == app } }
-
-    func cliente(_ id: String) -> Cliente? { clienti.first { $0.id == id } }
-
-    var prossimiAppuntamenti: [Appuntamento] {
-        let inizio = Calendar.current.startOfDay(for: Date())
-        return appuntamenti
-            .filter { $0.inizio >= inizio && $0.stato == .pianificato }
-            .sorted { $0.inizio < $1.inizio }
-    }
-
-    var appuntamentiDiOggi: [Appuntamento] {
-        appuntamenti.filter { Calendar.current.isDateInToday($0.inizio) && $0.stato == .pianificato }
-    }
-
-    var attivitaAperte: [Attivita] {
-        attivita.filter { !$0.completata }.sorted { $0.scadenza < $1.scadenza }
-    }
-
-    // MARK: - Finestre
-
-    private func anima(_ cambia: () -> Void) {
-        if persistente { withAnimation(Animazioni.apertura, cambia) } else { cambia() }
-    }
-
-    func apri(_ app: AppPrisma) {
-        guard appConsentita(app) else {
-            mostraAvviso("In modalità cliente \(app.titolo) non si apre: mostra i dati di altri clienti.")
-            return
-        }
-        anima {
-            if let i = finestre.firstIndex(where: { $0.app == app }) {
-                var f = finestre.remove(at: i)
-                f.ridotta = false
-                finestre.append(f)
-            } else {
-                finestre.append(Finestra(app: app, cornice: corniceIniziale()))
-            }
-        }
-        if app == .impostazioni { aggiornaElencoBackup() }
-        if app == .eve || app == .impostazioni { verificaMotoreLocale() }
-    }
-
-    func primoPiano(_ app: AppPrisma) {
-        guard let i = finestre.firstIndex(where: { $0.app == app }), i != finestre.count - 1 else { return }
-        let f = finestre.remove(at: i)
-        finestre.append(f)
-    }
-
-    func chiudi(_ app: AppPrisma) {
-        if app == .eve { spegniVoceSeEveSparisce() }
-        anima { finestre.removeAll { $0.app == app } }
-    }
-
-    func riduci(_ app: AppPrisma) {
-        guard let i = finestre.firstIndex(where: { $0.app == app }) else { return }
-        if app == .eve { spegniVoceSeEveSparisce() }
-        anima { finestre[i].ridotta = true }
-    }
-
-    func alternaIngrandimento(_ app: AppPrisma) {
-        guard let i = finestre.firstIndex(where: { $0.app == app }) else { return }
-        anima {
-            finestre[i].ingrandita.toggle()
-            if !finestre[i].ingrandita {
-                finestre[i].cornice = limita(finestre[i].cornice)
-            }
-        }
-        primoPiano(app)
-    }
-
-    /// Riduce tutte le finestre e mostra la scrivania.
-    /// Mostra la schermata di benvenuto sopra tutto (chiude i pannelli aperti).
-    func blocca() {
-        pannelloNotifiche = false
-        pannelloSpazi = false
-        pannelloAppAperte = false
-        // Dalla schermata di blocco si torna sempre a Prisma completo (e la finestra esce dal tutto schermo)
-        chiudiPresentazione()
-        fermaVoce()
-        modoCliente = nil
-        anima { bloccato = true }
-    }
-
-    func mostraScrivania() {
-        anima {
-            for i in finestre.indices { finestre[i].ridotta = true }
-        }
-    }
-
-    // MARK: - Spazi di lavoro
-
-    /// Gli spazi pronti e quelli salvati dal consulente.
-    var spaziDiLavoro: [SpazioLavoro] { SpazioLavoro.predefiniti + dati.spazi }
-
-    /// L'area che avranno le finestre: con una finestra aperta il dock si nasconde e lo spazio cresce.
-    private var areaConFinestre: CGRect {
-        guard finestreVisibili.isEmpty else { return area }
-        var a = area
-        a.size.height += Misure.Dock.riservato - Misure.Dock.riservatoNascosto
-        return a
-    }
-
-    /// Cornice di una finestra dello spazio nell'area, con un piccolo stacco tra finestre affiancate.
-    private func cornice(da f: FinestraSpazio, in area: CGRect) -> CGRect {
-        let r = CGRect(x: f.x * area.width, y: f.y * area.height, width: f.larghezza * area.width, height: f.altezza * area.height)
-            .insetBy(dx: Misure.Spazi.stacco / 2, dy: Misure.Spazi.stacco / 2)
-        return limita(CGRect(origin: r.origin, size: CGSize(width: max(r.width, Misure.Finestra.minima.width),
-                                                           height: max(r.height, Misure.Finestra.minima.height))), in: area)
-    }
-
-    /// Apre lo spazio: le sue app, disposte come salvate, al posto delle finestre aperte.
-    func apriSpazio(_ s: SpazioLavoro) {
-        let area = areaConFinestre
-        pannelloSpazi = false
-        anima {
-            // In modalità cliente le app che leggono tutti i clienti restano chiuse
-            finestre = s.finestre.filter { appConsentita($0.app) }.map { f in
-                Finestra(app: f.app, cornice: cornice(da: f, in: area), ingrandita: f.ingrandita)
-            }
-        }
-        if s.finestre.contains(where: { $0.app == .impostazioni }) { aggiornaElencoBackup() }
-    }
-
-    /// Salva le finestre aperte come nuovo spazio (dalla più in fondo a quella in primo piano).
-    @discardableResult
-    func salvaSpazio(nome: String) -> SpazioLavoro? {
-        let n = nome.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !n.isEmpty, !finestreVisibili.isEmpty, area.width > 0, area.height > 0 else { return nil }
-        let elenco = finestreVisibili.map { f -> FinestraSpazio in
-            guard !f.ingrandita else { return .intera(f.app) }
-            // Lo stacco tra finestre affiancate si toglie qui e si rimette alla riapertura
-            let c = cornice(di: f).insetBy(dx: -Misure.Spazi.stacco / 2, dy: -Misure.Spazi.stacco / 2)
-            return FinestraSpazio(app: f.app, x: c.minX / area.width, y: c.minY / area.height,
-                                  larghezza: c.width / area.width, altezza: c.height / area.height)
-        }
-        let spazio = SpazioLavoro(nome: String(n.prefix(Misure.Spazi.nomeMassimo)), finestre: elenco)
-        dati.spazi.append(spazio)
-        mostraAvviso("Spazio «\(spazio.nome)» salvato.")
-        return spazio
-    }
-
-    func eliminaSpazio(_ id: String) {
-        dati.spazi.removeAll { $0.id == id }
-    }
-
-    /// ◫ nella barra del titolo: la finestra a sinistra e quella sotto di lei a destra.
-    func affianca(_ app: AppPrisma) {
-        let visibili = finestreVisibili
-        guard let altra = visibili.last(where: { $0.app != app }) else {
-            mostraAvviso("Apri un'altra app dal dock per affiancarla a questa.")
-            return
-        }
-        guard let i = finestre.firstIndex(where: { $0.app == app }),
-              let j = finestre.firstIndex(where: { $0.app == altra.app }) else { return }
-        anima {
-            finestre[i].ingrandita = false
-            finestre[i].cornice = cornice(da: .sinistra(app), in: area)
-            finestre[j].ingrandita = false
-            finestre[j].cornice = cornice(da: .destra(altra.app), in: area)
-        }
-        primoPiano(app)
-    }
-
-    func sposta(_ app: AppPrisma, origine: CGPoint) {
-        guard let i = finestre.firstIndex(where: { $0.app == app }), !finestre[i].ingrandita else { return }
-        var c = finestre[i].cornice
-        c.origin = origine
-        finestre[i].cornice = limita(c)
-    }
-
-    func ridimensiona(_ app: AppPrisma, dimensione: CGSize) {
-        guard let i = finestre.firstIndex(where: { $0.app == app }), !finestre[i].ingrandita else { return }
-        var c = finestre[i].cornice
-        c.size = CGSize(width: max(Misure.Finestra.minima.width, dimensione.width),
-                        height: max(Misure.Finestra.minima.height, dimensione.height))
-        finestre[i].cornice = limita(c)
-    }
-
-    /// Cornice effettiva da disegnare.
-    func cornice(di f: Finestra) -> CGRect { cornice(di: f, in: area) }
-
-    /// Cornice dentro un'area precisa: il disegno usa la stessa area in cui mette le finestre,
-    /// così una finestra non è mai più alta del suo spazio (e la barra del titolo resta visibile).
-    func cornice(di f: Finestra, in area: CGRect) -> CGRect {
-        f.ingrandita ? CGRect(origin: .zero, size: area.size) : limita(f.cornice, in: area)
-    }
-
-    private func corniceIniziale() -> CGRect {
-        let l = max(Misure.Finestra.minima.width, area.width * 0.72)
-        let a = max(Misure.Finestra.minima.height, area.height * 0.8)
-        let passo = CGFloat(finestre.count % 6) * 24
-        return CGRect(x: (area.width - l) / 2 + passo, y: (area.height - a) / 3 + passo, width: l, height: a)
-    }
-
-    /// Tiene la finestra dentro l'area (la barra del titolo resta sempre raggiungibile).
-    private func limita(_ c: CGRect) -> CGRect { limita(c, in: area) }
-
-    private func limita(_ c: CGRect, in area: CGRect) -> CGRect {
-        var r = c
-        r.size.width = min(r.width, area.width)
-        r.size.height = min(r.height, area.height)
-        r.origin.x = min(max(r.minX, 0), area.width - r.width)
-        r.origin.y = min(max(r.minY, 0), area.height - r.height)
-        return r
     }
 
     // MARK: - Clienti
@@ -696,10 +539,6 @@ final class StatoShell: ObservableObject {
     // MARK: - Posizioni
 
     var posizioni: [Posizione] { modoCliente.map { id in dati.posizioni.filter { $0.clienteId == id } } ?? dati.posizioni }
-
-    func posizioniCliente(_ id: String) -> [Posizione] {
-        dati.posizioni.filter { $0.clienteId == id }
-    }
 
     func salvaPosizione(_ posizione: Posizione) {
         if let i = dati.posizioni.firstIndex(where: { $0.id == posizione.id }) {
@@ -938,31 +777,75 @@ final class StatoShell: ObservableObject {
     @discardableResult
     func pulisciDocumentiOrfani(nelCestino: Bool = false) -> Int {
         guard persistente, !solaLettura else { return 0 }
-        let fm = FileManager.default
-        let radice = Archivio.cartellaDocumenti.standardizedFileURL
-        var usati = Set<String>()
-        for d in dati.documenti {
-            if let u = urlDocumento(d) { usati.insert(u.resolvingSymlinksInPath().path) }
-            if let t = urlTesto(d) { usati.insert(t.resolvingSymlinksInPath().path) }
+        let orfani = Self.fileOrfani(usati: fileUsati(), radice: Archivio.cartellaDocumenti)
+        return Self.togli(orfani.file, cartelle: orfani.cartelle, nelCestino: nelCestino)
+    }
+
+    /// La stessa pulizia, all'avvio, con il disco in background: i file usati si contano sul thread principale,
+    /// cartella e Cestino si toccano fuori. Se nel frattempo i documenti cambiano (un'importazione) si rinuncia:
+    /// i file creati dopo l'elenco non ne fanno parte, e quelli di prima sono di nuovo controllati qui.
+    func pulisciDocumentiOrfaniInBackground() {
+        guard persistente, !solaLettura, documentiInLettura.isEmpty else { return }
+        let usati = fileUsati()
+        let impronta = dati.documenti.map(\.file)
+        let radice = Archivio.cartellaDocumenti
+        DispatchQueue.global(qos: .utility).async {
+            let orfani = StatoShell.fileOrfani(usati: usati, radice: radice)
+            guard !orfani.file.isEmpty || !orfani.cartelle.isEmpty else { return }
+            DispatchQueue.main.async {
+                guard !self.solaLettura, self.documentiInLettura.isEmpty, self.dati.documenti.map(\.file) == impronta else { return }
+                DispatchQueue.global(qos: .utility).async {
+                    let tolti = StatoShell.togli(orfani.file, cartelle: orfani.cartelle, nelCestino: true)
+                    guard tolti > 0 else { return }
+                    DispatchQueue.main.async {
+                        self.mostraAvviso("\(tolti) \(tolti == 1 ? "file non più usato spostato" : "file non più usati spostati") nel Cestino")
+                    }
+                }
+            }
         }
-        guard let elenco = fm.enumerator(at: radice, includingPropertiesForKeys: [.isRegularFileKey]) else { return 0 }
-        var tolti = 0
+    }
+
+    /// I file (e i testi letti) dei documenti dell'archivio.
+    private func fileUsati() -> [URL] {
+        dati.documenti.flatMap { d in [urlDocumento(d), urlTesto(d)].compactMap { $0 } }
+    }
+
+    /// I file della cartella Documenti che nessun documento usa, e le cartelle (le più esterne prima).
+    /// Solo disco: va bene anche fuori dal thread principale.
+    private static func fileOrfani(usati: [URL], radice: URL) -> (file: [URL], cartelle: [URL]) {
+        let usati = Set(usati.map { $0.resolvingSymlinksInPath().path })
+        guard let elenco = FileManager.default.enumerator(at: radice.standardizedFileURL,
+                                                          includingPropertiesForKeys: [.isRegularFileKey]) else { return ([], []) }
+        var file: [URL] = []
         var cartelle: [URL] = []
         for case let u as URL in elenco {
             guard (try? u.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
                 cartelle.append(u)
                 continue
             }
-            guard !usati.contains(u.resolvingSymlinksInPath().path) else { continue }
+            if !usati.contains(u.resolvingSymlinksInPath().path) { file.append(u) }
+        }
+        return (file, cartelle)
+    }
+
+    /// Toglie i file (nel Cestino o del tutto) e le cartelle rimaste vuote; restituisce quanti file ha tolto.
+    private static func togli(_ file: [URL], cartelle: [URL], nelCestino: Bool) -> Int {
+        let fm = FileManager.default
+        var tolti = 0
+        for u in file {
             if nelCestino {
                 if (try? fm.trashItem(at: u, resultingItemURL: nil)) != nil { tolti += 1 }
             } else if (try? fm.removeItem(at: u)) != nil {
                 tolti += 1
             }
         }
-        // Le cartelle dei clienti rimaste vuote (le più interne prima)
-        for c in cartelle.reversed() where ((try? fm.contentsOfDirectory(atPath: c.path)) ?? ["?"]).filter({ $0 != ".DS_Store" }).isEmpty {
-            try? fm.removeItem(at: c)
+        // Le cartelle dei clienti rimaste vuote (le più interne prima). rmdir non toglie mai una cartella
+        // in cui nel frattempo è arrivato un file
+        for c in cartelle.reversed() {
+            let dentro = (try? fm.contentsOfDirectory(atPath: c.path)) ?? ["?"]
+            guard dentro.allSatisfy({ $0 == ".DS_Store" }) else { continue }
+            if !dentro.isEmpty { try? fm.removeItem(at: c.appendingPathComponent(".DS_Store")) }
+            _ = rmdir(c.path)
         }
         return tolti
     }
@@ -2146,10 +2029,19 @@ final class StatoShell: ObservableObject {
             .debounce(for: .milliseconds(400), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.ricalcolaNotifiche() }
             .store(in: &abbonamenti)
-        // Gli appuntamenti finiscono e i giorni cambiano anche senza toccare i dati
-        timerNotifiche = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        avviaTimerNotifiche()
+    }
+
+    /// Gli appuntamenti finiscono e i giorni cambiano anche senza toccare i dati: un ricalcolo al minuto,
+    /// con la tolleranza che lascia a macOS raggruppare i risvegli.
+    private func avviaTimerNotifiche() {
+        timerNotifiche?.invalidate()
+        let timer = Timer(timeInterval: StatoShell.intervalloNotifiche, repeats: true) { [weak self] _ in
             DispatchQueue.main.async { self?.ricalcolaNotifiche() }
         }
+        timer.tolerance = StatoShell.tolleranzaNotifiche
+        RunLoop.main.add(timer, forMode: .default)
+        timerNotifiche = timer
     }
 
     func ricalcolaNotifiche() {
@@ -2175,48 +2067,106 @@ final class StatoShell: ObservableObject {
             .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.aggiornaPromemoria() }
             .store(in: &abbonamenti)
+        // Dopo lo stop del Mac li ricalcola la ripresa dei lavori (RipresaSistema.swift)
         NotificationCenter.default.publisher(for: .NSCalendarDayChanged)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.aggiornaPromemoria() }
+            .sink { [weak self] _ in
+                guard let self, !self.lavoriInPausa else { return }
+                self.aggiornaPromemoria()
+            }
             .store(in: &abbonamenti)
+        // Tornando a Prisma (⌘Tab) al massimo una volta ogni mezzo minuto; il calcolo è in background
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             .receive(on: DispatchQueue.main)
+            .throttle(for: .seconds(StatoShell.intervalloRitornoAttivo), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] _ in
-                self?.aggiornaPermessoPromemoria()
-                self?.aggiornaPromemoria()
+                guard let self, !self.lavoriInPausa else { return }
+                self.aggiornaPermessoPromemoria()
+                self.aggiornaPromemoria()
             }
             .store(in: &abbonamenti)
     }
 
     // MARK: - Salvataggio
 
-    /// Salva l'archivio 0,8 s dopo l'ultima modifica e alla chiusura dell'app.
+    /// Salva l'archivio 0,8 s dopo l'ultima modifica, in background (codifica e scrittura non fermano le
+    /// animazioni), e alla chiusura dell'app. Dati non cambiati dall'ultimo salvataggio non si riscrivono.
     private func avviaSalvataggio() {
         $dati
             .dropFirst()
-            .removeDuplicates()
             .debounce(for: .milliseconds(800), scheduler: DispatchQueue.main)
-            .sink { [weak self] d in
-                guard let self, !self.salvataggioSospeso else { return }
-                self.scrivi(d)
-            }
+            .sink { [weak self] _ in self?.scrivi() }
             .store(in: &abbonamenti)
         NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
-            .sink { [weak self] _ in self?.salvaOra() }
+            .sink { [weak self] _ in
+                // La finestra sparisce subito; poi si finisce di salvare (niente, se i dati non sono cambiati)
+                NSApplication.shared.windows.forEach { $0.orderOut(nil) }
+                self?.salvaOra()
+            }
             .store(in: &abbonamenti)
     }
 
+    /// Salva adesso e aspetta: quando torna, l'archivio sul disco è aggiornato. Lo usano backup,
+    /// ripristino, riapertura e chiusura.
     func salvaOra() {
         guard persistente, !salvataggioSospeso else { return }
-        scrivi(dati)
+        scrivi()
+        salvataggio.attendi()
     }
 
-    private func scrivi(_ d: DatiPrisma) {
-        do {
-            try Archivio.salva(d)
-        } catch {
-            mostraAvviso("Salvataggio non riuscito: \(error.localizedDescription)")
+    /// Accoda il salvataggio dei dati di adesso (niente, se questa generazione è già sul disco o in coda).
+    private func scrivi() {
+        guard persistente, !salvataggioSospeso else { return }
+        // DatiPrisma è un valore: la copia va alla coda senza rischi, e la coda non legge mai `self.dati`
+        salvataggio.accoda(dati, generazione: versioneDati) { [weak self] errore in
+            self?.mostraAvviso("Salvataggio non riuscito: \(errore.localizedDescription)")
         }
+    }
+
+    // MARK: - Lavori a tempo e stop del Mac
+
+    /// Il primo controllo del backup automatico dopo l'avvio (lontano dalla pulizia dei documenti).
+    static let primoControlloBackup: Double = 45
+    /// La pulizia dei documenti non più usati, dopo l'avvio.
+    static let attesaPulizia: Double = 5
+    /// Il backup automatico si controlla circa una volta l'ora, quando il Mac è libero.
+    static let intervalloBackup: Double = 3600
+    static let tolleranzaBackup: Double = 900
+    /// Notifiche ricalcolate una volta al minuto.
+    static let intervalloNotifiche: Double = 60
+    static let tolleranzaNotifiche: Double = 10
+    /// Tornando a Prisma i promemoria si ricalcolano al massimo ogni 30 s.
+    static let intervalloRitornoAttivo = 30
+    /// Dopo il risveglio del Mac i controlli aspettano un minuto: il risveglio resta libero.
+    static let attesaDopoRisveglio: Double = 60
+
+    /// Prima dello stop del Mac (o con lo schermo spento): timer fermi, controlli rimandati, dati cambiati
+    /// accodati per il disco.
+    func sospendiLavoriATempo() {
+        ripresaLavori?.cancel()
+        ripresaLavori = nil
+        scrivi()
+        guard !lavoriInPausa else { return }
+        lavoriInPausa = true
+        timerNotifiche?.invalidate()
+        timerNotifiche = nil
+    }
+
+    /// Dopo il risveglio: tra `attesa` secondi ripartono notifiche, promemoria e controllo del backup.
+    func riprendiLavoriATempo(dopo attesa: Double) {
+        guard lavoriInPausa else { return }
+        ripresaLavori?.cancel()
+        let lavoro = DispatchWorkItem { [weak self] in
+            guard let self, self.lavoriInPausa else { return }
+            self.ripresaLavori = nil
+            self.lavoriInPausa = false
+            self.avviaTimerNotifiche()
+            self.ricalcolaNotifiche()
+            self.aggiornaPromemoria()
+            self.controllaBackupAutomatico()
+        }
+        ripresaLavori = lavoro
+        DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: lavoro)
     }
 
     // MARK: - Backup
@@ -2386,6 +2336,8 @@ final class StatoShell: ObservableObject {
         }
         salvaOra()
         salvataggioSospeso = true
+        // Nessuna scrittura in coda deve arrivare sopra la cartella ripristinata
+        salvataggio.attendi()
         backupInCorso = true
         let destinazione = cartellaBackup
         let creaCartella = cartellaBackupPredefinita
@@ -2642,18 +2594,54 @@ final class StatoShell: ObservableObject {
         }
     }
 
-    /// Backup automatico settimanale: controllo all'avvio e poi ogni ora.
+    /// Backup automatico settimanale: un controllo poco dopo l'avvio, poi circa ogni ora quando il Mac è
+    /// libero (lo decide macOS, che raggruppa i lavori e non li fa cadere tutti sul risveglio).
     private func avviaBackupAutomatico() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.controllaBackupAutomatico() }
-        timerBackup = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in
-            self?.controllaBackupAutomatico()
+        DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.primoControlloBackup) { [weak self] in
+            guard let self, !self.lavoriInPausa else { return }
+            self.controllaBackupAutomatico()
         }
+        let attivita = NSBackgroundActivityScheduler(identifier: "local.prisma.backup-automatico")
+        attivita.repeats = true
+        attivita.interval = StatoShell.intervalloBackup
+        attivita.tolerance = StatoShell.tolleranzaBackup
+        attivita.qualityOfService = .utility
+        attivita.schedule { [weak self] fatto in
+            DispatchQueue.main.async {
+                guard let self else {
+                    fatto(.finished)
+                    return
+                }
+                // Durante lo stop del Mac si rimanda: lo rifà la ripresa dei lavori
+                guard !self.lavoriInPausa else {
+                    fatto(.deferred)
+                    return
+                }
+                self.controllaBackupAutomatico()
+                fatto(.finished)
+            }
+        }
+        attivitaBackup = attivita
     }
 
     private func controllaBackupAutomatico() {
         let b = dati.impostazioni.backup
         // Con un archivio non leggibile da sistemare i backup automatici non sostituiscono quelli buoni
-        guard b.automatico, !solaLettura, Archivio.copieNonLeggibili.isEmpty, let prossimo = b.prossimo, prossimo <= Date() else { return }
+        // (il conto si aggiorna all'avvio, dopo un ripristino e quando il consulente le segna come gestite)
+        guard persistente, b.automatico, !solaLettura, copieNonLeggibili == 0, !backupInCorso,
+              let prossimo = b.prossimo, prossimo <= Date() else { return }
+        // Backup protetti: il Portachiavi si legge (una volta per sessione) fuori dal thread principale
+        if b.cifrato, passwordBackupInMemoria == nil, !portachiaviLetto {
+            portachiaviLetto = true
+            DispatchQueue.global(qos: .utility).async {
+                let password = PortachiaviBackup.leggi()
+                DispatchQueue.main.async {
+                    if self.passwordBackupInMemoria == nil { self.passwordBackupInMemoria = password }
+                    self.creaBackup(automatico: true)
+                }
+            }
+            return
+        }
         creaBackup(automatico: true)
     }
 

@@ -170,10 +170,11 @@ extension StatoShell {
     }
 
     /// Eve chiusa o ridotta: dettatura e ascolto non restano accesi nel vuoto.
+    /// L'orecchio si tocca solo se è già nato (niente microfono creato per spegnerlo).
     func spegniVoceSeEveSparisce() {
         guard persistente else { return }
         if dettaturaAttiva { chiudiDettatura() }
-        if ascoltoEve.ascolta { ascoltoEve.ferma(invia: false) }
+        if let ascolto = ascoltoEveSeNato, ascolto.ascolta { ascolto.ferma(invia: false) }
     }
 
     // MARK: - Prove e diagnostica
@@ -218,13 +219,15 @@ extension StatoShell {
     // MARK: - Frasi e risposte
 
     /// Chiude la conversazione a voce: Eve smette di ascoltare e di parlare.
+    /// Tocca voce e orecchio solo se sono già nati, e lo stato solo se cambia: bloccare la scrivania
+    /// non crea il microfono né ridisegna le app aperte.
     func fermaVoce() {
-        conversazioneAVoce = false
+        if conversazioneAVoce { conversazioneAVoce = false }
         rispostaAVoce = false
         guard persistente else { return }
         if dettaturaAttiva { chiudiDettatura() }
-        ascoltoEve.ferma(invia: false)
-        voceEve.zitta()
+        ascoltoEveSeNato?.ferma(invia: false)
+        voceEveSeNata?.zitta()
     }
 
     /// Una frase detta a Eve: diventa una domanda come quelle scritte, con la risposta anche a voce.

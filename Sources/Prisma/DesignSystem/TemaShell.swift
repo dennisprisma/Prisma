@@ -233,6 +233,6 @@ extension Tema.Moto {
         /// Luccichio della scritta «scorri per entrare».
         static let luccichio = Animation.linear(duration: 3.2).repeatForever(autoreverses: false)
         /// La manopola del benvenuto torna indietro.
-        static let ritornoManopola = Tema.Moto.molla
+        static let ritornoManopola = Tema.Moto.Sblocco.ritorno()
     }
 }

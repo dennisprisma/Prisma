@@ -42,6 +42,8 @@ struct AppIncontri: View {
         .alert("Eliminare questo incontro?", isPresented: $confermaEliminazione) {
             Button("Annulla", role: .cancel) {}
             Button("Elimina", role: .destructive) {
+                // Prima gli appunti in attesa: scritti dopo, rimetterebbero l'incontro nell'archivio
+                TestiRinviati.scriviOra()
                 if let i = corrente { stato.eliminaIncontro(i.id) }
             }
         } message: {
@@ -223,7 +225,9 @@ struct AppIncontri: View {
                             Text(d.domanda).font(Tipo.incontroDomanda).foregroundColor(Colori.Incontri.testo)
                                 .fixedSize(horizontal: false, vertical: true)
                             Text(d.suggerimento).font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
-                            FoglioRighe(testo: campo(b, d), solaLettura: solaLettura)
+                            // Un campo per incontro e domanda: cambiando incontro la bozza riparte da quello nuovo
+                            FoglioRighe(testo: campo(b, d), solaLettura: solaLettura, salvaOra: { stato.salvaOra() })
+                                .id("\(i.id)-\(d.id)")
                                 .frame(height: 130)
                         }
                         .padding(10)
@@ -234,13 +238,17 @@ struct AppIncontri: View {
                 HStack(alignment: .top, spacing: 10) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("APPUNTI DELL'INCONTRO").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Incontri.citazione)
-                        FoglioRighe(testo: b.appunti, solaLettura: solaLettura).frame(height: 190)
+                        FoglioRighe(testo: b.appunti, solaLettura: solaLettura, salvaOra: { stato.salvaOra() })
+                            .id("\(i.id)-appunti")
+                            .frame(height: 190)
                     }
                     .padding(10)
                     .modifier(CartaIncontro())
                     VStack(alignment: .leading, spacing: 5) {
                         Text("DECISIONI CONDIVISE").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Incontri.citazione)
-                        FoglioRighe(testo: b.decisioni, solaLettura: solaLettura).frame(height: 190)
+                        FoglioRighe(testo: b.decisioni, solaLettura: solaLettura, salvaOra: { stato.salvaOra() })
+                            .id("\(i.id)-decisioni")
+                            .frame(height: 190)
                         Text("Una decisione per riga, con il verbo all'inizio («Preparare…», «Inviare…»): diventeranno attività.")
                             .font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
                     }
@@ -251,6 +259,8 @@ struct AppIncontri: View {
                     HStack {
                         Spacer()
                         Button("Ai prossimi passi →") {
+                            // Gli appunti appena scritti entrano nell'archivio prima di ricavarne le proposte
+                            TestiRinviati.scriviOra()
                             stato.schedaIncontro = .passi
                             if let x = stato.incontro(i.id) { stato.estraiProposte(x) }
                         }
@@ -474,10 +484,13 @@ struct CartaIncontro: ViewModifier {
     }
 }
 
-/// Il campo in cui si scrivono domande, appunti e decisioni: pozzetto arrotondato del tema.
+/// Il campo in cui si scrivono domande, appunti e decisioni: pozzetto arrotondato del tema. Il testo passa
+/// all'incontro poco dopo l'ultimo tasto (TestoRinviato): chi lo usa gli dà un `.id` per incontro e campo.
 struct FoglioRighe: View {
     @Binding var testo: String
     var solaLettura = false
+    /// Chiamata alla chiusura di Prisma dopo aver scritto il testo in attesa (di solito `stato.salvaOra`).
+    var salvaOra: () -> Void = {}
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -490,11 +503,13 @@ struct FoglioRighe: View {
                         .textSelection(.enabled)
                 }
             } else {
-                TextEditor(text: $testo)
-                    .font(Tipo.incontroScrittura)
-                    .foregroundColor(Colori.Incontri.testo)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
+                TestoRinviato(testo: $testo, salvaOra: salvaOra) { bozza in
+                    TextEditor(text: bozza)
+                        .font(Tipo.incontroScrittura)
+                        .foregroundColor(Colori.Incontri.testo)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
+                }
             }
         }
         .padding(4)

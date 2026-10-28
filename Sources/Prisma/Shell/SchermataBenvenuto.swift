@@ -6,16 +6,22 @@ import AppKit
 /// cliente in studio. Lo sfondo è quello della scrivania (ShellView nasconde il resto sotto).
 /// Si entra facendo scorrere il cursore, con un clic o con Invio. È una schermata di cortesia:
 /// non protegge i dati (per quello c'è il blocco del Mac).
+/// Non osserva lo stato: a ogni cambiamento si ridisegnano solo il cursore e il pulsante (sottoviste).
 struct SchermataBenvenuto: View {
-    @EnvironmentObject var stato: StatoShell
-    @Environment(\.accessibilityReduceMotion) var movimentoRidotto
-    @State var corsa: CGFloat = 0
-    @State var trascina = false
-    @State var luccichio = false
-
-    private var corsaMassima: CGFloat {
-        let m = Tema.Misura.Shell.self
-        return max(1, m.cursoreBenvenuto.width - 2 * m.cursoreMargine - m.manopola)
+    /// Entrata e uscita della schermata sopra la scrivania (la usa ShellView). Entra appena più grande e
+    /// dissolvendosi, con la curva del blocco (quella della transazione, nessuna nelle istantanee); esce
+    /// salendo e svanendo con la sua molla. Con «Riduci movimento» solo la dissolvenza.
+    static var transizione: AnyTransition {
+        guard !Movimenti.calmo else { return .opacity }
+        let ferma = EffettoFinestra(scala: 1, ancora: .center, y: 0, opacita: 1)
+        return .asymmetric(
+            insertion: AnyTransition.modifier(
+                active: EffettoFinestra(scala: Tema.Moto.Blocco.scalaBenvenuto, ancora: .center, y: 0, opacita: 0),
+                identity: ferma),
+            removal: AnyTransition.modifier(
+                active: EffettoFinestra(scala: 1, ancora: .center, y: Tema.Moto.Sblocco.uscitaSpostamento, opacita: 0),
+                identity: ferma)
+                .animation(Tema.Moto.Sblocco.uscitaBenvenuto))
     }
 
     var body: some View {
@@ -84,86 +90,157 @@ struct SchermataBenvenuto: View {
     private var sblocco: some View {
         let m = Tema.Misura.Shell.self
         return VStack(spacing: m.sbloccoSpazio) {
-            ZStack(alignment: .leading) {
-                scritta
-                    .padding(.leading, m.manopola)
-                    .frame(maxWidth: .infinity)
-                    .opacity(1 - Double(corsa / corsaMassima))
-                manopola
-                    .offset(x: corsa)
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { g in
-                                if !trascina { withAnimation(Tema.Moto.molla) { trascina = true } }
-                                corsa = min(max(0, g.translation.width), corsaMassima)
-                            }
-                            .onEnded { _ in
-                                withAnimation(Tema.Moto.molla) { trascina = false }
-                                if corsa >= corsaMassima * m.sogliaBenvenuto {
-                                    entra()
-                                } else {
-                                    withAnimation(Tema.Moto.Shell.ritornoManopola) { corsa = 0 }
-                                }
-                            }
-                    )
-            }
-            .padding(m.cursoreMargine)
-            .frame(width: m.cursoreBenvenuto.width, height: m.cursoreBenvenuto.height)
-            .vetro(.leggero, forma: .capsula)
-
-            Button { entra() } label: {
-                Text("Oppure entra con un clic").underline()
-            }
-            .buttonStyle(StileSemplice())
-            .font(Tema.Testo.Shell.entraBenvenuto)
-            .keyboardShortcut(.defaultAction)
+            CursoreSblocco()
+            EntraConUnClic()
             Text("Schermata di cortesia: non protegge i dati.")
                 .font(Tema.Testo.Shell.notaBenvenuto)
                 .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
         }
     }
+}
 
-    /// «scorri per entrare» con il luccichio che passa (fermo con «Riduci movimento»).
-    private var scritta: some View {
-        let testo = Text("scorri per entrare").font(Tema.Testo.Shell.scorriBenvenuto)
-        return testo
-            .foregroundColor(Tema.Colore.inchiostroSecondario)
-            .overlay {
-                GeometryReader { g in
-                    let w = g.size.width
-                    LinearGradient(colors: [Tema.Colore.inchiostro.opacity(0), Tema.Colore.inchiostro, Tema.Colore.inchiostro.opacity(0)],
-                                   startPoint: .leading, endPoint: .trailing)
-                        .frame(width: w / 3)
-                        .offset(x: luccichio ? w : -w / 3)
-                }
-                .mask { testo }
-                .opacity(movimentoRidotto ? 0 : 1)
-                .allowsHitTesting(false)
-            }
-            .onAppear {
-                guard !movimentoRidotto else { return }
-                withAnimation(Tema.Moto.Shell.luccichio) { luccichio = true }
-            }
+/// Il cursore «scorri per entrare». La manopola segue il dito (oltre i bordi con una resistenza elastica);
+/// al rilascio oltre la soglia, o con un colpo rapido, finisce la corsa e si entra, altrimenti torna indietro.
+/// Le molle partono con la velocità del gesto. Sta in una vista sua: a ogni movimento del mouse si
+/// ridisegna solo lei, e lo stato di Prisma non si tocca finché non si entra.
+private struct CursoreSblocco: View {
+    @EnvironmentObject var stato: StatoShell
+    /// La manopola è premuta. Torna da sola a false anche se il gesto si interrompe (⌘Tab a metà).
+    @GestureState private var premuto = false
+    @State private var corsa: CGFloat = 0
+    /// Un trascinamento cominciato e non ancora rilasciato.
+    @State private var inCorso = false
+    /// Si entra: la manopola resta in fondo mentre la schermata se ne va (niente scatto indietro).
+    @State private var entrata = false
+
+    /// La corsa con la manopola allargata: anche in fondo resta dentro la capsula.
+    private var corsaMassima: CGFloat {
+        let m = Tema.Misura.Shell.self
+        return max(1, m.cursoreBenvenuto.width - 2 * m.cursoreMargine - m.manopolaTrascinata)
     }
 
-    /// La manopola: capsula chiara con la freccia, si allarga mentre la trascini.
+    var body: some View {
+        let m = Tema.Misura.Shell.self
+        let spenta = Tema.Moto.Sblocco.spegnimentoScritta * Double(corsa / corsaMassima)
+        ZStack(alignment: .leading) {
+            ScrittaScorri()
+                .padding(.leading, m.manopola)
+                .frame(maxWidth: .infinity)
+                .opacity(min(1, max(0, 1 - spenta)))
+            manopola
+                .offset(x: corsa)
+                .gesture(trascinamento)
+                .allowsHitTesting(!entrata)
+        }
+        .padding(m.cursoreMargine)
+        .frame(width: m.cursoreBenvenuto.width, height: m.cursoreBenvenuto.height)
+        .vetro(.leggero, forma: .capsula)
+        .onChange(of: premuto) { ancora in
+            // Gesto interrotto senza rilascio: la manopola torna al suo posto
+            guard !ancora, inCorso else { return }
+            inCorso = false
+            withAnimation(Movimenti.curva(Tema.Moto.Sblocco.ritorno())) { corsa = 0 }
+        }
+    }
+
+    private var trascinamento: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .updating($premuto) { _, attivo, _ in attivo = true }
+            .onChanged { g in
+                inCorso = true
+                corsa = Movimenti.elastico(g.translation.width, massimo: corsaMassima)
+            }
+            .onEnded { g in rilascia(g) }
+    }
+
+    /// Il rilascio decide dal gesto (non dalla posizione disegnata): oltre la soglia, oppure se la previsione
+    /// arriva in fondo dopo un pezzo di strada, si entra.
+    private func rilascia(_ g: DragGesture.Value) {
+        inCorso = false
+        let s = Tema.Moto.Sblocco.self
+        let traslazione = g.translation.width
+        let prevista = g.predictedEndTranslation.width
+        let partenza = Movimenti.elastico(traslazione, massimo: corsaMassima)
+        let colpoRapido = prevista >= corsaMassima && traslazione >= corsaMassima * s.quotaColpoRapido
+        guard traslazione >= corsaMassima * s.quotaSoglia || colpoRapido else {
+            let v = Movimenti.velocita(traslazione: traslazione, prevista: prevista, distanza: -partenza)
+            withAnimation(Movimenti.curva(s.ritorno(velocita: v))) { corsa = 0 }
+            return
+        }
+        let v = Movimenti.velocita(traslazione: traslazione, prevista: prevista, distanza: corsaMassima - partenza)
+        entrata = true
+        withAnimation(Movimenti.curva(s.completa(velocita: v))) { corsa = corsaMassima }
+        let st = stato
+        DispatchQueue.main.asyncAfter(deadline: .now() + s.attesaPrimaDiEntrare) { st.sblocca(velocita: v) }
+    }
+
+    /// La manopola: capsula chiara con la freccia. Premuta si allarga verso destra con una scala (niente
+    /// impaginazione); la freccia resta al centro senza deformarsi.
     private var manopola: some View {
         let m = Tema.Misura.Shell.self
         return Image(systemName: "chevron.right")
             .font(Tema.Testo.Shell.frecciaManopola)
             .foregroundColor(Tema.Colore.Shell.frecciaManopola)
-            .frame(width: trascina ? m.manopolaTrascinata : m.manopola, height: m.manopola)
+            .offset(x: premuto ? (m.manopolaTrascinata - m.manopola) / 2 : 0)
+            .frame(width: m.manopola, height: m.manopola)
             .background {
                 Capsule(style: .continuous)
                     .fill(Tema.Colore.cursore)
                     .ombraTema(Tema.Ombra.manopola)
+                    .scaleEffect(x: premuto ? m.manopolaTrascinata / m.manopola : 1, y: 1, anchor: .leading)
             }
             .contentShape(Capsule(style: .continuous))
+            .animation(Movimenti.curva(Tema.Moto.Sblocco.pressione), value: premuto)
+    }
+}
+
+/// «scorri per entrare» con il luccichio che passa. La fase si ricava dall'ora in una TimelineView
+/// (al massimo 30 fotogrammi al secondo), invece di un'animazione infinita. Fermo con «Riduci movimento»
+/// e nelle istantanee, dove il luccichio sta appena prima della scritta e non si vede.
+private struct ScrittaScorri: View {
+    @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
+    @Environment(\.modoIstantanea) private var istantanea
+
+    var body: some View {
+        let testo = Text("scorri per entrare").font(Tema.Testo.Shell.scorriBenvenuto)
+        let fermo = movimentoRidotto || istantanea
+        return testo
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+            .overlay {
+                TimelineView(.animation(minimumInterval: Tema.Moto.Sblocco.intervalloLuccichio, paused: fermo)) { contesto in
+                    GeometryReader { g in
+                        let w = g.size.width
+                        let fase = fermo ? 0 : ScrittaScorri.fase(contesto.date)
+                        LinearGradient(colors: [Tema.Colore.inchiostro.opacity(0), Tema.Colore.inchiostro, Tema.Colore.inchiostro.opacity(0)],
+                                       startPoint: .leading, endPoint: .trailing)
+                            .frame(width: w / 3)
+                            .offset(x: -w / 3 + CGFloat(fase) * (w + w / 3))
+                    }
+                }
+                .mask { testo }
+                .opacity(movimentoRidotto ? 0 : 1)
+                .allowsHitTesting(false)
+            }
     }
 
-    private func entra() {
-        withAnimation(Animazioni.apertura) { stato.bloccato = false }
-        corsa = 0
+    /// A che punto è la passata: 0 appena prima della scritta, 1 appena dopo.
+    static func fase(_ data: Date) -> Double {
+        let periodo = Tema.Moto.Sblocco.periodoLuccichio
+        return data.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: periodo) / periodo
+    }
+}
+
+/// «Oppure entra con un clic» (anche con Invio).
+private struct EntraConUnClic: View {
+    @EnvironmentObject var stato: StatoShell
+
+    var body: some View {
+        Button { stato.sblocca() } label: {
+            Text("Oppure entra con un clic").underline()
+        }
+        .buttonStyle(StileSemplice())
+        .font(Tema.Testo.Shell.entraBenvenuto)
+        .keyboardShortcut(.defaultAction)
     }
 }
 
@@ -171,6 +248,8 @@ struct SchermataBenvenuto: View {
 /// (o il suo contesto), con un clic per tornarci. Pannello di vetro del tema (switcher).
 struct PannelloAppAperte: View {
     @EnvironmentObject var stato: StatoShell
+    /// Le finestre aperte e quella in primo piano.
+    @EnvironmentObject var sistema: StatoFinestre
 
     var body: some View {
         GeometryReader { geo in
@@ -179,9 +258,11 @@ struct PannelloAppAperte: View {
                 Tema.Colore.Shell.veloPannello
                     .contentShape(Rectangle())
                     .onTapGesture { stato.pannelloAppAperte = false }
+                // Il velo fa solo la dissolvenza; la scheda entra dal centro, come ⌘Tab
                 pannello
                     .frame(width: max(0, min(m.appAperteLarghezza, geo.size.width - 2 * m.appAperteBordo)))
                     .frame(maxHeight: max(0, min(m.appAperteAltezza, geo.size.height - 2 * m.appAperteBordo)))
+                    .entrataScheda(Tema.Moto.Pannelli.appAperte, scala: Tema.Moto.Pannelli.appAperteScala, ancora: .center)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -202,8 +283,8 @@ struct PannelloAppAperte: View {
             HStack(spacing: m.pulsantiSpazio) {
                 Spacer()
                 Button("Mostra la scrivania") {
-                    stato.pannelloAppAperte = false
                     stato.mostraScrivania()
+                    stato.pannelloAppAperte = false
                 }
                 .buttonStyle(StileVetro())
                 Button("Chiudi") { stato.pannelloAppAperte = false }
@@ -217,7 +298,7 @@ struct PannelloAppAperte: View {
 
     @ViewBuilder private var griglia: some View {
         let m = Tema.Misura.Shell.self
-        let aperte = Array(stato.finestre.reversed())
+        let aperte = Array(sistema.elenco.reversed())
         if aperte.isEmpty {
             VStack(spacing: m.rigaTestoSpazio) {
                 Text("La scrivania è tutta tua.")
@@ -233,7 +314,7 @@ struct PannelloAppAperte: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: m.schedaAppMinima), spacing: m.appAperteSpazio)],
                       spacing: m.appAperteSpazio) {
                 ForEach(aperte) { f in
-                    SchedaAppAperta(finestra: f, inPrimoPiano: f.app == stato.appAttiva)
+                    SchedaAppAperta(finestra: f, inPrimoPiano: f.app == sistema.appAttiva)
                 }
             }
         }
@@ -251,8 +332,9 @@ private struct SchedaAppAperta: View {
         let m = Tema.Misura.Shell.self
         let forma = RoundedRectangle(cornerRadius: Tema.Raggio.schedaApp, style: .continuous)
         Button {
-            stato.pannelloAppAperte = false
+            // Prima la modifica animata (il ripristino dal dock), poi la chiusura del pannello
             stato.apri(finestra.app)
+            stato.pannelloAppAperte = false
         } label: {
             VStack(spacing: m.schedaAppSpazio) {
                 IconaApp(app: finestra.app, lato: Tema.Misura.iconaAppAperte)

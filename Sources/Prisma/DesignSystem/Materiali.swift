@@ -28,23 +28,28 @@ enum Materiale {
     }
 
     /// Sfondo della scrivania e del benvenuto: l'acqua con la pioggia (SfondoAcqua).
-    /// Intensità della pioggia e «Sfondo animato» vengono dalle impostazioni, chiaro o scuro dall'aspetto.
-    /// `animato` dice se in questo punto lo sfondo può muoversi (false = fermo, per esempio quando è coperto);
-    /// finestra nascosta, basso consumo e «Riduci movimento» li gestisce già SfondoAcqua.
-    /// Nelle istantanee SfondoAcqua mostra da sé il fermo-immagine.
+    /// I valori arrivano da chi la disegna (ShellView, dalle impostazioni), chiaro o scuro dall'aspetto:
+    /// niente StatoShell osservato, così l'acqua non si riconfigura a ogni cambiamento dello stato.
+    /// `animato` dice se in questo punto lo sfondo può muoversi («Sfondo animato» acceso e scrivania visibile;
+    /// false = fermo); `intensita` è la forza della pioggia (gocce al secondo).
+    /// Con finestre aperte davanti (scrivania sbloccata) l'acqua va più piano: lo legge da StatoFinestre,
+    /// che ShellView mette a disposizione (questa vista si disegna solo lì).
+    /// Finestra nascosta, basso consumo, «Riduci movimento», transizioni, riposo del Mac e Prisma in secondo piano
+    /// li gestisce già SfondoAcqua. Nelle istantanee SfondoAcqua mostra da sé il fermo-immagine.
     struct SfondoScrivania: View {
         var animato: Bool
-        @EnvironmentObject private var stato: StatoShell
+        var intensita: Double
+        @EnvironmentObject private var sistema: StatoFinestre
         @Environment(\.colorScheme) private var schema
 
-        init(animato: Bool = false) {
+        init(animato: Bool = false, intensita: Double) {
             self.animato = animato
+            self.intensita = intensita
         }
 
         var body: some View {
-            SfondoAcqua(animato: animato && stato.dati.impostazioni.sfondoAnimato,
-                        intensita: stato.dati.impostazioni.pioggia.forza,
-                        scuro: schema == .dark)
+            SfondoAcqua(animato: animato, intensita: intensita, scuro: schema == .dark,
+                        lento: !sistema.bloccato && !sistema.visibili.isEmpty)
                 .ignoresSafeArea()
         }
     }

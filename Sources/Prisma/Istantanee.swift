@@ -559,36 +559,42 @@ enum Istantanee {
             return 1
         }
         for scena in scene where solo?.contains(scena.nome) ?? true {
-            let stato = StatoShell(persistente: false)
-            let misura = scena.nome.hasSuffix("-schermo-basso") ? dimensioneBassa : dimensione
-            // Le scene "-scuro" in aspetto scuro: finestra, ambiente SwiftUI e impostazione
-            let scuro = scena.nome.hasSuffix("-scuro")
-            if scuro { stato.dati.impostazioni.aspetto = .scuro }
-            scena.prepara(stato)
-            stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
-            let vista = ShellView()
-                .environmentObject(stato)
-                .environment(\.modoIstantanea, true)
-                .environment(\.colorScheme, scuro ? .dark : .light)
-                .frame(width: misura.width, height: misura.height)
-            let aspetto = NSAppearance(named: scuro ? .darkAqua : .aqua)
-            let png: Data?
-            switch metodo {
-            case "renderer": png = conRenderer(vista, aspetto: aspetto)
-            case "livello": png = conFinestra(vista, livello: true, misura: misura, aspetto: aspetto)
-            default: png = conFinestra(vista, livello: false, misura: misura, aspetto: aspetto)
+            // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
+            // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
+            let riuscita: Bool = autoreleasepool { () -> Bool in
+                let stato = StatoShell(persistente: false)
+                let misura = scena.nome.hasSuffix("-schermo-basso") ? dimensioneBassa : dimensione
+                // Le scene "-scuro" in aspetto scuro: finestra, ambiente SwiftUI e impostazione
+                let scuro = scena.nome.hasSuffix("-scuro")
+                if scuro { stato.dati.impostazioni.aspetto = .scuro }
+                scena.prepara(stato)
+                stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
+                let vista = ShellView()
+                    .environmentObject(stato)
+                    .environment(\.modoIstantanea, true)
+                    .environment(\.colorScheme, scuro ? .dark : .light)
+                    .frame(width: misura.width, height: misura.height)
+                let aspetto = NSAppearance(named: scuro ? .darkAqua : .aqua)
+                let png: Data?
+                switch metodo {
+                case "renderer": png = conRenderer(vista, aspetto: aspetto)
+                case "livello": png = conFinestra(vista, livello: true, misura: misura, aspetto: aspetto)
+                default: png = conFinestra(vista, livello: false, misura: misura, aspetto: aspetto)
+                }
+                guard let png else {
+                    print("ERRORE: istantanea \(scena.nome) non disegnata (metodo \(metodo))")
+                    return false
+                }
+                do {
+                    try png.write(to: cartella.appendingPathComponent("\(scena.nome).png"))
+                    print("OK: \(scena.nome).png (metodo \(metodo))")
+                } catch {
+                    print("ERRORE: \(scena.nome).png non salvata: \(error.localizedDescription)")
+                    return false
+                }
+                return true
             }
-            guard let png else {
-                print("ERRORE: istantanea \(scena.nome) non disegnata (metodo \(metodo))")
-                return 1
-            }
-            do {
-                try png.write(to: cartella.appendingPathComponent("\(scena.nome).png"))
-                print("OK: \(scena.nome).png (metodo \(metodo))")
-            } catch {
-                print("ERRORE: \(scena.nome).png non salvata: \(error.localizedDescription)")
-                return 1
-            }
+            guard riuscita else { return 1 }
         }
         return 0
     }
@@ -622,7 +628,11 @@ enum Istantanee {
         finestra.orderFront(nil)
         host.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.5))
-        defer { finestra.orderOut(nil) }
+        defer {
+            finestra.orderOut(nil)
+            // Il contenuto (e con lui lo stato della scena) si libera con la scena, dopo il disegno
+            finestra.contentView = nil
+        }
 
         if livello {
             let scala: CGFloat = 2

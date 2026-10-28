@@ -207,7 +207,8 @@ struct AppAgenda: View {
             .padding(EdgeInsets(top: 10, leading: 16, bottom: 9, trailing: 16))
 
             ScrollView {
-                VStack(spacing: 0) {
+                // Pigro: con molti clienti una giornata ha decine di appuntamenti e scadenze
+                LazyVStack(spacing: 0) {
                     ForEach(eventi) { e in
                         RigaEventoAgenda(
                             evento: e, cliente: stato.cliente(e.clienteId)?.nome ?? "Cliente",

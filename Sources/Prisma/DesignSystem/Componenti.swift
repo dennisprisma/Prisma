@@ -303,6 +303,7 @@ extension View {
 
 /// Controllo a segmenti del tema (.segc): pozzetto in capsula e cursore chiaro che scorre a molla
 /// sotto la voce scelta. Base di Segmentato, SegmentiAnalisi, SchedeApp, SchedeRisultati e SchedeRubrica.
+/// Si anima solo il controllo: il contenuto che cambia con la scelta compare di colpo, come sul Mac.
 struct ControlloSegmenti<Valore: Hashable>: View {
     let opzioni: [(Valore, String)]
     @Binding var selezione: Valore
@@ -329,6 +330,7 @@ struct ControlloSegmenti<Valore: Hashable>: View {
                 voce(opzione)
             }
         }
+        .animation(Movimenti.curva(Tema.Moto.Controlli.segmenti), value: selezione)
         .padding(m.margineCursore)
         .frame(height: altezza)
         .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
@@ -343,7 +345,7 @@ struct ControlloSegmenti<Valore: Hashable>: View {
         let carattere: Font = compatto ? (attiva ? t.segmentoCompattoAttivo : t.segmentoCompatto)
                                        : (attiva ? t.segmentoAttivo : t.segmento)
         return Button {
-            withAnimation(Tema.Moto.segmented) { selezione = opzione.0 }
+            selezione = opzione.0
         } label: {
             Text(opzione.1)
                 .font(carattere)

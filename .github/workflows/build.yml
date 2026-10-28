@@ -118,6 +118,9 @@ jobs:
           "$APP/Contents/MacOS/Prisma" --prova-prospetti
           # Prova di carico: 200 clienti, velocità e memoria (il Mac dell'utente ha 8 GB)
           "$APP/Contents/MacOS/Prisma" --prova-carico
+          # Prova della fluidità: tempi di apertura, chiusura, cambio app, blocco e aspetto (confronto prima/dopo)
+          "$APP/Contents/MacOS/Prisma" --prova-fluidita "$PWD/fluidita.md"
+          cat fluidita.md >> "$GITHUB_STEP_SUMMARY" || true
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 
@@ -130,6 +133,8 @@ jobs:
             if "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime" --metodo "$metodo"; then
               echo "Anteprime create con il metodo $metodo"
               echo "ok=1" >> "$GITHUB_OUTPUT"
+              # La tabella della fluidità accanto alle schermate: si confrontano due commit senza leggere i log
+              cp fluidita.md anteprime/fluidita.md 2>/dev/null || true
               "Prisma.app/Contents/MacOS/Prisma" --prova-prospetti "$PWD/anteprime/prospetti" > /dev/null || true
               # Alcune schermate con il testo «molto grande» (Impostazioni → Dimensione del testo)
               "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime/testo-grande" --metodo "$metodo" --testo 1.2 \

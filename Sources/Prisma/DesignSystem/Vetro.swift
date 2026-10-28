@@ -22,10 +22,16 @@ enum VarianteVetro: Equatable {
 }
 
 /// Forma di una superficie di vetro: rettangolo dagli angoli continui oppure capsula.
+/// Il raggio si anima (ingrandisci ↔ ripristina dimensione): la capsula resta capsula.
 struct FormaVetro: InsettableShape {
     /// nil = capsula.
     var raggio: CGFloat?
     var rientro: CGFloat = 0
+
+    var animatableData: CGFloat {
+        get { raggio ?? 0 }
+        set { if raggio != nil { raggio = newValue } }
+    }
 
     static func arrotondata(_ raggio: CGFloat) -> FormaVetro { FormaVetro(raggio: raggio) }
     static let capsula = FormaVetro(raggio: nil)
@@ -219,6 +225,24 @@ struct ModificatoreVetro: ViewModifier {
         return false
     }
 
+    /// Le finestre hanno l'ombra già pronta (OmbraPrecalcolata): il raggio della forma, o nil per le ombre disegnate.
+    private var raggioOmbraPronta: CGFloat? {
+        guard case .finestra(_) = variante, forma.rientro == 0 else { return nil }
+        return forma.raggio
+    }
+
+    /// Ombre esterne. Cambiano di colpo, come sul Mac: mai interpolate da un'animazione (finestra attiva ↔ inattiva).
+    /// Le finestre, che si aprono, si spostano e si scalano, usano la bitmap a 9 fette: niente sfocature in movimento.
+    @ViewBuilder private var ombre: some View {
+        if let raggio = raggioOmbraPronta {
+            OmbraVetroPronta(raggio: raggio, strati: strati)
+                .animation(nil, value: variante)
+        } else {
+            OmbreVetro(forma: forma, strati: strati)
+                .animation(nil, value: variante)
+        }
+    }
+
     // MARK: Vetro di Apple (macOS 26)
 
     private func vetroNativo(_ content: Content) -> AnyView {
@@ -230,7 +254,7 @@ struct ModificatoreVetro: ViewModifier {
                     .background { forma.fill(riempimentoScelto ?? veloNativo) }
                     .glassEffect(vetroDiSistema, in: forma)
                     .background {
-                        if ombraNativa { OmbreVetro(forma: forma, strati: strati) }
+                        if ombraNativa { ombre }
                     }
             )
         }
@@ -245,7 +269,7 @@ struct ModificatoreVetro: ViewModifier {
             .background { fondo }
             .overlay { bordi.allowsHitTesting(false) }
             .background {
-                if ombra && !strati.isEmpty { OmbreVetro(forma: forma, strati: strati) }
+                if ombra && !strati.isEmpty { ombre }
             }
     }
 
@@ -459,6 +483,47 @@ struct CapsulaCanale: View {
         .frame(height: compatta ? Tema.Misura.chipPiccolo : Tema.Misura.chip)
         .vetroCanale(canale)
         .fixedSize()
-        .help(canale.nome)
+        // Niente aiuto al passaggio: la capsula dice già il canale, e un `.help` per capsula pesa negli
+        // elenchi lunghi (una in ogni riga del portafoglio, delle scadenze e delle tabelle delle posizioni)
+    }
+}
+
+extension View {
+    /// Raggruppa i vetri vicini (GlassEffectContainer su macOS 26): un solo campionamento dello sfondo per tutto
+    /// il gruppo. `spazio`: la distanza entro cui si fondono (0 = restano separati). Con il vetro disegnato
+    /// (macOS 13-25, istantanee, «Riduci trasparenza») non cambia nulla.
+    func gruppoVetro(spazio: CGFloat = 0) -> some View {
+        modifier(GruppoVetro(spazio: spazio))
+    }
+}
+
+private struct GruppoVetro: ViewModifier {
+    let spazio: CGFloat
+
+    @Environment(\.modoIstantanea) private var modoIstantanea
+    @Environment(\.vetroSemplificato) private var semplificatoQui
+    @Environment(\.accessibilityReduceTransparency) private var trasparenzaRidotta
+
+    /// Le stesse condizioni del vetro di Apple in ModificatoreVetro.
+    private var nativo: Bool {
+        !modoIstantanea && !semplificatoQui && !Vetro.semplificato && !trasparenzaRidotta && Vetro.nativo
+    }
+
+    // Come ModificatoreVetro: la scelta nel body, il vetro di Apple in una funzione che restituisce AnyView
+    @ViewBuilder func body(content: Content) -> some View {
+        if nativo {
+            contenitore(content)
+        } else {
+            content
+        }
+    }
+
+    private func contenitore(_ content: Content) -> AnyView {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            return AnyView(GlassEffectContainer(spacing: spazio) { content })
+        }
+        #endif
+        return AnyView(content)
     }
 }

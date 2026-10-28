@@ -259,7 +259,7 @@ struct DettaglioPosizione: View {
     /// Le incoerenze con il profilo del cliente che nascono da questa proposta (SRI o periodo raccomandato).
     private var incoerenzeProposta: [Incoerenza] {
         guard posizione.stato == .proposta, let c = stato.cliente(posizione.clienteId) else { return [] }
-        let esito = CacheMotoriPosizioni.coerenza(cliente: c, posizioni: stato.posizioniCliente(c.id), prodotti: stato.dati.prodotti)
+        let esito = stato.coerenzaCliente(c)
         return esito.incoerenze.filter { $0.posizione?.id == posizione.id }
     }
 

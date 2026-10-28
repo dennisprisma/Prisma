@@ -23,13 +23,14 @@ struct FondoRighe: View {
 }
 
 /// Interruttore del tema (.tg): capsula 44 × 26, verde se acceso, pomello bianco che scorre a molla.
+/// Si anima solo l'interruttore, non ciò che compare o sparisce con lui.
 struct StileInterruttore: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         let m = Tema.Misura.interruttore
         let p = Tema.Misura.pomello
         let acceso = configuration.isOn
         return Button {
-            withAnimation(Tema.Moto.molla) { configuration.isOn.toggle() }
+            configuration.isOn.toggle()
         } label: {
             ZStack(alignment: acceso ? .trailing : .leading) {
                 FormaVetro.capsula.fill(acceso ? Tema.Colore.verde : Tema.Colore.pozzettoScuro)
@@ -40,6 +41,7 @@ struct StileInterruttore: ToggleStyle {
                     .ombraTema(Tema.Ombra.pomello)
                     .padding((m.height - p) / 2)
             }
+            .animation(Movimenti.curva(Tema.Moto.Controlli.interruttore), value: acceso)
             .frame(width: m.width, height: m.height)
             .contentShape(FormaVetro.capsula)
         }

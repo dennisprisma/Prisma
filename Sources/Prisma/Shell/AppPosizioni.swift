@@ -55,7 +55,7 @@ struct AppPosizioni: View {
                         DettaglioPosizione(posizione: p, modifica: { modulo = p })
                     } else if stato.portafoglio {
                         // Come nel dossier: gli indicatori contano in essere e proposte, lo stato filtra solo l'elenco
-                        portafoglio(delCliente.filter { area == nil || $0.area == area })
+                        portafoglio
                     } else {
                         principale
                     }
@@ -103,7 +103,10 @@ struct AppPosizioni: View {
     // MARK: - Elenco laterale
 
     private var rail: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        // Le posizioni filtrate e i conteggi per area si contano una volta sola (con 200 clienti sono migliaia)
+        let tutte = perStato
+        let conteggi = Dictionary(grouping: tutte, by: \.area).mapValues(\.count)
+        return VStack(alignment: .leading, spacing: 6) {
             if !stato.inModoCliente {
                 SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
                     .padding(.top, 2)
@@ -145,10 +148,10 @@ struct AppPosizioni: View {
             SegmentiAnalisi(opzioni: Self.opzioniCanale, selezione: $filtroCanale)
             EtichettaRail(testo: "Aree")
             VStack(spacing: 0) {
-                VoceNavigazione(titolo: "Tutte le aree", conteggio: perStato.count, attiva: area == nil) { area = nil }
+                VoceNavigazione(titolo: "Tutte le aree", conteggio: tutte.count, attiva: area == nil) { area = nil }
                 ForEach(AreaPosizione.allCases) { a in
                     VoceNavigazione(titolo: a.nome, colore: Colori.Analisi.area(a),
-                                    conteggio: perStato.filter { $0.area == a }.count, attiva: area == a) {
+                                    conteggio: conteggi[a] ?? 0, attiva: area == a) {
                         area = a
                         stato.posizioneInDettaglio = nil
                     }
@@ -192,10 +195,31 @@ struct AppPosizioni: View {
         .background(Colori.Analisi.railAlto)
     }
 
+    // MARK: - Portafoglio
+
+    /// Il portafoglio di tutti i clienti: il contenuto (CorpoPortafoglio) non osserva lo stato e si rifà solo
+    /// quando cambia la sua chiave; lo scorrimento alle ancore resta qui, dove lo stato si osserva.
+    private var portafoglio: some View {
+        ScrollViewReader { lettore in
+            ScrollView {
+                CorpoPortafoglio(stato: stato,
+                                 chiave: CorpoPortafoglio.Chiave(vista: stato.chiaveVista, canale: filtroCanale, area: area,
+                                                                 solaLettura: stato.solaLettura, prospetto: stato.prospetto,
+                                                                 orizzonte: stato.orizzonteSostituzione),
+                                 moduloAppuntamento: $moduloAppuntamento)
+                    .equatable()
+            }
+            // Solo le ancore del portafoglio: quelle del dossier le consuma la vista del cliente
+            .onAppear { if stato.ancoraPosizioni == "attenzioni" { scorri(lettore) } }
+            .onChange(of: stato.ancoraPosizioni) { a in if a == "attenzioni" { scorri(lettore) } }
+        }
+    }
+
     // MARK: - Pannello principale
 
     private var principale: some View {
-        let r = RiepilogoPosizioni(delCliente)
+        // Senza filtro di canale il riepilogo è quello del cliente, già calcolato (DerivatiDati)
+        let r = filtroCanale == nil ? stato.riepilogoPosizioniCliente(stato.clienteAttivoId) : RiepilogoPosizioni(delCliente)
         return ScrollViewReader { lettore in
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -218,16 +242,16 @@ struct AppPosizioni: View {
 
                     HStack(alignment: .top, spacing: 24) {
                         PannelloAnalisi(titolo: "Ripartizione per area", nota: "Posizioni in essere, debiti a parte") { EmptyView() } contenuto: {
-                            ripartizione(r)
+                            Self.ripartizione(r)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         PannelloAnalisi(titolo: "Per canale", nota: "Attività in essere") { EmptyView() } contenuto: {
-                            canali(r)
+                            Self.canali(r, apri: { stato.posizioneInDettaglio = $0.id })
                         }
                         .frame(width: 330, alignment: .leading)
                     }
 
-                    // Calcolate una volta e riusate finché posizioni, cliente e catalogo non cambiano
+                    // Calcolate una volta e riusate finché i dati non cambiano (DerivatiDati)
                     let analisi = stato.analisiDossier(stato.clienteAttivoId)
                     if !analisi.patrimonio.vuoto {
                         PannelloPatrimonio(p: analisi.patrimonio).id("patrimonio")
@@ -237,7 +261,7 @@ struct AppPosizioni: View {
                     }
                     // Coerenza con il profilo: rischio oltre la propensione e concentrazione su emittente o canale
                     if let c = stato.clienteAttivo {
-                        let coerenza = CacheMotoriPosizioni.coerenza(cliente: c, posizioni: stato.posizioniCliente(c.id), prodotti: stato.dati.prodotti)
+                        let coerenza = stato.coerenzaCliente(c)
                         if coerenza.oggi.patrimonioFinanziario > 0 || coerenza.conProposte != nil {
                             PannelloCoerenza(esito: coerenza).id("coerenza")
                         }
@@ -279,7 +303,8 @@ struct AppPosizioni: View {
         }
     }
 
-    func ripartizione(_ r: RiepilogoPosizioni) -> some View {
+    /// L'anello delle aree con le righe dei valori (dossier e Portafoglio).
+    static func ripartizione(_ r: RiepilogoPosizioni) -> some View {
         let aree = AreaPosizione.allCases.filter { !$0.passivo && (r.perArea[$0] ?? 0) > 0 }
         return HStack(alignment: .center, spacing: 22) {
             GraficoAnello(
@@ -320,8 +345,12 @@ struct AppPosizioni: View {
         }
     }
 
-    func canali(_ r: RiepilogoPosizioni) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    /// Le attività per canale e le posizioni in scadenza entro 90 giorni (dossier e Portafoglio).
+    /// `massimo`: le righe in scadenza al massimo, poi «…e altre N» (nil = tutte); `apri`: il tocco su una riga.
+    static func canali(_ r: RiepilogoPosizioni, massimo: Int? = nil, apri: @escaping (Posizione) -> Void) -> some View {
+        let scadenze = massimo.map { Array(r.inScadenza.prefix($0)) } ?? r.inScadenza
+        let nascoste = r.inScadenza.count - scadenze.count
+        return VStack(alignment: .leading, spacing: 10) {
             BarraCanali(quotaAlleanza: r.quota(.alleanza))
             ForEach(Canale.allCases) { c in
                 HStack {
@@ -337,8 +366,8 @@ struct AppPosizioni: View {
                     .font(Tipo.railEtichetta)
                     .foregroundColor(Colori.Analisi.attenzioneTesto)
                     .padding(.top, 6)
-                ForEach(r.inScadenza) { p in
-                    Button { stato.posizioneInDettaglio = p.id } label: {
+                ForEach(scadenze) { p in
+                    Button { apri(p) } label: {
                         HStack {
                             Text(p.nome).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
                             Spacer()
@@ -346,6 +375,9 @@ struct AppPosizioni: View {
                         }
                     }
                     .buttonStyle(StileSemplice())
+                }
+                if nascoste > 0 {
+                    Text("…e altre \(nascoste) in scadenza.").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 }
             }
         }

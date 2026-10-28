@@ -8,6 +8,14 @@ import SwiftUI
 ///   └────────────────────────┘└────────────────────────────┘
 ///   ┌─ Da fare ─┐┌─ Scadenze ─┐┌─ Portafoglio ─┐
 struct BachecaWidget: View {
+    /// Il blocco: con la schermata di benvenuto i widget escono, allo sblocco rientrano uno dopo l'altro.
+    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(\.modoIstantanea) private var istantanea
+    /// Vero poco dopo la prima comparsa: all'apertura di Prisma i widget entrano uno dopo l'altro.
+    @State private var avviato = false
+    /// La prima entrata (all'apertura di Prisma) ha i tempi dell'avvio; le altre quelli dello sblocco.
+    @State private var primaEntrata = true
+
     var body: some View {
         GeometryReader { geo in
             let s = Tema.Misura.grigliaSpazio
@@ -18,20 +26,65 @@ struct BachecaWidget: View {
             let terzo = max(0, (geo.size.width - 2 * s) / 3)
             VStack(spacing: s) {
                 HStack(spacing: s) {
-                    WidgetAgenda()
-                        .frame(width: meta)
+                    entrata(WidgetAgenda().frame(width: meta), 0)
                     VStack(spacing: s) {
-                        WidgetCliente()
-                        WidgetEve()
+                        entrata(WidgetCliente(), 1)
+                        entrata(WidgetEve(), 2)
                     }
                     .frame(width: meta)
                 }
                 .frame(height: fila + s + eve)
                 HStack(spacing: s) {
-                    WidgetAttivita().frame(width: terzo)
-                    WidgetScadenze().frame(width: terzo)
-                    WidgetPortafoglio().frame(width: terzo)
+                    entrata(WidgetAttivita().frame(width: terzo), 3)
+                    entrata(WidgetScadenze().frame(width: terzo), 4)
+                    entrata(WidgetPortafoglio().frame(width: terzo), 5)
                 }
+            }
+            // I sei vetri si campionano insieme (vetro nativo di macOS 26)
+            .gruppoVetro()
+        }
+        .onAppear {
+            guard !istantanea, !avviato else { return }
+            // Con la schermata di benvenuto davanti, la prima entrata è quella dello sblocco
+            if sistema.bloccato { primaEntrata = false }
+            // Il ritardo dell'avvio: il primo disegno della scrivania cade prima del primo fotogramma animato
+            DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.Avvio.ritardo) { avviato = true }
+        }
+        .onChange(of: sistema.bloccato) { bloccato in
+            if bloccato { primaEntrata = false }
+        }
+    }
+
+    /// Nascosti prima dell'avvio e con Prisma bloccata; nelle istantanee sempre al loro posto, fermi.
+    private var nascosto: Bool { !istantanea && (sistema.bloccato || !avviato) }
+
+    /// Entrata sfalsata di un widget (solo opacità, spostamento e scala del widget stesso). Stessa vista
+    /// con i tempi dell'avvio o dello sblocco: cambiare i tempi non ricostruisce il widget.
+    private func entrata<W: View>(_ widget: W, _ indice: Int) -> some View {
+        let avvio = primaEntrata
+        return widget.entrataSfalsata(indice: indice, nascosto: nascosto,
+                                      curva: avvio ? Tema.Moto.Avvio.widget : Tema.Moto.Sblocco.widget,
+                                      sfalsamento: avvio ? Tema.Moto.Avvio.sfalsamento : Tema.Moto.Sblocco.sfalsamentoWidget,
+                                      spostamento: avvio ? Tema.Moto.Avvio.spostamento : Tema.Moto.Sblocco.widgetSpostamento,
+                                      scala: avvio ? Tema.Moto.Avvio.scala : Tema.Moto.Sblocco.widgetScala)
+    }
+}
+
+/// Il centro di un pulsante nelle coordinate della shell, da cui si apre l'app. Una classe: si aggiorna
+/// senza ridisegnare nulla e si legge solo al clic.
+final class OrigineApertura {
+    var punto: CGPoint?
+}
+
+extension View {
+    /// Tiene aggiornato in `origine` il centro della vista nello spazio della shell (ShellView.spazioShell).
+    func misuraOrigine(_ origine: OrigineApertura) -> some View {
+        background {
+            GeometryReader { geo in
+                let cornice = geo.frame(in: CoordinateSpace.named(ShellView.spazioShell))
+                Color.clear
+                    .onAppear { origine.punto = CGPoint(x: cornice.midX, y: cornice.midY) }
+                    .onChange(of: cornice) { c in origine.punto = CGPoint(x: c.midX, y: c.midY) }
             }
         }
     }
@@ -67,11 +120,13 @@ struct CollegamentoApp: View {
     let app: AppPrisma
     /// Da fare prima di aprire l'app (per esempio scegliere il portafoglio).
     var prima: (() -> Void)? = nil
+    /// L'app si apre dal collegamento.
+    @State private var origine = OrigineApertura()
 
     var body: some View {
         Button {
             prima?()
-            stato.apri(app)
+            stato.apri(app, da: origine.punto)
         } label: {
             Text(testo)
                 .font(Tema.Testo.Shell.collegamento)
@@ -82,6 +137,7 @@ struct CollegamentoApp: View {
                 .vetro(.chip, forma: .capsula)
         }
         .buttonStyle(StileSemplice())
+        .misuraOrigine(origine)
     }
 }
 
@@ -127,6 +183,24 @@ struct WidgetAgenda: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora: non a ogni
+        // nota, messaggio di Eve o cliente scelto
+        CorpoWidgetAgenda(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Il giorno e i prossimi incontri. Non osserva StatoShell (lo riceve per i dati in cache e per le azioni):
+/// si ridisegna quando cambia la chiave, e il giorno grande anche ogni minuto (TimelineView).
+private struct CorpoWidgetAgenda: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetAgenda, b: CorpoWidgetAgenda) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
         HStack(spacing: 0) {
             TimelineView(.everyMinute) { contesto in
                 giorno(contesto.date)
@@ -136,8 +210,6 @@ struct WidgetAgenda: View {
             incontri
                 .padding(.leading, Tema.Misura.widgetMargine)
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     /// Il giorno grande: giorno della settimana in rosso, numero, mese e il riepilogo di oggi.
@@ -244,7 +316,32 @@ private struct RigaIncontro: View {
 
 struct WidgetCliente: View {
     @EnvironmentObject var stato: StatoShell
-    @State var sceltaCliente = false
+
+    var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi (anche la nota del cliente), un altro cliente
+        // in primo piano, un altro giorno o un'altra ora
+        CorpoWidgetCliente(stato: stato, chiave: stato.chiaveVista, attivo: stato.clienteAttivoId)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Il cliente in primo piano: non osserva StatoShell (lo riceve per i dati in cache e per le azioni).
+private struct CorpoWidgetCliente: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+    /// Il cliente in primo piano: non entra nei calcoli, quindi va nella chiave a parte.
+    let attivo: String
+    @State private var sceltaCliente = false
+    /// I pulsanti in basso: le app si aprono da lì.
+    @State private var origineScheda = OrigineApertura()
+    @State private var originePosizioni = OrigineApertura()
+    @State private var origineEve = OrigineApertura()
+
+    nonisolated static func == (a: CorpoWidgetCliente, b: CorpoWidgetCliente) -> Bool {
+        a.chiave == b.chiave && a.attivo == b.attivo
+    }
 
     /// I numeri del cliente, calcolati una volta sola per tutte le varianti.
     private struct Numeri {
@@ -254,8 +351,8 @@ struct WidgetCliente: View {
     }
 
     var body: some View {
-        let id = stato.clienteAttivoId
-        let numeri = Numeri(riepilogo: RiepilogoPosizioni(stato.posizioniCliente(id)),
+        let id = attivo
+        let numeri = Numeri(riepilogo: stato.riepilogoPosizioniCliente(id),
                             incontro: stato.prossimiAppuntamenti.first { $0.clienteId == id }
                                 .map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—",
                             aperte: stato.attivitaAperte.filter { $0.clienteId == id }.count)
@@ -276,8 +373,6 @@ struct WidgetCliente: View {
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     private func contenuto(_ n: Numeri, righe: Int, nota: Bool, pulsanti: Bool) -> some View {
@@ -316,12 +411,15 @@ struct WidgetCliente: View {
                 // Lo Spacer solo qui: nelle varianti senza pulsanti costerebbe comunque lo spazio della pila
                 Spacer(minLength: 0)
                 HStack(spacing: m.pulsantiSpazio) {
-                    Button("Apri la scheda") { stato.apri(.clienti) }
+                    Button("Apri la scheda") { stato.apri(.clienti, da: origineScheda.punto) }
+                        .misuraOrigine(origineScheda)
                     Button("Posizioni") {
                         stato.portafoglio = false
-                        stato.apri(.posizioni)
+                        stato.apri(.posizioni, da: originePosizioni.punto)
                     }
-                    Button("Chiedi a Eve") { stato.apri(.eve) }
+                    .misuraOrigine(originePosizioni)
+                    Button("Chiedi a Eve") { stato.apri(.eve, da: origineEve.punto) }
+                        .misuraOrigine(origineEve)
                 }
                 .buttonStyle(StileVetro())
             }
@@ -386,9 +484,11 @@ struct WidgetCliente: View {
 
 struct WidgetEve: View {
     @EnvironmentObject var stato: StatoShell
+    /// Eve si apre dalla barra.
+    @State private var origine = OrigineApertura()
 
     var body: some View {
-        Button { stato.apri(.eve) } label: {
+        Button { stato.apri(.eve, da: origine.punto) } label: {
             HStack(spacing: Tema.Misura.Shell.rigaSpazio) {
                 IconaApp(app: .eve, lato: Tema.Misura.Shell.iconaEve)
                 VStack(alignment: .leading, spacing: Tema.Misura.Shell.rigaTestoSpazio) {
@@ -413,6 +513,7 @@ struct WidgetEve: View {
         .frame(height: Tema.Misura.widgetEve)
         .corniceWidget(raggio: Tema.Raggio.widgetEve)
         .frame(height: Tema.Misura.widgetEve)
+        .misuraOrigine(origine)
     }
 }
 
@@ -422,28 +523,45 @@ struct WidgetAttivita: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
+        CorpoWidgetAttivita(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Le attività aperte: non osserva StatoShell (lo riceve per i dati in cache e per le azioni). Pila pigra:
+/// con molti clienti le attività aperte sono centinaia, ma si impaginano solo le righe che si vedono.
+private struct CorpoWidgetAttivita: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetAttivita, b: CorpoWidgetAttivita) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
         let aperte = stato.attivitaAperte
-        VStack(alignment: .leading, spacing: 0) {
+        let ultima = aperte.last?.id
+        return VStack(alignment: .leading, spacing: 0) {
             IntestazioneWidget(titolo: aperte.isEmpty ? "Da fare" : "\(aperte.count) \(aperte.count == 1 ? "attività aperta" : "attività aperte")",
                                icona: .attivita) {
                 CollegamentoApp(testo: "Apri Attività", app: .attivita)
             }
             ScrollView {
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     if aperte.isEmpty {
                         ElencoVuoto(testo: "Tutto fatto.")
                     }
                     ForEach(aperte) { a in
-                        RigaAttivita(attivita: a, cliente: stato.cliente(a.clienteId), ultima: a.id == aperte.last?.id) {
-                            withAnimation(Animazioni.passaggio) { stato.alternaCompletata(a.id) }
+                        // Senza animazione: una transazione animata su `dati` muoverebbe tutte le viste delle attività
+                        RigaAttivita(attivita: a, cliente: stato.cliente(a.clienteId), ultima: a.id == ultima) {
+                            stato.alternaCompletata(a.id)
                         }
                     }
                 }
             }
             .sfumaInBasso()
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 }
 
@@ -453,8 +571,24 @@ struct WidgetScadenze: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        let scadenze = Array(RiepilogoPosizioni(stato.posizioni).inScadenza.prefix(6))
-        VStack(alignment: .leading, spacing: 0) {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
+        CorpoWidgetScadenze(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Le posizioni in scadenza: non osserva StatoShell (lo riceve per i dati in cache e per le azioni).
+private struct CorpoWidgetScadenze: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetScadenze, b: CorpoWidgetScadenze) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
+        let scadenze = Array(stato.riepilogoTuttePosizioni.inScadenza.prefix(6))
+        return VStack(alignment: .leading, spacing: 0) {
             IntestazioneWidget(titolo: "In scadenza entro \(RiepilogoPosizioni.giorniScadenza) giorni", icona: .posizioni) {
                 CollegamentoApp(testo: "Apri Posizioni", app: .posizioni, prima: { stato.portafoglio = false })
             }
@@ -470,8 +604,6 @@ struct WidgetScadenze: View {
             }
             .sfumaInBasso()
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     private func riga(_ p: Posizione) -> some View {
@@ -522,8 +654,24 @@ struct WidgetPortafoglio: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        let r = RiepilogoPosizioni(stato.posizioni)
-        VStack(alignment: .leading, spacing: 0) {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
+        CorpoWidgetPortafoglio(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// I numeri di tutti i clienti: non osserva StatoShell (lo riceve per i dati in cache e per le azioni).
+private struct CorpoWidgetPortafoglio: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetPortafoglio, b: CorpoWidgetPortafoglio) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
+        let r = stato.riepilogoTuttePosizioni
+        return VStack(alignment: .leading, spacing: 0) {
             IntestazioneWidget(titolo: "Portafoglio clienti", icona: .posizioni) {
                 CollegamentoApp(testo: "Apri", app: .posizioni, prima: { stato.portafoglio = true })
             }
@@ -538,8 +686,6 @@ struct WidgetPortafoglio: View {
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             }
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     private func numeri(_ r: RiepilogoPosizioni, legenda: Bool, proposte: Bool) -> some View {

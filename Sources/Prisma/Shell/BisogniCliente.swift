@@ -205,12 +205,16 @@ struct BisogniCliente: View {
                         Text(verbatim: "\(e.anno)").font(Tipo.bisognoTesto).foregroundColor(Colori.Rubrica.testo).monospacedDigit()
                     }
                     .frame(width: 110)
-                    TextField("Nota", text: Binding(get: { e.nota }, set: { nuova in
+                    // La nota passa al profilo poco dopo l'ultimo tasto, non a ogni lettera
+                    TestoRinviato(testo: Binding(get: { e.nota }, set: { nuova in
                         stato.aggiornaBisogni(cliente.id) { p in
                             if let i = p.eventi.firstIndex(where: { $0.id == e.id }) { p.eventi[i].nota = nuova }
                         }
-                    }))
-                    .campoTesto()
+                    }), salvaOra: { stato.salvaOra() }) { bozza in
+                        TextField("Nota", text: bozza)
+                            .campoTesto()
+                    }
+                    .id("\(cliente.id)-\(e.id)")
                     Button("Togli") {
                         stato.aggiornaBisogni(cliente.id) { $0.eventi.removeAll { $0.id == e.id } }
                     }

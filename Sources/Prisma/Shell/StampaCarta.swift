@@ -164,19 +164,23 @@ enum StampaCarta {
         ]
         guard let contesto = CGContext(consumer: consumatore, mediaBox: &riquadro, info as CFDictionary) else { return nil }
         for pagina in d.pagine {
-            // Sempre chiaro, con le etichette dei canali da stampa: la carta non va mai in scuro
-            let renderer = ImageRenderer(content: pagina.frame(width: d.formato.width, height: d.formato.height)
-                .environment(\.etichetteStampa, true)
-                .environment(\.colorScheme, .light))
-            renderer.proposedSize = ProposedViewSize(d.formato)
-            contesto.beginPDFPage(nil)
-            // Anche i colori di AppKit si risolvono in chiaro, qualunque sia l'aspetto dell'app
-            if let chiaro = NSAppearance(named: .aqua) {
-                chiaro.performAsCurrentDrawingAppearance { renderer.render { _, disegna in disegna(contesto) } }
-            } else {
-                renderer.render { _, disegna in disegna(contesto) }
+            // Un pool per pagina: il grafo e le risorse temporanee di ogni pagina si liberano subito,
+            // non alla fine dell'evento (un fascicolo ha decine di pagine e il Mac 8 GB)
+            autoreleasepool {
+                // Sempre chiaro, con le etichette dei canali da stampa: la carta non va mai in scuro
+                let renderer = ImageRenderer(content: pagina.frame(width: d.formato.width, height: d.formato.height)
+                    .environment(\.etichetteStampa, true)
+                    .environment(\.colorScheme, .light))
+                renderer.proposedSize = ProposedViewSize(d.formato)
+                contesto.beginPDFPage(nil)
+                // Anche i colori di AppKit si risolvono in chiaro, qualunque sia l'aspetto dell'app
+                if let chiaro = NSAppearance(named: .aqua) {
+                    chiaro.performAsCurrentDrawingAppearance { renderer.render { _, disegna in disegna(contesto) } }
+                } else {
+                    renderer.render { _, disegna in disegna(contesto) }
+                }
+                contesto.endPDFPage()
             }
-            contesto.endPDFPage()
         }
         contesto.closePDF()
         return dati.length > 0 ? dati as Data : nil

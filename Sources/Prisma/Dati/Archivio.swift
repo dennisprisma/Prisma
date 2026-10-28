@@ -28,14 +28,21 @@ enum Archivio {
         }
     }
 
-    static let codificatore: JSONEncoder = {
+    static let codificatore = nuovoCodificatore()
+
+    /// Un codificatore dell'archivio tutto suo (il salvataggio in background ne usa uno solo per sé).
+    static func nuovoCodificatore() -> JSONEncoder {
         let e = JSONEncoder()
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
         e.dateEncodingStrategy = .iso8601
         // Un numero non finito (NaN, infinito) non deve bloccare ogni salvataggio
         e.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
         return e
-    }()
+    }
+
+    /// Coda seriale delle scritture dell'archivio (salvataggi e copia d'avvio): mai sul thread principale.
+    /// Chi deve vedere l'archivio aggiornato sul disco (backup, ripristino) aspetta che si svuoti.
+    static let coda = DispatchQueue(label: "prisma.archivio", qos: .utility)
 
     static let decodificatore: JSONDecoder = {
         let d = JSONDecoder()
@@ -98,18 +105,22 @@ enum Archivio {
         guard let grezzo = try? Data(contentsOf: file) else {
             return (DatiPrisma.demo(), "Non riesco ad aprire l'archivio di Prisma: non salvo nulla. Riavvia il Mac e riprova.", true, false)
         }
-        // La versione prima di tutto: un archivio più recente può non essere leggibile da questa versione
-        if let v = try? decodificatore.decode(SoloVersione.self, from: grezzo).versione, v > DatiPrisma.versioneAttuale {
-            let dati = (try? decodifica(grezzo)) ?? DatiPrisma(clienti: [], appuntamenti: [], attivita: [], posizioni: [],
-                                                               clienteAttivoId: "", impostazioni: Impostazioni())
-            return (dati, avvisoPiuRecente, true, true)
-        }
+        // Una lettura sola: la versione la legge già la decodifica completa
         do {
             var dati = try decodifica(grezzo)
-            try? grezzo.write(to: copiaAvvio, options: .atomic)
+            // Un archivio più recente si apre in sola lettura e non si copia
+            if diVersionePiuRecente(dati) { return (dati, avvisoPiuRecente, true, true) }
+            // La copia d'avvio si scrive in background: l'avvio non la aspetta
+            let copia = copiaAvvio
+            coda.async { try? grezzo.write(to: copia, options: .atomic) }
             dati.versione = DatiPrisma.versioneAttuale
             return (dati, recuperato ? "Un ripristino era stato interrotto: ho rimesso l'archivio com'era prima." : nil, false, false)
         } catch {
+            // Non leggibile: prima di tutto la versione, perché un archivio più recente può non essere leggibile da questa
+            if let v = try? decodificatore.decode(SoloVersione.self, from: grezzo).versione, v > DatiPrisma.versioneAttuale {
+                return (DatiPrisma(clienti: [], appuntamenti: [], attivita: [], posizioni: [], clienteAttivoId: "", impostazioni: Impostazioni()),
+                        avvisoPiuRecente, true, true)
+            }
             let copia = cartella.appendingPathComponent("\(prefissoNonLeggibile) \(Formati.nomeFile.string(from: Date())).json")
             try? fm.moveItem(at: file, to: copia)
             let d = DatiPrisma.demo()
@@ -129,10 +140,67 @@ enum Archivio {
         try data.write(to: file, options: .atomic)
     }
 
+    /// Scrive `dati` in `destinazione` con il codificatore dato (dalla coda dei salvataggi).
+    static func scrivi(_ dati: DatiPrisma, in destinazione: URL, con codificatore: JSONEncoder) throws {
+        if destinazione == file {
+            try preparaCartelle()
+        } else {
+            try FileManager.default.createDirectory(at: destinazione.deletingLastPathComponent(), withIntermediateDirectories: true)
+        }
+        let data = try codificatore.encode(dati)
+        try data.write(to: destinazione, options: .atomic)
+    }
+
     /// Percorso leggibile, con ~ al posto della cartella Inizio.
     static func percorsoBreve(_ url: URL) -> String {
         let casa = FileManager.default.homeDirectoryForCurrentUser.path
         let p = url.path
         return p.hasPrefix(casa) ? "~" + p.dropFirst(casa.count) : p
+    }
+}
+
+/// Il salvataggio dell'archivio in background: codifica e scrittura sulla coda `Archivio.coda`, così il thread
+/// principale (e le animazioni) non le aspettano. Ogni modifica dei dati è una generazione nuova: una
+/// generazione già accodata non si scrive due volte. Da usare dal thread principale.
+final class SalvataggioArchivio {
+    let file: URL
+    private let coda: DispatchQueue
+    /// Solo per la coda: un codificatore non condiviso con il thread principale.
+    private let codificatore = Archivio.nuovoCodificatore()
+    /// L'ultima generazione accodata (quella dei dati sul disco, a coda vuota).
+    private(set) var accodata: Int
+
+    /// `generazione`: quella dei dati già sul disco (all'avvio, quelli appena letti).
+    init(file: URL = Archivio.file, coda: DispatchQueue = Archivio.coda, generazione: Int = 0) {
+        self.file = file
+        self.coda = coda
+        accodata = generazione
+    }
+
+    /// Accoda la scrittura di `dati` (generazione `generazione`). false se quella generazione era già accodata:
+    /// niente da scrivere. Se la scrittura non riesce, `fallito` arriva sul thread principale e la stessa
+    /// generazione si potrà riscrivere.
+    @discardableResult
+    func accoda(_ dati: DatiPrisma, generazione: Int, fallito: @escaping (Error) -> Void) -> Bool {
+        guard generazione != accodata else { return false }
+        accodata = generazione
+        let file = self.file
+        let codificatore = self.codificatore
+        coda.async { [weak self] in
+            do {
+                try Archivio.scrivi(dati, in: file, con: codificatore)
+            } catch {
+                DispatchQueue.main.async {
+                    if self?.accodata == generazione { self?.accodata = Int.min }
+                    fallito(error)
+                }
+            }
+        }
+        return true
+    }
+
+    /// Torna quando le scritture accodate sono sul disco.
+    func attendi() {
+        coda.sync {}
     }
 }

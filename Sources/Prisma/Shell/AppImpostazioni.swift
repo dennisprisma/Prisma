@@ -321,10 +321,13 @@ struct AppImpostazioni: View {
                     .popover(isPresented: $modificaNome, arrowEdge: .leading) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Il tuo nome").font(Tipo.rigaTitolo)
-                            TextField("Nome", text: $stato.dati.impostazioni.nomeUtente)
-                                .campoTesto()
-                                .frame(width: 200)
-                                .onSubmit { modificaNome = false }
+                            // Il nome entra nei documenti: passa all'archivio poco dopo l'ultimo tasto
+                            TestoRinviato(testo: $stato.dati.impostazioni.nomeUtente, salvaOra: { stato.salvaOra() }) { bozza in
+                                TextField("Nome", text: bozza)
+                                    .campoTesto()
+                                    .frame(width: 200)
+                                    .onSubmit { modificaNome = false }
+                            }
                         }
                         .padding(14)
                     }

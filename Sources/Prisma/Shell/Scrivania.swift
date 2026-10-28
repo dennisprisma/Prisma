@@ -80,6 +80,8 @@ struct Scrivania: View {
         }
         .buttonStyle(StilePulsanteVetro())
         .labelStyle(EtichettaPulsante())
+        // I tre vetri si campionano insieme (vetro nativo di macOS 26)
+        .gruppoVetro()
         .padding(.top, Tema.Misura.Shell.pulsantiAlto)
     }
 
@@ -95,7 +97,7 @@ struct Scrivania: View {
                 stato.pannelloAppAperte = true
             } label: {
                 HStack(spacing: Tema.Misura.Shell.pulsanteVetroSpazio) {
-                    Text(testoAppAperte)
+                    TestoAppAperte()
                     Image(systemName: "square.grid.2x2.fill")
                 }
             }
@@ -104,14 +106,6 @@ struct Scrivania: View {
         .padding(.top, Tema.Misura.Shell.sezioneAlto)
         .padding(.bottom, Tema.Misura.Shell.sezioneBasso)
         .padding(.horizontal, Tema.Misura.Shell.sezioneLato)
-    }
-
-    private var testoAppAperte: String {
-        switch stato.finestre.count {
-        case 0: return "Nessuna app aperta"
-        case 1: return "1 app aperta"
-        default: return "\(stato.finestre.count) app aperte"
-        }
     }
 
     private var piede: some View {
@@ -127,6 +121,24 @@ struct Scrivania: View {
         .aloneSfondo()
         .padding(.horizontal, Tema.Misura.Shell.sezioneLato)
         .padding(.top, Tema.Misura.Shell.piedeAlto)
+    }
+}
+
+/// Quante app sono aperte: osserva solo le finestre, così il resto della scrivania (e i widget)
+/// non si ricalcola quando si apre o si chiude un'app.
+private struct TestoAppAperte: View {
+    @EnvironmentObject var sistema: StatoFinestre
+
+    var body: some View {
+        Text(testo)
+    }
+
+    private var testo: String {
+        switch sistema.elenco.count {
+        case 0: return "Nessuna app aperta"
+        case 1: return "1 app aperta"
+        default: return "\(sistema.elenco.count) app aperte"
+        }
     }
 }
 
