@@ -23,6 +23,8 @@ struct Presentazione {
 
 extension StatoShell {
     /// Mostra il documento a tutto schermo. Per un documento di un cliente accende anche la modalità cliente.
+    /// Prima la sala compare in dissolvenza sopra la scrivania, poi (a dissolvenza finita) la finestra passa a
+    /// tutto schermo: sotto la sala non si reimpagina niente.
     func presenta(_ d: DocumentoStampabile, delCliente: Bool = true) {
         guard !d.pagine.isEmpty else { return }
         var p = Presentazione(titolo: d.titolo, cliente: d.cliente, formato: d.formato, pagine: d.pagine)
@@ -34,31 +36,54 @@ extension StatoShell {
                 p.appuntamentoId = id
             }
         }
-        if p.clienteId != nil, !inModoCliente {
-            entraModoCliente(avviso: false)
-            p.haAccesoModoCliente = inModoCliente
-        }
-        if persistente, let finestra = NSApp.keyWindow, !finestra.styleMask.contains(.fullScreen) {
-            finestra.toggleFullScreen(nil)
+        // La finestra da mettere a tutto schermo (nessuna se lo è già)
+        var schermoIntero: NSWindow?
+        if persistente, let finestra = NSApp.keyWindow, !finestra.styleMask.contains(.fullScreen) { schermoIntero = finestra }
+        if let finestra = schermoIntero {
             p.haAccesoSchermoIntero = true
             p.finestra = finestra
         }
-        pannelloNotifiche = false
+        let accendeModoCliente = p.clienteId != nil && !inModoCliente
+        // La sala per prima, con la sua dissolvenza; le modifiche senza animazione vengono dopo
+        Movimenti.anima(Tema.Moto.Pannelli.presentazione, durata: Tema.Moto.Pannelli.durataPresentazione, animato: persistente) {
+            presentazione = p
+        }
+        if accendeModoCliente {
+            entraModoCliente(avviso: false)
+            presentazione?.haAccesoModoCliente = inModoCliente
+        }
+        if pannelloNotifiche { pannelloNotifiche = false }
         // Nessun campo sotto il velo deve ricevere i tasti: il commento o la chat di Eve resterebbero scrivibili
         if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
-        presentazione = p
+        guard let finestra = schermoIntero else { return }
+        let giro = sistema.giroPresentazione &+ 1
+        sistema.giroPresentazione = giro
+        Movimenti.dopo(Tema.Moto.Pannelli.durataPresentazione) { [weak self, weak finestra] in
+            guard let self, let finestra, self.sistema.giroPresentazione == giro, self.presentazione != nil,
+                  !finestra.styleMask.contains(.fullScreen) else { return }
+            finestra.toggleFullScreen(nil)
+        }
     }
 
     func paginaSeguente() {
         guard var p = presentazione, p.pagina < p.pagine.count - 1 else { return }
         p.pagina += 1
-        presentazione = p
+        mostraPagina(p)
     }
 
     func paginaPrecedente() {
         guard var p = presentazione, p.pagina > 0 else { return }
         p.pagina -= 1
-        presentazione = p
+        mostraPagina(p)
+    }
+
+    /// Le pagine si avvicendano in dissolvenza, come in Keynote.
+    private func mostraPagina(_ p: Presentazione) {
+        if persistente {
+            withAnimation(Movimenti.curva(Tema.Moto.Pannelli.paginaPresentazione)) { presentazione = p }
+        } else {
+            presentazione = p
+        }
     }
 
     /// Un'annotazione presa durante la presentazione: va negli appunti dell'incontro (quello dell'appuntamento,
@@ -92,7 +117,10 @@ extension StatoShell {
 
     func chiudiPresentazione() {
         guard let p = presentazione else { return }
-        presentazione = nil
+        sistema.giroPresentazione &+= 1
+        Movimenti.anima(Tema.Moto.Pannelli.presentazione, durata: Tema.Moto.Pannelli.durataPresentazione, animato: persistente) {
+            presentazione = nil
+        }
         if p.haAccesoModoCliente { esciModoCliente() }
         if p.haAccesoSchermoIntero, let finestra = p.finestra ?? NSApp.keyWindow, finestra.styleMask.contains(.fullScreen) {
             finestra.toggleFullScreen(nil)

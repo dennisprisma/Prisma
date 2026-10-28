@@ -19,7 +19,8 @@ struct AppProspetti: View {
     private var scelta: SceltaProspetto { stato.sceltaProspetto }
 
     var body: some View {
-        let documento = stato.documentoProspetto(scelta)
+        // Impaginato una volta sola finché non cambia qualcosa che conta (DerivatiDati), non a ogni disegno
+        let documento = stato.documentoProspettoInCache(scelta)
         let pagine = documento?.pagine.count ?? 0
         let formato = documento.map { $0.formato.width > $0.formato.height ? "A4 orizzontale" : "A4 verticale" } ?? ""
         return CorniceStrumento(
@@ -267,8 +268,7 @@ struct AppProspetti: View {
     }
 
     @ViewBuilder private var sceltaRiesame: some View {
-        if let f = stato.fonteEve(cliente) {
-            let r = MotoreRiesame.calcola(f)
+        if let r = stato.riesameCliente(cliente) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Prospetto per te: A4 verticale, da preparare prima dell'incontro di revisione e da tenere sul tavolo mentre parli con il cliente.")
                     .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
@@ -729,12 +729,13 @@ struct AppProspetti: View {
 }
 
 /// Le pagine di un documento sul tavolo dell'anteprima (gettone del tema, chiaro o scuro): i fogli restano chiari.
+/// Pila pigra: si disegnano solo i fogli che si vedono, non tutto il fascicolo con le ombre.
 private struct TavoloDocumento: View {
     let documento: DocumentoStampabile
     let scala: CGFloat
 
     var body: some View {
-        VStack(spacing: Tema.Misura.Strumenti.spazioFogli) {
+        LazyVStack(spacing: Tema.Misura.Strumenti.spazioFogli) {
             ForEach(Array(documento.pagine.enumerated()), id: \.offset) { _, pagina in
                 pagina
                     .frame(width: documento.formato.width, height: documento.formato.height)

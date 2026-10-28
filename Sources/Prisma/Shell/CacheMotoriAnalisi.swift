@@ -1,9 +1,9 @@
 import Foundation
 
-/// Le analisi più pesanti di Obiettivi e Analisi 360, calcolate una volta e ricordate: la vista si ridisegna
-/// a ogni spostamento di finestra, gli scenari con le probabilità e il fisco delle polizze no. Si ricalcolano
-/// solo quando cambiano l'obiettivo, le posizioni, il cliente o il giorno. Si usano solo dalle schermate
-/// (mai dai calcoli che legge Eve).
+/// Le analisi più pesanti di Obiettivi, Analisi 360 e del prospetto dell'obiettivo, calcolate una volta e
+/// ricordate: la vista si ridisegna spesso, gli scenari con le probabilità e il fisco delle polizze no. Si
+/// ricalcolano solo quando cambiano l'obiettivo, le posizioni, il cliente o il giorno. Si usano solo dalle
+/// schermate e dai documenti (mai dai calcoli che legge Eve).
 enum CacheMotoriAnalisi {
     /// Scenari con le probabilità già calcolati, per chiave dell'obiettivo e delle sue posizioni.
     nonisolated(unsafe) private static var memoriaScenari: [Int: EsitoMonteCarlo] = [:]
@@ -12,16 +12,17 @@ enum CacheMotoriAnalisi {
     nonisolated(unsafe) private static var memoriaFisco: (chiave: Int, valore: FiscoPolizzeCliente)?
 
     /// La probabilità di raggiungere l'obiettivo con le posizioni collegate (scenari con le probabilità).
-    /// `posizioni`: quelle del cliente; contano solo le collegate in essere.
-    static func scenari(_ o: Obiettivo, posizioni: [Posizione]) -> EsitoMonteCarlo {
+    /// `posizioni`: quelle del cliente; contano solo le collegate in essere. `data`: il giorno da cui parte
+    /// la stima (quello del documento, nei prospetti).
+    static func scenari(_ o: Obiettivo, posizioni: [Posizione], data: Date = Date()) -> EsitoMonteCarlo {
         let collegate = posizioni.filter { o.posizioniCollegate.contains($0.id) }
         var h = Hasher()
         h.combine(o)
         h.combine(collegate)
-        h.combine(Calendar.current.startOfDay(for: Date()))
+        h.combine(Calendar.current.startOfDay(for: data))
         let chiave = h.finalize()
         if let esito = memoriaScenari[chiave] { return esito }
-        let esito = MotoreMonteCarlo.obiettivo(o, posizioni: collegate)
+        let esito = MotoreMonteCarlo.obiettivo(o, posizioni: collegate, data: data)
         if memoriaScenari.count >= massimoScenari { memoriaScenari.removeAll() }
         memoriaScenari[chiave] = esito
         return esito

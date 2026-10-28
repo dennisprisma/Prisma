@@ -2,16 +2,23 @@ import SwiftUI
 
 /// Finestra interna di un'app (.win del tema): vetro chiaro o scuro con raggio 24 (18 se ingrandita),
 /// semafori piatti, titolo con l'icona, contesto della finestra e ridimensionamento.
+/// Trascinare e ridimensionare non toccano lo stato finché non si rilascia: si muove (o si reimpagina)
+/// solo questa finestra, come sul Mac, e lo stato si scrive una volta sola.
 struct FinestraInterna: View {
     @EnvironmentObject var stato: StatoShell
     let finestra: StatoShell.Finestra
     let attiva: Bool
+    /// L'area delle finestre (coordinate `ShellView.spazioFinestre`): spostamento e misura restano dentro.
+    let area: CGRect
 
-    @State var origineTrascinamento: CGPoint?
-    @State var dimensioneIniziale: CGSize?
+    /// Il trascinamento in corso (si azzera da solo anche se il gesto viene interrotto).
+    @GestureState private var spostamento: CGSize = .zero
+    /// Il ridimensionamento in corso.
+    @GestureState private var allungamento: CGSize = .zero
 
     var body: some View {
         let forma = FormaVetro.arrotondata(finestra.ingrandita ? Tema.Raggio.finestraIngrandita : Tema.Raggio.finestra)
+        let dimensione = allungamento == .zero ? cornice.size : misuraAllungata(allungamento)
         VStack(spacing: 0) {
             barraTitolo
             // In una finestra più piccola del suo contenuto l'app parte dall'angolo in alto a sinistra
@@ -21,13 +28,41 @@ struct FinestraInterna: View {
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
                 .clipped()
         }
+        // La finestra si dà da sola la misura: ridimensionando si rifà l'impaginazione solo di lei
+        .frame(width: dimensione.width, height: dimensione.height, alignment: .topLeading)
         // Il contenuto si taglia prima del vetro: dopo taglierebbe anche le ombre
         .clipShape(forma)
         .vetro(.finestra(attiva: attiva), forma: forma)
         .overlay(alignment: .bottomTrailing) {
             if !finestra.ingrandita { maniglia }
         }
+        // Una trasformazione, non un cambio di stato: niente si ricalcola mentre si trascina
+        .offset(spostamento == .zero ? .zero : limitato(spostamento))
         .simultaneousGesture(TapGesture().onEnded { stato.primoPiano(finestra.app) })
+    }
+
+    /// La cornice nello stato, nell'area in cui ShellView disegna la finestra.
+    private var cornice: CGRect { stato.cornice(di: finestra, in: area) }
+
+    /// Lo spostamento dentro l'area (come `limita` dello stato): la barra del titolo resta raggiungibile.
+    private func limitato(_ t: CGSize) -> CGSize {
+        let c = cornice
+        let x = min(max(c.minX + t.width, 0), max(0, area.width - c.width))
+        let y = min(max(c.minY + t.height, 0), max(0, area.height - c.height))
+        return CGSize(width: x - c.minX, height: y - c.minY)
+    }
+
+    /// La misura allungata: non sotto la minima e non oltre il bordo dell'area.
+    private func misuraAllungata(_ t: CGSize) -> CGSize {
+        let c = cornice
+        let minima = Misure.Finestra.minima
+        return CGSize(width: min(max(minima.width, c.width + t.width), max(minima.width, area.width - c.minX)),
+                      height: min(max(minima.height, c.height + t.height), max(minima.height, area.height - c.minY)))
+    }
+
+    /// Scrive lo stato una volta sola, al rilascio, senza animazione.
+    private func alRilascio(_ cambia: () -> Void) {
+        withTransaction(Transaction(animation: nil), cambia)
     }
 
     private var barraTitolo: some View {
@@ -67,16 +102,19 @@ struct FinestraInterna: View {
         .onTapGesture(count: 2) { stato.alternaIngrandimento(finestra.app) }
         .gesture(
             DragGesture(minimumDistance: 2, coordinateSpace: .named(ShellView.spazioFinestre))
-                .onChanged { g in
-                    guard !finestra.ingrandita else { return }
-                    let inizio = origineTrascinamento ?? stato.cornice(di: finestra).origin
-                    if origineTrascinamento == nil {
-                        origineTrascinamento = inizio
-                        stato.primoPiano(finestra.app)
-                    }
-                    stato.sposta(finestra.app, origine: CGPoint(x: inizio.x + g.translation.width, y: inizio.y + g.translation.height))
+                .updating($spostamento) { g, s, _ in
+                    if !finestra.ingrandita { s = g.translation }
                 }
-                .onEnded { _ in origineTrascinamento = nil }
+                // Davanti al primo movimento (poi primoPiano non cambia più niente)
+                .onChanged { _ in
+                    if !finestra.ingrandita { stato.primoPiano(finestra.app) }
+                }
+                .onEnded { g in
+                    guard !finestra.ingrandita else { return }
+                    let c = cornice
+                    let d = limitato(g.translation)
+                    alRilascio { stato.sposta(finestra.app, origine: CGPoint(x: c.minX + d.width, y: c.minY + d.height)) }
+                }
         )
     }
 
@@ -117,13 +155,12 @@ struct FinestraInterna: View {
         .padding(Tema.Misura.Shell.manigliaMargine)
         .gesture(
             DragGesture(minimumDistance: 1, coordinateSpace: .named(ShellView.spazioFinestre))
-                .onChanged { g in
-                    let inizio = dimensioneIniziale ?? stato.cornice(di: finestra).size
-                    if dimensioneIniziale == nil { dimensioneIniziale = inizio }
-                    stato.ridimensiona(finestra.app, dimensione: CGSize(width: inizio.width + g.translation.width,
-                                                                        height: inizio.height + g.translation.height))
+                .updating($allungamento) { g, s, _ in s = g.translation }
+                .onChanged { _ in stato.primoPiano(finestra.app) }
+                .onEnded { g in
+                    let m = misuraAllungata(g.translation)
+                    alRilascio { stato.ridimensiona(finestra.app, dimensione: m) }
                 }
-                .onEnded { _ in dimensioneIniziale = nil }
         )
         .help("Ridimensiona")
     }

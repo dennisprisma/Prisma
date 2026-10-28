@@ -173,7 +173,12 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
-            print("OK: backup, rotazione (\(elenco.count) copie), ripristino e backup protetti da password verificati")
+            // Salvataggio in background: una modifica in coda e un ripristino subito dopo
+            if let errore = try provaSalvataggio(radice: radice, originale: originale) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password e salvataggio in background verificati")
             return 0
         } catch {
             print("ERRORE: \(error.localizedDescription)")
@@ -323,6 +328,42 @@ enum ProvaBackup {
         guard !senzaCampo.cifrato, conCampo.cifrato, riletta == conCampo else {
             return "impostazione della protezione dei backup non letta o non salvata"
         }
+        return nil
+    }
+
+    /// Salvataggio in background (SalvataggioArchivio, come in StatoShell): la scrittura accodata arriva sul
+    /// disco prima che il backup o il ripristino lo leggano (`attendi`, come `salvaOra`); una generazione già
+    /// scritta (il salvataggio ritardato che arriva dopo il ripristino) non sovrascrive l'archivio ripristinato.
+    /// Restituisce il motivo dell'errore (nil = tutto bene).
+    private static func provaSalvataggio(radice: URL, originale: DatiPrisma) throws -> String? {
+        let cartella = radice.appendingPathComponent("Salvataggio/Prisma", isDirectory: true)
+        let file = cartella.appendingPathComponent("archivio.json")
+        let salvataggio = SalvataggioArchivio(file: file, coda: DispatchQueue(label: "prisma.prova-salvataggio", qos: .utility))
+        func letto() -> DatiPrisma? { (try? Data(contentsOf: file)).flatMap { try? Archivio.decodifica($0) } }
+
+        // Generazione 1: i dati di partenza, scritti in background
+        guard salvataggio.accoda(originale, generazione: 1, fallito: { _ in }) else { return "salvataggio: la prima scrittura non è partita" }
+        salvataggio.attendi()
+        guard letto() == originale else { return "salvataggio: dopo l'attesa l'archivio sul disco non è quello salvato" }
+        // La stessa generazione non si riscrive
+        guard !salvataggio.accoda(originale, generazione: 1, fallito: { _ in }) else { return "salvataggio: dati non cambiati scritti di nuovo" }
+        let zip = try GestoreBackup.crea(sorgente: cartella, destinazione: radice.appendingPathComponent("BackupSalvataggio"))
+
+        // Generazione 2: una modifica in coda, poi il ripristino del backup di prima
+        var modificato = originale
+        modificato.impostazioni.nomeUtente = "Modificato in coda"
+        salvataggio.accoda(modificato, generazione: 2, fallito: { _ in })
+        // Il ripristino (e il backup) aspettano la coda: la modifica è sul disco e non arriverà dopo
+        salvataggio.attendi()
+        guard letto() == modificato else { return "salvataggio: la modifica in coda non era sul disco prima del ripristino" }
+        let estratto = try GestoreBackup.estrai(zip)
+        try GestoreBackup.sostituisci(cartellaDati: cartella, con: estratto.cartella)
+        // Il salvataggio ritardato della stessa modifica arriva dopo il ripristino: non scrive nulla
+        guard !salvataggio.accoda(modificato, generazione: 2, fallito: { _ in }) else {
+            return "salvataggio: una modifica già salvata riscritta sopra il ripristino"
+        }
+        salvataggio.attendi()
+        guard letto() == originale else { return "salvataggio: l'archivio ripristinato è stato sovrascritto" }
         return nil
     }
 

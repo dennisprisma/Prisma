@@ -3,11 +3,12 @@ import SwiftUI
 /// Posizioni · Portafoglio: tutti i clienti insieme. Quanto segui e su quale canale, chi pesa di più,
 /// cosa scade mese per mese, quanto dipendi da un emittente e come vanno le proposte.
 extension AppPosizioni {
-    func portafoglio(_ posizioni: [Posizione]) -> some View {
-        var p = MotorePortafoglio.calcola(posizioni, clienti: stato.clienti, appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
-        // Chi richiamare non dipende dai filtri di canale e area
-        p.daRicontattare = MotorePortafoglio.daRicontattare(stato.posizioni, clienti: stato.clienti,
-                                                            appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
+    /// Il portafoglio di tutti i clienti con i filtri di canale e area. I motori girano su ogni cliente: i numeri
+    /// si calcolano una volta per dati, ora e filtri (DerivatiDati), non a ogni disegno della finestra.
+    func portafoglio(canale: Canale?, area: AreaPosizione?) -> some View {
+        // Chi ricontattare, i riesami, la fine dell'anno e le attenzioni non dipendono dai filtri
+        let p = stato.riepilogoPortafoglio(canale: canale, area: area)
+        let comune = stato.portafoglioComune()
         let r = p.riepilogo
         return ScrollViewReader { lettore in
             ScrollView {
@@ -46,14 +47,13 @@ extension AppPosizioni {
                     }
 
                     // Il calendario delle revisioni: non dipende dai filtri di canale e area
-                    let dovuti = MotoreRiesame.dovuti(clienti: stato.clienti, posizioni: stato.posizioni,
-                                                      appuntamenti: stato.appuntamenti, incontri: stato.dati.incontri)
-                    let fine = MotoreFineAnno.conSpazio(clienti: stato.clienti, posizioni: stato.posizioni)
+                    let dovuti = comune.dovuti
+                    let fine = comune.fine
                     PannelloAnalisi(titolo: "Fine anno \(Calendar.current.component(.year, from: Date()))",
                                     nota: "Spazio deducibile ancora libero sui piani di previdenza: i versamenti contano entro il 31 dicembre") { EmptyView() } contenuto: {
                         fineAnno(fine)
                     }
-                    let attenzioni = MotoreAttenzioni.calcola(clienti: stato.clienti, posizioni: stato.posizioni)
+                    let attenzioni = comune.attenzioni
                     if !attenzioni.isEmpty {
                         PannelloAnalisi(titolo: "Da sistemare nei dossier",
                                         nota: "Dalle analisi delle posizioni: beneficiari, tutele, rischio e costi · tocca una riga per aprire il pannello") { EmptyView() } contenuto: {
@@ -297,7 +297,7 @@ extension AppPosizioni {
                     .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
             }
             ForEach(elenco.prefix(Self.massimoRiesami)) { d in
-                let r = stato.fonteEve(d.cliente.id).map(MotoreRiesame.calcola)
+                let r = stato.riesameCliente(d.cliente.id)
                 let alta = r?.punti.filter { $0.priorita == .alta }.count ?? 0
                 HStack(spacing: 8) {
                     AvatarCliente(iniziali: d.cliente.iniziali, tinta: d.cliente.tinta.colori, lato: Misure.Portafoglio.avatar)

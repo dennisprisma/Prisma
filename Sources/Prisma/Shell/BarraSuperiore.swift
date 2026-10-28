@@ -60,13 +60,10 @@ struct BarraSuperiore: View {
     /// Il nome dell'app in primo piano («Scrivania» se non ce n'è): apre gli spazi di lavoro.
     private var appCorrente: some View {
         PulsanteBarra(aiuto: "Spazi di lavoro", azione: {
-            stato.pannelloNotifiche = false
+            if stato.pannelloNotifiche { stato.pannelloNotifiche = false }
             if !stato.inModoCliente { stato.pannelloSpazi.toggle() }
         }) {
-            Text(stato.appAttiva?.titolo ?? "Scrivania")
-                .font(Tema.Testo.barra)
-                .foregroundColor(Tema.Colore.inchiostroSfondo)
-                .lineLimit(1)
+            TitoloAppAttiva()
                 .padding(.horizontal, Tema.Misura.Shell.marchioMargine)
                 .frame(height: Tema.Misura.marchioBarra)
                 .aloneSfondo()
@@ -143,6 +140,19 @@ struct BarraSuperiore: View {
         .padding(m.strumentiMargine)
         .frame(height: Tema.Misura.barraStrumenti)
         .vetro(.leggero, forma: .capsula)
+    }
+}
+
+/// Il nome dell'app in primo piano («Scrivania» se non ce n'è): osserva solo le finestre,
+/// così il resto della barra non si ridisegna quando si cambia app.
+private struct TitoloAppAttiva: View {
+    @EnvironmentObject var sistema: StatoFinestre
+
+    var body: some View {
+        Text(sistema.appAttiva?.titolo ?? "Scrivania")
+            .font(Tema.Testo.barra)
+            .foregroundColor(Tema.Colore.inchiostroSfondo)
+            .lineLimit(1)
     }
 }
 

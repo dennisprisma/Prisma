@@ -41,7 +41,9 @@ enum MotoreNotifiche {
         let domani = cal.date(byAdding: .day, value: 1, to: inizio) ?? inizio
         let limite = cal.date(byAdding: .day, value: giorniAvanti, to: inizio) ?? inizio
         let dati = stato.dati
-        func nome(_ id: String) -> String { stato.cliente(id)?.nome ?? "Senza cliente" }
+        // I nomi per id una volta sola (i clienti visibili, come `cliente(_:)`: in modalità cliente solo il suo)
+        let nomi = Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
+        func nome(_ id: String) -> String { nomi[id] ?? "Senza cliente" }
         var elenco: [Notifica] = []
 
         // Appuntamenti di oggi, ancora da fare
@@ -205,17 +207,36 @@ extension StatoShell {
         notifiche.filter { $0.gruppo != .daSistemare && !notificheViste.contains($0.id) }.count
     }
 
+    /// Apre o chiude il centro notifiche. Il pannello si apre subito; nell'app le notifiche si ricalcolano
+    /// al giro dopo, così il calcolo non cade sul primo fotogramma dell'entrata (nelle istantanee e nelle
+    /// prove subito, perché la schermata ferma le mostri già aggiornate).
     func alternaNotifiche() {
         pannelloNotifiche.toggle()
-        if pannelloNotifiche {
+        guard pannelloNotifiche else { return }
+        if pannelloSpazi { pannelloSpazi = false }
+        guard persistente else {
             ricalcolaNotifiche()
-            pannelloSpazi = false
-            notificheViste.formUnion(notifiche.map(\.id))
+            segnaNotificheViste()
+            return
+        }
+        segnaNotificheViste()
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.pannelloNotifiche else { return }
+            self.ricalcolaNotifiche()
+            // Quelle arrivate con il ricalcolo sono già sotto gli occhi
+            self.segnaNotificheViste()
         }
     }
 
+    /// Le notifiche di adesso sono viste (lo stato cambia solo se ce n'è una nuova: niente ridisegni inutili).
+    private func segnaNotificheViste() {
+        let nuove = notifiche.map(\.id).filter { !notificheViste.contains($0) }
+        if !nuove.isEmpty { notificheViste.formUnion(nuove) }
+    }
+
     func apriNotifica(_ n: Notifica) {
-        pannelloNotifiche = false
+        // Prima l'apertura animata dell'app, poi la chiusura del pannello (senza animazione propria)
+        defer { if pannelloNotifiche { pannelloNotifiche = false } }
         if let d = n.destinazione {
             vai(a: d)
         } else if n.id.hasPrefix("beneficiari-"), let id = n.id.dropFirst("beneficiari-".count).split(separator: ",").first,

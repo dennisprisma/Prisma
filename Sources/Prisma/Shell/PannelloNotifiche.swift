@@ -69,6 +69,9 @@ struct PannelloNotifiche: View {
             // la scrivania dietro non si legge attraverso il pannello
             .clipShape(FormaVetro.arrotondata(Misure.Notifiche.raggio))
             .vetro(.pannello, forma: .arrotondata(Misure.Notifiche.raggio), riempimento: Colori.Notifiche.fondo)
+            // La scheda entra da destra; il contenitore fa solo l'opacità
+            .entrataScheda(Tema.Moto.Pannelli.notifiche, scala: Tema.Moto.Pannelli.notificheScala, ancora: .topTrailing,
+                           x: Tema.Moto.Pannelli.notificheSpostamento)
             .padding(.top, Misure.Notifiche.alto)
             .padding(.trailing, Misure.Notifiche.destra)
             .padding(.bottom, Misure.Notifiche.basso)

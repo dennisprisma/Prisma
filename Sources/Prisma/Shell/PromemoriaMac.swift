@@ -26,6 +26,10 @@ final class PromemoriaMac: NSObject, UNUserNotificationCenterDelegate, @unchecke
     /// Ogni aggiornamento ha un numero: uno superato da uno più recente non tocca più nulla.
     private let serratura = NSLock()
     private var giro = 0
+    /// I promemoria si calcolano su questa coda (sono un valore ricavato da un valore); ogni calcolo ha un
+    /// numero (solo sul main thread): uno superato, o arrivato dopo lo spegnimento, non si consegna.
+    private let codaCalcolo = DispatchQueue(label: "prisma.promemoria", qos: .utility)
+    private var calcolo = 0
 
     /// true solo dentro Prisma.app avviata normalmente: mai con `--istantanee`, `--prova-…`
     /// né con il binario della build lanciato fuori dal bundle.
@@ -119,9 +123,30 @@ final class PromemoriaMac: NSObject, UNUserNotificationCenterDelegate, @unchecke
         }
     }
 
+    /// Calcola i promemoria fuori dal thread principale e li consegna (`pianifica`). Da chiamare sul main thread.
+    func calcolaEPianifica(_ dati: DatiPrisma, impostazioni: ImpostazioniPromemoria) {
+        guard Self.disponibili else { return }
+        calcolo &+= 1
+        let numero = calcolo
+        codaCalcolo.async { [weak self] in
+            let voci = MotoreNotifiche.promemoria(dati, impostazioni: impostazioni)
+            DispatchQueue.main.async {
+                guard let self, self.calcolo == numero else { return }
+                self.pianifica(voci)
+            }
+        }
+    }
+
+    /// Un calcolo ancora in corso non si consegna più (promemoria spenti o non consentiti).
+    func annullaCalcolo() {
+        calcolo &+= 1
+    }
+
     /// Toglie tutti i promemoria di Prisma ancora in sospeso (promemoria spenti).
     func spegni() {
         guard Self.disponibili else { return }
+        // Un calcolo ancora in corso non li riaccende
+        annullaCalcolo()
         ultimi = nil
         _ = nuovoGiro()
         let centro = UNUserNotificationCenter.current()
@@ -234,14 +259,19 @@ extension DestinazioneRicerca {
 extension StatoShell {
     /// Ricalcola e consegna i promemoria del Mac (dopo le modifiche dei dati, al cambio di giorno,
     /// tornando a Prisma). Spenti o non consentiti: toglie quelli consegnati in questa sessione.
+    /// Il calcolo è in background: il thread principale passa solo una copia dei dati.
     func aggiornaPromemoria() {
         guard persistente, PromemoriaMac.disponibili else { return }
         let scelte = dati.impostazioni.promemoria
         guard scelte.attivi, permessoPromemoria != .negati else {
-            if PromemoriaMac.condiviso.haPianificato { PromemoriaMac.condiviso.spegni() }
+            if PromemoriaMac.condiviso.haPianificato {
+                PromemoriaMac.condiviso.spegni()
+            } else {
+                PromemoriaMac.condiviso.annullaCalcolo()
+            }
             return
         }
-        PromemoriaMac.condiviso.pianifica(MotoreNotifiche.promemoria(dati, impostazioni: scelte))
+        PromemoriaMac.condiviso.calcolaEPianifica(dati, impostazioni: scelte)
     }
 
     /// Legge il permesso di macOS (senza chiederlo): può cambiare in Impostazioni di Sistema.

@@ -55,7 +55,7 @@ struct AppPosizioni: View {
                         DettaglioPosizione(posizione: p, modifica: { modulo = p })
                     } else if stato.portafoglio {
                         // Come nel dossier: gli indicatori contano in essere e proposte, lo stato filtra solo l'elenco
-                        portafoglio(delCliente.filter { area == nil || $0.area == area })
+                        portafoglio(canale: filtroCanale, area: area)
                     } else {
                         principale
                     }
@@ -227,7 +227,7 @@ struct AppPosizioni: View {
                         .frame(width: 330, alignment: .leading)
                     }
 
-                    // Calcolate una volta e riusate finché posizioni, cliente e catalogo non cambiano
+                    // Calcolate una volta e riusate finché i dati non cambiano (DerivatiDati)
                     let analisi = stato.analisiDossier(stato.clienteAttivoId)
                     if !analisi.patrimonio.vuoto {
                         PannelloPatrimonio(p: analisi.patrimonio).id("patrimonio")
@@ -237,7 +237,7 @@ struct AppPosizioni: View {
                     }
                     // Coerenza con il profilo: rischio oltre la propensione e concentrazione su emittente o canale
                     if let c = stato.clienteAttivo {
-                        let coerenza = CacheMotoriPosizioni.coerenza(cliente: c, posizioni: stato.posizioniCliente(c.id), prodotti: stato.dati.prodotti)
+                        let coerenza = stato.coerenzaCliente(c)
                         if coerenza.oggi.patrimonioFinanziario > 0 || coerenza.conProposte != nil {
                             PannelloCoerenza(esito: coerenza).id("coerenza")
                         }

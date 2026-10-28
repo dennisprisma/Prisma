@@ -4,6 +4,8 @@ import SwiftUI
 /// disposizione; in fondo si salvano le finestre aperte come nuovo spazio.
 struct PannelloSpazi: View {
     @EnvironmentObject var stato: StatoShell
+    /// Le finestre aperte, da salvare come spazio.
+    @EnvironmentObject var sistema: StatoFinestre
     @State private var nome = ""
 
     var body: some View {
@@ -29,6 +31,8 @@ struct PannelloSpazi: View {
             .frame(width: Misure.Spazi.pannello.width, height: Misure.Spazi.pannello.height)
             // Vetro del pannello con riempimento coprente: la finestra dietro non si legge attraverso
             .vetro(.pannello, forma: .arrotondata(Misure.Spazi.raggio), riempimento: Colori.Spazi.fondo)
+            // La scheda scende dall'alto, come Mission Control; il velo e il contenitore fanno solo l'opacità
+            .entrataScheda(Tema.Moto.Pannelli.spazi, scala: Tema.Moto.Pannelli.spaziScala, ancora: .top)
         }
         .onExitCommand { stato.pannelloSpazi = false }
     }
@@ -97,12 +101,12 @@ struct PannelloSpazi: View {
 
     private var piede: some View {
         HStack(spacing: 10) {
-            if stato.finestreVisibili.isEmpty {
+            if sistema.visibili.isEmpty {
                 Text("Apri e disponi le app che ti servono, poi salvale qui come spazio.")
                     .font(Tipo.spaziSottotitolo)
                     .foregroundColor(Colori.Spazi.piedeTesto)
             } else {
-                Text("Salva le finestre aperte (\(stato.finestreVisibili.map(\.app.titolo).joined(separator: ", ")))")
+                Text("Salva le finestre aperte (\(sistema.visibili.map(\.app.titolo).joined(separator: ", ")))")
                     .font(Tipo.spaziSottotitolo)
                     .foregroundColor(Colori.Spazi.piedeTesto)
                     .lineLimit(1)

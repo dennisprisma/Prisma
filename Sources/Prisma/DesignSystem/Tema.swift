@@ -423,15 +423,13 @@ enum Tema {
     // MARK: Movimenti
 
     enum Moto {
-        /// Rimbalzo del tema (--spring): pressioni, interruttori, segmented.
+        /// Rimbalzo del tema (--spring): pressioni di pulsanti e icone.
         static let molla = Animation.spring(response: 0.35, dampingFraction: 0.62)
         /// Uscita morbida (--out) di durata data.
         static func uscita(_ durata: Double) -> Animation { .timingCurve(0.22, 1, 0.36, 1, duration: durata) }
         static let passaggio = Animation.easeOut(duration: 0.15)
-        static let aperturaFinestra = uscita(0.34)
-        static let chiusuraFinestra = Animation.easeIn(duration: 0.17)
         static let pannello = uscita(0.24)
-        static let segmented = Animation.spring(response: 0.38, dampingFraction: 0.62)
+        // Finestre, pannelli, sblocco e controlli (segmenti, interruttori): Movimento.swift
         /// Scala alla pressione di pulsanti e icone (la spunta 0,88).
         static let scalaPressione: CGFloat = 0.96
         static let scalaPressioneSpunta: CGFloat = 0.88

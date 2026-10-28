@@ -5,11 +5,20 @@ import AppKit
 /// ↑ ↓ scelgono, Invio apre il risultato nella sua app.
 struct AppRicerca: View {
     @EnvironmentObject var stato: StatoShell
+    /// App in primo piano, pannelli e blocco: decidono se le frecce scelgono i risultati.
+    @EnvironmentObject var sistema: StatoFinestre
     @FocusState private var fuoco: Bool
     @State private var selezione = 0
     @State private var tasti: Any?
     /// I risultati si calcolano quando cambia il testo (o si torna alla Ricerca), non a ogni disegno.
     @State private var sezioni: [SezioneRicerca] = []
+    /// Il testo del campo: resta qui e passa allo stato poco dopo l'ultimo tasto, così ogni lettera
+    /// ridisegna solo la Ricerca (il titolo della finestra lo segue un attimo dopo).
+    @State private var testo = ""
+    @State private var invio = Rinvio()
+
+    /// Quanto aspettare dopo l'ultimo tasto prima di passare il testo allo stato condiviso.
+    static let attesa = 0.15
 
     var body: some View {
         let sezioni = sezioni
@@ -19,7 +28,7 @@ struct AppRicerca: View {
             ScrollViewReader { scorri in
                 ScrollView {
                     VStack(alignment: .leading, spacing: Misure.Ricerca.spazioSezioni) {
-                        if stato.testoRicerca.trimmingCharacters(in: .whitespaces).isEmpty {
+                        if testo.trimmingCharacters(in: .whitespaces).isEmpty {
                             vuoto("Cerca in tutto Prisma",
                                   "Clienti, posizioni, documenti (anche il testo delle pagine), note, appuntamenti, attività, obiettivi, incontri e prodotti. Tutto resta sul Mac.")
                         } else if sezioni.isEmpty {
@@ -40,51 +49,56 @@ struct AppRicerca: View {
         .background(FondoRicerca())
         .onAppear {
             fuoco = true
+            if testo != stato.testoRicerca { testo = stato.testoRicerca }
             cerca()
             installaTasti()
             aggiornaFrecce()
         }
         .onDisappear {
+            invio.subito()
             if let t = tasti { NSEvent.removeMonitor(t) }
             tasti = nil
             FrecceRicerca.condivise.attiva = false
         }
-        .onChange(of: stato.appAttiva) { app in
+        .onChange(of: sistema.appAttiva) { app in
             if app == .ricerca { cerca() }
             aggiornaFrecce()
         }
         .onChange(of: fuoco) { _ in aggiornaFrecce() }
-        .onChange(of: stato.pannelloSpazi) { _ in aggiornaFrecce() }
-        .onChange(of: stato.pannelloAppAperte) { _ in aggiornaFrecce() }
-        .onChange(of: stato.pannelloNotifiche) { _ in aggiornaFrecce() }
-        .onChange(of: stato.bloccato) { _ in aggiornaFrecce() }
+        .onChange(of: sistema.pannelloSpazi) { _ in aggiornaFrecce() }
+        .onChange(of: sistema.pannelloAppAperte) { _ in aggiornaFrecce() }
+        .onChange(of: sistema.pannelloNotifiche) { _ in aggiornaFrecce() }
+        .onChange(of: sistema.bloccato) { _ in aggiornaFrecce() }
         .onChange(of: stato.richiestaFuocoRicerca) { _ in fuoco = true }
-        .onChange(of: stato.testoRicerca) { _ in
+        .onChange(of: testo) { _ in
             selezione = 0
             cerca()
+            invio.dopo(Self.attesa) { if stato.testoRicerca != testo { stato.testoRicerca = testo } }
         }
+        // Cambiato da fuori: vale quello dello stato
+        .onChange(of: stato.testoRicerca) { nuovo in if nuovo != testo { testo = nuovo } }
     }
 
     private func cerca() {
-        sezioni = MotoreRicerca.cerca(stato.testoRicerca, in: stato)
+        sezioni = MotoreRicerca.cerca(testo, in: stato)
     }
 
     /// Le frecce scelgono i risultati solo con la Ricerca davanti, il cursore nel campo e nessun pannello aperto.
     private func aggiornaFrecce() {
-        FrecceRicerca.condivise.attiva = stato.appAttiva == .ricerca && fuoco && !stato.pannelloSpazi
-            && !stato.pannelloAppAperte && !stato.pannelloNotifiche && !stato.bloccato
+        FrecceRicerca.condivise.attiva = sistema.appAttiva == .ricerca && fuoco && !sistema.pannelloSpazi
+            && !sistema.pannelloAppAperte && !sistema.pannelloNotifiche && !sistema.bloccato
     }
 
     private func barra(_ elenco: [RisultatoRicerca]) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").foregroundColor(Colori.Ricerca.lente)
-            TextField("Cerca clienti, posizioni, documenti, appuntamenti…", text: $stato.testoRicerca)
+            TextField("Cerca clienti, posizioni, documenti, appuntamenti…", text: $testo)
                 .textFieldStyle(.plain)
                 .font(Tipo.ricercaCampo)
                 .focused($fuoco)
                 .onSubmit { apri(elenco, selezione) }
-            if !stato.testoRicerca.isEmpty {
-                Button { stato.testoRicerca = "" } label: {
+            if !testo.isEmpty {
+                Button { testo = "" } label: {
                     Image(systemName: "xmark.circle.fill").foregroundColor(Colori.Ricerca.lente)
                 }
                 .buttonStyle(StileSemplice())

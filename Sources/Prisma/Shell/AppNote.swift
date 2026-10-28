@@ -10,6 +10,12 @@ struct AppNote: View {
     @State private var confermaEliminazione = false
     /// Quanto è scorso il testo della nota: le righe della pagina lo seguono.
     @State private var scorrimentoTesto: CGFloat = 0
+    /// La scrittura di titolo e testo in attesa dell'ultimo tasto (si fa subito prima di esportare o creare un'attività).
+    @State private var scritturaNota = Rinvio()
+
+    /// Quanto aspettare dopo l'ultimo tasto prima di passare il testo allo stato condiviso (ricerca e nota).
+    static let attesaRicerca = 0.15
+    static let attesaNota = 0.3
 
     var body: some View {
         let elenco = stato.noteFiltrate
@@ -71,22 +77,11 @@ struct AppNote: View {
             .background(CuoioNote())
 
             VStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass").foregroundColor(Colori.Note.etichetta)
-                    TextField("Cerca nelle note", text: $stato.ricercaNote)
-                        .textFieldStyle(.plain)
-                        .font(Tipo.noteVoceTesto)
-                    if !stato.ricercaNote.isEmpty {
-                        Button { stato.ricercaNote = "" } label: {
-                            Image(systemName: "xmark.circle.fill").foregroundColor(Colori.Note.etichetta)
-                        }
-                        .buttonStyle(StileSemplice())
-                    }
-                }
-                .padding(.horizontal, 10)
-                .frame(height: Misure.Note.campoAltezza)
-                .background(FormaVetro.capsula.fill(Colori.Note.campo))
-                .overlay(FormaVetro.capsula.strokeBorder(Colori.Note.campoBordo, lineWidth: Tema.Misura.filo).allowsHitTesting(false))
+                CampoCercaNote()
+                    .padding(.horizontal, 10)
+                    .frame(height: Misure.Note.campoAltezza)
+                    .background(FormaVetro.capsula.fill(Colori.Note.campo))
+                    .overlay(FormaVetro.capsula.strokeBorder(Colori.Note.campoBordo, lineWidth: Tema.Misura.filo).allowsHitTesting(false))
                 MenuTendina(selezione: $stato.filtroClienteNote,
                             opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
                             stile: .carta)
@@ -179,39 +174,7 @@ struct AppNote: View {
                 MargineNote().padding(.leading, Misure.Note.margine)
                 VStack(alignment: .leading, spacing: 0) {
                     rigaCliente(n)
-                    TextField("Dai un titolo alla tua idea…", text: Binding(get: { n.titolo }, set: { v in stato.modificaNota(n.id) { $0.titolo = v } }))
-                        .textFieldStyle(.plain)
-                        .font(Tipo.noteTitolo)
-                        .foregroundColor(Colori.Note.titolo)
-                        .padding(.leading, 5)
-                        .padding(.top, 14)
-                        .padding(.bottom, 10)
-                    ZStack(alignment: .topLeading) {
-                        RigheNote(scorrimento: scorrimentoTesto).fill(Colori.Note.righe)
-                        TextEditor(text: Binding(get: { n.testo }, set: { v in stato.modificaNota(n.id) { $0.testo = v } }))
-                            .font(Tipo.noteTesto)
-                            .lineSpacing(Misure.Note.interlinea)
-                            .foregroundColor(Colori.Note.testo)
-                            .scrollContentBackground(.hidden)
-                            .scrollIndicators(.never)
-                            .background(ScorrimentoEditor(scorrimento: $scorrimentoTesto).allowsHitTesting(false))
-                        if n.testo.isEmpty {
-                            Text("Prendi un appunto. C'è spazio per tutto quello che conta.")
-                                .font(Tipo.noteTesto)
-                                .foregroundColor(Colori.Note.segnaposto)
-                                .padding(.leading, 5)
-                                .allowsHitTesting(false)
-                        }
-                    }
-                    .frame(maxHeight: .infinity)
-                    HStack {
-                        Text("AGGIORNATA IL \(Formati.dataEstesa.string(from: n.aggiornataIl).uppercased())").tracking(1)
-                        Spacer()
-                        Text("\(n.testo.count) caratteri")
-                    }
-                    .font(Tipo.notePiedePagina)
-                    .foregroundColor(Colori.Note.etichetta)
-                    .padding(.top, 11)
+                    CampiNota(nota: n, scorrimento: $scorrimentoTesto, scrittura: scritturaNota)
                 }
                 .padding(Misure.Note.carta)
             }
@@ -250,14 +213,21 @@ struct AppNote: View {
                 .lineLimit(1)
             }
             Spacer(minLength: 8)
-            Button("＋ Crea attività") { modulo = stato.bozzaAttivitaDaNota(n.id) }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)))
-                .fixedSize()
-                .help("Dall'appunto alla prossima azione, per lo stesso cliente")
-            Button("Esporta .txt") { esporta(n) }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)))
-                .fixedSize()
-                .help("Salva una copia di testo dove scegli tu")
+            // Prima si scrive l'ultimo testo digitato, poi si usa la nota
+            Button("＋ Crea attività") {
+                scritturaNota.subito()
+                modulo = stato.bozzaAttivitaDaNota(n.id)
+            }
+            .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)))
+            .fixedSize()
+            .help("Dall'appunto alla prossima azione, per lo stesso cliente")
+            Button("Esporta .txt") {
+                scritturaNota.subito()
+                esporta(stato.nota(n.id) ?? n)
+            }
+            .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)))
+            .fixedSize()
+            .help("Salva una copia di testo dove scegli tu")
         }
         .padding(Misure.Note.azioni)
         .bordoAlto(Colori.Note.azioniBordo)
@@ -289,6 +259,153 @@ struct AppNote: View {
         if pannello.runModal() == .OK, let url = pannello.url {
             try? Data(stato.testoEsportato(n).utf8).write(to: url)
         }
+    }
+}
+
+/// Il campo di ricerca del taccuino: il testo resta qui e passa allo stato poco dopo l'ultimo tasto,
+/// così ogni lettera ridisegna solo il campo (l'elenco si filtra un attimo dopo).
+private struct CampoCercaNote: View {
+    @EnvironmentObject var stato: StatoShell
+    @State private var testo = ""
+    @State private var invio = Rinvio()
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundColor(Colori.Note.etichetta)
+            TextField("Cerca nelle note", text: $testo)
+                .textFieldStyle(.plain)
+                .font(Tipo.noteVoceTesto)
+            if !testo.isEmpty {
+                Button { testo = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundColor(Colori.Note.etichetta)
+                }
+                .buttonStyle(StileSemplice())
+            }
+        }
+        .onAppear { if testo != stato.ricercaNote { testo = stato.ricercaNote } }
+        .onChange(of: testo) { _ in
+            invio.dopo(AppNote.attesaRicerca) { if stato.ricercaNote != testo { stato.ricercaNote = testo } }
+        }
+        // Cambiata da fuori (nuova nota, ricerca da Eve): vale quella dello stato
+        .onChange(of: stato.ricercaNote) { nuova in if nuova != testo { testo = nuova } }
+        .onDisappear { invio.subito() }
+    }
+}
+
+/// Titolo e testo della nota aperta: si scrivono qui e passano all'archivio poco dopo l'ultimo tasto,
+/// così ogni lettera ridisegna solo la pagina e non tutta Prisma. La prima lettera di una pagina nuova
+/// va subito nell'archivio: cambiando nota, una pagina ancora vuota sparirebbe con quello che c'è scritto.
+private struct CampiNota: View {
+    @EnvironmentObject var stato: StatoShell
+    let nota: Nota
+    @Binding var scorrimento: CGFloat
+    let scrittura: Rinvio
+    @State private var titolo: String
+    @State private var testo: String
+
+    init(nota: Nota, scorrimento: Binding<CGFloat>, scrittura: Rinvio) {
+        self.nota = nota
+        _scorrimento = scorrimento
+        self.scrittura = scrittura
+        _titolo = State(initialValue: nota.titolo)
+        _testo = State(initialValue: nota.testo)
+    }
+
+    var body: some View {
+        TextField("Dai un titolo alla tua idea…", text: $titolo)
+            .textFieldStyle(.plain)
+            .font(Tipo.noteTitolo)
+            .foregroundColor(Colori.Note.titolo)
+            .padding(.leading, 5)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+        ZStack(alignment: .topLeading) {
+            RigheNote(scorrimento: scorrimento).fill(Colori.Note.righe)
+            TextEditor(text: $testo)
+                .font(Tipo.noteTesto)
+                .lineSpacing(Misure.Note.interlinea)
+                .foregroundColor(Colori.Note.testo)
+                .scrollContentBackground(.hidden)
+                .scrollIndicators(.never)
+                .background(ScorrimentoEditor(scorrimento: $scorrimento).allowsHitTesting(false))
+            if testo.isEmpty {
+                Text("Prendi un appunto. C'è spazio per tutto quello che conta.")
+                    .font(Tipo.noteTesto)
+                    .foregroundColor(Colori.Note.segnaposto)
+                    .padding(.leading, 5)
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(maxHeight: .infinity)
+        .onChange(of: titolo) { _ in rimanda() }
+        .onChange(of: testo) { _ in rimanda() }
+        // Cambiati da fuori (Eve, un ripristino): vale l'archivio
+        .onChange(of: nota.titolo) { nuovo in if nuovo != titolo { titolo = nuovo } }
+        .onChange(of: nota.testo) { nuovo in if nuovo != testo { testo = nuovo } }
+        .onDisappear { scrittura.subito() }
+        // Chiudendo Prisma entro l'attesa: si scrive e si salva di nuovo (niente, se non è cambiato nulla)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            guard scrittura.inAttesa else { return }
+            scrittura.subito()
+            stato.salvaOra()
+        }
+        HStack {
+            Text("AGGIORNATA IL \(Formati.dataEstesa.string(from: nota.aggiornataIl).uppercased())").tracking(1)
+            Spacer()
+            Text("\(testo.count) caratteri")
+        }
+        .font(Tipo.notePiedePagina)
+        .foregroundColor(Colori.Note.etichetta)
+        .padding(.top, 11)
+    }
+
+    private func rimanda() {
+        if nota.vuota {
+            scrittura.subito()
+            scrivi()
+        } else {
+            scrittura.dopo(AppNote.attesaNota) { scrivi() }
+        }
+    }
+
+    /// Scrive titolo e testo di adesso (modificaNota non tocca nulla se sono già quelli dell'archivio).
+    private func scrivi() {
+        let nuovoTitolo = titolo, nuovoTesto = testo
+        stato.modificaNota(nota.id) {
+            $0.titolo = nuovoTitolo
+            $0.testo = nuovoTesto
+        }
+    }
+}
+
+/// Rimanda un lavoro sul thread principale: una nuova richiesta prende il posto di quella in attesa, così
+/// si fa solo l'ultima. Serve ai campi di testo che scrivono nello stato condiviso dopo l'ultimo tasto.
+final class Rinvio {
+    private var lavoro: DispatchWorkItem?
+    private var azione: (() -> Void)?
+
+    /// C'è un lavoro in attesa.
+    var inAttesa: Bool { azione != nil }
+
+    func dopo(_ secondi: Double, _ fai: @escaping () -> Void) {
+        lavoro?.cancel()
+        azione = fai
+        let nuovo = DispatchWorkItem { [weak self] in self?.esegui() }
+        lavoro = nuovo
+        DispatchQueue.main.asyncAfter(deadline: .now() + secondi, execute: nuovo)
+    }
+
+    /// Fa adesso il lavoro in attesa, se c'è.
+    func subito() {
+        lavoro?.cancel()
+        esegui()
+    }
+
+    private func esegui() {
+        lavoro = nil
+        let a = azione
+        azione = nil
+        a?()
     }
 }
 

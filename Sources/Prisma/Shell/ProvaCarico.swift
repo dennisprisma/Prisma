@@ -18,6 +18,10 @@ enum ProvaCarico {
     static let limiteRicerca = 1.0
     static let limiteNotifiche = 0.1
     static let limiteMemoriaMB = 1_200.0
+    /// Il fascicolo e il portafoglio calcolati la prima volta, e poi ripresi dalla cache (DerivatiDati).
+    static let limiteFascicolo = 8.0
+    static let limitePortafoglio = 8.0
+    static let limiteCache = 0.05
 
     static func esegui() -> Int32 {
         var errori = 0
@@ -99,6 +103,38 @@ enum ProvaCarico {
         }
         print("INFO Tre documenti, \(pagine) pagine, in \(secondi(pdf))")
         controlla(pagine > 0 && pdf < limitePDF, "PDF impaginati in \(secondi(pdf)) (limite \(secondi(limitePDF)))")
+
+        // Calcoli delle viste con tutto l'archivio: la prima volta si calcolano, poi vengono dalla cache
+        var fascicolo: DocumentoStampabile?
+        let fascicoloPrimo = tempo { fascicolo = stato.documentoProspettoInCache(.fascicolo) }
+        let fascicoloSecondo = tempo { _ = stato.documentoProspettoInCache(.fascicolo) }
+        print("INFO Fascicolo: \(fascicolo?.pagine.count ?? 0) pagine in \(secondi(fascicoloPrimo)), dalla cache in \(secondi(fascicoloSecondo))")
+        controlla(fascicolo != nil && fascicoloPrimo < limiteFascicolo, "Fascicolo impaginato in \(secondi(fascicoloPrimo)) (limite \(secondi(limiteFascicolo)))")
+        controlla(fascicoloSecondo < limiteCache, "Fascicolo dalla cache in \(secondi(fascicoloSecondo)) (limite \(secondi(limiteCache)))")
+        var clientiPortafoglio = 0
+        let portafoglioPrimo = tempo {
+            clientiPortafoglio = stato.riepilogoPortafoglio(canale: nil, area: nil).clienti.count
+            _ = stato.portafoglioComune()
+        }
+        let portafoglioSecondo = tempo {
+            _ = stato.riepilogoPortafoglio(canale: nil, area: nil)
+            _ = stato.portafoglioComune()
+        }
+        print("INFO Portafoglio: \(clientiPortafoglio) clienti in \(secondi(portafoglioPrimo)), dalla cache in \(secondi(portafoglioSecondo))")
+        controlla(clientiPortafoglio > 0 && portafoglioPrimo < limitePortafoglio, "Portafoglio calcolato in \(secondi(portafoglioPrimo)) (limite \(secondi(limitePortafoglio)))")
+        controlla(portafoglioSecondo < limiteCache, "Portafoglio dalla cache in \(secondi(portafoglioSecondo)) (limite \(secondi(limiteCache)))")
+        // La cache segue i dati: per ogni cliente gli stessi risultati del calcolo diretto, e una modifica si vede subito
+        let coerenti = stato.clienti.allSatisfy { c in
+            stato.cliente(c.id)?.id == c.id
+                && stato.posizioniCliente(c.id).map(\.id) == stato.dati.posizioni.filter { $0.clienteId == c.id }.map(\.id)
+        }
+        controlla(coerenti, "Clienti e posizioni per id uguali alla ricerca diretta")
+        if let primo = stato.clienti.first, let i = stato.dati.clienti.firstIndex(where: { $0.id == primo.id }) {
+            let nome = stato.dati.clienti[i].nome
+            stato.dati.clienti[i].nome = nome + " (prova)"
+            controlla(stato.cliente(primo.id)?.nome == nome + " (prova)", "Cache dei clienti aggiornata dopo una modifica")
+            stato.dati.clienti[i].nome = nome
+        }
 
         // Agenda: il mese raggruppato in un passaggio dà gli stessi giorni del calcolo giorno per giorno
         let giorniMese = CalendarioAgenda.settimane(meseDi: stato.appuntamenti.first?.inizio ?? Date()).flatMap { $0 }

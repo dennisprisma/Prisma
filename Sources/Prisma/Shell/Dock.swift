@@ -4,6 +4,8 @@ import SwiftUI
 /// e le app. Le icone (50 pt) si ingrandiscono dal basso attorno al puntatore, fino a 1,55 volte.
 struct Dock: View {
     @EnvironmentObject var stato: StatoShell
+    /// Quale app è davanti e quali sono aperte.
+    @EnvironmentObject var sistema: StatoFinestre
     /// Ingrandimento di ogni icona, Scrivania compresa, nell'ordine del dock (vuoto = tutte normali).
     @State var ingrandimenti: [CGFloat] = []
 
@@ -11,9 +13,9 @@ struct Dock: View {
         let elenco = AppPrisma.allCases.filter { stato.appConsentita($0) }
         let numero = elenco.count + 1
         let lato = Tema.Misura.dockIcona
-        HStack(alignment: .bottom, spacing: Dock.spazio) {
+        HStack(alignment: .bottom, spacing: DisposizioneDock.spazio) {
             ElementoDock(titolo: "Scrivania", etichetta: "Scrivania", ingrandimento: ingrandimento(0, di: numero),
-                         attivo: stato.appAttiva == nil, inEsecuzione: false) {
+                         attivo: sistema.appAttiva == nil, inEsecuzione: false) {
                 stato.mostraScrivania()
             } icona: {
                 ImmagineNitida(percorso: "Icone/Prisma.png", lato: lato, riservaIngrandimento: Tema.Misura.dockIngrandimento)
@@ -25,8 +27,8 @@ struct Dock: View {
                     etichetta: app.nomeDock,
                     scorciatoia: Dock.scorciatoia(app),
                     ingrandimento: ingrandimento(indice + 1, di: numero),
-                    attivo: stato.appAttiva == app,
-                    inEsecuzione: stato.aperta(app)
+                    attivo: sistema.appAttiva == app,
+                    inEsecuzione: sistema.aperta(app)
                 ) {
                     stato.apri(app)
                 } icona: {
@@ -34,9 +36,11 @@ struct Dock: View {
                 }
             }
         }
-        .padding(.vertical, Dock.margine)
-        .padding(.horizontal, Dock.margineLato)
+        .padding(.vertical, DisposizioneDock.margine)
+        .padding(.horizontal, DisposizioneDock.margineLato)
         .vetro(.leggero, forma: .arrotondata(Tema.Raggio.dock))
+        // Il dock e i suggerimenti sopra le icone: un solo gruppo di vetro (macOS 26)
+        .gruppoVetro()
         .onContinuousHover(coordinateSpace: CoordinateSpace.local) { fase in
             switch fase {
             case .active(let punto):
@@ -55,16 +59,24 @@ struct Dock: View {
     /// Il dock cresce attorno al suo centro: qualche passaggio fa coincidere l'icona ingrandita con il puntatore.
     private func aggiorna(_ x: CGFloat, numero: Int) {
         let attuali = ingrandimenti.count == numero ? ingrandimenti : Array(repeating: 1, count: numero)
-        let puntatore = x - Dock.disposizione(attuali).larghezza / 2
+        let puntatore = x - DisposizioneDock.disposizione(attuali).larghezza / 2
         var nuovi = attuali
         for _ in 0..<Tema.Misura.Shell.passiIngrandimento {
-            nuovi = Dock.disposizione(nuovi).centri.map { Dock.ingrandimento(distanza: abs(puntatore - $0)) }
+            nuovi = DisposizioneDock.disposizione(nuovi).centri.map { DisposizioneDock.ingrandimento(distanza: abs(puntatore - $0)) }
         }
         ingrandimenti = nuovi
     }
 
-    // MARK: Misure del dock
+    /// ⌥1…⌥9 per le prime nove app.
+    static func scorciatoia(_ app: AppPrisma) -> String? {
+        guard let i = AppPrisma.allCases.firstIndex(of: app), i < 9 else { return nil }
+        return "⌥\(i + 1)"
+    }
+}
 
+/// Misure e disposizione del dock, fuori dalla vista: le usa anche lo stato delle finestre (da dove si apre
+/// un'app, dove va a ridursi), che non sta sul thread delle viste.
+enum DisposizioneDock {
     /// Spazio fra le icone e margini (in frazioni del lato dell'icona, come nel tema).
     static var spazio: CGFloat { Tema.Misura.dockIcona * Tema.Misura.dockSpazioQuota }
     static var margine: CGFloat { Tema.Misura.dockIcona * Tema.Misura.dockMargineQuota }
@@ -100,16 +112,23 @@ struct Dock: View {
         return (centri.map { $0 - larghezza / 2 }, larghezza)
     }
 
-    /// ⌥1…⌥9 per le prime nove app.
-    static func scorciatoia(_ app: AppPrisma) -> String? {
-        guard let i = AppPrisma.allCases.firstIndex(of: app), i < 9 else { return nil }
-        return "⌥\(i + 1)"
-    }
-
     /// Altezza sotto l'icona: nome e puntino dell'app aperta.
     static var altezzaSotto: CGFloat {
         let m = Tema.Misura.Shell.self
         return m.etichettaSpazio + m.etichettaDock + m.puntinoSpazio + Tema.Misura.puntinoDock
+    }
+
+    /// Centro dell'icona dell'app nel dock a riposo, nelle coordinate della shell (`ShellView.spazioShell`) grande
+    /// `misura`. `elenco`: le app del dock (quelle consentite). Con il dock nascosto l'icona è sul bordo in basso.
+    static func centroIcona(_ app: AppPrisma, tra elenco: [AppPrisma], in misura: CGSize, nascosto: Bool) -> CGPoint? {
+        guard let i = elenco.firstIndex(of: app), misura.width > 0, misura.height > 0 else { return nil }
+        // La Scrivania è la prima icona
+        let centri = disposizione(Array(repeating: 1, count: elenco.count + 1)).centri
+        guard i + 1 < centri.count else { return nil }
+        let lato = Tema.Misura.dockIcona
+        let y = misura.height - Tema.Misura.dockDalBasso - margine - altezzaSotto - lato / 2
+        return CGPoint(x: misura.width / 2 + centri[i + 1],
+                       y: nascosto ? min(y + Misure.Dock.corsaNascosto, misura.height) : y)
     }
 }
 
@@ -121,8 +140,8 @@ struct DivisoreDock: View {
                                           Tema.Colore.pozzettoScuro.opacity(0)],
                                  startPoint: .top, endPoint: .bottom))
             .frame(width: Tema.Misura.filo * 2, height: Tema.Misura.dockIcona)
-            .padding(.horizontal, Dock.rientroDivisore)
-            .padding(.bottom, Dock.altezzaSotto)
+            .padding(.horizontal, DisposizioneDock.rientroDivisore)
+            .padding(.bottom, DisposizioneDock.altezzaSotto)
     }
 }
 
@@ -155,7 +174,7 @@ struct ElementoDock<Icona: View>: View {
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
                     .lineLimit(1)
                     // Mai rimpicciolito: un nome lungo («Impostazioni») sborda appena dalla cella dell'icona,
-                    // ma resta dentro la capsula grazie al margine laterale del dock (`Dock.margineLato`)
+                    // ma resta dentro la capsula grazie al margine laterale del dock (`DisposizioneDock.margineLato`)
                     .fixedSize()
                     .frame(width: lato * ingrandimento, height: m.etichettaDock)
                     .padding(.top, m.etichettaSpazio)
@@ -177,7 +196,7 @@ struct ElementoDock<Icona: View>: View {
                     .alignmentGuide(VerticalAlignment.top) { d in
                         d[VerticalAlignment.bottom] + lato * (ingrandimento - 1) + m.suggerimentoDistanza
                     }
-                    .transition(.opacity)
+                    .transition(.opacity.combined(with: .scale(scale: Tema.Moto.Dock.scalaSuggerimento, anchor: .bottom)))
                     .allowsHitTesting(false)
             }
         }

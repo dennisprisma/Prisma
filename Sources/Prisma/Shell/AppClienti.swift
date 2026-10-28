@@ -497,8 +497,8 @@ struct PanoramicaCliente: View {
 
     /// Il riesame annuale, quando è dovuto: quanti punti ci sono da trattare e il prospetto per prepararlo.
     @ViewBuilder private var riesame: some View {
-        if let f = stato.fonteEve(cliente.id) {
-            let r = MotoreRiesame.calcola(f)
+        // Calcolato una volta per dati e ora (DerivatiDati): passa da tutta la fonte di Eve
+        if let r = stato.riesameCliente(cliente.id) {
             if r.dovuto, r.prossimo == nil, !r.punti.isEmpty {
                 let alta = r.punti.filter { $0.priorita == .alta }.count
                 VStack(alignment: .leading, spacing: 6) {

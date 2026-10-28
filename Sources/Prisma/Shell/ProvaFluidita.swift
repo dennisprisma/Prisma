@@ -12,7 +12,8 @@ import SwiftUI
 /// Per ogni azione, su 5 giri dopo un giro di riscaldamento («prima volta»):
 /// - aggiornamento: l'azione, un giro del run loop (SwiftUI applica lì le modifiche) e `layoutSubtreeIfNeeded()`;
 /// - disegno: `cacheDisplay(in:to:)` completo in un bitmap riusato (riferimento, non incrementale);
-/// - avvisi: gli `objectWillChange` di `StatoShell` durante l'azione (ogni avviso rivaluta tutte le viste che lo osservano).
+/// - avvisi: gli `objectWillChange` di `StatoShell` durante l'azione (ogni avviso rivaluta tutte le viste che lo osservano,
+///   cioè le app aperte e i widget) e quelli di `StatoFinestre` (finestre, pannelli e blocco: shell, dock, barra e pannelli).
 ///
 /// Due scenari: i clienti di prova, e 200 clienti con quattro app pesanti aperte sotto (Posizioni in modalità
 /// portafoglio, Prospetti e report, Clienti, Agenda).
@@ -119,11 +120,11 @@ enum ProvaFluidita {
                           verifica: { ingrandita(.clienti) == true }),
         ])
 
-        // Schermata di benvenuto: oggi lo sblocco è `bloccato = false` (SchermataBenvenuto.entra)
+        // Schermata di benvenuto: lo sblocco è quello del cursore e del pulsante (stato.sblocca)
         s.misura(banco, [
             PassoFluidita(nome: "blocca (schermata di benvenuto)", azione: { stato.blocca() },
                           verifica: { stato.bloccato }),
-            PassoFluidita(nome: "sblocca", azione: { stato.bloccato = false },
+            PassoFluidita(nome: "sblocca", azione: { stato.sblocca() },
                           verifica: { !stato.bloccato }),
         ])
 
@@ -238,11 +239,13 @@ private struct RigaFluidita {
     /// Aggiornamento + disegno, giro per giro.
     var tempi: [Double] = []
     var avvisi: [Int] = []
+    var avvisiFinestre: [Int] = []
     /// Il giro di riscaldamento (aggiornamento + disegno), escluso da mediana e massimo.
     var primaVolta: Double?
     var incoerente = false
 
-    mutating func registra(aggiornamento t: Double, disegno d: Double?, conteggio: Int?, riscaldamento: Bool) {
+    mutating func registra(aggiornamento t: Double, disegno d: Double?, conteggio: Int?, conteggioFinestre: Int? = nil,
+                           riscaldamento: Bool) {
         let somma = t + (d ?? 0)
         if riscaldamento {
             primaVolta = somma
@@ -252,16 +255,18 @@ private struct RigaFluidita {
         if let d { disegno.append(d) }
         tempi.append(somma)
         if let conteggio { avvisi.append(conteggio) }
+        if let conteggioFinestre { avvisiFinestre.append(conteggioFinestre) }
     }
 }
 
 /// Gli avvisi contati dagli abbonamenti (fuori dalla classe del banco: le chiusure lo catturano da solo).
 private final class ContiFluidita {
     var avvisi = 0
+    var avvisiFinestre = 0
     var modificheDati = 0
 }
 
-/// La shell in una finestra fuori schermo, con il conto delle pubblicazioni di `StatoShell`.
+/// La shell in una finestra fuori schermo, con il conto delle pubblicazioni di `StatoShell` e di `StatoFinestre`.
 @MainActor
 private final class BancoFluidita {
     let stato: StatoShell
@@ -292,6 +297,7 @@ private final class BancoFluidita {
         f.orderFront(nil)
         let conti = self.conti
         stato.objectWillChange.sink { _ in conti.avvisi += 1 }.store(in: &abbonamenti)
+        stato.sistema.objectWillChange.sink { _ in conti.avvisiFinestre += 1 }.store(in: &abbonamenti)
         stato.$dati.dropFirst().sink { _ in conti.modificheDati += 1 }.store(in: &abbonamenti)
     }
 
@@ -304,6 +310,7 @@ private final class BancoFluidita {
 
     func azzeraConti() {
         conti.avvisi = 0
+        conti.avvisiFinestre = 0
         conti.modificheDati = 0
     }
 
@@ -404,7 +411,8 @@ private final class SessioneFluidita {
             for (k, passo) in passi.enumerated() {
                 let esito = prova(banco, passo)
                 righe[primo + k].registra(aggiornamento: esito.aggiornamento, disegno: esito.disegno,
-                                          conteggio: esito.avvisi, riscaldamento: giro == 0)
+                                          conteggio: esito.avvisi, conteggioFinestre: esito.avvisiFinestre,
+                                          riscaldamento: giro == 0)
                 if !passo.verifica() { righe[primo + k].incoerente = true }
                 banco.riposa(esito.datiCambiati ? ProvaFluidita.attesaDati : ProvaFluidita.attesaBreve)
             }
@@ -415,7 +423,8 @@ private final class SessioneFluidita {
     func unaVolta(_ banco: BancoFluidita, _ passo: PassoFluidita, limite: Double) {
         var riga = RigaFluidita(scenario: scenario, azione: passo.nome, limite: limite)
         let esito = prova(banco, passo)
-        riga.registra(aggiornamento: esito.aggiornamento, disegno: esito.disegno, conteggio: esito.avvisi, riscaldamento: false)
+        riga.registra(aggiornamento: esito.aggiornamento, disegno: esito.disegno, conteggio: esito.avvisi,
+                      conteggioFinestre: esito.avvisiFinestre, riscaldamento: false)
         if !passo.verifica() { riga.incoerente = true }
         righe.append(riga)
         banco.riposa(ProvaFluidita.attesaDati)
@@ -429,12 +438,12 @@ private final class SessioneFluidita {
     }
 
     private func prova(_ banco: BancoFluidita, _ passo: PassoFluidita)
-        -> (aggiornamento: Double, disegno: Double?, avvisi: Int, datiCambiati: Bool) {
+        -> (aggiornamento: Double, disegno: Double?, avvisi: Int, avvisiFinestre: Int, datiCambiati: Bool) {
         banco.azzeraConti()
         let t = banco.aggiorna(passo.azione)
         let d = banco.disegna()
         segnalaDisegno(d)
-        return (t, d, banco.conti.avvisi, banco.conti.modificheDati > 0)
+        return (t, d, banco.conti.avvisi, banco.conti.avvisiFinestre, banco.conti.modificheDati > 0)
     }
 
     private func segnalaDisegno(_ d: Double?) {
@@ -451,10 +460,10 @@ private final class SessioneFluidita {
             "",
             "Tempi del thread principale: mediana e massimo su \(ProvaFluidita.giri) giri, dopo un giro di riscaldamento (prima volta). "
                 + "Aggiornamento = azione, run loop e impaginazione; disegno = cacheDisplay completo; "
-                + "avvisi = objectWillChange di StatoShell durante l'azione.",
+                + "avvisi = objectWillChange di StatoShell (app e widget) e di StatoFinestre (shell, dock, barra, pannelli) durante l'azione.",
             "",
-            "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Avvisi |",
-            "|---|---|---:|---:|---:|---:|---:|---:|",
+            "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Avvisi StatoShell | Avvisi StatoFinestre |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
         for r in righe {
             let mediana = ProvaFluidita.mediana(r.tempi)
@@ -463,12 +472,15 @@ private final class SessioneFluidita {
             let disegno: Double? = r.disegno.isEmpty ? nil : ProvaFluidita.mediana(r.disegno)
             let conteggi = r.avvisi.sorted()
             let avvisi: Int? = conteggi.isEmpty ? nil : conteggi[conteggi.count / 2]
+            let conteggiFinestre = r.avvisiFinestre.sorted()
+            let avvisiFinestre: Int? = conteggiFinestre.isEmpty ? nil : conteggiFinestre[conteggiFinestre.count / 2]
 
             var parti = ["\(ProvaFluidita.ms(mediana)) (max \(ProvaFluidita.ms(massimo)))",
                          "aggiornamento \(ProvaFluidita.ms(aggiornamento))"]
             if let disegno { parti.append("disegno \(ProvaFluidita.ms(disegno))") }
             if let p = r.primaVolta { parti.append("prima volta \(ProvaFluidita.ms(p))") }
             if let avvisi { parti.append(avvisi == 1 ? "1 avviso di cambiamento" : "\(avvisi) avvisi di cambiamento") }
+            if let avvisiFinestre { parti.append("\(avvisiFinestre) delle finestre") }
             print("INFO fluidità · \(r.scenario) · \(r.azione): \(parti.joined(separator: " · "))")
 
             if mediana > r.limite {
@@ -485,6 +497,7 @@ private final class SessioneFluidita {
                 disegno.map { ProvaFluidita.ms($0) } ?? "—",
                 r.primaVolta.map { ProvaFluidita.ms($0) } ?? "—",
                 avvisi.map { String($0) } ?? "—",
+                avvisiFinestre.map { String($0) } ?? "—",
             ]
             tabella.append("| " + celle.joined(separator: " | ") + " |")
         }
