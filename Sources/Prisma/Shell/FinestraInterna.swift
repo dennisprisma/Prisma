@@ -38,7 +38,13 @@ struct FinestraInterna: View {
         }
         // Una trasformazione, non un cambio di stato: niente si ricalcola mentre si trascina
         .offset(spostamento == .zero ? .zero : limitato(spostamento))
-        .simultaneousGesture(TapGesture().onEnded { stato.primoPiano(finestra.app) })
+        // Davanti appena si preme, come sul Mac (non al rilascio): insieme ai gesti dell'app, mai al loro posto
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    if !attiva { stato.primoPiano(finestra.app) }
+                }
+        )
     }
 
     /// La cornice nello stato, nell'area in cui ShellView disegna la finestra.
@@ -68,7 +74,7 @@ struct FinestraInterna: View {
     private var barraTitolo: some View {
         let m = Tema.Misura.Shell.self
         return ZStack(alignment: .leading) {
-            Semafori(
+            SemaforiFinestra(
                 attiva: attiva,
                 chiudi: { stato.chiudi(finestra.app) },
                 riduci: { stato.riduci(finestra.app) },
@@ -163,5 +169,79 @@ struct FinestraInterna: View {
                 }
         )
         .help("Ridimensiona")
+    }
+}
+
+// MARK: - Semafori
+
+/// I tre pallini della finestra interna, come quelli del Mac: cerchi da 12 pt a 20 pt l'uno dall'altro, grigi
+/// se la finestra non è in primo piano; i segni ✕ − + (vettoriali, centrati nel cerchio) compaiono solo con
+/// il puntatore sopra il gruppo, tutti e tre insieme.
+private struct SemaforiFinestra: View {
+    let attiva: Bool
+    let chiudi: () -> Void
+    let riduci: () -> Void
+    let ingrandisci: () -> Void
+    @State private var sopra = false
+
+    var body: some View {
+        let m = Tema.Misura.Shell.self
+        HStack(spacing: m.semaforoPasso - m.semaforoLato) {
+            pallino(Tema.Colore.semaforoChiudi, .chiudi, chiudi)
+            pallino(Tema.Colore.semaforoRiduci, .riduci, riduci)
+            pallino(Tema.Colore.semaforoIngrandisci, .ingrandisci, ingrandisci)
+        }
+        .contentShape(Rectangle())
+        .onHover { sopra = $0 }
+    }
+
+    private func pallino(_ colore: Color, _ segno: SegnoSemaforo.Tipo, _ azione: @escaping () -> Void) -> some View {
+        let m = Tema.Misura.Shell.self
+        return Button(action: azione) {
+            ZStack {
+                Circle().fill(attiva || sopra ? colore : Tema.Colore.Shell.semaforoSpento)
+                Circle().strokeBorder(Tema.Colore.bordoSemaforo, lineWidth: Tema.Misura.filo)
+                if sopra {
+                    SegnoSemaforo(tipo: segno)
+                        .stroke(Tema.Colore.Shell.segnoSemaforo,
+                                style: StrokeStyle(lineWidth: m.semaforoTratto, lineCap: .round))
+                }
+            }
+            .frame(width: m.semaforoLato, height: m.semaforoLato)
+            .contentShape(Circle())
+        }
+        .buttonStyle(StileSemplice())
+    }
+}
+
+/// ✕, − e + disegnati attorno al centro esatto del riquadro (il testo e i simboli SF non si centrano).
+private struct SegnoSemaforo: Shape {
+    enum Tipo { case chiudi, riduci, ingrandisci }
+    let tipo: Tipo
+
+    func path(in rect: CGRect) -> Path {
+        let m = Tema.Misura.Shell.self
+        let x = rect.midX
+        let y = rect.midY
+        var p = Path()
+        switch tipo {
+        case .chiudi:
+            let d = m.semaforoCroce
+            p.move(to: CGPoint(x: x - d, y: y - d))
+            p.addLine(to: CGPoint(x: x + d, y: y + d))
+            p.move(to: CGPoint(x: x + d, y: y - d))
+            p.addLine(to: CGPoint(x: x - d, y: y + d))
+        case .riduci:
+            let d = m.semaforoLinea
+            p.move(to: CGPoint(x: x - d, y: y))
+            p.addLine(to: CGPoint(x: x + d, y: y))
+        case .ingrandisci:
+            let d = m.semaforoLinea
+            p.move(to: CGPoint(x: x - d, y: y))
+            p.addLine(to: CGPoint(x: x + d, y: y))
+            p.move(to: CGPoint(x: x, y: y - d))
+            p.addLine(to: CGPoint(x: x, y: y + d))
+        }
+        return p
     }
 }

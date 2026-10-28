@@ -109,7 +109,8 @@ struct ComandiPrisma: Commands {
         }
         CommandGroup(replacing: .newItem) {}
         CommandGroup(after: .help) {
-            Button("Misura la fluidità") { MisuratoreFluidita.condiviso.alterna() }
+            // Prova guidata sul Mac (Shell/ProvaGuidata.swift); scelta di nuovo durante la prova, la interrompe
+            Button("Prova la fluidità…") { ProvaGuidata.condivisa.avvia(stato: stato) }
         }
     }
 }

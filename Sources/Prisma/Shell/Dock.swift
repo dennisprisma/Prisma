@@ -2,38 +2,86 @@ import SwiftUI
 
 /// Dock delle applicazioni (tema «Liquid Glass»): capsula di vetro sottile con la Scrivania, il divisore
 /// e le app. Le icone (50 pt) si ingrandiscono dal basso attorno al puntatore, fino a 1,55 volte.
+/// Il Dock legge lo stato condiviso (app consentite, attiva, aperte); l'ingrandimento vive in `FilaDock`,
+/// in uno stato locale: passare sul dock non fa ricalcolare nient'altro dell'app.
 struct Dock: View {
     @EnvironmentObject var stato: StatoShell
     /// Quale app è davanti e quali sono aperte.
     @EnvironmentObject var sistema: StatoFinestre
-    /// Ingrandimento di ogni icona, Scrivania compresa, nell'ordine del dock (vuoto = tutte normali).
-    @State var ingrandimenti: [CGFloat] = []
 
     var body: some View {
-        let elenco = AppPrisma.allCases.filter { stato.appConsentita($0) }
-        let numero = elenco.count + 1
+        let attiva = sistema.appAttiva
+        let voci = AppPrisma.allCases.filter { stato.appConsentita($0) }.map { app in
+            VoceDock(app: app, attiva: attiva == app, aperta: sistema.aperta(app))
+        }
+        let shell = stato
+        FilaDock(voci: voci, scrivaniaAttiva: attiva == nil,
+                 apri: { app in shell.apri(app) },
+                 mostraScrivania: { shell.mostraScrivania() })
+            // Si ridisegna solo se cambiano le icone o i puntini, non a ogni cambiamento dello stato
+            .equatable()
+    }
+
+    /// ⌥1…⌥9 per le prime nove app.
+    static func scorciatoia(_ app: AppPrisma) -> String? {
+        guard let i = AppPrisma.allCases.firstIndex(of: app), i < 9 else { return nil }
+        return "⌥\(i + 1)"
+    }
+}
+
+/// Un'app nel dock con i suoi segni: davanti, aperta.
+struct VoceDock: Equatable {
+    let app: AppPrisma
+    let attiva: Bool
+    let aperta: Bool
+}
+
+/// La fila del dock con l'ingrandimento al passaggio del puntatore, come il Dock del Mac: segue il puntatore
+/// senza ritardo. Lo stato è tutto qui (`@State`): nessun oggetto condiviso cambia, nessuna transizione si annuncia.
+/// Le icone crescono con una scala e la fila le distanzia con `DisposizioneFilaDock`: nessun figlio cambia misura.
+private struct FilaDock: View, Equatable {
+    let voci: [VoceDock]
+    let scrivaniaAttiva: Bool
+    let apri: (AppPrisma) -> Void
+    let mostraScrivania: () -> Void
+    /// Ingrandimento di ogni icona, Scrivania compresa, nell'ordine del dock (vuoto = tutte normali).
+    @State var ingrandimenti: [CGFloat] = []
+    /// L'icona sotto il puntatore (0 = Scrivania), con il suggerimento sopra.
+    @State var sopra: Int? = nil
+
+    /// Le azioni chiamano sempre la stessa shell: contano solo le icone e i loro segni.
+    nonisolated static func == (a: FilaDock, b: FilaDock) -> Bool {
+        a.voci == b.voci && a.scrivaniaAttiva == b.scrivaniaAttiva
+    }
+
+    var body: some View {
         let lato = Tema.Misura.dockIcona
-        HStack(alignment: .bottom, spacing: DisposizioneDock.spazio) {
+        let numero = voci.count + 1
+        DisposizioneFilaDock(ingrandimenti: ingrandimenti.count == numero ? ingrandimenti : [],
+                             spazio: DisposizioneDock.spazio) {
             ElementoDock(titolo: "Scrivania", etichetta: "Scrivania", ingrandimento: ingrandimento(0, di: numero),
-                         attivo: sistema.appAttiva == nil, inEsecuzione: false) {
-                stato.mostraScrivania()
+                         suggerimento: sopra == 0, attivo: scrivaniaAttiva, inEsecuzione: false) {
+                mostraScrivania()
             } icona: {
                 ImmagineNitida(percorso: "Icone/Prisma.png", lato: lato, riservaIngrandimento: Tema.Misura.dockIngrandimento)
             }
+            .layoutValue(key: PostoDock.self, value: 0)
             DivisoreDock()
-            ForEach(Array(elenco.enumerated()), id: \.element) { indice, app in
+            ForEach(Array(voci.enumerated()), id: \.element.app) { indice, voce in
                 ElementoDock(
-                    titolo: app.titolo,
-                    etichetta: app.nomeDock,
-                    scorciatoia: Dock.scorciatoia(app),
+                    titolo: voce.app.titolo,
+                    etichetta: voce.app.nomeDock,
+                    scorciatoia: Dock.scorciatoia(voce.app),
                     ingrandimento: ingrandimento(indice + 1, di: numero),
-                    attivo: sistema.appAttiva == app,
-                    inEsecuzione: sistema.aperta(app)
+                    suggerimento: sopra == indice + 1,
+                    attivo: voce.attiva,
+                    inEsecuzione: voce.aperta
                 ) {
-                    stato.apri(app)
+                    apri(voce.app)
                 } icona: {
-                    IconaApp(app: app, lato: lato, riservaIngrandimento: Tema.Misura.dockIngrandimento)
+                    IconaApp(app: voce.app, lato: lato, riservaIngrandimento: Tema.Misura.dockIngrandimento)
                 }
+                .layoutValue(key: PostoDock.self, value: indice + 1)
             }
         }
         .padding(.vertical, DisposizioneDock.margine)
@@ -41,12 +89,17 @@ struct Dock: View {
         .vetro(.leggero, forma: .arrotondata(Tema.Raggio.dock))
         // Il dock e i suggerimenti sopra le icone: un solo gruppo di vetro (macOS 26)
         .gruppoVetro()
+        // Mentre le icone sono ingrandite, anche la parte che sporge sopra il dock tiene il puntatore
+        .padding(.top, ingrandimenti.isEmpty ? 0 : DisposizioneDock.sporgenzaIngrandimento)
         .onContinuousHover(coordinateSpace: CoordinateSpace.local) { fase in
             switch fase {
             case .active(let punto):
-                aggiorna(punto.x, numero: numero)
+                segui(punto.x, numero: numero)
             case .ended:
                 withAnimation(Tema.Moto.Shell.ritornoDock) { ingrandimenti = [] }
+                if sopra != nil {
+                    withAnimation(Tema.Moto.passaggio) { sopra = nil }
+                }
             }
         }
     }
@@ -57,20 +110,64 @@ struct Dock: View {
 
     /// Ricalcola gli ingrandimenti con il puntatore in `x` (coordinate del dock come è disegnato ora).
     /// Il dock cresce attorno al suo centro: qualche passaggio fa coincidere l'icona ingrandita con il puntatore.
-    private func aggiorna(_ x: CGFloat, numero: Int) {
+    /// Senza animazione, come il Dock del Mac; solo il suggerimento compare e scompare in dissolvenza.
+    private func segui(_ x: CGFloat, numero: Int) {
         let attuali = ingrandimenti.count == numero ? ingrandimenti : Array(repeating: 1, count: numero)
         let puntatore = x - DisposizioneDock.disposizione(attuali).larghezza / 2
         var nuovi = attuali
         for _ in 0..<Tema.Misura.Shell.passiIngrandimento {
             nuovi = DisposizioneDock.disposizione(nuovi).centri.map { DisposizioneDock.ingrandimento(distanza: abs(puntatore - $0)) }
         }
-        ingrandimenti = nuovi
+        if nuovi != ingrandimenti { ingrandimenti = nuovi }
+        let indice = DisposizioneDock.indice(sotto: puntatore, ingrandimenti: nuovi)
+        if indice != sopra {
+            withAnimation(Tema.Moto.passaggio) { sopra = indice }
+        }
+    }
+}
+
+/// Il posto di un elemento nella fila (0 = Scrivania, poi le app); il divisore non ne ha.
+private struct PostoDock: LayoutValueKey {
+    static let defaultValue: Int? = nil
+}
+
+/// La fila del dock: gli elementi in basso, ognuno al centro del suo posto, largo quanto la sua icona ingrandita.
+/// Le icone crescono con una scala dentro l'elemento: qui si spostano soltanto, e le misure dei figli non cambiano.
+private struct DisposizioneFilaDock: Layout {
+    /// Ingrandimento di ogni icona (per posto); vuoto = tutte normali.
+    var ingrandimenti: [CGFloat]
+    var spazio: CGFloat
+
+    /// Le misure dei figli, prese una volta.
+    func makeCache(subviews: Subviews) -> [CGSize] {
+        subviews.map { $0.sizeThatFits(.unspecified) }
     }
 
-    /// ⌥1…⌥9 per le prime nove app.
-    static func scorciatoia(_ app: AppPrisma) -> String? {
-        guard let i = AppPrisma.allCases.firstIndex(of: app), i < 9 else { return nil }
-        return "⌥\(i + 1)"
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout [CGSize]) -> CGSize {
+        let posti = larghezze(subviews, misure: cache)
+        let larghezza = posti.reduce(0, +) + spazio * CGFloat(max(0, subviews.count - 1))
+        let altezza = cache.map(\.height).max() ?? 0
+        return CGSize(width: larghezza, height: altezza)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout [CGSize]) {
+        let posti = larghezze(subviews, misure: cache)
+        var x = bounds.minX
+        for j in subviews.indices {
+            subviews[j].place(at: CGPoint(x: x + posti[j] / 2, y: bounds.maxY), anchor: .bottom,
+                              proposal: ProposedViewSize(cache[j]))
+            x += posti[j] + spazio
+        }
+    }
+
+    /// La larghezza del posto di ogni figlio: la sua, più quanto cresce la sua icona.
+    private func larghezze(_ subviews: Subviews, misure: [CGSize]) -> [CGFloat] {
+        let lato = Tema.Misura.dockIcona
+        return subviews.indices.map { (j: Int) -> CGFloat in
+            let base = j < misure.count ? misure[j].width : 0
+            guard let posto = subviews[j][PostoDock.self], posto >= 0, posto < ingrandimenti.count else { return base }
+            return base + lato * (ingrandimenti[posto] - 1)
+        }
     }
 }
 
@@ -112,6 +209,20 @@ enum DisposizioneDock {
         return (centri.map { $0 - larghezza / 2 }, larghezza)
     }
 
+    /// L'icona sotto il puntatore (`puntatore` dal centro del dock): quella il cui posto, con metà dello spazio
+    /// accanto, lo contiene. Nil sul divisore e sui margini.
+    static func indice(sotto puntatore: CGFloat, ingrandimenti: [CGFloat]) -> Int? {
+        let centri = disposizione(ingrandimenti).centri
+        for (i, c) in centri.enumerated() where i < ingrandimenti.count {
+            let meta = (Tema.Misura.dockIcona * ingrandimenti[i] + spazio) / 2
+            if abs(puntatore - c) <= meta { return i }
+        }
+        return nil
+    }
+
+    /// Quanto l'icona più ingrandita sporge sopra il dock.
+    static var sporgenzaIngrandimento: CGFloat { Tema.Misura.dockIcona * (Tema.Misura.dockIngrandimento - 1) }
+
     /// Altezza sotto l'icona: nome e puntino dell'app aperta.
     static var altezzaSotto: CGFloat {
         let m = Tema.Misura.Shell.self
@@ -146,29 +257,31 @@ struct DivisoreDock: View {
 }
 
 /// Elemento del dock: l'icona che si ingrandisce dal basso, il nome sotto, il puntino se l'app è aperta,
-/// il suggerimento con la scorciatoia al passaggio del mouse.
+/// il suggerimento con la scorciatoia quando il puntatore è sopra (lo decide la fila).
 struct ElementoDock<Icona: View>: View {
     let titolo: String
     /// Il nome breve sotto l'icona.
     let etichetta: String
     var scorciatoia: String? = nil
     var ingrandimento: CGFloat = 1
+    /// Il puntatore è sopra: compare il suggerimento.
+    var suggerimento = false
     let attivo: Bool
     let inEsecuzione: Bool
     let azione: () -> Void
     @ViewBuilder let icona: () -> Icona
-    @State var sopra = false
 
     var body: some View {
         let lato = Tema.Misura.dockIcona
         let m = Tema.Misura.Shell.self
+        let crescita = lato * (ingrandimento - 1)
         Button(action: azione) {
             VStack(spacing: 0) {
-                // L'icona si disegna sempre a 50 pt e si ingrandisce con una scala: la bitmap resta quella
+                // L'icona si disegna sempre a 50 pt e si ingrandisce con una scala: la bitmap resta quella,
+                // la cella resta larga 50 (la fila le fa posto) e niente si reimpagina
                 icona()
                     .frame(width: lato, height: lato)
                     .scaleEffect(ingrandimento, anchor: .bottom)
-                    .frame(width: lato * ingrandimento, height: lato, alignment: .bottom)
                 Text(etichetta)
                     .font(Tema.Testo.Shell.etichettaDock)
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
@@ -176,7 +289,7 @@ struct ElementoDock<Icona: View>: View {
                     // Mai rimpicciolito: un nome lungo («Impostazioni») sborda appena dalla cella dell'icona,
                     // ma resta dentro la capsula grazie al margine laterale del dock (`DisposizioneDock.margineLato`)
                     .fixedSize()
-                    .frame(width: lato * ingrandimento, height: m.etichettaDock)
+                    .frame(width: lato, height: m.etichettaDock)
                     .padding(.top, m.etichettaSpazio)
                 Circle()
                     .fill(Tema.Colore.Shell.puntinoDock)
@@ -184,23 +297,34 @@ struct ElementoDock<Icona: View>: View {
                     .opacity(inEsecuzione || attivo ? 1 : 0)
                     .padding(.top, m.puntinoSpazio)
             }
-            .contentShape(Rectangle())
+            // Si clicca anche l'icona ingrandita, che esce dalla cella in alto e ai lati
+            .contentShape(FormaToccoDock(allargamento: crescita / 2, alzata: crescita))
         }
         .buttonStyle(StileIconaDock())
-        .onHover { s in withAnimation(Tema.Moto.passaggio) { sopra = s } }
         .overlay(alignment: .top) {
-            if sopra {
+            if suggerimento {
                 SuggerimentoDock(testo: titolo, scorciatoia: scorciatoia)
                     .fixedSize()
                     // Il fondo del suggerimento sta sopra l'icona ingrandita
                     .alignmentGuide(VerticalAlignment.top) { d in
-                        d[VerticalAlignment.bottom] + lato * (ingrandimento - 1) + m.suggerimentoDistanza
+                        d[VerticalAlignment.bottom] + crescita + m.suggerimentoDistanza
                     }
                     .transition(.opacity.combined(with: .scale(scale: Tema.Moto.Dock.scalaSuggerimento, anchor: .bottom)))
                     .allowsHitTesting(false)
             }
         }
-        .zIndex(sopra ? 1 : 0)
+        .zIndex(suggerimento ? 1 : 0)
+    }
+}
+
+/// Dove si clicca un elemento del dock: la cella, allargata ai lati e in alto quanto l'icona ingrandita.
+private struct FormaToccoDock: Shape {
+    var allargamento: CGFloat
+    var alzata: CGFloat
+
+    func path(in r: CGRect) -> Path {
+        Path(CGRect(x: r.minX - allargamento, y: r.minY - alzata,
+                    width: r.width + 2 * allargamento, height: r.height + alzata))
     }
 }
 

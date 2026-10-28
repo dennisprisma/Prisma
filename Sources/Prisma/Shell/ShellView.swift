@@ -40,8 +40,9 @@ struct CorpoShell: View {
     @Environment(\.modoIstantanea) var modoIstantanea
     /// Il puntatore è sul dock (o sul bordo in basso) mentre è nascosto: si mostra sopra le finestre.
     @State private var dockRichiamato = false
-    /// Il dock richiamato si nasconde di nuovo poco dopo che il puntatore se ne va, come in macOS.
-    @State private var nascondiDock: DispatchWorkItem?
+    /// Il dock richiamato si nasconde di nuovo poco dopo che il puntatore se ne va, come in macOS. In una scatola:
+    /// passare sul dock non deve ridisegnare la shell (né rallentare l'acqua o il dock stesso).
+    @State private var attesaDock = AttesaDock()
     /// Un file trascinato sopra Prisma: si mostra dove va.
     @State private var fileSopra = false
     /// Durante la presentazione la scrivania sotto la sala tiene la misura di prima: il tutto schermo non la reimpagina.
@@ -114,9 +115,8 @@ struct CorpoShell: View {
             .onChange(of: dockNascosto) { nascosto in
                 aggiornaArea(misuraCongelata ?? geo.size)
                 if !nascosto {
-                    nascondiDock?.cancel()
-                    nascondiDock = nil
-                    dockRichiamato = false
+                    annullaNascondiDock()
+                    if dockRichiamato { dockRichiamato = false }
                 }
             }
             .onChange(of: stato.presentazione != nil) { attiva in
@@ -265,15 +265,15 @@ struct CorpoShell: View {
     }
 
     private func annullaNascondiDock() {
-        nascondiDock?.cancel()
-        nascondiDock = nil
+        attesaDock.lavoro?.cancel()
+        attesaDock.lavoro = nil
     }
 
     /// Il puntatore ha lasciato il dock richiamato: si nasconde dopo un attimo, se non torna.
     private func nascondiDockTraPoco() {
         annullaNascondiDock()
         let lavoro = DispatchWorkItem { dockRichiamato = false }
-        nascondiDock = lavoro
+        attesaDock.lavoro = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.Dock.ritardoNascondi, execute: lavoro)
     }
 
@@ -332,40 +332,46 @@ struct CorpoShell: View {
 
     /// Una finestra con i suoi movimenti, tutti trasformazioni e opacità sopra una cornice ferma:
     /// FLIP (ingrandisci, affianca, spazi), genio (riduci e ripristina), apertura, chiusura (transizione).
+    /// Il contenuto dell'app non si rifà durante i movimenti: cambiano solo i valori dei modificatori.
     private func finestra(_ f: StatoShell.Finestra, z: Int, attiva: Bool, area: CGRect, calmo: Bool) -> some View {
-        let m = Tema.Moto.Finestre.self
         let c = stato.cornice(di: f, in: area)
         let w = max(c.width, 1)
         let h = max(c.height, 1)
-        // Da dove si apre (o dove si riduce), nelle coordinate della finestra: può stare fuori da [0, 1]
-        let origine = sistema.origini[f.app].map { p in
-            UnitPoint(x: (p.x - area.minX - c.minX) / w, y: (p.y - area.minY - c.minY) / h)
-        }
+        // L'icona del dock dove va il genio, nelle coordinate della finestra; senza, il bordo in basso della shell
+        let bersaglio = sistema.origini[f.app].map { p in
+            CGPoint(x: p.x - area.minX - c.minX, y: p.y - area.minY - c.minY)
+        } ?? CGPoint(x: c.width / 2, y: sistema.misura.height - area.minY - c.minY)
         let arrivo = sistema.inArrivo.contains(f.app)
         let coperta = sistema.coperte.contains(f.app)
         let flip = sistema.flip[f.app]
-        let scalaArrivo: CGFloat = calmo ? 1 : (origine == nil ? m.scalaSenzaOrigine : m.scalaDaIcona)
-        let yArrivo: CGFloat = calmo || origine != nil ? 0 : m.spostamentoSenzaOrigine
-        // Il genio finisce grande quanto l'icona del dock
-        let scalaGenio: CGFloat = calmo ? 1 : max(m.scalaGenioMinima, Tema.Misura.dockIcona / w)
+        let genio: CGFloat = f.ridotta ? 1 : 0
+        // L'apertura come macOS: al suo posto, appena più piccola e trasparente
+        let scalaArrivo: CGFloat = calmo ? 1 : Tema.Moto.Finestre.scalaApertura
         // Il centro visibile della finestra (la transizione sta dopo lo spostamento)
         let centro = UnitPoint(x: c.midX / w, y: c.midY / h)
         return FinestraInterna(finestra: f, attiva: attiva, area: area)
             .frame(width: c.width, height: c.height, alignment: .topLeading)
             .modifier(EffettoCornice(progresso: flip?.progresso ?? 1, da: flip?.da ?? c, a: c))
-            .modifier(EffettoGenio(progresso: f.ridotta ? 1 : 0, ancora: origine ?? .bottom, scalaFinale: scalaGenio))
-            .modifier(EffettoFinestra(scala: arrivo ? scalaArrivo : 1, ancora: origine ?? .center,
-                                      y: arrivo ? yArrivo : 0, opacita: arrivo ? 0 : 1))
+            .modifier(EffettoGenio(progresso: genio, bersaglio: bersaglio, lato: Tema.Misura.dockIcona, calmo: calmo))
+            .modifier(OpacitaGenio(progresso: genio, calmo: calmo))
+            .modifier(EffettoFinestra(scala: arrivo ? scalaArrivo : 1, ancora: .center,
+                                      y: 0, opacita: arrivo ? 0 : 1))
             .offset(x: c.minX, y: c.minY)
             // Coperta da una finestra ingrandita (a transizione finita): resta montata ma non si disegna
             .opacity(coperta ? 0 : 1)
             .allowsHitTesting(!f.ridotta && !coperta)
-            // Ridotta nel dock resta montata (si riapre subito), ma i suoi comandi da tastiera tacciono
-            .disabled(f.ridotta)
+            // Ridotta nel dock resta montata (si riapre subito), ma i suoi comandi da tastiera tacciono: a genio
+            // finito (`spente`), perché spegnere i controlli ridisegna tutta l'app e non deve cadere nel movimento
+            .disabled(f.ridotta && (modoIstantanea || sistema.spente.contains(f.app)))
             .accessibilityHidden(f.ridotta || coperta)
             .zIndex(Double(z))
             .transition(modoIstantanea ? AnyTransition.identity : AnyTransition.chiusuraFinestra(ancora: centro))
     }
+}
+
+/// Il lavoro che nasconde di nuovo il dock richiamato. Una classe: cambiarlo non è un cambio di stato della vista.
+private final class AttesaDock {
+    var lavoro: DispatchWorkItem?
 }
 
 /// Imposta la finestra macOS: barra del titolo trasparente, fondo del colore del cielo (chiaro o scuro), dimensione minima.

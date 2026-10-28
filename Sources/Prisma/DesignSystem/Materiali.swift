@@ -32,14 +32,12 @@ enum Materiale {
     /// niente StatoShell osservato, così l'acqua non si riconfigura a ogni cambiamento dello stato.
     /// `animato` dice se in questo punto lo sfondo può muoversi («Sfondo animato» acceso e scrivania visibile;
     /// false = fermo); `intensita` è la forza della pioggia (gocce al secondo).
-    /// Con finestre aperte davanti (scrivania sbloccata) l'acqua va più piano: lo legge da StatoFinestre,
-    /// che ShellView mette a disposizione (questa vista si disegna solo lì).
-    /// Finestra nascosta, basso consumo, «Riduci movimento», transizioni, riposo del Mac e Prisma in secondo piano
+    /// L'acqua va sempre allo stesso ritmo, anche con finestre aperte e durante le animazioni: niente stato
+    /// delle finestre osservato qui. Finestra nascosta, basso consumo, «Riduci movimento» e riposo del Mac
     /// li gestisce già SfondoAcqua. Nelle istantanee SfondoAcqua mostra da sé il fermo-immagine.
     struct SfondoScrivania: View {
         var animato: Bool
         var intensita: Double
-        @EnvironmentObject private var sistema: StatoFinestre
         @Environment(\.colorScheme) private var schema
 
         init(animato: Bool = false, intensita: Double) {
@@ -48,8 +46,7 @@ enum Materiale {
         }
 
         var body: some View {
-            SfondoAcqua(animato: animato, intensita: intensita, scuro: schema == .dark,
-                        lento: !sistema.bloccato && !sistema.visibili.isEmpty)
+            SfondoAcqua(animato: animato, intensita: intensita, scuro: schema == .dark)
                 .ignoresSafeArea()
         }
     }
