@@ -58,7 +58,9 @@ struct AppClienti: View {
     // MARK: - Indice
 
     private var indice: some View {
-        VStack(spacing: 0) {
+        // Filtrato e ordinato una volta per disegno, non a ogni uso
+        let elenco = self.elenco
+        return VStack(spacing: 0) {
             HStack {
                 Text("RUBRICA")
                     .font(Tipo.indiceTitolo)
@@ -80,20 +82,9 @@ struct AppClienti: View {
                 .padding(EdgeInsets(top: 7, leading: 11, bottom: 7, trailing: 11))
 
             ScrollView {
-                VStack(spacing: Tema.Misura.Dossier.spazioVoci) {
-                    ForEach(elenco) { c in
-                        RigaRubrica(cliente: c, selezionato: c.id == stato.clienteAttivoId) {
-                            stato.clienteAttivoId = c.id
-                        }
-                    }
-                    if elenco.isEmpty {
-                        Text(ricerca.isEmpty ? "Nessun cliente in rubrica." : "Nessun cliente trovato.")
-                            .font(Tipo.rubricaTema)
-                            .foregroundColor(Colori.Rubrica.rigaTema)
-                            .padding(16)
-                    }
-                }
-                .padding(.horizontal, Tema.Misura.Dossier.margineElenco)
+                ElencoRubrica(clienti: elenco, attivo: stato.clienteAttivoId, ricercaVuota: ricerca.isEmpty,
+                              scegli: { stato.clienteAttivoId = $0 })
+                    .equatable()
             }
             Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "contatto" : "contatti") · sempre a portata di mano")
                 .font(Tipo.rubricaPiede)
@@ -156,7 +147,11 @@ struct AppClienti: View {
                 RigaCampo(etichetta: "Indirizzo", valore: c.indirizzo)
                 RigaCampo(etichetta: "In rubrica dal", valore: Formati.dataEstesa.string(from: c.creatoIl))
             }
-            Button("Modifica la scheda") { modulo = c }
+            Button("Modifica la scheda") {
+                // La nota «Da ricordare» in attesa entra prima nella scheda: il modulo la salverebbe com'era
+                TestiRinviati.scriviOra()
+                modulo = stato.cliente(c.id) ?? c
+            }
                 .buttonStyle(StileCuoioChiaro())
         }
     }
@@ -249,7 +244,11 @@ struct AppClienti: View {
             Text("Il profilo orienta le analisi di Posizioni. Non sostituisce i questionari di adeguatezza ufficiali.")
                 .font(Tipo.rubricaTema)
                 .foregroundColor(Colori.Rubrica.secondario)
-            Button("Modifica il profilo") { modulo = c }
+            Button("Modifica il profilo") {
+                // La nota «Da ricordare» in attesa entra prima nella scheda: il modulo la salverebbe com'era
+                TestiRinviati.scriviOra()
+                modulo = stato.cliente(c.id) ?? c
+            }
                 .buttonStyle(StileCuoioChiaro())
         }
     }
@@ -257,19 +256,25 @@ struct AppClienti: View {
     private func note(_ c: Cliente) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             OcchielloSezione(titolo: "Da ricordare", nota: "Si salva da sola")
-            TextEditor(text: Binding(get: { c.nota }, set: { stato.aggiornaNota(c.id, $0) }))
-                .font(Tipo.campoValore)
-                .foregroundColor(Colori.Rubrica.testo)
-                .scrollContentBackground(.hidden)
-                .scrollIndicators(.never)
-                .padding(10)
-                .frame(minHeight: 260)
-                .background { FormaVetro.arrotondata(Tema.Raggio.Dossier.campoLungo).fill(Tema.Colore.pozzetto) }
-                .overlay {
-                    FormaVetro.arrotondata(Tema.Raggio.Dossier.campoLungo)
-                        .strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo)
-                        .allowsHitTesting(false)
-                }
+            // Si scrive nel campo e passa all'archivio poco dopo l'ultimo tasto: una lettera non rifà tutta Prisma
+            TestoRinviato(testo: Binding(get: { c.nota }, set: { stato.aggiornaNota(c.id, $0) }),
+                          salvaOra: { stato.salvaOra() }) { bozza in
+                TextEditor(text: bozza)
+                    .font(Tipo.campoValore)
+                    .foregroundColor(Colori.Rubrica.testo)
+                    .scrollContentBackground(.hidden)
+                    .scrollIndicators(.never)
+                    .padding(10)
+                    .frame(minHeight: 260)
+                    .background { FormaVetro.arrotondata(Tema.Raggio.Dossier.campoLungo).fill(Tema.Colore.pozzetto) }
+                    .overlay {
+                        FormaVetro.arrotondata(Tema.Raggio.Dossier.campoLungo)
+                            .strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo)
+                            .allowsHitTesting(false)
+                    }
+            }
+            // Cambiando cliente la bozza riparte dalla sua nota (e quella in attesa va al cliente di prima)
+            .id(c.id)
             OcchielloSezione(titolo: "Nel taccuino", nota: "Le note dell'app Note")
                 .padding(.top, 8)
             let note = stato.noteCliente(c.id).filter { !$0.vuota }
@@ -327,6 +332,36 @@ struct ModificaFamiliare: Identifiable {
     let clienteId: String
     var familiare: Familiare
     let nuovo: Bool
+}
+
+// MARK: - Elenco della rubrica
+
+/// Le righe della rubrica: pigre (con centinaia di clienti si costruiscono solo quelle in vista) e rifatte solo
+/// quando cambiano i clienti mostrati o quello scelto, non a ogni avviso di StatoShell.
+struct ElencoRubrica: View, Equatable {
+    let clienti: [Cliente]
+    let attivo: String
+    let ricercaVuota: Bool
+    let scegli: (String) -> Void
+
+    nonisolated static func == (a: ElencoRubrica, b: ElencoRubrica) -> Bool {
+        a.attivo == b.attivo && a.ricercaVuota == b.ricercaVuota && a.clienti == b.clienti
+    }
+
+    var body: some View {
+        LazyVStack(spacing: Tema.Misura.Dossier.spazioVoci) {
+            ForEach(clienti) { c in
+                RigaRubrica(cliente: c, selezionato: c.id == attivo) { scegli(c.id) }
+            }
+            if clienti.isEmpty {
+                Text(ricercaVuota ? "Nessun cliente in rubrica." : "Nessun cliente trovato.")
+                    .font(Tipo.rubricaTema)
+                    .foregroundColor(Colori.Rubrica.rigaTema)
+                    .padding(16)
+            }
+        }
+        .padding(.horizontal, Tema.Misura.Dossier.margineElenco)
+    }
 }
 
 // MARK: - Riga della rubrica

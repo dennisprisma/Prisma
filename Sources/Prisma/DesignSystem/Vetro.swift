@@ -483,7 +483,8 @@ struct CapsulaCanale: View {
         .frame(height: compatta ? Tema.Misura.chipPiccolo : Tema.Misura.chip)
         .vetroCanale(canale)
         .fixedSize()
-        .help(canale.nome)
+        // Niente aiuto al passaggio: la capsula dice già il canale, e un `.help` per capsula pesa negli
+        // elenchi lunghi (una in ogni riga del portafoglio, delle scadenze e delle tabelle delle posizioni)
     }
 }
 

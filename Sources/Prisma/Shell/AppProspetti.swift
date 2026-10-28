@@ -21,6 +21,8 @@ struct AppProspetti: View {
     var body: some View {
         // Impaginato una volta sola finché non cambia qualcosa che conta (DerivatiDati), non a ogni disegno
         let documento = stato.documentoProspettoInCache(scelta)
+        // Il numero di questa impaginazione: preso subito, è quello del documento qui sopra
+        let generazione = stato.generazioneDocumento
         let pagine = documento?.pagine.count ?? 0
         let formato = documento.map { $0.formato.width > $0.formato.height ? "A4 orizzontale" : "A4 verticale" } ?? ""
         return CorniceStrumento(
@@ -38,8 +40,11 @@ struct AppProspetti: View {
                         barra(documento)
                         GeometryReader { geo in
                             ScrollView {
+                                // Le pagine si rifanno solo con un documento impaginato di nuovo o un'altra scala
                                 TavoloDocumento(documento: documento,
-                                                scala: min(1, (geo.size.width - 40) / documento.formato.width))
+                                                scala: min(1, (geo.size.width - 40) / documento.formato.width),
+                                                generazione: generazione)
+                                    .equatable()
                             }
                         }
                         .background(LinearGradient(colors: [Tema.Colore.Strumenti.tavoloAlto, Tema.Colore.Strumenti.tavoloBasso],
@@ -730,9 +735,17 @@ struct AppProspetti: View {
 
 /// Le pagine di un documento sul tavolo dell'anteprima (gettone del tema, chiaro o scuro): i fogli restano chiari.
 /// Pila pigra: si disegnano solo i fogli che si vedono, non tutto il fascicolo con le ombre.
-private struct TavoloDocumento: View {
+/// Le pagine sono `AnyView`, che SwiftUI non sa confrontare: senza la generazione rifarebbe i body di tutti
+/// i fogli creati a ogni cambiamento dello stato, anche per un tasto in una nota.
+private struct TavoloDocumento: View, Equatable {
     let documento: DocumentoStampabile
     let scala: CGFloat
+    /// Il numero dell'impaginazione (StatoShell.generazioneDocumento): lo stesso numero è lo stesso documento.
+    let generazione: Int
+
+    nonisolated static func == (a: TavoloDocumento, b: TavoloDocumento) -> Bool {
+        a.generazione == b.generazione && a.scala == b.scala
+    }
 
     var body: some View {
         LazyVStack(spacing: Tema.Misura.Strumenti.spazioFogli) {

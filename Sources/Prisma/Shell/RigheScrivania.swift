@@ -55,10 +55,10 @@ struct RigaAttivita: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
+            // Senza `.help`: un aiuto per riga pesa negli elenchi lunghi, e la casella si capisce da sola
             Button(action: completa) { CasellaSpunta(spuntata: attivita.completata) }
                 .buttonStyle(StileSemplice())
                 .padding(.top, 2)
-                .help("Segna come completata")
             VStack(alignment: .leading, spacing: 4) {
                 Text(attivita.titolo)
                     .font(Tipo.contenuto(12, .medium))

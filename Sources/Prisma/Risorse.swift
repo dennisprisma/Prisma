@@ -159,7 +159,9 @@ extension Risorse {
         DispatchQueue.global(qos: .utility).async {
             var pronte: [(chiave: String, ridotta: CGImage, scala: CGFloat)] = []
             for l in lavori {
-                if let ridotta = Risorse.riduzione(l.percorso, larghezza: l.larghezza, altezza: l.altezza) {
+                // Un pool per immagine: GCD svuota il suo solo alla fine del blocco (i PNG decodificati sono da 512 px)
+                autoreleasepool {
+                    guard let ridotta = Risorse.riduzione(l.percorso, larghezza: l.larghezza, altezza: l.altezza) else { return }
                     pronte.append((chiave: l.chiave, ridotta: ridotta, scala: l.scala))
                 }
             }

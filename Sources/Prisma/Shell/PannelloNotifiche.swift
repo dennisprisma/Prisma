@@ -39,7 +39,8 @@ struct PannelloNotifiche: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Misure.Notifiche.margine)
-                    VStack(alignment: .leading, spacing: 0) {
+                    // Pigro: con molti clienti le notifiche sono centinaia, si impaginano solo quelle in vista
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(Notifica.Gruppo.allCases) { g in
                             let voci = elenco.filter { $0.gruppo == g }
                             if !voci.isEmpty {

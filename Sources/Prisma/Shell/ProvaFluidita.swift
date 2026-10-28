@@ -9,38 +9,56 @@ import SwiftUI
 /// (`ShellView`) in una finestra fuori schermo, come le istantanee. Non corregge nulla: serve a confrontare
 /// prima e dopo (la linea di base di oggi e i miglioramenti).
 ///
-/// Per ogni azione, su 5 giri dopo un giro di riscaldamento («prima volta»):
-/// - aggiornamento: l'azione, un giro del run loop (SwiftUI applica lì le modifiche) e `layoutSubtreeIfNeeded()`;
-/// - disegno: `cacheDisplay(in:to:)` completo in un bitmap riusato (riferimento, non incrementale);
+/// Per ogni azione, dopo un giro di riscaldamento («prima volta», solo l'aggiornamento), su `giri` giri
+/// (`giriPesanti` nello scenario con 200 clienti):
+/// - aggiornamento: l'azione, un giro del run loop (SwiftUI applica lì le modifiche) e `layoutSubtreeIfNeeded()`,
+///   a ogni giro;
+/// - disegno: `cacheDisplay(in:to:)` completo in un bitmap riusato (riferimento, non incrementale), una volta
+///   sola per azione (al primo giro misurato): sul runner costa circa 1 s e varia poco;
+/// - mediana e massimo: dell'aggiornamento, più il disegno;
 /// - avvisi: gli `objectWillChange` di `StatoShell` durante l'azione (ogni avviso rivaluta tutte le viste che lo osservano,
 ///   cioè le app aperte e i widget) e quelli di `StatoFinestre` (finestre, pannelli e blocco: shell, dock, barra e pannelli).
 ///
 /// Due scenari: i clienti di prova, e 200 clienti con quattro app pesanti aperte sotto (Posizioni in modalità
-/// portafoglio, Prospetti e report, Clienti, Agenda).
+/// portafoglio, Prospetti e report, Clienti, Agenda). Dopo ogni scenario la shell si chiude davvero e si stampa
+/// la memoria, con la verifica che `StatoShell` sia stato liberato (nessun ciclo di riferimenti).
+///
+/// La prova gira dentro `PrismaApp.init`, prima del ciclo degli eventi di NSApplication: niente svuoterebbe
+/// gli autorelease pool fino alla fine. Per questo ogni passo ha il suo pool, svuotato dopo la pausa
+/// (fuori dal tempo misurato): i numeri non cambiano e la memoria non cresce con il numero dei disegni.
 ///
 /// Niente archivio e niente permessi: `StatoShell(persistente: false)` non legge né scrive il disco, non tocca
 /// il Portachiavi e non chiede il permesso delle notifiche; i promemoria del Mac sono spenti anche perché
 /// l'app è avviata con un argomento `--` (vedi `PromemoriaMac.disponibili`).
 ///
 /// I limiti sono larghissimi (il runner Intel virtuale è lento e senza una GPU vera): fallisce solo se la mediana
-/// dell'avvio supera 8 s, quella di un'azione 3 s, o se dopo un'azione lo stato non è quello atteso.
+/// dell'avvio supera 8 s, quella di un'azione 3 s, la prima apertura delle app pesanti 8 s, o se dopo un'azione
+/// lo stato non è quello atteso.
 @MainActor
 enum ProvaFluidita {
     static var misura: CGSize { Istantanee.dimensione }
-    /// Giri misurati per ogni azione (dopo quello di riscaldamento) e giri dell'avvio (stato nuovo ogni volta).
-    static let giri = 5
+    /// Giri misurati per ogni azione (dopo quello di riscaldamento): con i clienti di prova e nello scenario
+    /// con 200 clienti e le app pesanti (più snello: ogni giro lì costa di più). Giri dell'avvio (stato nuovo ogni volta).
+    static let giri = 3
+    static let giriPesanti = 2
     static let giriAvvio = 3
-    // Limiti oltre i quali la prova fallisce (sulla mediana dei giri), in secondi
+    // Limiti oltre i quali la prova fallisce (sulla mediana dell'aggiornamento più il disegno), in secondi
     static let limiteAvvio = 8.0
     static let limiteAzione = 3.0
-    /// Oltre questa durata le misure rimaste si saltano (con un'avvertenza, senza fallire): la build non si allunga troppo.
-    static let limiteTempo = 600.0
+    /// La prima apertura delle quattro app pesanti con 200 clienti (una misura sola).
+    static let limitePrimaApertura = 8.0
+    /// La durata a cui punta la prova (oltre, solo un'avvertenza: la build non deve allungarsi).
+    static let durataAttesa = 300.0
+    /// Oltre questa durata le misure rimaste si saltano (con un'avvertenza, senza fallire): rete di sicurezza.
+    static let limiteTempo = 420.0
     /// Il giro del run loop dopo ogni azione: SwiftUI applica lì le modifiche dello stato.
     static let giroRunLoop = 0.002
     /// Pausa non misurata tra un'azione e l'altra; più lunga dopo una modifica dei dati, perché
     /// le notifiche si ricalcolano 0,4 s dopo (e non devono finire nella misura successiva).
     static let attesaBreve = 0.01
     static let attesaDati = 0.5
+    /// Dopo la chiusura di uno scenario: i lavori rimandati di pochi decimi finiscono prima della verifica del rilascio.
+    static let attesaRilascio = 1.0
     static let fuoriSchermo = NSPoint(x: -20000, y: -20000)
     static let origineSpostata = CGPoint(x: 48, y: 32)
     /// Le app pesanti dello scenario con 200 clienti, dalla più in fondo a quella in primo piano.
@@ -62,29 +80,55 @@ enum ProvaFluidita {
             print("ERRORE: archivio con \(ProvaCarico.copie) copie dei clienti di prova non creato: \(error.localizedDescription)")
             return 1
         }
+        sessione.notaMemoria("all'inizio")
 
-        scenario(sessione, nome: "\(DatiPrisma.demo().clienti.count) clienti", dati: nil, pesanti: false)
-        scenario(sessione, nome: "\(molti.clienti.count) clienti", dati: molti, pesanti: true)
+        scenarioRilasciato(sessione, nome: "\(DatiPrisma.demo().clienti.count) clienti", dati: nil, pesanti: false)
+        scenarioRilasciato(sessione, nome: "\(molti.clienti.count) clienti", dati: molti, pesanti: true)
         return sessione.concludi(uscita: uscita)
     }
 
+    /// Uno scenario nel suo pool; dopo la chiusura, la durata, la memoria e se StatoShell è stato liberato.
+    private static func scenarioRilasciato(_ s: SessioneFluidita, nome: String, dati: DatiPrisma?, pesanti: Bool) {
+        let inizio = CACurrentMediaTime()
+        weak var lasciato: StatoShell?
+        autoreleasepool {
+            let stato = scenario(s, nome: nome, dati: dati, pesanti: pesanti)
+            lasciato = stato
+        }
+        let durata = CACurrentMediaTime() - inizio
+        // I lavori rimandati di pochi decimi tengono lo stato finché non partono: hanno il tempo di finire
+        lasciaGirare(attesaRilascio)
+        print("INFO fluidità · \(nome): scenario misurato in \(secondi(durata))")
+        // Per ora un'avvertenza, non un errore: SwiftUI potrebbe tenere l'oggetto ancora per un giro
+        if lasciato == nil {
+            print("OK    fluidità · \(nome): la shell chiusa lascia andare StatoShell (nessun ciclo di riferimenti)")
+        } else {
+            print("ATTENZIONE fluidità · \(nome): StatoShell resta in memoria dopo la chiusura della shell (un ciclo di riferimenti?)")
+        }
+        s.notaMemoria("dopo lo scenario con \(nome) (shell chiusa)")
+    }
+
     /// Uno scenario: avvio, apertura e chiusura di ogni app, poi le azioni sulle app aperte.
-    private static func scenario(_ s: SessioneFluidita, nome: String, dati: DatiPrisma?, pesanti: Bool) {
+    /// Restituisce lo stato (già chiuso) per la verifica del rilascio.
+    @discardableResult
+    private static func scenario(_ s: SessioneFluidita, nome: String, dati: DatiPrisma?, pesanti: Bool) -> StatoShell {
         s.scenario = nome
+        s.giri = pesanti ? ProvaFluidita.giriPesanti : ProvaFluidita.giri
         let banco = s.avvio(dati: dati)
         defer { banco.chiudi() }
         let stato = banco.stato
         let lavoro: [AppPrisma] = pesanti ? appPesanti : [.clienti, .posizioni]
+        s.notaMemoria("\(nome), dopo l'avvio")
 
         func ingrandita(_ app: AppPrisma) -> Bool? { stato.finestre.first { $0.app == app }?.ingrandita }
 
         if pesanti {
             // Posizioni in modalità portafoglio (i motori su tutti i clienti), Prospetti, Clienti e Agenda, aperte sotto.
-            // La prima apertura è come un avvio: vale il limite dell'avvio
+            // La prima apertura è come un avvio: ha il suo limite
             s.unaVolta(banco, PassoFluidita(nome: "apre \(lavoro.count) app pesanti (prima volta)", azione: {
                 stato.portafoglio = true
                 for app in lavoro { stato.apri(app) }
-            }, verifica: { lavoro.allSatisfy { stato.aperta($0) } }), limite: limiteAvvio)
+            }, verifica: { lavoro.allSatisfy { stato.aperta($0) } }), limite: limitePrimaApertura)
         }
 
         // Ogni app del dock, una alla volta: apertura e chiusura (le app già aperte: chiusura e riapertura)
@@ -95,6 +139,7 @@ enum ProvaFluidita {
                                        verifica: { !stato.aperta(app) })
             s.misura(banco, stato.aperta(app) ? [chiudi, apri] : [apri, chiudi])
         }
+        s.notaMemoria("\(nome), dopo il giro delle app")
 
         // Da qui in poi le app di lavoro restano aperte
         s.prepara(banco) { for app in lavoro where !stato.aperta(app) { stato.apri(app) } }
@@ -203,6 +248,31 @@ enum ProvaFluidita {
             PassoFluidita(nome: "chiudi «Le tue app aperte»", azione: { stato.pannelloAppAperte = false },
                           verifica: { !stato.pannelloAppAperte }),
         ])
+        s.notaMemoria("\(nome), alla fine (shell aperta)")
+        return stato
+    }
+
+    /// Lascia girare il run loop senza misurare (lavori rimandati, notifiche ricalcolate), con un pool per giro.
+    static func lasciaGirare(_ secondi: Double) {
+        let fine = CACurrentMediaTime() + secondi
+        while CACurrentMediaTime() < fine {
+            autoreleasepool {
+                _ = RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.002))
+            }
+        }
+    }
+
+    /// L'impronta fisica del processo in MB (`phys_footprint`): la cifra di Monitoraggio Attività e della
+    /// memoria compressa di macOS, senza le pagine pulite e condivise dei framework che conta la residente.
+    nonisolated static func improntaMB() -> Double {
+        var info = task_vm_info_data_t()
+        var conta = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let esito = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(conta)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &conta)
+            }
+        }
+        return esito == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : 0
     }
 
     /// Mediana (0 se non ci sono valori).
@@ -234,26 +304,29 @@ private struct RigaFluidita {
     let scenario: String
     let azione: String
     let limite: Double
+    /// L'aggiornamento giro per giro (azione, run loop e impaginazione).
     var aggiornamento: [Double] = []
-    var disegno: [Double] = []
-    /// Aggiornamento + disegno, giro per giro.
-    var tempi: [Double] = []
+    /// Il disegno completo, misurato una volta per azione (nil se non misurato o se il server non disegna).
+    var disegno: Double?
     var avvisi: [Int] = []
     var avvisiFinestre: [Int] = []
-    /// Il giro di riscaldamento (aggiornamento + disegno), escluso da mediana e massimo.
+    /// L'aggiornamento del giro di riscaldamento, escluso da mediana e massimo.
     var primaVolta: Double?
     var incoerente = false
 
+    /// Mediana dell'aggiornamento più il disegno: il valore che si confronta con il limite.
+    var mediana: Double { ProvaFluidita.mediana(aggiornamento) + (disegno ?? 0) }
+    /// L'aggiornamento più lento più il disegno.
+    var massimo: Double { (aggiornamento.max() ?? 0) + (disegno ?? 0) }
+
     mutating func registra(aggiornamento t: Double, disegno d: Double?, conteggio: Int?, conteggioFinestre: Int? = nil,
                            riscaldamento: Bool) {
-        let somma = t + (d ?? 0)
         if riscaldamento {
-            primaVolta = somma
+            primaVolta = t
             return
         }
         aggiornamento.append(t)
-        if let d { disegno.append(d) }
-        tempi.append(somma)
+        if let d { disegno = d }
         if let conteggio { avvisi.append(conteggio) }
         if let conteggioFinestre { avvisiFinestre.append(conteggioFinestre) }
     }
@@ -276,6 +349,7 @@ private final class BancoFluidita {
     private var abbonamenti = Set<AnyCancellable>()
     private var bitmap: NSBitmapImageRep?
     private var bitmapProvato = false
+    private var chiuso = false
 
     init(stato: StatoShell) {
         self.stato = stato
@@ -340,15 +414,21 @@ private final class BancoFluidita {
 
     /// Lascia girare il run loop senza misurare (lavori rimandati, notifiche ricalcolate).
     func riposa(_ secondi: Double) {
-        let fine = CACurrentMediaTime() + secondi
-        while CACurrentMediaTime() < fine {
-            _ = RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.002))
-        }
+        ProvaFluidita.lasciaGirare(secondi)
     }
 
+    /// Libera davvero la shell: il grafo di SwiftUI lascia andare StatoShell e le viste delle app,
+    /// la finestra il suo contenuto, il banco il bitmap. La finestra si toglie dallo schermo ma non si chiude
+    /// con `close()`: con la scena `Window` di SwiftUI chiudere l'ultima finestra può terminare l'app;
+    /// la rilascia il banco (isReleasedWhenClosed = false).
     func chiudi() {
+        guard !chiuso else { return }
+        chiuso = true
         abbonamenti.removeAll()
         finestra.orderOut(nil)
+        host.rootView = AnyView(EmptyView())
+        finestra.contentView = nil
+        bitmap = nil
     }
 }
 
@@ -356,10 +436,13 @@ private final class BancoFluidita {
 @MainActor
 private final class SessioneFluidita {
     var scenario = ""
+    /// Giri misurati per azione nello scenario in corso.
+    var giri = ProvaFluidita.giri
     private(set) var righe: [RigaFluidita] = []
     private(set) var errori = 0
     private var saltate = 0
     private var disegnoAssenteSegnalato = false
+    private var noteMemoria: [String] = []
     private let inizio = CACurrentMediaTime()
 
     var trascorso: Double { CACurrentMediaTime() - inizio }
@@ -369,34 +452,51 @@ private final class SessioneFluidita {
         if !ok { errori += 1 }
     }
 
-    /// Stato nuovo, dati, finestra, primo aggiornamento e primo disegno, `giriAvvio` volte: resta l'ultimo banco.
+    /// La memoria a un punto della prova: residente e impronta fisica (stampata e riportata nella tabella).
+    func notaMemoria(_ quando: String) {
+        let riga = "\(quando): \(Int(ProvaCarico.memoriaMB())) MB residenti, \(Int(ProvaFluidita.improntaMB())) MB di impronta"
+        print("INFO fluidità · memoria \(riga)")
+        noteMemoria.append(riga)
+    }
+
+    /// Stato nuovo, dati, finestra e primo aggiornamento, `giriAvvio` volte; il primo disegno si misura
+    /// nell'ultimo giro. Resta l'ultimo banco.
     func avvio(dati: DatiPrisma?) -> BancoFluidita {
         var riga = RigaFluidita(scenario: scenario, azione: "avvio (stato, dati e primo disegno)", limite: ProvaFluidita.limiteAvvio)
         var ultimo: BancoFluidita?
-        for _ in 0..<ProvaFluidita.giriAvvio {
-            ultimo?.chiudi()
-            ultimo = nil
-            let inizio = CACurrentMediaTime()
-            let stato = StatoShell(persistente: false)
-            if let dati {
-                stato.dati = dati
-                // Come all'avvio vero, le notifiche si calcolano subito su tutto l'archivio
-                stato.ricalcolaNotifiche()
+        for giro in 0..<ProvaFluidita.giriAvvio {
+            // Il banco di prima si chiude e il suo pool si svuota prima di misurare quello nuovo
+            autoreleasepool {
+                ultimo?.chiudi()
+                ultimo = nil
             }
-            let banco = BancoFluidita(stato: stato)
-            _ = banco.aggiorna {}
-            let t = CACurrentMediaTime() - inizio
-            let d = banco.disegna()
-            segnalaDisegno(d)
-            riga.registra(aggiornamento: t, disegno: d, conteggio: nil, riscaldamento: false)
-            banco.riposa(ProvaFluidita.attesaDati)
-            ultimo = banco
+            autoreleasepool {
+                let inizio = CACurrentMediaTime()
+                let stato = StatoShell(persistente: false)
+                if let dati {
+                    stato.dati = dati
+                    // Come all'avvio vero, le notifiche si calcolano subito su tutto l'archivio
+                    stato.ricalcolaNotifiche()
+                }
+                let banco = BancoFluidita(stato: stato)
+                _ = banco.aggiorna {}
+                let t = CACurrentMediaTime() - inizio
+                var d: Double?
+                if giro == ProvaFluidita.giriAvvio - 1 {
+                    d = banco.disegna()
+                    segnalaDisegno(d)
+                }
+                riga.registra(aggiornamento: t, disegno: d, conteggio: nil, riscaldamento: false)
+                banco.riposa(ProvaFluidita.attesaDati)
+                ultimo = banco
+            }
         }
         righe.append(riga)
         return ultimo ?? BancoFluidita(stato: StatoShell(persistente: false))
     }
 
-    /// Le azioni date, una dopo l'altra, per un giro di riscaldamento e `giri` giri misurati.
+    /// Le azioni date, una dopo l'altra, per un giro di riscaldamento e `giri` giri misurati;
+    /// il disegno al primo giro misurato.
     func misura(_ banco: BancoFluidita, _ passi: [PassoFluidita]) {
         guard !passi.isEmpty else { return }
         guard trascorso < ProvaFluidita.limiteTempo else {
@@ -407,42 +507,52 @@ private final class SessioneFluidita {
         for p in passi {
             righe.append(RigaFluidita(scenario: scenario, azione: p.nome, limite: ProvaFluidita.limiteAzione))
         }
-        for giro in 0...ProvaFluidita.giri {
+        for giro in 0...giri {
             for (k, passo) in passi.enumerated() {
-                let esito = prova(banco, passo)
-                righe[primo + k].registra(aggiornamento: esito.aggiornamento, disegno: esito.disegno,
-                                          conteggio: esito.avvisi, conteggioFinestre: esito.avvisiFinestre,
-                                          riscaldamento: giro == 0)
-                if !passo.verifica() { righe[primo + k].incoerente = true }
-                banco.riposa(esito.datiCambiati ? ProvaFluidita.attesaDati : ProvaFluidita.attesaBreve)
+                // Un pool per passo, svuotato dopo la pausa (fuori dalla misura)
+                autoreleasepool {
+                    let esito = prova(banco, passo, disegno: giro == 1)
+                    righe[primo + k].registra(aggiornamento: esito.aggiornamento, disegno: esito.disegno,
+                                              conteggio: esito.avvisi, conteggioFinestre: esito.avvisiFinestre,
+                                              riscaldamento: giro == 0)
+                    if !passo.verifica() { righe[primo + k].incoerente = true }
+                    banco.riposa(esito.datiCambiati ? ProvaFluidita.attesaDati : ProvaFluidita.attesaBreve)
+                }
             }
         }
     }
 
-    /// Un'azione misurata una volta sola, senza riscaldamento (per esempio la prima apertura delle app pesanti).
+    /// Un'azione misurata una volta sola (aggiornamento e disegno), senza riscaldamento
+    /// (per esempio la prima apertura delle app pesanti).
     func unaVolta(_ banco: BancoFluidita, _ passo: PassoFluidita, limite: Double) {
         var riga = RigaFluidita(scenario: scenario, azione: passo.nome, limite: limite)
-        let esito = prova(banco, passo)
-        riga.registra(aggiornamento: esito.aggiornamento, disegno: esito.disegno, conteggio: esito.avvisi,
-                      conteggioFinestre: esito.avvisiFinestre, riscaldamento: false)
-        if !passo.verifica() { riga.incoerente = true }
+        autoreleasepool {
+            let esito = prova(banco, passo, disegno: true)
+            riga.registra(aggiornamento: esito.aggiornamento, disegno: esito.disegno, conteggio: esito.avvisi,
+                          conteggioFinestre: esito.avvisiFinestre, riscaldamento: false)
+            if !passo.verifica() { riga.incoerente = true }
+            banco.riposa(ProvaFluidita.attesaDati)
+        }
         righe.append(riga)
-        banco.riposa(ProvaFluidita.attesaDati)
     }
 
-    /// Prepara lo stato senza misurare.
+    /// Prepara lo stato senza misurare (e senza disegnare).
     func prepara(_ banco: BancoFluidita, _ cambia: () -> Void) {
-        _ = banco.aggiorna(cambia)
-        _ = banco.disegna()
-        banco.riposa(ProvaFluidita.attesaDati)
+        autoreleasepool {
+            _ = banco.aggiorna(cambia)
+            banco.riposa(ProvaFluidita.attesaDati)
+        }
     }
 
-    private func prova(_ banco: BancoFluidita, _ passo: PassoFluidita)
+    private func prova(_ banco: BancoFluidita, _ passo: PassoFluidita, disegno: Bool)
         -> (aggiornamento: Double, disegno: Double?, avvisi: Int, avvisiFinestre: Int, datiCambiati: Bool) {
         banco.azzeraConti()
         let t = banco.aggiorna(passo.azione)
-        let d = banco.disegna()
-        segnalaDisegno(d)
+        var d: Double?
+        if disegno {
+            d = banco.disegna()
+            segnalaDisegno(d)
+        }
         return (t, d, banco.conti.avvisi, banco.conti.avvisiFinestre, banco.conti.modificheDati > 0)
     }
 
@@ -458,18 +568,20 @@ private final class SessioneFluidita {
         var tabella: [String] = [
             "### Fluidità\(commit)",
             "",
-            "Tempi del thread principale: mediana e massimo su \(ProvaFluidita.giri) giri, dopo un giro di riscaldamento (prima volta). "
+            "Tempi del thread principale. Mediana e massimo = aggiornamento (mediana e massimo su \(ProvaFluidita.giri) giri, "
+                + "\(ProvaFluidita.giriPesanti) con le app pesanti, dopo un giro di riscaldamento) + un disegno per azione. "
                 + "Aggiornamento = azione, run loop e impaginazione; disegno = cacheDisplay completo; "
+                + "prima volta = aggiornamento del giro di riscaldamento; "
                 + "avvisi = objectWillChange di StatoShell (app e widget) e di StatoFinestre (shell, dock, barra, pannelli) durante l'azione.",
             "",
             "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Avvisi StatoShell | Avvisi StatoFinestre |",
             "|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
         for r in righe {
-            let mediana = ProvaFluidita.mediana(r.tempi)
-            let massimo = r.tempi.max() ?? 0
+            let mediana = r.mediana
+            let massimo = r.massimo
             let aggiornamento = ProvaFluidita.mediana(r.aggiornamento)
-            let disegno: Double? = r.disegno.isEmpty ? nil : ProvaFluidita.mediana(r.disegno)
+            let disegno = r.disegno
             let conteggi = r.avvisi.sorted()
             let avvisi: Int? = conteggi.isEmpty ? nil : conteggi[conteggi.count / 2]
             let conteggiFinestre = r.avvisiFinestre.sorted()
@@ -510,10 +622,20 @@ private final class SessioneFluidita {
             print("ATTENZIONE \(saltate) azioni non misurate: la prova ha superato \(ProvaFluidita.secondi(ProvaFluidita.limiteTempo))")
             tabella.append("\(saltate) azioni non misurate: la prova ha superato \(ProvaFluidita.secondi(ProvaFluidita.limiteTempo)).")
         }
+        let durata = trascorso
+        if durata > ProvaFluidita.durataAttesa {
+            print("ATTENZIONE la prova è durata \(ProvaFluidita.secondi(durata)), più dei \(ProvaFluidita.secondi(ProvaFluidita.durataAttesa)) previsti")
+        }
         let mb = ProvaCarico.memoriaMB()
-        let durata = ProvaFluidita.secondi(trascorso)
-        print("INFO fluidità: \(righe.count) misure in \(durata), memoria occupata alla fine \(Int(mb)) MB")
-        tabella.append("Memoria occupata alla fine: \(Int(mb)) MB · durata della prova: \(durata).")
+        let impronta = ProvaFluidita.improntaMB()
+        print("INFO fluidità: \(righe.count) misure in \(ProvaFluidita.secondi(durata)), memoria alla fine "
+            + "\(Int(mb)) MB residenti, \(Int(impronta)) MB di impronta")
+        if !noteMemoria.isEmpty {
+            tabella.append("Memoria: " + noteMemoria.joined(separator: " · ") + ".")
+            tabella.append("")
+        }
+        tabella.append("Memoria alla fine: \(Int(mb)) MB residenti, \(Int(impronta)) MB di impronta · "
+            + "durata della prova: \(ProvaFluidita.secondi(durata)).")
         tabella.append("")
 
         if let uscita {

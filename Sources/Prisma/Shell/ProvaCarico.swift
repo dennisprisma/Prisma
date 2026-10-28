@@ -135,6 +135,25 @@ enum ProvaCarico {
             controlla(stato.cliente(primo.id)?.nome == nome + " (prova)", "Cache dei clienti aggiornata dopo una modifica")
             stato.dati.clienti[i].nome = nome
         }
+        // Una nota del taccuino non ricalcola il portafoglio (le cache seguono solo i dati dei calcoli),
+        // ma il fascicolo, che legge le note, si impagina di nuovo
+        if let i = stato.dati.note.indices.first {
+            _ = stato.riepilogoPortafoglio(canale: nil, area: nil)
+            _ = stato.portafoglioComune()
+            _ = stato.documentoProspettoInCache(.fascicolo)
+            let calcoli = stato.versioneCalcoli
+            let generazione = stato.generazioneDocumento
+            stato.dati.note[i].testo += "·"
+            let dopoNota = tempo {
+                _ = stato.riepilogoPortafoglio(canale: nil, area: nil)
+                _ = stato.portafoglioComune()
+            }
+            controlla(stato.versioneCalcoli == calcoli && dopoNota < limiteCache,
+                      "Una nota non ricalcola il portafoglio (\(secondi(dopoNota)), limite \(secondi(limiteCache)))")
+            _ = stato.documentoProspettoInCache(.fascicolo)
+            controlla(stato.generazioneDocumento != generazione, "Una nota impagina di nuovo il fascicolo, che legge le note")
+            stato.dati.note[i].testo.removeLast()
+        }
 
         // Agenda: il mese raggruppato in un passaggio dà gli stessi giorni del calcolo giorno per giorno
         let giorniMese = CalendarioAgenda.settimane(meseDi: stato.appuntamenti.first?.inizio ?? Date()).flatMap { $0 }

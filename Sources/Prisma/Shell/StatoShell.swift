@@ -28,16 +28,29 @@ final class StatoShell: ObservableObject {
     }
 
     /// Dati dell'archivio locale: ogni modifica viene salvata da sola.
-    @Published var dati: DatiPrisma { didSet { versioneDati &+= 1 } }
-    /// Cresce a ogni modifica dei dati: chiave O(1) per le cache dei calcoli. Non pubblicata.
+    @Published var dati: DatiPrisma {
+        didSet {
+            versioneDati &+= 1
+            // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
+            if dati.note != oldValue.note { versioneNote &+= 1 }
+            if !dati.stessiCalcoli(di: oldValue) { versioneCalcoli &+= 1 }
+        }
+    }
+    /// Cresce a ogni modifica dei dati (salvataggio, segno della cache del dossier per Eve). Non pubblicata.
     private(set) var versioneDati = 0
+    /// Cresce quando cambia qualcosa che entra nei calcoli e nei documenti: tutto tranne le note del taccuino,
+    /// le conversazioni con Eve, gli spazi di lavoro, il cliente attivo e le impostazioni che non toccano i
+    /// calcoli (DatiPrisma.stessiCalcoli). È la chiave delle cache di DerivatiDati. Non pubblicata.
+    private(set) var versioneCalcoli = 0
+    /// Cresce quando cambiano le note del taccuino (le leggono i documenti, per esempio il fascicolo). Non pubblicata.
+    private(set) var versioneNote = 0
 
     /// Finestre interne, pannelli e blocco (StatoShellFinestre.swift ne inoltra le proprietà con i nomi di sempre):
     /// cambiarli non pubblica StatoShell, così le app aperte e i widget non si ricalcolano.
     let sistema = StatoFinestre()
     /// Titoli e abilitazioni del menu Vai (li osserva solo ComandiPrisma).
     let menu = StatoMenu()
-    /// Dati ricavati dall'archivio, tenuti da parte per `versioneDati` (DerivatiDati.swift).
+    /// Dati ricavati dall'archivio, tenuti da parte per `versioneCalcoli` (DerivatiDati.swift).
     let derivati = DerivatiDati()
 
     @Published private(set) var avviso: String?
@@ -279,6 +292,11 @@ final class StatoShell: ObservableObject {
         }
         avviaNotifiche()
         collegaMenu()
+    }
+
+    deinit {
+        // Il run loop trattiene il timer: senza questo resterebbe acceso dopo uno stato delle prove o delle istantanee
+        timerNotifiche?.invalidate()
     }
 
     /// Il menu Vai segue blocco, modalità cliente, presentazione e conversazione a voce, senza osservare StatoShell.

@@ -183,6 +183,24 @@ struct WidgetAgenda: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora: non a ogni
+        // nota, messaggio di Eve o cliente scelto
+        CorpoWidgetAgenda(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Il giorno e i prossimi incontri. Non osserva StatoShell (lo riceve per i dati in cache e per le azioni):
+/// si ridisegna quando cambia la chiave, e il giorno grande anche ogni minuto (TimelineView).
+private struct CorpoWidgetAgenda: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetAgenda, b: CorpoWidgetAgenda) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
         HStack(spacing: 0) {
             TimelineView(.everyMinute) { contesto in
                 giorno(contesto.date)
@@ -192,8 +210,6 @@ struct WidgetAgenda: View {
             incontri
                 .padding(.leading, Tema.Misura.widgetMargine)
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     /// Il giorno grande: giorno della settimana in rosso, numero, mese e il riepilogo di oggi.
@@ -300,11 +316,32 @@ private struct RigaIncontro: View {
 
 struct WidgetCliente: View {
     @EnvironmentObject var stato: StatoShell
-    @State var sceltaCliente = false
+
+    var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi (anche la nota del cliente), un altro cliente
+        // in primo piano, un altro giorno o un'altra ora
+        CorpoWidgetCliente(stato: stato, chiave: stato.chiaveVista, attivo: stato.clienteAttivoId)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Il cliente in primo piano: non osserva StatoShell (lo riceve per i dati in cache e per le azioni).
+private struct CorpoWidgetCliente: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+    /// Il cliente in primo piano: non entra nei calcoli, quindi va nella chiave a parte.
+    let attivo: String
+    @State private var sceltaCliente = false
     /// I pulsanti in basso: le app si aprono da lì.
     @State private var origineScheda = OrigineApertura()
     @State private var originePosizioni = OrigineApertura()
     @State private var origineEve = OrigineApertura()
+
+    nonisolated static func == (a: CorpoWidgetCliente, b: CorpoWidgetCliente) -> Bool {
+        a.chiave == b.chiave && a.attivo == b.attivo
+    }
 
     /// I numeri del cliente, calcolati una volta sola per tutte le varianti.
     private struct Numeri {
@@ -314,7 +351,7 @@ struct WidgetCliente: View {
     }
 
     var body: some View {
-        let id = stato.clienteAttivoId
+        let id = attivo
         let numeri = Numeri(riepilogo: stato.riepilogoPosizioniCliente(id),
                             incontro: stato.prossimiAppuntamenti.first { $0.clienteId == id }
                                 .map { "\(Formati.giornoRelativo($0.inizio)), \(Formati.ora.string(from: $0.inizio))" } ?? "—",
@@ -336,8 +373,6 @@ struct WidgetCliente: View {
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     private func contenuto(_ n: Numeri, righe: Int, nota: Bool, pulsanti: Bool) -> some View {
@@ -488,20 +523,38 @@ struct WidgetAttivita: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
+        CorpoWidgetAttivita(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Le attività aperte: non osserva StatoShell (lo riceve per i dati in cache e per le azioni). Pila pigra:
+/// con molti clienti le attività aperte sono centinaia, ma si impaginano solo le righe che si vedono.
+private struct CorpoWidgetAttivita: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetAttivita, b: CorpoWidgetAttivita) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
         let aperte = stato.attivitaAperte
-        VStack(alignment: .leading, spacing: 0) {
+        let ultima = aperte.last?.id
+        return VStack(alignment: .leading, spacing: 0) {
             IntestazioneWidget(titolo: aperte.isEmpty ? "Da fare" : "\(aperte.count) \(aperte.count == 1 ? "attività aperta" : "attività aperte")",
                                icona: .attivita) {
                 CollegamentoApp(testo: "Apri Attività", app: .attivita)
             }
             ScrollView {
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     if aperte.isEmpty {
                         ElencoVuoto(testo: "Tutto fatto.")
                     }
                     ForEach(aperte) { a in
                         // Senza animazione: una transazione animata su `dati` muoverebbe tutte le viste delle attività
-                        RigaAttivita(attivita: a, cliente: stato.cliente(a.clienteId), ultima: a.id == aperte.last?.id) {
+                        RigaAttivita(attivita: a, cliente: stato.cliente(a.clienteId), ultima: a.id == ultima) {
                             stato.alternaCompletata(a.id)
                         }
                     }
@@ -509,8 +562,6 @@ struct WidgetAttivita: View {
             }
             .sfumaInBasso()
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 }
 
@@ -520,8 +571,24 @@ struct WidgetScadenze: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
+        CorpoWidgetScadenze(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// Le posizioni in scadenza: non osserva StatoShell (lo riceve per i dati in cache e per le azioni).
+private struct CorpoWidgetScadenze: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetScadenze, b: CorpoWidgetScadenze) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
         let scadenze = Array(stato.riepilogoTuttePosizioni.inScadenza.prefix(6))
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             IntestazioneWidget(titolo: "In scadenza entro \(RiepilogoPosizioni.giorniScadenza) giorni", icona: .posizioni) {
                 CollegamentoApp(testo: "Apri Posizioni", app: .posizioni, prima: { stato.portafoglio = false })
             }
@@ -537,8 +604,6 @@ struct WidgetScadenze: View {
             }
             .sfumaInBasso()
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     private func riga(_ p: Posizione) -> some View {
@@ -589,8 +654,24 @@ struct WidgetPortafoglio: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
+        // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
+        CorpoWidgetPortafoglio(stato: stato, chiave: stato.chiaveVista)
+            .equatable()
+            .padding(Tema.Misura.widgetMargine)
+            .corniceWidget()
+    }
+}
+
+/// I numeri di tutti i clienti: non osserva StatoShell (lo riceve per i dati in cache e per le azioni).
+private struct CorpoWidgetPortafoglio: View, Equatable {
+    let stato: StatoShell
+    let chiave: ChiaveVista
+
+    nonisolated static func == (a: CorpoWidgetPortafoglio, b: CorpoWidgetPortafoglio) -> Bool { a.chiave == b.chiave }
+
+    var body: some View {
         let r = stato.riepilogoTuttePosizioni
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             IntestazioneWidget(titolo: "Portafoglio clienti", icona: .posizioni) {
                 CollegamentoApp(testo: "Apri", app: .posizioni, prima: { stato.portafoglio = true })
             }
@@ -605,8 +686,6 @@ struct WidgetPortafoglio: View {
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             }
         }
-        .padding(Tema.Misura.widgetMargine)
-        .corniceWidget()
     }
 
     private func numeri(_ r: RiepilogoPosizioni, legenda: Bool, proposte: Bool) -> some View {

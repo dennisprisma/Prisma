@@ -34,13 +34,31 @@ struct BarraQuotaPortafoglio: View {
 
     var body: some View {
         let forma = RoundedRectangle(cornerRadius: Tema.Raggio.barraCanali, style: .continuous)
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                forma.fill(Colori.Portafoglio.barraFondo)
-                forma.fill(colore).frame(width: geo.size.width * CGFloat(min(max(quota, 0), 1)))
+        // Le stesse misure del GeometryReader di prima, senza il suo doppio passaggio per riga
+        ZStack(alignment: .leading) {
+            forma.fill(Colori.Portafoglio.barraFondo)
+            LarghezzaQuota(quota: CGFloat(min(max(quota, 0), 1))) {
+                forma.fill(colore)
             }
         }
         .frame(height: Misure.Portafoglio.barra)
+    }
+}
+
+/// Occupa tutto lo spazio proposto (come un GeometryReader: 10 pt dove la proposta non dice nulla) e mette il
+/// figlio largo `quota` di quella larghezza, allineato a sinistra e alto quanto lo spazio.
+private struct LarghezzaQuota: Layout {
+    let quota: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for figlio in subviews {
+            figlio.place(at: bounds.origin, anchor: .topLeading,
+                         proposal: ProposedViewSize(width: bounds.width * quota, height: bounds.height))
+        }
     }
 }
 

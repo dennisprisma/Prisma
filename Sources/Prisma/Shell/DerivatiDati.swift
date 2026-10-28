@@ -2,9 +2,10 @@ import Foundation
 
 // Proprietario: G3 (calcoli nei body).
 
-/// Dati ricavati dall'archivio e tenuti da parte finché non cambiano i dati (`versioneDati`), il giorno o la
-/// modalità cliente: una classe, così si aggiorna dai getter senza pubblicare StatoShell. Ogni voce si calcola
-/// alla prima richiesta dopo un cambiamento, non tutte insieme. Si usa solo dal thread principale.
+/// Dati ricavati dall'archivio e tenuti da parte finché non cambiano i dati dei calcoli (`versioneCalcoli`: una
+/// nota, Eve, l'aspetto o il cliente attivo non contano), il giorno o la modalità cliente: una classe, così si
+/// aggiorna dai getter senza pubblicare StatoShell. Ogni voce si calcola alla prima richiesta dopo un
+/// cambiamento, non tutte insieme. Si usa solo dal thread principale.
 final class DerivatiDati {
     /// Ciò da cui dipende tutto il resto: con una chiave nuova si riparte da zero.
     struct Chiave: Equatable {
@@ -26,9 +27,11 @@ final class DerivatiDati {
         let ora: Int
     }
 
-    /// Tutto ciò che cambia un documento di Prospetti oltre ai dati, al giorno e alla modalità cliente.
+    /// Tutto ciò che cambia un documento di Prospetti oltre ai dati dei calcoli, al giorno e alla modalità cliente.
     struct ChiaveDocumento: Equatable {
         let scelta: SceltaProspetto
+        /// Le note del taccuino (`versioneNote`): le legge il fascicolo dell'incontro.
+        let note: Int
         let prospetto: SceltaProspetto?
         let cliente: String
         let orizzonteConfronto: Int?
@@ -67,8 +70,19 @@ final class DerivatiDati {
     var portafoglioComune: (ora: Int, valore: PortafoglioComune)?
     var portafoglio: (chiave: ChiavePortafoglio, valore: Portafoglio)?
     var documento: (chiave: ChiaveDocumento, valore: DocumentoStampabile?)?
+    /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
+    /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
+    /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
+    private(set) var generazioneDocumento = 0
+    nonisolated(unsafe) private static var ultimaGenerazione = 0
 
-    /// Dati, giorno o modalità cliente cambiati: si dimentica tutto.
+    /// Un documento impaginato adesso: prende un numero nuovo.
+    func nuovaGenerazioneDocumento() {
+        DerivatiDati.ultimaGenerazione &+= 1
+        generazioneDocumento = DerivatiDati.ultimaGenerazione
+    }
+
+    /// Dati dei calcoli, giorno o modalità cliente cambiati: si dimentica tutto (non il numero del documento).
     func azzera(_ nuova: Chiave) {
         chiave = nuova
         clientiPerId = nil
@@ -90,9 +104,10 @@ final class DerivatiDati {
 }
 
 extension StatoShell {
-    /// I dati ricavati validi per lo stato di adesso (azzerati se dati, giorno o modalità cliente sono cambiati).
+    /// I dati ricavati validi per lo stato di adesso (azzerati se i dati dei calcoli, il giorno o la modalità
+    /// cliente sono cambiati).
     func derivatiValidi() -> DerivatiDati {
-        let k = DerivatiDati.Chiave(versione: versioneDati, giorno: Calendar.current.startOfDay(for: Date()), modo: modoCliente)
+        let k = DerivatiDati.Chiave(versione: versioneCalcoli, giorno: Calendar.current.startOfDay(for: Date()), modo: modoCliente)
         if derivati.chiave != k { derivati.azzera(k) }
         return derivati
     }
@@ -225,15 +240,62 @@ extension StatoShell {
     }
 
     /// Il documento di Prospetti per una scelta, impaginato una volta sola finché non cambia qualcosa che conta
-    /// (dati, cliente, orizzonti, fascicolo, giorno, ora): il body di Prospetti lo chiede a ogni disegno.
+    /// (dati, note, cliente, orizzonti, fascicolo, giorno, ora): il body di Prospetti lo chiede a ogni disegno.
     func documentoProspettoInCache(_ scelta: SceltaProspetto) -> DocumentoStampabile? {
         let d = derivatiValidi()
-        let k = DerivatiDati.ChiaveDocumento(scelta: scelta, prospetto: prospetto, cliente: clienteAttivoId,
+        let k = DerivatiDati.ChiaveDocumento(scelta: scelta, note: versioneNote, prospetto: prospetto, cliente: clienteAttivoId,
                                              orizzonteConfronto: orizzonteConfronto, orizzonteSostituzione: orizzonteSostituzione,
                                              fascicolo: sceltaFascicolo, appuntamento: fascicoloAppuntamento, ora: DerivatiDati.ora())
         if let c = d.documento, c.chiave == k { return c.valore }
         let documento = documentoProspetto(scelta)
         d.documento = (k, documento)
+        d.nuovaGenerazioneDocumento()
         return documento
+    }
+
+    /// Il numero dell'impaginazione del documento di Prospetti restituito per ultimo da
+    /// `documentoProspettoInCache` (lo stesso finché il documento viene dalla cache).
+    var generazioneDocumento: Int { derivati.generazioneDocumento }
+
+    /// La chiave delle viste che mostrano dati ricavati, per le sottoviste `Equatable` che non osservano StatoShell.
+    var chiaveVista: ChiaveVista {
+        ChiaveVista(calcoli: versioneCalcoli, giorno: Calendar.current.startOfDay(for: Date()),
+                    ora: DerivatiDati.ora(), modo: modoCliente)
+    }
+}
+
+/// Ciò da cui dipendono le viste che mostrano dati ricavati: la chiave delle sottoviste `Equatable` che non
+/// osservano StatoShell (versione dei calcoli, giorno, ora intera come `DerivatiDati.ora`, modalità cliente).
+/// Con la stessa chiave le cache di DerivatiDati danno gli stessi valori, quindi la vista è la stessa.
+struct ChiaveVista: Equatable {
+    let calcoli: Int
+    let giorno: Date
+    let ora: Int
+    let modo: String?
+}
+
+extension DatiPrisma {
+    /// Uguali in tutto ciò che entra nei calcoli e nei documenti. Non contano le note del taccuino (hanno la loro
+    /// versione), le conversazioni con Eve, gli spazi di lavoro, il cliente attivo (le cache sono per cliente) e
+    /// le impostazioni che cambiano solo l'aspetto, Eve, il backup e i promemoria. Gli array e i dizionari non
+    /// toccati condividono la memoria con quelli di prima e si confrontano in O(1).
+    func stessiCalcoli(di altro: DatiPrisma) -> Bool {
+        var a = self
+        var b = altro
+        a.note = []
+        b.note = []
+        a.conversazioni = [:]
+        b.conversazioni = [:]
+        a.spazi = []
+        b.spazi = []
+        b.clienteAttivoId = a.clienteAttivoId
+        b.impostazioni.aspetto = a.impostazioni.aspetto
+        b.impostazioni.sfondoAnimato = a.impostazioni.sfondoAnimato
+        b.impostazioni.pioggia = a.impostazioni.pioggia
+        b.impostazioni.guidaNascosta = a.impostazioni.guidaNascosta
+        b.impostazioni.backup = a.impostazioni.backup
+        b.impostazioni.promemoria = a.impostazioni.promemoria
+        b.impostazioni.eve = a.impostazioni.eve
+        return a == b
     }
 }
