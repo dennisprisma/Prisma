@@ -155,8 +155,8 @@ enum ProvaCarico {
         s < 1 ? "\(Int((s * 1000).rounded())) ms" : String(format: "%.2f s", s)
     }
 
-    /// Memoria residente del processo, in MB.
-    private static func memoriaMB() -> Double {
+    /// Memoria residente del processo, in MB (la usa anche la prova della fluidità).
+    static func memoriaMB() -> Double {
         var info = mach_task_basic_info()
         var conta = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
         let esito = withUnsafeMutablePointer(to: &info) {

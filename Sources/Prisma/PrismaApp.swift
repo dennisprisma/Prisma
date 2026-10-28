@@ -22,6 +22,11 @@ struct PrismaApp: App {
         if argomenti.contains("--prova-carico") {
             exit(ProvaCarico.esegui())
         }
+        if let i = argomenti.firstIndex(of: "--prova-fluidita") {
+            // Facoltativo: il file in cui scrivere la tabella (Markdown) per il riepilogo della build
+            let file = i + 1 < argomenti.count && !argomenti[i + 1].hasPrefix("--") ? URL(fileURLWithPath: argomenti[i + 1]) : nil
+            exit(ProvaFluidita.esegui(uscita: file))
+        }
         if let i = argomenti.firstIndex(of: "--prova-prospetti") {
             let cartella = i + 1 < argomenti.count && !argomenti[i + 1].hasPrefix("--") ? URL(fileURLWithPath: argomenti[i + 1], isDirectory: true) : nil
             exit(ProvaProspetti.esegui(cartella: cartella))
