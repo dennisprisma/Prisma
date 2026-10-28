@@ -83,6 +83,26 @@ enum ProvaBackup {
                 print("ERRORE: i dati estratti non coincidono con l'originale")
                 return 1
             }
+            // Multiramo a due parti (versione 20): i campi nuovi della posizione, della scheda prodotto (che ha le
+            // CodingKeys scritte a mano: un campo che manca lì non si salverebbe) e delle parti delle condizioni
+            guard let m = estratto.dati.posizioni.first(where: { $0.id == "pos-marco-polizza-multiramo" }),
+                  m.rendimentoGestione == 3.0, m.costoParteFondi == 2.3, m.sriFondi == 4, m.volatilitaFondi == 14,
+                  m.quotaAzionariaFondi == 58, m.multiramoDivisa else {
+                print("ERRORE: la multiramo a due parti non torna uguale dal backup")
+                return 1
+            }
+            guard let scheda = estratto.dati.prodotti.first(where: { $0.id == "prodotto-multiramo" }),
+                  scheda.quotaGestioneMinima == 30, scheda.quotaGestioneMassima == 70, scheda.titoliStatoFondi == 10,
+                  scheda.ribilanciamento == false, scheda.consolidamento == true, scheda.sriFondi == 4 else {
+                print("ERRORE: la scheda multiramo a due parti non torna uguale dal backup")
+                return 1
+            }
+            let orizzonte = estratto.dati.prodotti.first(where: { $0.id == "prodotto-orizzonte-valore" })
+            let fondoInterno = orizzonte?.condizioni?.componenti.first(where: { $0.tipo == .fondoInterno })
+            guard fondoInterno?.volatilita == 12, fondoInterno?.quotaAzionaria == 75 else {
+                print("ERRORE: i dati di rischio del Fondo Interno non tornano uguali dal backup")
+                return 1
+            }
             try GestoreBackup.sostituisci(cartellaDati: destinazione, con: estratto.cartella)
             let documento = try String(contentsOf: destinazione.appendingPathComponent("Documenti/prova.txt"), encoding: .utf8)
             guard documento == "documento di prova",

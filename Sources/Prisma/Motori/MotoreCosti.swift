@@ -108,7 +108,7 @@ struct IncidenzaCostiKID {
     }
 
     /// Nota di metodo per prospetti e schede.
-    static let metodo = "Incidenza annua dei costi come nel KID (RIY): rendimento medio annuo senza costi meno quello con i costi del prodotto (ingresso, gestione, trattenuto della gestione separata, penale e costo d'uscita), sui versamenti alle loro date, prima delle imposte e senza il bollo. Uscite dopo 1 anno, a metà del periodo raccomandato (da 10 anni in su) e alla fine. Il RIY del KID resta quello dichiarato: Prisma lo confronta con il suo calcolo."
+    static let metodo = "Incidenza annua dei costi come nel KID (RIY): rendimento medio annuo senza costi meno quello con i costi del prodotto (ingresso, gestione, trattenuto della gestione separata, penale e costo d'uscita), sui versamenti alle loro date, prima delle imposte e senza il bollo. Uscite dopo 1 anno, a metà del periodo raccomandato (da 10 anni in su) e alla fine. Il RIY del KID resta quello dichiarato: Prisma lo confronta con il suo calcolo. Nelle multiramo i costi valgono per parte: trattenuto sulla gestione separata, commissioni e costi dei fondi sulla parte in fondi."
 }
 
 enum MotoreCosti {
@@ -137,8 +137,13 @@ enum MotoreCosti {
         var con = ParametriProiezione(posizione: p)
         con.anni = anni
         var senza = con
-        senza.costoIngresso = 0
-        senza.costoAnnuo = max(0, con.costoAnnuo - (p.costoComplessivo ?? 0))
+        if p.multiramoDivisa {
+            // Due parti: via il trattenuto della gestione separata e i costi dei fondi, resta il bollo
+            senza = MotoreMultiramo.senzaCostiProdotto(con, p)
+        } else {
+            senza.costoIngresso = 0
+            senza.costoAnnuo = max(0, con.costoAnnuo - (p.costoComplessivo ?? 0))
+        }
         return max(0, MotoreProiezione.calcola(senza).netto - MotoreProiezione.calcola(con).netto)
     }
 
@@ -154,25 +159,53 @@ enum MotoreCosti {
 
     /// Il prodotto del catalogo con lo stesso rischio (stessa area e stesso SRI) e costi annui più bassi
     /// che lascia di più in 10 anni, uscita compresa. Lo stesso rendimento lordo per tutti: pesano solo i costi.
+    /// Una multiramo si confronta solo con un'altra multiramo con la stessa quota in gestione separata (la
+    /// garanzia della gestione separata non si baratta in silenzio); le schede senza quota si scartano.
     static func alternativa(_ p: Posizione, prodotti: [Prodotto], cliente: String) -> CostiPosizione.Alternativa? {
         let annuo = p.costoComplessivo ?? 0
         let sri = p.sri ?? MotoreResistenza.sriProbabile(p.area)
         let anniConfronto = anni(p, orizzonti.0)
         // Solo schede complete: senza costi o rischio dichiarati il confronto sarebbe inventato
-        let candidati = prodotti.compactMap { x -> (Prodotto, Posizione)? in
-            guard x.id != p.prodottoId, x.nome != p.nome, x.area == p.area, x.sri == sri,
-                  let costo = x.costoAnnuo, costo <= annuo - scartoMinimo else { return nil }
-            let b = x.proposta(per: cliente)
+        let candidati = prodotti.compactMap { x -> (Prodotto, Posizione, Double)? in
+            guard x.id != p.prodottoId, x.nome != p.nome, x.area == p.area, x.sri == sri else { return nil }
+            var b = x.proposta(per: cliente)
             // Una gestione separata si confronta solo con un'altra: il capitale garantito non si baratta
-            return p.gestioneSeparata == b.gestioneSeparata ? (x, b) : nil
-        }
-        return candidati.compactMap { x, proposta -> CostiPosizione.Alternativa? in
-            var b = proposta
+            guard p.gestioneSeparata == b.gestioneSeparata else { return nil }
+            if p.multiramo {
+                guard b.multiramo, let quota = quotaConfrontabile(p, scheda: x, proposta: b) else { return nil }
+                b.quotaGestioneSeparata = quota
+            }
+            // Lo stesso rendimento lordo: con le due parti i numeri di `p` (anche se li ricava dal complessivo)
             b.rendimentoAtteso = p.rendimentoAtteso
+            if p.multiramoDivisa {
+                b.rendimentoGestione = p.lordoGestione()
+                b.rendimentoFondi = p.lordoFondi()
+            } else if b.multiramo {
+                b.rendimentoGestione = nil
+                b.rendimentoFondi = nil
+            }
+            // Il costo dopo la costruzione: con le due parti quello composto sulla stessa quota
+            guard let costo = b.costoComplessivo ?? x.costoAnnuo, costo <= annuo - scartoMinimo else { return nil }
+            return (x, b, costo)
+        }
+        return candidati.compactMap { x, b, costo -> CostiPosizione.Alternativa? in
             let e = MotoreSostituzione.calcola(attuale: p, alternativa: b, prodotti: prodotti, anni: anniConfronto)
             guard let fine = e.finale, fine.differenza >= guadagnoMinimo else { return nil }
-            return .init(prodotto: x, anni: anniConfronto, guadagno: fine.differenza, costoUscita: e.costoUscita, costoAnnuo: x.costoAnnuo ?? 0)
+            return .init(prodotto: x, anni: anniConfronto, guadagno: fine.differenza, costoUscita: e.costoUscita, costoAnnuo: costo)
         }.max { $0.guadagno < $1.guadagno }
+    }
+
+    /// La quota in gestione separata (0–100) da dare all'alternativa multiramo: quella di `p` se la scheda
+    /// la ammette (quota minima e massima), oppure quella della scheda se non dista più di 10 punti. nil se
+    /// la scheda non dice nulla della quota: la stima del 50% deciderebbe a caso.
+    private static func quotaConfrontabile(_ p: Posizione, scheda x: Prodotto, proposta b: Posizione) -> Double? {
+        let quota = p.parteGestione * 100
+        if let minima = x.quotaGestioneMinima, let massima = x.quotaGestioneMassima, minima <= massima,
+           (minima...massima).contains(quota) {
+            return quota
+        }
+        guard let indicata = b.quotaGestioneSeparata, abs(b.parteGestione - p.parteGestione) <= 0.10 + 1e-9 else { return nil }
+        return indicata
     }
 
     /// Il valore complessivo anno per anno, con e senza i costi dei prodotti (prima delle imposte finali),
@@ -184,8 +217,12 @@ enum MotoreCosti {
             var par = ParametriProiezione(posizione: v.posizione)
             par.anni = anni(v.posizione, durata)
             var libero = par
-            libero.costoIngresso = 0
-            libero.costoAnnuo = max(0, par.costoAnnuo - v.annuo)
+            if v.posizione.multiramoDivisa {
+                libero = MotoreMultiramo.senzaCostiProdotto(par, v.posizione)
+            } else {
+                libero.costoIngresso = 0
+                libero.costoAnnuo = max(0, par.costoAnnuo - v.annuo)
+            }
             let pc = MotoreProiezione.calcola(par).punti.map(\.valore)
             let ps = MotoreProiezione.calcola(libero).punti.map(\.valore)
             for i in 0...durata {
@@ -223,16 +260,21 @@ enum MotoreCosti {
         con.anni = raccomandato
         con.mesiEsatti = nil
         con.aliquotaFiscale = 0
+        con.gestione?.aliquota = 0
         con.tassazioneAnnua = 0
         con.aliquotaSulVersato = 0
         con.nonDedotti = 0
         con.inflazione = 0
-        // Solo i costi del prodotto: il bollo che `ParametriProiezione` aggiunge al costo annuo è un'imposta
-        con.costoAnnuo = max(0, p.costoAnnuo ?? 0) + MotoreGestioneSeparata.trattenuto(p)
+        // Solo i costi del prodotto: il bollo che `ParametriProiezione` aggiunge al costo annuo è un'imposta.
+        // Multiramo a due parti: i costi dei fondi sulla loro parte, il trattenuto resta nella gestione separata
+        con.costoAnnuo = p.multiramoDivisa ? p.costoParteFondi : max(0, p.costoAnnuo ?? 0) + MotoreGestioneSeparata.trattenuto(p)
         guard con.capitaleIniziale > 0 || (con.versamento > 0 && con.frequenza.volteAllAnno > 0) else { return nil }
         var senza = con
         senza.costoIngresso = 0
         senza.costoAnnuo = 0
+        // Senza costi la gestione separata rende il lordo (con il pavimento, se consolidata)
+        senza.gestione?.trattenuto = nil
+        senza.gestione?.retrocessione = nil
         let puntiCon = MotoreProiezione.calcola(con).punti
         let puntiSenza = MotoreProiezione.calcola(senza).punti
 

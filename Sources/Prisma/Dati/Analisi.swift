@@ -32,11 +32,13 @@ struct Simulazione: Identifiable, Codable, Hashable {
         capitale = q.capitaleIniziale
         versamentoMensile = (p.premioAnnuo / 12).rounded()
         anni = q.anni
-        rendimento = q.rendimento
+        // Il simulatore è a comparto unico: per una multiramo a due parti gli equivalenti pesati sulle quote
+        // (senza le due parti sono `rendimento`, `costoAnnuo` e `aliquotaFiscale`)
+        rendimento = q.rendimentoEquivalente
         costoIngresso = q.costoIngresso
-        costoAnnuo = q.costoAnnuo
+        costoAnnuo = q.costoAnnuoEquivalente
         // Depositi e fondi pensione si tassano man mano: nel simulatore vale la loro aliquota
-        aliquota = max(q.aliquotaFiscale, q.tassazioneAnnua)
+        aliquota = max(q.aliquotaEquivalente, q.tassazioneAnnua)
         canale = p.canale
         posizioneId = p.id
     }
@@ -204,6 +206,10 @@ struct Analisi360: Codable, Equatable {
             guard peso > 0 else { return nil }
             return (pesati.reduce(0) { $0 + $1.0 * $1.1 } / peso * 10).rounded() / 10
         }
+        /// Rendimento lordo: per una multiramo a due parti quello complessivo pesato sulle parti.
+        func rendimentoLordo(_ p: Posizione) -> Double? {
+            p.multiramoDivisa ? p.rendimentoLordoComposto : p.rendimentoAtteso
+        }
 
         if let eta = cliente?.eta { previdenza.eta = eta }
         previdenza.etaPensione = max(previdenza.eta, previdenza.etaPensione)
@@ -220,14 +226,14 @@ struct Analisi360: Codable, Equatable {
         let inv = dell(.investimento)
         investimenti.capitale = inv.reduce(0) { $0 + $1.valore }
         investimenti.versamentoMensile = mensile(inv)
-        if let r = media(inv, \.rendimentoAtteso) { investimenti.rendimento = r }
+        if let r = media(inv, rendimentoLordo) { investimenti.rendimento = r }
         if let c = media(inv, \.costoComplessivo) { investimenti.costoAnnuo = c }
         if let h = cliente?.profilo.orizzonteAnni { investimenti.anni = h }
 
         let ris = dell(.risparmio)
         risparmio.capitale = ris.reduce(0) { $0 + $1.valore }
         risparmio.versamentoMensile = mensile(ris)
-        if let r = media(ris, \.rendimentoAtteso) { risparmio.rendimento = r }
+        if let r = media(ris, rendimentoLordo) { risparmio.rendimento = r }
         if let c = media(ris, \.costoComplessivo) { risparmio.costoAnnuo = c }
     }
 

@@ -45,7 +45,7 @@ struct EsitoRiscatto {
     /// Il primo riscatto possibile senza penali.
     var primoSenzaPenali: RiscattoAnno? { righe.first { $0.possibile && $0.annoContratto >= annoSenzaPenali } }
 
-    static let metodo = "Valore di riscatto anno per anno: proiezione al rendimento atteso con i costi del prodotto e il bollo annuo; penale dell'anno di contratto (della posizione o della scheda prodotto) più il costo d'uscita, sul valore; imposta sul guadagno (valore − penale − versato) con l'aliquota della posizione; bollo maturato fino a oggi trattenuto al riscatto. Nei mesi di blocco il riscatto non si può chiedere."
+    static let metodo = "Valore di riscatto anno per anno: proiezione al rendimento atteso con i costi del prodotto e il bollo annuo; penale dell'anno di contratto (della posizione o della scheda prodotto) più il costo d'uscita, sul valore; imposta sul guadagno (valore − penale − versato) con l'aliquota della posizione; bollo maturato fino a oggi trattenuto al riscatto. Nei mesi di blocco il riscatto non si può chiedere. Multiramo: bollo sulla sola parte in fondi; la garanzia della gestione separata secondo il consolidamento (senza, vale solo a scadenza)."
     static let criterio = "Primo anno conveniente: il primo riscatto possibile (fuori dai mesi di blocco) il cui netto, tolte penale, costo d'uscita, bollo maturato e imposte, è almeno pari a quanto versato fino a quel momento."
 }
 
@@ -109,7 +109,10 @@ enum MotoreRiscatto {
             let versato = punti[k].versato
             let percento = p.penale(anno: annoContratto, prodotto: prodotto) + uscita
             let penale = valore * percento / 100
-            let imposta = max(0, valore - penale - versato) * aliquota / 100
+            // Multiramo a due parti: l'aliquota pesata sul valore di ogni parte nell'anno del riscatto
+            let aliquotaK = p.multiramoDivisa
+                ? p.aliquotaPesata(valore: valore, valoreGestione: punti[k].valoreGestione ?? 0) : aliquota
+            let imposta = max(0, valore - penale - versato) * aliquotaK / 100
             righe.append(RiscattoAnno(anni: k, data: quando, annoContratto: annoContratto, possibile: possibile,
                                       versato: versato, valore: valore, penalePercento: percento, penale: penale,
                                       imposta: imposta, bollo: bollo, netto: valore - penale - imposta - bollo))

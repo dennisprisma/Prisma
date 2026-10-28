@@ -49,6 +49,13 @@ struct ComponenteContratto: Identifiable, Codable, Hashable {
     var consolidamento: Bool?
     /// Gestione separata: quota del rendimento lordo retrocessa (0–100), alternativa al trattenuto fisso.
     var retrocessione: Double?
+    // Dalla versione 20 dell'archivio (multiramo a due parti)
+    /// Rendimento lordo annuo ipotizzato (%): della gestione (prima del trattenuto) o del fondo (prima dei costi).
+    var rendimentoAtteso: Double?
+    /// Fondo Interno: SRI, volatilità annua (%) e quota azionaria (0–100) della parte.
+    var sri: Int?
+    var volatilita: Double?
+    var quotaAzionaria: Double?
 
     init(tipo: Tipo, nome: String, quota: Double) {
         self.tipo = tipo
@@ -206,6 +213,8 @@ struct ValutazioneInvestimento: Identifiable, Codable, Hashable {
 
     /// Ipotesi di partenza da rivedere: Gestione separata attorno alla media storica, Fondo Interno
     /// attorno allo scenario moderato del KID. Il consulente le corregge e scrive il perché.
+    /// Se la parte indica il rendimento lordo ipotizzato si parte da quello: per la Gestione separata così
+    /// com'è, per il Fondo Interno al netto di commissione e costi dei fondi sottostanti (al decimo).
     static func ipotesiDiPartenza(_ c: CondizioniContratto) -> [ScenarioValutazione] {
         let moderato = c.scenariKID.first { $0.nome.lowercased().hasPrefix("moder") }?.periodo ?? 4
         return TipoScenario.allCases.map { t in
@@ -215,10 +224,16 @@ struct ValutazioneInvestimento: Identifiable, Codable, Hashable {
                 case .gestioneSeparata:
                     let valori = p.storico.compactMap(\.valore)
                     let media = valori.isEmpty ? 3 : valori.reduce(0, +) / Double(valori.count)
-                    let base = (media * 10).rounded() / 10
+                    let base = p.rendimentoAtteso ?? (media * 10).rounded() / 10
                     s.rendimenti[p.id] = t == .favorevole ? base + 0.4 : t == .intermedio ? base + 0.1 : base - 0.4
                 case .fondoInterno:
-                    let base = moderato.rounded()
+                    let base: Double
+                    if let r = p.rendimentoAtteso {
+                        let netto = ((1 + r / 100) * (1 - (p.commissione + p.costiSottostanti) / 100) - 1) * 100
+                        base = (netto * 10).rounded() / 10
+                    } else {
+                        base = moderato.rounded()
+                    }
                     s.rendimenti[p.id] = t == .favorevole ? base * 2 : t == .intermedio ? base : -3
                 }
             }
@@ -234,6 +249,7 @@ extension ComponenteContratto {
         case id, tipo, nome, quota, trattenuto, commissione, costiSottostanti, bollo, titoliStato
         case descrizione, caratteristiche, storico, notaStorico
         case minimoGarantito, consolidamento, retrocessione
+        case rendimentoAtteso, sri, volatilita, quotaAzionaria
     }
 
     init(from decoder: Decoder) throws {
@@ -254,6 +270,10 @@ extension ComponenteContratto {
         minimoGarantito = try? c.decodeIfPresent(Double.self, forKey: .minimoGarantito)
         consolidamento = try? c.decodeIfPresent(Bool.self, forKey: .consolidamento)
         retrocessione = try? c.decodeIfPresent(Double.self, forKey: .retrocessione)
+        rendimentoAtteso = try? c.decodeIfPresent(Double.self, forKey: .rendimentoAtteso)
+        sri = try? c.decodeIfPresent(Int.self, forKey: .sri)
+        volatilita = try? c.decodeIfPresent(Double.self, forKey: .volatilita)
+        quotaAzionaria = try? c.decodeIfPresent(Double.self, forKey: .quotaAzionaria)
     }
 }
 

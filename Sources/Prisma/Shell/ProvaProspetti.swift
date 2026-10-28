@@ -22,6 +22,8 @@ enum ProvaProspetti {
             // Gestione separata in essere e proposta con penali e blocco del riscatto
             ("posizione-sofia-polizza", "sofia", .posizione("pos-sofia-polizza-rivalutabile")),
             ("proposta-andrea-risparmio", "andrea", .posizione("pos-andrea-piano-di-risparmio-rivalutabile")),
+            // Multiramo a due parti: gestione separata e fondi con dati separati
+            ("posizione-marco-multiramo", "marco", .posizione("pos-marco-polizza-multiramo")),
         ]
         var tutti = casi
         tutti.append(("portafoglio", "", .portafoglio))
@@ -103,10 +105,21 @@ enum ProvaProspetti {
                             verifica("\(nome): anni di blocco segnati come non riscattabili", testo.contains("non riscattabile"))
                         }
                     }
-                    if let g = MotoreGestioneSeparata.calcola(p) {
+                    // Anche la sola parte in gestione separata di una multiramo a due parti
+                    if let g = MotoreGestioneSeparata.calcola(p) ?? MotoreGestioneSeparata.calcolaParte(p) {
                         let accreditato = spazi(CifreDoc.percento(g.accreditato, decimali: 2))
                         // Le etichette delle voci sono in maiuscolo: «minimo garantito» si cerca nel metodo, in nota
                         verifica("\(nome): gestione separata, accreditato \(accreditato) nel PDF", testo.contains(accreditato) && testo.contains("minimo garantito"))
+                    }
+                    // Multiramo: le due parti con le quote (la riga di composizione; «Composizione» è in maiuscolo)
+                    if p.multiramo {
+                        let quote = ["di cui gestione separata \(Formati.percentuale(p.parteGestione * 100))",
+                                     "fondi \(Formati.percentuale(p.parteFondi * 100))"].map { spazi($0) }
+                        verifica("\(nome): composizione della multiramo nel PDF", quote.allSatisfy { testo.contains($0) }, quote.joined(separator: " · "))
+                    }
+                    if p.id == "pos-marco-polizza-multiramo" {
+                        verifica("\(nome): Marco, 40% in gestione separata e 60% nei fondi",
+                                 testo.contains("di cui gestione separata 40%") && testo.contains("fondi 60%"))
                     }
                 } else if p.area == .protezione, let mille = CompositoreProspetti.costoPerMille(p) {
                     verifica("\(nome): costo per 1.000 € assicurati", testo.contains(spazi(Formati.euroDecimali(mille))), Formati.euroDecimali(mille))

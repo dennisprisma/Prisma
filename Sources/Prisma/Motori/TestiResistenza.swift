@@ -99,7 +99,7 @@ struct TestiResistenza {
     var metodo: [String] {
         let soglie = MotoreResistenza.caloPerSRI.sorted { $0.key < $1.key }.map { "SRI \($0.key) \(CifreDoc.condizione($0.value))" }.joined(separator: ", ")
         return [
-            "Mercati: perdita di un anno di forte crisi secondo l'indicatore di rischio del KID (\(soglie)). Conti e gestioni separate (Ramo I) non perdono: il capitale è garantito; nelle multiramo perde solo la parte fuori dalla gestione separata (50% se non indicata). Senza SRI si stima dall'area: risparmio 2, previdenza 3, investimento 4.",
+            "Mercati: perdita di un anno di forte crisi secondo l'indicatore di rischio del KID (\(soglie)). Conti e gestioni separate (Ramo I) non perdono: il capitale è garantito; nelle multiramo perde solo la parte fuori dalla gestione separata (50% se non indicata). Con i dati separati: SRI dei fondi sulla sola parte in fondi; la gestione separata non segue i mercati ed è garantita solo con il consolidamento annuo. Senza SRI si stima dall'area: risparmio 2, previdenza 3, investimento 4.",
             "Inflazione: \(CifreDoc.condizione(MotoreResistenza.inflazioneAlta)) l'anno per \(MotoreResistenza.anniInflazione) anni; perde potere d'acquisto ciò che rende meno, al netto dei costi annui (i conti senza rendimento indicato rendono zero).",
             "Immobili: calo del \(CifreDoc.condizione(MotoreResistenza.caloImmobili)) del valore; i debiti restano uguali, quindi il calo pesa tutto sul patrimonio netto.",
             "Profilo: perdita sopportabile in un anno sul patrimonio finanziario secondo la propensione (prudente 5%, moderata 10%, dinamica 20%, aggressiva 30%); fino a un quarto oltre è «al limite».",

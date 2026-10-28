@@ -263,10 +263,12 @@ struct AppConfronti: View {
             .init(etichetta: "Capitale iniziale", a: Formati.euro(pa.capitaleIniziale), b: Formati.euro(pb.capitaleIniziale)),
             .init(etichetta: "Versamenti periodici", a: versamento(pa), b: versamento(pb)),
             .init(etichetta: "Orizzonte", a: "\(pa.anni) anni", b: "\(pb.anni) anni"),
-            .init(etichetta: "Rendimento atteso", a: Formati.percentuale(pa.rendimento), b: Formati.percentuale(pb.rendimento)),
+            // Equivalenti di un comparto unico: per una multiramo a due parti pesati sulle quote, altrimenti
+            // rendimento, costo annuo e aliquota di sempre
+            .init(etichetta: "Rendimento atteso", a: Formati.percentuale(pa.rendimentoEquivalente), b: Formati.percentuale(pb.rendimentoEquivalente)),
             .init(etichetta: "Costo d'ingresso", a: Formati.percentuale(pa.costoIngresso), b: Formati.percentuale(pb.costoIngresso)),
-            .init(etichetta: "Costo annuo", a: Formati.percentuale(pa.costoAnnuo), b: Formati.percentuale(pb.costoAnnuo)),
-            .init(etichetta: "Fiscalità sul guadagno", a: Formati.percentuale(pa.aliquotaFiscale), b: Formati.percentuale(pb.aliquotaFiscale)),
+            .init(etichetta: "Costo annuo", a: Formati.percentuale(pa.costoAnnuoEquivalente), b: Formati.percentuale(pb.costoAnnuoEquivalente)),
+            .init(etichetta: "Fiscalità sul guadagno", a: Formati.percentuale(pa.aliquotaEquivalente), b: Formati.percentuale(pb.aliquotaEquivalente)),
             .init(etichetta: "Totale versato", a: Formati.euro(ea.versato), b: Formati.euro(eb.versato), scarto: eb.versato - ea.versato),
             .init(etichetta: "Costi nel periodo", a: Formati.euro(ea.costi), b: Formati.euro(eb.costi),
                   scarto: eb.costi - ea.costi, menoEMeglio: true),

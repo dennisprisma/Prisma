@@ -117,8 +117,11 @@ enum MotoreCoerenza {
     static let sogliaCanale = 80.0
 
     /// L'SRI per la media: quello indicato; senza, 1 per liquidità e capitale garantito, altrimenti
-    /// quello probabile dell'area.
+    /// quello probabile dell'area. Multiramo a due parti: l'SRI della combinazione scelta (quello del KID o,
+    /// se manca, stimato dalla volatilità combinata), mai la media degli SRI delle opzioni né quello dei soli
+    /// fondi, che sovrastimerebbe il rischio del contratto.
     static func sriStimato(_ p: Posizione) -> Int {
+        if p.multiramoDivisa { return p.sriComposto }
         if let s = p.sri { return min(max(s, 1), 7) }
         if p.area == .liquidita || MotoreResistenza.quotaARischio(p) == 0 { return 1 }
         return MotoreResistenza.sriProbabile(p.area)
@@ -211,7 +214,10 @@ enum MotoreCoerenza {
             }
             let massimo = sriMassimo(pr)
             for p in proposte {
-                guard let s = p.sri, s > massimo else { continue }
+                // Multiramo a due parti: conta la combinazione; fondi oltre il profilo con la combinazione
+                // dentro non sono un'incoerenza (lo dice il dettaglio della posizione)
+                let sriProposta: Int? = p.multiramoDivisa ? p.sriComposto : p.sri
+                guard let s = sriProposta, s > massimo else { continue }
                 elenco.append(Incoerenza(tipo: .proposta, titolo: "Proposta oltre il profilo",
                                          dettaglio: "\(p.nome): SRI \(s) su 7, oltre il \(massimo) di un profilo \(pr.nome.lowercased()).",
                                          posizione: p, valore: Double(s), soglia: Double(massimo), dopoLeProposte: true))
@@ -298,7 +304,7 @@ enum MotoreCoerenza {
     /// Il metodo, per il prospetto e le schermate.
     static var metodo: [String] {
         [
-            "Rischio rispetto al profilo: SRI medio ponderato sul valore (liquidità e capitale garantito senza SRI contano 1) entro prudente 2, moderata 3, dinamica 5; azioni entro prudente 20%, moderata 50%, dinamica 80% del patrimonio finanziario; nelle crisi vere del 2008, 2020 e 2022 la perdita peggiore non oltre un quarto sopra quella sopportabile (prudente 5%, moderata 10%, dinamica 20%, aggressiva 30%).",
+            "Rischio rispetto al profilo: SRI medio ponderato sul valore (liquidità e capitale garantito senza SRI contano 1; per le multiramo con i dati separati l'SRI della combinazione, dal KID o stimato) entro prudente 2, moderata 3, dinamica 5; azioni entro prudente 20%, moderata 50%, dinamica 80% del patrimonio finanziario; nelle crisi vere del 2008, 2020 e 2022 la perdita peggiore non oltre un quarto sopra quella sopportabile (prudente 5%, moderata 10%, dinamica 20%, aggressiva 30%).",
             "Proposte: si segnalano quelle con un SRI oltre il profilo o un periodo raccomandato più lungo dell'orizzonte del cliente, e ciò che cambierebbe con le proposte aperte (contate per il versamento iniziale più un anno di premi).",
             "Concentrazione: oltre il \(CifreDoc.percento(sogliaEmittente, decimali: 0)) del patrimonio finanziario presso un solo emittente (da \(CifreDoc.euro(minimoConcentrazione)) in su; i conti esclusi), oppure oltre l'\(CifreDoc.percento(sogliaCanale, decimali: 0)) investito nel canale Alleanza, che colloca i prodotti di una sola compagnia.",
         ]

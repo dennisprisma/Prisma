@@ -167,11 +167,16 @@ struct Posizione: Identifiable, Codable, Hashable {
     var rischio: RischioCoperto?
 
     // Ipotesi e costi (percentuali annue)
+    /// Rendimento lordo annuo ipotizzato (%). Nelle multiramo è il rendimento lordo complessivo del contratto
+    /// (media pesata delle due parti): con i dati separati i calcoli usano `rendimentoGestione` e
+    /// `rendimentoFondi`; se ne manca uno lo ricavano da questo (`lordoGestione`, `lordoFondi`).
     var rendimentoAtteso: Double?
     var costoIngresso: Double?
+    /// Costo annuo (%). Nelle multiramo: commissioni del contratto senza il trattenuto della gestione
+    /// separata; con i dati separati vale per la parte in fondi se `costoFondi` manca.
     var costoAnnuo: Double?
     var aliquotaFiscale: Double?
-    /// Indicatore sintetico di rischio del KID (1–7).
+    /// Indicatore sintetico di rischio del KID (1–7). Nelle multiramo è l'SRI del KID della combinazione scelta.
     var sri: Int?
 
     var garanzie = ""
@@ -185,6 +190,7 @@ struct Posizione: Identifiable, Codable, Hashable {
 
     // Costi e fiscalità (dalla versione 13 dell'archivio)
     /// Trattenuto sul rendimento della gestione separata, in punti percentuali all'anno.
+    /// Nelle multiramo vale per la sola parte in gestione separata.
     var trattenuto: Double?
     /// Regime fiscale scelto; se manca si ricava dall'area e dalla tipologia (`regime`).
     var regimeFiscale: RegimeFiscale?
@@ -197,7 +203,9 @@ struct Posizione: Identifiable, Codable, Hashable {
     var primaAdesione: Date?
     /// Previdenza: contributi versati e non dedotti, che non si tassano alla prestazione.
     var contributiNonDedotti: Double?
-    /// Multiramo: quota del valore in gestione separata (Ramo I, 0–100), esente da bollo.
+    /// Multiramo: quota in gestione separata (0–100), esente da bollo: per una posizione in essere quella
+    /// del valore di oggi (dall'estratto conto), per una proposta quella del premio. È anche la quota a cui
+    /// si ribilancia.
     var quotaGestioneSeparata: Double?
 
     // Dati per i motori di analisi (rendimenti, riscatto, rischio, famiglia). Tutti facoltativi:
@@ -219,12 +227,15 @@ struct Posizione: Identifiable, Codable, Hashable {
     /// Periodo di detenzione raccomandato dal KID, in anni.
     var periodoRaccomandato: Int?
     /// Gestione separata: rendimento minimo garantito annuo (%); 0 = solo capitale garantito.
+    /// Nelle multiramo vale per la sola parte in gestione separata.
     var minimoGarantito: Double?
     /// Gestione separata: true se il rendimento accreditato si consolida ogni anno (non si perde più);
     /// false se la garanzia vale solo a scadenza o in caso di decesso.
+    /// Nelle multiramo vale per la sola parte in gestione separata.
     var consolidamento: Bool?
     /// Gestione separata: quota del rendimento lordo retrocessa al cliente (0–100), alternativa al
     /// trattenuto fisso (`trattenuto`). Il lordo della gestione è `rendimentoAtteso`.
+    /// Nelle multiramo vale per la sola parte in gestione separata (il lordo è `rendimentoGestione`).
     var retrocessione: Double?
     /// Volatilità annua attesa (%, deviazione standard); se manca si ricava dall'SRI.
     var volatilita: Double?
@@ -242,6 +253,32 @@ struct Posizione: Identifiable, Codable, Hashable {
     var tassoDebito: Double?
     /// Debiti: quota del debito a carico del cliente (0–100) se il finanziamento è cointestato; nil = tutto.
     var quotaDebito: Double?
+
+    // Multiramo a due parti (dalla versione 20 dell'archivio): gestione separata e fondi con dati separati.
+    // La parte in gestione separata usa `quotaGestioneSeparata` (quota), `trattenuto`, `retrocessione`,
+    // `minimoGarantito` e `consolidamento`; i campi qui sotto descrivono il resto. Basta uno di questi campi
+    // perché i motori calcolino le due parti separatamente (`multiramoDivisa`); senza, tutto come prima.
+
+    /// Multiramo: rendimento lordo annuo ipotizzato della gestione separata (%), prima del trattenuto.
+    var rendimentoGestione: Double?
+    /// Multiramo: rendimento lordo annuo ipotizzato dei fondi (Ramo III, %), prima di commissioni e costi dei fondi.
+    var rendimentoFondi: Double?
+    /// Multiramo: costi annui della parte in fondi (%): commissione di gestione della compagnia più costi
+    /// correnti degli OICR sottostanti, sul valore dei fondi.
+    var costoFondi: Double?
+    /// Multiramo: indicatore di rischio (1–7) della sola parte in fondi (KID specifico o documento dell'opzione).
+    var sriFondi: Int?
+    /// Multiramo: volatilità annua attesa della parte in fondi (%, deviazione standard).
+    var volatilitaFondi: Double?
+    /// Multiramo: quota in azioni della parte in fondi (0–100, della parte, non del contratto).
+    var quotaAzionariaFondi: Double?
+    /// Multiramo: quota in titoli di Stato della gestione separata (0–100), per l'aliquota al 12,5%.
+    var titoliStatoGestione: Double?
+    /// Multiramo: quota in titoli di Stato della parte in fondi (0–100).
+    var titoliStatoFondi: Double?
+    /// Multiramo: true se ogni anno il contratto riporta la gestione separata alla quota scelta
+    /// (`quotaGestioneSeparata`); nil o false = nessun ribilanciamento, le parti si allontanano dalle quote.
+    var ribilanciamento: Bool?
 
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }
@@ -266,8 +303,11 @@ struct Posizione: Identifiable, Codable, Hashable {
         return scadenza >= Calendar.current.startOfDay(for: Date()) && scadenza <= limite
     }
 
-    /// Costo annuo complessivo in percentuale: gestione più trattenuto sul rendimento.
+    /// Costo annuo complessivo in percentuale: gestione più trattenuto sul rendimento. Nelle multiramo a due
+    /// parti: trattenuto sulla gestione separata e costi dei fondi, ognuno pesato sulla sua quota (nil se
+    /// nessun costo è indicato, come prima).
     var costoComplessivo: Double? {
+        if multiramoDivisa { return costiIndicati ? costoComposto : nil }
         guard costoAnnuo != nil || trattenuto != nil else { return nil }
         return (costoAnnuo ?? 0) + (trattenuto ?? 0)
     }
@@ -286,11 +326,9 @@ struct Posizione: Identifiable, Codable, Hashable {
         }
     }
 
-    /// Polizza multiramo (Ramo I e Ramo III insieme).
+    /// Polizza multiramo (Ramo I e Ramo III insieme): la regola sul testo è `multiramo(tipologia:)`.
     var multiramo: Bool {
-        guard regime == .polizza else { return false }
-        let t = tipologia.lowercased()
-        return t.contains("multiramo") || (Self.ramoI(t) && t.contains("ramo iii"))
+        regime == .polizza && Self.multiramo(tipologia: tipologia)
     }
 
     /// Polizza rivalutabile di Ramo I (gestione separata): capitale garantito, niente bollo.
@@ -308,7 +346,7 @@ struct Posizione: Identifiable, Codable, Hashable {
     }
 
     /// "Ramo I" come parola intera: non «Ramo III» né «Ramo IV».
-    private static func ramoI(_ t: String) -> Bool {
+    static func ramoI(_ t: String) -> Bool {
         t.range(of: #"\bramo i\b"#, options: .regularExpression) != nil
     }
 
@@ -317,7 +355,8 @@ struct Posizione: Identifiable, Codable, Hashable {
     /// capitalizzazione (Ramo V) lo pagano anche se rivalutabili: sono esenti solo i rami vita I e IV
     /// (D.P.R. 642/1972, tariffa art. 13, c. 2-ter, e D.M. 24 maggio 2012).
     var quotaBollo: Double {
-        let fuoriGestione = 1 - min(max(quotaGestioneSeparata ?? 0, 0), 100) / 100
+        // Con i dati separati la quota mancante è la stima del 50% (come la resistenza); senza, bollo su tutto
+        let fuoriGestione = 1 - min(max(quotaGestioneSeparata ?? (multiramoDivisa ? Self.quotaGestionePredefinita : 0), 0), 100) / 100
         if let conBollo { return conBollo ? (multiramo ? fuoriGestione : 1) : 0 }
         switch regime {
         case .fondo, .deposito: return 1

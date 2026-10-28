@@ -134,6 +134,20 @@ enum MotoreSostituzione {
 
         func lato(_ p: Posizione, prodotto: Prodotto?, capitale: Double, ingressoSulCapitale: Bool, scarto: Double)
             -> (punti: [PuntoProiezione], costi: Double, rendimento: Double, costoAnnuo: Double) {
+            if p.multiramoDivisa {
+                // Multiramo a due parti: gestione separata e fondi dalla posizione, lo scenario sposta i fondi
+                // di `scarto` e la gestione separata della metà. La garanzia senza consolidamento resta alla
+                // scadenza del contratto (`mesiGaranzia` di `init(posizione:)`), non alla fine del confronto
+                var par = ParametriProiezione(posizione: p).conScarto(scarto)
+                par.capitaleIniziale = capitale; par.versatoIniziale = nil
+                par.versamento = versamento; par.frequenza = frequenza
+                par.anni = anni; par.mesiEsatti = nil
+                par.aliquotaFiscale = 0; par.gestione?.aliquota = 0; par.inflazione = 0
+                par.ingressoSulCapitale = ingressoSulCapitale; par.costoIngresso = p.costoIngresso ?? 0
+                let e = MotoreProiezione.calcola(par)
+                // Rendimento e costo equivalenti dei parametri già spostati (la GS si sposta meno dei fondi)
+                return (e.punti, e.costi, par.rendimentoEquivalente, par.costoAnnuoEquivalente)
+            }
             // Bollo dello 0,20% sulla parte soggetta (il conto corrente paga il fisso di 34,20 €, trascurabile qui)
             let testo = (p.nome + " " + p.tipologia).lowercased()
             let contoCorrente = p.regime == .deposito && testo.contains("corrente") && !testo.contains("deposito")
@@ -202,10 +216,13 @@ enum MotoreSostituzione {
         let c = lato(b, prodotto: prodottoB, capitale: reinvestito, ingressoSulCapitale: true, scarto: 0)
         let primoResto = r.punti.count > 1 ? valoreOggi * r.costoAnnuo / 100 : 0
         let primoCambio = c.punti.count > 1 ? investitoCambio(reinvestito, ingressoB) * c.costoAnnuo / 100 + ingressoB : ingressoB
-        if b.rendimentoAtteso == nil || a.rendimentoAtteso == nil {
+        if senzaRendimento(b) || senzaRendimento(a) {
             note.append("Dove manca il rendimento atteso si usa il \(CifreDoc.condizione(IpotesiCalcolo.rendimentoPredefinito)) annuo.")
         }
-        note.append("Rendimenti ipotetici, non garantiti: scenari prudente e favorevole con \(Formati.numeroFormatter.string(from: NSNumber(value: ampiezza)) ?? "2") punti in meno e in più per entrambe le strade.")
+        let puntiGestione = a.multiramoDivisa || b.multiramoDivisa
+            ? ", per la gestione separata delle multiramo \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenariGestione)) ?? "1") punto"
+            : ""
+        note.append("Rendimenti ipotetici, non garantiti: scenari prudente e favorevole con \(Formati.numeroFormatter.string(from: NSNumber(value: ampiezza)) ?? "2") punti in meno e in più per entrambe le strade\(puntiGestione).")
 
         return EsitoSostituzione(
             resto: LatoSostituzione(posizione: a, prodotto: prodottoA, rendimento: r.rendimento, costoIngresso: a.costoIngresso ?? 0,
@@ -218,6 +235,12 @@ enum MotoreSostituzione {
             valoreOggi: valoreOggi, penaleUscita: penale, bolloUscita: bollo, impostaUscita: imposta,
             reinvestito: reinvestito, ingressoCambio: ingressoB, versamento: versamento, frequenza: frequenza,
             serie: serie, scenari: scenari, pareggio: pareggio, note: note + Semplificazioni.comuni)
+    }
+
+    /// true se il calcolo usa il rendimento predefinito: senza rendimento atteso o, per una multiramo a due
+    /// parti, senza complessivo e senza il rendimento di una delle parti.
+    private static func senzaRendimento(_ p: Posizione) -> Bool {
+        p.multiramoDivisa ? p.rendimentoAtteso == nil && p.rendimentiPartiStimati : p.rendimentoAtteso == nil
     }
 
     private static func investitoCambio(_ reinvestito: Double, _ ingresso: Double) -> Double { reinvestito - ingresso }

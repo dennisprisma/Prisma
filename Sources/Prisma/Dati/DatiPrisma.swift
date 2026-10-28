@@ -47,7 +47,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 17: spazi di lavoro salvati.
     /// 18: note del taccuino.
     /// 19: data del valore e totale versato tra i dati letti dai documenti (estratti conto).
-    static let versioneAttuale = 19
+    /// 20: multiramo a due parti (rendimento, costi e rischio della gestione separata e dei fondi, ribilanciamento) nelle posizioni e nelle schede prodotto; dati di rischio delle parti nelle condizioni.
+    static let versioneAttuale = 20
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],

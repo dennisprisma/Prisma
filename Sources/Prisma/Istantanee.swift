@@ -538,6 +538,13 @@ enum Istantanee {
             s.schedaIncontro = .preparazione
             s.apri(.incontri)
         }),
+        ("106-posizioni-multiramo", { s in
+            // Marco: la multiramo a due parti, la composizione, la parte in gestione separata e i fondi
+            s.clienteAttivoId = "marco"
+            s.posizioneInDettaglio = "pos-marco-polizza-multiramo"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-composizione"
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
         ("53-ricerca-scuro", { s in
             s.apri(.posizioni)
@@ -548,6 +555,13 @@ enum Istantanee {
             s.clienteAttivoId = "giulia"
             s.posizioneInDettaglio = "pos-giulia-piano-di-risparmio-rivalutabile"
             s.apri(.posizioni)
+        }),
+        ("106-posizioni-multiramo-scuro", { s in
+            // La stessa scena della multiramo di Marco, in aspetto scuro (vetro delle due parti)
+            s.clienteAttivoId = "marco"
+            s.posizioneInDettaglio = "pos-marco-polizza-multiramo"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-composizione"
         }),
         ("1-scrivania-scuro", { _ in }),
         ("2-posizioni-scuro", { $0.apri(.posizioni) }),

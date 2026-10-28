@@ -70,15 +70,32 @@ enum MotoreObiettivo {
         let collegate = posizioni.filter { o.posizioniCollegate.contains($0.id) && $0.stato == .inEssere }
 
         func contributo(_ p: Posizione, scarto: Double, mesiProiezione: Int) -> ContributoObiettivo {
-            let rendimento = (p.rendimentoAtteso ?? o.rendimento) + scarto
-            let costo = (p.costoComplessivo ?? 0) + (p.regime != .deposito ? RegoleFiscali.bollo * p.quotaBollo : 0)
-            var par = ParametriProiezione(capitaleIniziale: p.valore, versamento: p.premio, frequenza: p.frequenza, anni: 1,
+            var par: ParametriProiezione
+            let rendimento: Double, costo: Double
+            if p.multiramoDivisa {
+                // Multiramo a due parti: senza rendimenti indicati la parte usa quello dell'obiettivo
+                var iniziale = ParametriProiezione(posizione: p)
+                if p.rendimentoFondi == nil && p.rendimentoAtteso == nil { iniziale.rendimento = o.rendimento }
+                if p.rendimentoGestione == nil && p.rendimentoAtteso == nil { iniziale.gestione?.lordo = o.rendimento }
+                par = iniziale.conScarto(scarto)
+                par.capitaleIniziale = p.valore; par.versatoIniziale = nil
+                par.versamento = p.premio; par.frequenza = p.frequenza
+                par.aliquotaFiscale = 0; par.gestione?.aliquota = 0; par.inflazione = 0; par.ingressoSulCapitale = false
+                par = par.perMesi(mesiProiezione)
+                // Gli equivalenti dei parametri già spostati, come un comparto unico
+                rendimento = par.rendimentoEquivalente
+                costo = par.costoAnnuoEquivalente
+            } else {
+                rendimento = (p.rendimentoAtteso ?? o.rendimento) + scarto
+                costo = (p.costoComplessivo ?? 0) + (p.regime != .deposito ? RegoleFiscali.bollo * p.quotaBollo : 0)
+                par = ParametriProiezione(capitaleIniziale: p.valore, versamento: p.premio, frequenza: p.frequenza, anni: 1,
                                           rendimento: rendimento, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: costo,
                                           aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: false).perMesi(mesiProiezione)
-            par.capitaleGarantito = p.gestioneSeparata
-            // Fondi pensione: imposta del 20% sui rendimenti dentro il fondo (12,5% sulla parte in titoli di Stato,
-            // se indicata), come nel piano previdenziale
-            if p.regime == .previdenza { par.tassazioneAnnua = RegoleFiscali.aliquotaRendimentiPrevidenza(quotaTitoliStato: p.quotaTitoliStato) }
+                par.capitaleGarantito = p.gestioneSeparata
+                // Fondi pensione: imposta del 20% sui rendimenti dentro il fondo (12,5% sulla parte in titoli di Stato,
+                // se indicata), come nel piano previdenziale
+                if p.regime == .previdenza { par.tassazioneAnnua = RegoleFiscali.aliquotaRendimentiPrevidenza(quotaTitoliStato: p.quotaTitoliStato) }
+            }
             let anniProiezione = mesiProiezione / 12
             let e = MotoreProiezione.calcola(par)
             // Imposta sul guadagno alla scadenza, secondo il regime (i conti sono già netti)

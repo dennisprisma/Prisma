@@ -236,17 +236,26 @@ struct PannelloRiscatto: View {
 
 /// La gestione separata di una polizza rivalutabile di Ramo I: lordo, trattenuto o retrocessione,
 /// accreditato con il minimo garantito, consolidamento, rendimento reale e garantito a scadenza.
+/// Per una multiramo a due parti è la sola parte in gestione separata: le cifre in euro valgono sul suo valore.
 struct PannelloGestioneSeparata: View {
     let esito: EsitoGestioneSeparata
     let posizione: Posizione
+    /// «La gestione separata» o, per la parte di una multiramo, «La parte in gestione separata · 40%».
+    var titolo = "La gestione separata"
+    /// Per la parte di una multiramo: «sul valore della parte, 24.800 €» (nil per il Ramo I).
+    var notaQuota: String? = nil
 
     private typealias M = Tema.Misura.MotoriPosizioni
     private typealias C = Tema.Colore.MotoriPosizioni
 
+    /// true se il pannello mostra la parte in gestione separata di una multiramo.
+    private var parte: Bool { notaQuota != nil }
+
     var body: some View {
         let e = esito
         let l = M.etichettaRigaLarga
-        return PannelloAnalisi(titolo: "La gestione separata", nota: "Quanto rende davvero al cliente, ogni anno") {
+        let nota = notaQuota.map { "Quanto rende davvero al cliente, ogni anno, \($0)" } ?? "Quanto rende davvero al cliente, ogni anno"
+        return PannelloAnalisi(titolo: titolo, nota: nota) {
             if e.reale < 0 {
                 Pillola(testo: "Perde potere d'acquisto", tono: .errore)
             }
@@ -271,7 +280,9 @@ struct PannelloGestioneSeparata: View {
                     RigaDato("Garantito a scadenza", "\(Formati.euro(g)) prima delle imposte", larghezza: l)
                 }
                 if e.trattenutoEuro >= 0.5 {
-                    RigaDato("Trattenuto in un anno", "\(Formati.euro(e.trattenutoEuro)) sul valore \(posizione.stato == .inEssere ? "di oggi" : "versato")", larghezza: l)
+                    RigaDato("Trattenuto in un anno",
+                             "\(Formati.euro(e.trattenutoEuro)) sul valore \(parte ? "della parte " : "")\(posizione.stato == .inEssere ? "di oggi" : "versato")",
+                             larghezza: l)
                 }
                 Text(frase)
                     .font(Tipo.kpiNota)
@@ -297,12 +308,18 @@ struct PannelloGestioneSeparata: View {
     }
 
     private var frase: String {
-        var parti = ["Al cliente va il rendimento della gestione meno quanto trattiene la compagnia."]
+        var parti = [parte
+            ? "Sulla parte in gestione separata va al cliente il rendimento della gestione meno quanto trattiene la compagnia; i fondi seguono i mercati per conto loro."
+            : "Al cliente va il rendimento della gestione meno quanto trattiene la compagnia."]
         if esito.minimoDecisivo {
             parti.append("Qui il minimo garantito alza l'accreditato sopra il \(Self.percento(esito.netto)) che resterebbe.")
         }
         if esito.reale < 0 {
-            parti.append("Tolta l'inflazione ipotizzata il rendimento è negativo: il capitale è garantito, il potere d'acquisto no.")
+            // Senza consolidamento annuo la garanzia vale solo a scadenza o al decesso
+            let garanzia = esito.consolidamento == false
+                ? "la garanzia vale solo a scadenza o al decesso"
+                : (parte ? "il capitale della parte è garantito" : "il capitale è garantito")
+            parti.append("Tolta l'inflazione ipotizzata il rendimento è negativo: \(garanzia), il potere d'acquisto no.")
         }
         parti.append("Il lordo è un'ipotesi: verificalo sul rendiconto della gestione.")
         return parti.joined(separator: " ")
@@ -313,4 +330,144 @@ struct PannelloGestioneSeparata: View {
 
     /// "1,30 punti"
     static func punti(_ v: Double) -> String { "\(String(CifreDoc.percento(v, decimali: 2).dropLast())) punti" }
+}
+
+// MARK: - Composizione di una multiramo
+
+/// Le due parti di una multiramo: la barra con quote ed euro, i dati della gestione separata e dei fondi,
+/// il ribilanciamento, gli avvisi sui dati mancanti e l'SRI dei fondi rispetto a quello della combinazione.
+struct PannelloComposizione: View {
+    let posizione: Posizione
+    /// SRI massimo del profilo del cliente: se i soli fondi lo superano ma la combinazione no, una riga lo dice.
+    var sriMassimo: Int? = nil
+    /// Apre il modulo della posizione («Completa i dati») per una multiramo senza i dati delle due parti.
+    var completa: (() -> Void)? = nil
+
+    private typealias M = Tema.Misura.Multiramo
+    private typealias C = Tema.Colore.Multiramo
+
+    var body: some View {
+        let p = posizione
+        let l = M.etichettaPannello
+        return PannelloAnalisi(
+            titolo: "Composizione: gestione separata e fondi",
+            nota: p.multiramoDivisa ? "Due parti con rendimenti, costi e rischio propri" : "Per ora calcolata come un comparto unico"
+        ) {
+            if p.quotaGestioneStimata {
+                Pillola(testo: "Quota stimata", tono: .attenzione)
+            }
+        } contenuto: {
+            VStack(alignment: .leading, spacing: 0) {
+                BarraComposizione(gestione: p.parteGestione, euroGestione: euro(p.parteGestione), euroFondi: euro(p.parteFondi))
+                    .padding(.bottom, M.spazioPannello)
+                if p.multiramoDivisa {
+                    RigaDato("Gestione separata", rigaGestione, larghezza: l)
+                    RigaDato("Fondi", rigaFondi, larghezza: l)
+                    RigaDato("Ribilanciamento", ribilanciamento, larghezza: l)
+                }
+                if p.quotaGestioneStimata {
+                    nota("Quota in gestione separata non indicata: stimata al \(Formati.percentuale(Posizione.quotaGestionePredefinita)).",
+                         colore: C.avviso)
+                }
+                if !p.multiramoDivisa {
+                    VStack(alignment: .leading, spacing: M.spazioPannello) {
+                        nota("Oggi Prisma calcola questa polizza come un comparto unico: indica i rendimenti della gestione separata e dei fondi per calcoli separati.",
+                             colore: C.avviso)
+                        if let completa {
+                            Button("Completa i dati") { completa() }
+                                .buttonStyle(StileVetro(margine: M.margineAzione))
+                                .help("Apre il modulo della posizione: i dati delle due parti sono nella sezione «Composizione»")
+                        }
+                    }
+                }
+                if let r = rigaSRI {
+                    nota(r, colore: Colori.Analisi.kpiNota)
+                }
+            }
+        }
+        .help(MotoreMultiramo.metodo)
+    }
+
+    /// Gli euro di una parte (nil senza valore).
+    private func euro(_ quota: Double) -> Double? {
+        posizione.valore > 0 ? posizione.valore * quota : nil
+    }
+
+    private func nota(_ testo: String, colore: Color) -> some View {
+        Text(testo)
+            .font(Tipo.kpiNota)
+            .foregroundColor(colore)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, M.spazioPannello)
+    }
+
+    /// «lordo 3,00% · trattenuto 1,30 · accreditato 1,70% · capitale garantito, consolidamento annuo».
+    private var rigaGestione: String {
+        let p = posizione
+        var parti = ["lordo \(Self.percento(p.lordoGestione()))" + (origine(p.rendimentoGestione, altro: p.rendimentoFondi, quota: p.parteGestione).map { " (\($0))" } ?? "")]
+        if let r = p.retrocessione {
+            parti.append("retrocessione \(CifreDoc.percento(r, decimali: 0))" + (p.trattenuto.map { ", trattenuto minimo \(Self.punti($0))" } ?? ""))
+        } else {
+            parti.append(p.trattenuto.map { "trattenuto \(Self.punti($0))" } ?? "trattenuto non indicato")
+        }
+        parti.append("accreditato \(Self.percento(p.accreditatoGestione()))")
+        let minimo = p.minimoGarantito ?? 0
+        if minimo > 0 { parti.append("minimo \(Self.percento(minimo))") }
+        switch p.consolidamento {
+        case .some(true):
+            parti.append("\(minimo > 0 ? "minimo garantito" : "capitale garantito"), consolidamento annuo")
+        case .some(false):
+            parti.append("rivalutazione anche negativa, garanzia solo a scadenza o al decesso")
+        case .none:
+            parti.append("consolidamento non indicato, ipotizzato annuo")
+        }
+        return parti.joined(separator: " · ")
+    }
+
+    /// «lordo 5,50% · costi 2,30% · netto 3,20% · SRI 4 · volatilità 14% · azioni 58%», più il bollo.
+    private var rigaFondi: String {
+        let p = posizione
+        var parti = ["lordo \(Self.percento(p.lordoFondi()))" + (origine(p.rendimentoFondi, altro: p.rendimentoGestione, quota: p.parteFondi).map { " (\($0))" } ?? "")]
+        if let c = p.costoFondi {
+            parti.append("costi \(Self.percento(c))")
+        } else if let c = p.costoAnnuo {
+            parti.append("costi \(Self.percento(c)) (dal costo annuo)")
+        } else {
+            parti.append("costi non indicati")
+        }
+        parti.append("netto \(Self.percento(p.nettoFondi))")
+        parti.append("SRI \(p.sriParteFondi)" + (p.sriFondi == nil ? " (stimato)" : ""))
+        parti.append("volatilità \(Formati.percentuale((p.volatilitaParteFondi * 10).rounded() / 10))" + (p.volatilitaFondi == nil ? " (stimata)" : ""))
+        if let a = p.quotaAzionariaFondi { parti.append("azioni \(Formati.percentuale(a))") }
+        if p.bolloFondi > 0 { parti.append("bollo \(CifreDoc.percento(p.bolloFondi, decimali: 2))") }
+        return parti.joined(separator: " · ")
+    }
+
+    private var ribilanciamento: String {
+        posizione.ribilanciamento == true
+            ? "annuo al \(Formati.percentuale(posizione.parteGestione * 100)) in gestione separata"
+            : "nessuno (le quote cambiano con i mercati)"
+    }
+
+    /// Da dove viene il rendimento lordo di una parte, se non è indicato: ricavato dal complessivo (se c'è
+    /// quello dell'altra parte), uguale al complessivo o l'ipotesi predefinita.
+    private func origine(_ indicato: Double?, altro: Double?, quota: Double) -> String? {
+        guard indicato == nil else { return nil }
+        guard posizione.rendimentoAtteso != nil else { return "ipotesi predefinita" }
+        return altro != nil && quota >= 0.1 ? "ricavato dal complessivo" : "come il complessivo"
+    }
+
+    /// La parte in fondi oltre il profilo del cliente con la combinazione dentro: non è un'incoerenza,
+    /// perché per il profilo conta l'SRI della combinazione (quello del KID scelto).
+    private var rigaSRI: String? {
+        let p = posizione
+        guard p.multiramoDivisa, let massimo = sriMassimo, p.sriParteFondi > massimo, p.sriComposto <= massimo else { return nil }
+        return "La parte in fondi ha SRI \(p.sriParteFondi): la combinazione resta SRI \(p.sriComposto)\(p.sri == nil ? " (stimato)" : ""), dentro il profilo del cliente (fino a \(massimo))."
+    }
+
+    /// "3,00%"
+    static func percento(_ v: Double) -> String { CifreDoc.percento(v, decimali: 2) }
+
+    /// "1,30" (punti percentuali, senza il segno %)
+    static func punti(_ v: Double) -> String { String(CifreDoc.percento(v, decimali: 2).dropLast()) }
 }

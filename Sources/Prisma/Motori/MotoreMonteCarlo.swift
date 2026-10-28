@@ -78,6 +78,17 @@ struct LineaMonteCarlo {
     var tassazioneAnnua: Double = 0
     var imposta: Imposta = .nessuna
 
+    /// Multiramo a due parti: la gestione separata (non oscilla) accanto ai fondi della linea. nil = come prima.
+    /// `quota` (0–1) è la parte del capitale e delle rate che va in gestione separata; `accreditato` il suo
+    /// rendimento annuo (%, già al netto del trattenuto e con il pavimento se consolidato); con
+    /// `ribilanciamento` a ogni anno intero le due parti tornano alla quota.
+    struct Gestione {
+        var quota: Double
+        var accreditato: Double
+        var ribilanciamento: Bool
+    }
+    var gestione: Gestione? = nil
+
     init(nome: String, capitale: Double, rendimento: Double) {
         self.nome = nome
         self.capitale = capitale
@@ -136,8 +147,10 @@ enum MotoreMonteCarlo {
 
     /// La volatilità di una posizione: quella indicata, altrimenti dall'SRI, altrimenti dalla composizione,
     /// altrimenti dall'SRI probabile dell'area; sempre solo sulla parte esposta ai mercati (gestioni separate
-    /// e conti: zero).
+    /// e conti: zero). Multiramo a due parti: la volatilità della combinazione (quota fondi × volatilità dei
+    /// fondi), solo per le schede: la linea del Monte Carlo usa quella dei fondi.
     static func volatilita(_ p: Posizione) -> Double {
+        if p.multiramoDivisa { return p.volatilitaComposta }
         if let v = p.volatilita { return max(0, v) }
         let esposta = MotoreResistenza.quotaARischio(p)
         guard esposta > 0 else { return 0 }
@@ -157,6 +170,8 @@ enum MotoreMonteCarlo {
 
     /// Una posizione collegata, con le stesse ipotesi di `MotoreObiettivo.calcola`: rendimento atteso
     /// (o quello dell'obiettivo), costi con il bollo, garanzia del Ramo I, imposte per regime.
+    /// Multiramo a due parti: la linea sono i fondi (rendimento, costi e bollo, volatilità dei fondi) con
+    /// accanto la gestione separata al suo accreditato; un'imposta sola sul contratto, con l'aliquota pesata.
     static func linea(_ p: Posizione, rendimentoPredefinito: Double, mesi: Int, data: Date) -> LineaMonteCarlo {
         var l = LineaMonteCarlo(nome: p.nome, capitale: p.valore, rendimento: p.rendimentoAtteso ?? rendimentoPredefinito)
         l.versamento = p.premio
@@ -165,6 +180,17 @@ enum MotoreMonteCarlo {
         l.costoAnnuo = (p.costoComplessivo ?? 0) + (p.regime != .deposito ? RegoleFiscali.bollo * p.quotaBollo : 0)
         l.capitaleGarantito = p.gestioneSeparata
         l.volatilita = volatilita(p)
+        if p.multiramoDivisa {
+            l.rendimento = p.lordoFondi(predefinito: rendimentoPredefinito)
+            l.costoAnnuo = p.costoParteFondi + p.bolloFondi
+            l.volatilita = p.volatilitaParteFondi
+            l.capitaleGarantito = false
+            // Senza consolidamento l'accreditato non ha pavimento; la garanzia a scadenza non entra (prudente)
+            l.gestione = LineaMonteCarlo.Gestione(
+                quota: p.parteGestione,
+                accreditato: p.accreditatoGestione(lordo: p.lordoGestione(predefinito: rendimentoPredefinito)),
+                ribilanciamento: p.ribilanciamento == true)
+        }
         let versamenti = p.premio > 0 ? p.premio * Double(numeroVersamenti(frequenza: p.frequenza, mesi: mesi)) : 0
         let base = (p.totaleVersato ?? p.versamentoIniziale) + versamenti
         switch p.regime {
@@ -211,6 +237,9 @@ enum MotoreMonteCarlo {
     /// exp(μ·f + σ·√f·z), con μ = ln(1 + r) − σ²/2 (così il rendimento MEDIO è r e la mediana è più bassa)
     /// e f la frazione d'anno. Dentro l'anno si va mese per mese con il fattore mensile costante, i costi,
     /// la garanzia e l'imposta annua esattamente come `MotoreProiezione`; alla fine l'imposta per regime.
+    /// Le linee con la gestione separata (multiramo a due parti) tengono due saldi: la gestione separata cresce
+    /// del suo accreditato senza oscillare, i fondi seguono il mercato; a fine passo di 12 mesi, con il
+    /// ribilanciamento, tornano alla quota; l'imposta finale è una sola, sulla somma.
     static func simula(_ linee: [LineaMonteCarlo], mesi: Int, traguardo: Double,
                        traiettorie: Int = traiettoriePredefinite, seme: UInt64) -> EsitoMonteCarlo {
         let n = min(max(traiettorie, 1), massimoTraiettorie)
@@ -224,8 +253,15 @@ enum MotoreMonteCarlo {
         var costoMensile = [Double](repeating: 0, count: k)
         var rata = [Double](repeating: 0, count: k)
         var ogniMesi = [Int](repeating: 0, count: k)
+        // Gestione separata delle multiramo a due parti: quota (0 = nessuna) e fattore mensile
+        var quotaG = [Double](repeating: 0, count: k)
+        var fattoreG = [Double](repeating: 1, count: k)
         for i in 0..<k {
             let l = linee[i]
+            if let g = l.gestione {
+                quotaG[i] = min(max(g.quota, 0), 1)
+                fattoreG[i] = pow(max(1 + g.accreditato / 100, 0.01), 1.0 / 12)
+            }
             let s = max(0, l.volatilita) / 100
             sigma[i] = s
             mu[i] = log(max(1 + l.rendimento / 100, 0.01)) - s * s / 2
@@ -238,11 +274,20 @@ enum MotoreMonteCarlo {
         var serie = [Double](repeating: 0, count: (passi + 1) * n)
         var finali = [Double](repeating: 0, count: n)
         var valori = [Double](repeating: 0, count: k)
+        var valoriG = [Double](repeating: 0, count: k)
         var generatore = GeneratoreSeme(seme: seme)
         let partenza = linee.reduce(0) { $0 + $1.capitale }
 
         for t in 0..<n {
-            for i in 0..<k { valori[i] = linee[i].capitale }
+            for i in 0..<k {
+                if quotaG[i] > 0 {
+                    valoriG[i] = linee[i].capitale * quotaG[i]
+                    valori[i] = linee[i].capitale * (1 - quotaG[i])
+                } else {
+                    valoriG[i] = 0
+                    valori[i] = linee[i].capitale
+                }
+            }
             serie[t] = partenza
             for passo in 0..<passi {
                 let mesiPasso = min(12, mesiTotali - passo * 12)
@@ -260,17 +305,42 @@ enum MotoreMonteCarlo {
                     if tassa > 0, m > 1 { m = 1 + (m - 1) * (1 - tassa / 100) }
                     var v = valori[i]
                     let ogni = ogniMesi[i]
-                    for mese in 0..<mesiPasso {
-                        if ogni > 0, mese % ogni == 0 { v += rata[i] }
-                        v *= m
+                    let q = quotaG[i]
+                    if q > 0 {
+                        // Multiramo a due parti: la gestione separata non oscilla, i fondi sì
+                        var vG = valoriG[i]
+                        let mG = fattoreG[i]
+                        for mese in 0..<mesiPasso {
+                            if ogni > 0, mese % ogni == 0 {
+                                vG += rata[i] * q
+                                v += rata[i] * (1 - q)
+                            }
+                            vG *= mG
+                            v *= m
+                        }
+                        // Ribilanciamento solo a fine anno intero (non nell'ultimo passo incompleto)
+                        if mesiPasso == 12, linee[i].gestione?.ribilanciamento == true {
+                            let somma = vG + v
+                            vG = q * somma
+                            v = (1 - q) * somma
+                        }
+                        valoriG[i] = vG
+                        valori[i] = v
+                        totale += vG + v
+                    } else {
+                        for mese in 0..<mesiPasso {
+                            if ogni > 0, mese % ogni == 0 { v += rata[i] }
+                            v *= m
+                        }
+                        valori[i] = v
+                        totale += v
                     }
-                    valori[i] = v
-                    totale += v
                 }
                 serie[(passo + 1) * n + t] = totale
             }
             var netto = 0.0
-            for i in 0..<k { netto += linee[i].imposta.netto(valori[i]) }
+            // Un'imposta sola per linea, sulla somma delle due parti delle multiramo
+            for i in 0..<k { netto += linee[i].imposta.netto(valori[i] + valoriG[i]) }
             finali[t] = netto
         }
 
@@ -303,7 +373,7 @@ enum MotoreMonteCarlo {
     static var metodo: [String] {
         let sri = volatilitaPerSRI.sorted { $0.key < $1.key }.map { "SRI \($0.key) \(CifreDoc.percento($0.value))" }.joined(separator: ", ")
         return [
-            "Scenari con le probabilità: \(traiettoriePredefinite) percorsi possibili dei mercati, anno per anno, con rendimenti lognormali. La media dei rendimenti è il rendimento atteso di ogni posizione (o quello dell'obiettivo); la volatilità è quella indicata o si ricava dall'SRI del KID (\(sri)), dalla quota azionaria (azioni \(CifreDoc.percento(volatilitaAzioni, decimali: 0)), obbligazioni \(CifreDoc.percento(volatilitaObbligazioni, decimali: 0))) o dall'area; gestioni separate, conti e accantonato non oscillano.",
+            "Scenari con le probabilità: \(traiettoriePredefinite) percorsi possibili dei mercati, anno per anno, con rendimenti lognormali. La media dei rendimenti è il rendimento atteso di ogni posizione (o quello dell'obiettivo); la volatilità è quella indicata o si ricava dall'SRI del KID (\(sri)), dalla quota azionaria (azioni \(CifreDoc.percento(volatilitaAzioni, decimali: 0)), obbligazioni \(CifreDoc.percento(volatilitaObbligazioni, decimali: 0))) o dall'area; gestioni separate, conti e accantonato non oscillano. Multiramo: la parte in gestione separata non oscilla, i fondi sì, con la loro volatilità; un'imposta sola sul contratto, con l'aliquota pesata sulle quote di oggi; la garanzia a scadenza della gestione separata non entra (stima prudente).",
             "Un unico andamento dei mercati vale per tutte le posizioni (nessun beneficio dalla diversificazione: stima prudente). Versamenti, costi, imposte e inflazione come nel piano dell'obiettivo; seme fisso, quindi lo stesso risultato a ogni apertura.",
             "È una stima statistica su ipotesi, non una previsione: dice in quanti casi su dieci l'obiettivo si raggiunge se i mercati si comportano come in passato.",
         ]

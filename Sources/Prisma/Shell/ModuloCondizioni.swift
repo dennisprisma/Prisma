@@ -151,12 +151,28 @@ struct ModuloCondizioni: View {
                     etichetta("Trattenuto"); numero(c.trattenuto, "% l'anno")
                     etichetta("Titoli di Stato"); numero(c.titoliStato, "% (imposta al 12,5%)")
                 }
+                // Facoltativo: senza, la proposta usa la media dello storico
+                HStack(spacing: Tema.Misura.Multiramo.spazioCondizioni) {
+                    etichetta("Rendimento lordo ipotizzato"); opzionale(c.rendimentoAtteso, "% l'anno, prima del trattenuto")
+                }
                 garanziaGestione(c)
             } else {
                 HStack(spacing: 14) {
                     etichetta("Commissione"); numero(c.commissione, "% l'anno")
                     etichetta("Fondi sottostanti"); numero(c.costiSottostanti, "% (stima)")
                     Toggle("Bollo", isOn: c.bollo).font(Tipo.campoEtichetta)
+                }
+                // Facoltativi: rendimento prima dei costi e rischio del fondo, per la proposta a due parti
+                HStack(spacing: Tema.Misura.Multiramo.spazioCondizioni) {
+                    etichetta("Rendimento lordo ipotizzato"); opzionale(c.rendimentoAtteso, "% l'anno, prima dei costi")
+                    etichetta("SRI del fondo")
+                    MenuTendina(selezione: c.sri,
+                                opzioni: [(Int?.none, "Non indicato")] + (1...7).map { (Optional($0), "\($0)") },
+                                larghezza: Tema.Misura.Multiramo.tendinaSRI)
+                }
+                HStack(spacing: Tema.Misura.Multiramo.spazioCondizioni) {
+                    etichetta("Volatilità"); opzionale(c.volatilita, "% l'anno")
+                    etichetta("Quota azionaria"); opzionale(c.quotaAzionaria, "% del fondo")
                 }
             }
             TextField("Che cosa fa, in una frase per il cliente", text: c.descrizione, axis: .vertical)

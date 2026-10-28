@@ -125,16 +125,41 @@ struct ModuloPosizione: View {
                 }
                 if bozza.area.proiettabile {
                     sezione("Ipotesi e costi (dal KID o dal prospetto)") {
-                        CampoModulo(etichetta: "Rendimento atteso") { campoPercento($bozza.rendimentoAtteso, "% annuo") }
-                        CampoModulo(etichetta: "Costo d'ingresso") { campoPercento($bozza.costoIngresso, "% dei versamenti") }
-                        CampoModulo(etichetta: "Costo annuo") { campoPercento($bozza.costoAnnuo, "% all'anno") }
-                        CampoModulo(etichetta: "Trattenuto") { campoPercento($bozza.trattenuto, "punti l'anno sul rendimento (gestione separata)") }
-                        CampoModulo(etichetta: "Aliquota") { campoPercento($bozza.aliquotaFiscale, "% sul guadagno (proiezioni)") }
-                        CampoModulo(etichetta: "Rischio (SRI)") {
-                            MenuTendina(selezione: $bozza.sri,
-                                        opzioni: [(Int?.none, "Non indicato")] + (1...7).map { (Optional($0), "\($0)") },
-                                        larghezza: 140)
+                        // Unit linked pura: rendimento, costo e SRI stanno nella colonna dei fondi della composizione
+                        if !bozza.unitLinked {
+                            CampoModulo(etichetta: bozza.multiramo ? "Rendimento complessivo" : "Rendimento atteso") {
+                                campoPercento($bozza.rendimentoAtteso, bozza.multiramo ? "% annuo lordo, delle due parti insieme" : "% annuo")
+                            }
                         }
+                        CampoModulo(etichetta: "Costo d'ingresso") { campoPercento($bozza.costoIngresso, "% dei versamenti") }
+                        if !bozza.unitLinked {
+                            // Multiramo: le commissioni del contratto senza il trattenuto, ripiego dei costi dei fondi
+                            CampoModulo(etichetta: "Costo annuo") {
+                                campoPercento($bozza.costoAnnuo, bozza.multiramo ? "% all'anno: commissioni, senza il trattenuto" : "% all'anno")
+                            }
+                        }
+                        if mostraTrattenuto {
+                            CampoModulo(etichetta: "Trattenuto") { campoPercento($bozza.trattenuto, "punti l'anno sul rendimento (gestione separata)") }
+                        }
+                        CampoModulo(etichetta: "Aliquota") { campoPercento($bozza.aliquotaFiscale, "% sul guadagno (proiezioni)") }
+                        if !bozza.unitLinked {
+                            CampoModulo(etichetta: "Rischio (SRI)") {
+                                HStack(spacing: Tema.Misura.Inserimento.spazioRiga) {
+                                    MenuTendina(selezione: $bozza.sri,
+                                                opzioni: [(Int?.none, "Non indicato")] + (1...7).map { (Optional($0), "\($0)") },
+                                                larghezza: Tema.Misura.Multiramo.tendinaSRI)
+                                    if bozza.multiramo {
+                                        Text("della combinazione scelta, dal KID")
+                                            .font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if bozza.area.proiettabile && (bozza.multiramo || bozza.unitLinked) {
+                    sezione(bozza.multiramo ? "Composizione: gestione separata e fondi" : "Composizione: i fondi (Ramo III)") {
+                        composizione
                     }
                 }
                 if bozza.area.proiettabile || bozza.area == .liquidita {
@@ -145,11 +170,14 @@ struct ModuloPosizione: View {
                                             + RegimeFiscale.allCases.map { (Optional($0), $0.nome) },
                                         larghezza: 280)
                         }
-                        if bozza.regime == .polizza || bozza.regime == .fondo {
-                            CampoModulo(etichetta: "Titoli di Stato") { campoPercento($bozza.quotaTitoliStato, "% dell'investimento, tassata al 12,5%") }
-                        }
-                        if bozza.multiramo {
-                            CampoModulo(etichetta: "Gestione separata") { campoPercento($bozza.quotaGestioneSeparata, "% in Ramo I, senza bollo") }
+                        // Unit linked pura: i titoli di Stato sono nella colonna dei fondi (un campo solo);
+                        // multiramo: la quota in gestione separata è nella composizione
+                        if (bozza.regime == .polizza || bozza.regime == .fondo) && !bozza.unitLinked {
+                            CampoModulo(etichetta: "Titoli di Stato") {
+                                campoPercento($bozza.quotaTitoliStato,
+                                              bozza.multiramo ? "% del contratto, se non indichi quelli delle parti (12,5%)"
+                                                              : "% dell'investimento, tassata al 12,5%")
+                            }
                         }
                         if bozza.regime != .previdenza && bozza.regime != .esente {
                             CampoModulo(etichetta: "Bollo 0,20%") {
@@ -240,6 +268,96 @@ struct ModuloPosizione: View {
         if !s.garanzie.isEmpty { bozza.garanzie = s.garanzie }
         if s.area == .protezione, bozza.rischio == nil { bozza.rischio = ImportaPosizioni.rischio(s.nome + " " + s.tipologia) }
         if s.area != .protezione { bozza.rischio = nil }
+        // Gestione separata e due parti della multiramo: si sceglie un altro prodotto, quindi prima si tolgono
+        // quelli della scheda di prima. La quota di una posizione in essere resta: è un dato dell'estratto
+        // conto (il valore di oggi), non della scheda. Poi la scheda riempie ciò che manca (tipologia già scelta).
+        bozza.trattenuto = nil
+        bozza.retrocessione = nil
+        bozza.minimoGarantito = nil
+        bozza.consolidamento = nil
+        if bozza.stato != .inEssere { bozza.quotaGestioneSeparata = nil }
+        bozza.rendimentoGestione = nil
+        bozza.rendimentoFondi = nil
+        bozza.costoFondi = nil
+        bozza.sriFondi = nil
+        bozza.volatilitaFondi = nil
+        bozza.quotaAzionariaFondi = nil
+        bozza.titoliStatoGestione = nil
+        bozza.titoliStatoFondi = nil
+        bozza.ribilanciamento = nil
+        var completata = bozza
+        MotoreMultiramo.applica(s, a: &completata)
+        bozza = completata
+    }
+
+    // MARK: - Composizione: gestione separata e fondi
+
+    /// La composizione della multiramo (le due parti) o, per la unit linked pura, la sola colonna dei fondi
+    /// legata ai campi di sempre della posizione.
+    @ViewBuilder private var composizione: some View {
+        let m = Tema.Misura.Inserimento.self
+        if bozza.multiramo {
+            VStack(alignment: .leading, spacing: m.spazioCampi) {
+                if !bozza.multiramoDivisa {
+                    Text("Oggi Prisma calcola questa polizza come un comparto unico: indica i rendimenti della gestione separata e dei fondi per calcoli separati.")
+                        .font(Tema.Testo.Multiramo.nota)
+                        .foregroundColor(Tema.Colore.Multiramo.avviso)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                SezioneComposizione(
+                    quotaGestione: $bozza.quotaGestioneSeparata,
+                    rendimentoGestione: $bozza.rendimentoGestione,
+                    trattenuto: $bozza.trattenuto,
+                    retrocessione: $bozza.retrocessione,
+                    minimoGarantito: $bozza.minimoGarantito,
+                    consolidamento: $bozza.consolidamento,
+                    titoliStatoGestione: $bozza.titoliStatoGestione,
+                    rendimentoFondi: $bozza.rendimentoFondi,
+                    costoFondi: $bozza.costoFondi,
+                    sriFondi: $bozza.sriFondi,
+                    volatilitaFondi: $bozza.volatilitaFondi,
+                    quotaAzionariaFondi: $bozza.quotaAzionariaFondi,
+                    titoliStatoFondi: $bozza.titoliStatoFondi,
+                    ribilanciamento: $bozza.ribilanciamento,
+                    conGestione: true,
+                    limiti: limitiQuota,
+                    valoreTotale: valoreComposizione,
+                    accreditato: MotoreGestioneSeparata.calcolaParte(bozza).map(testoAccreditato),
+                    notaQuota: bozza.stato == .inEssere && bozza.quotaGestioneSeparata == nil
+                        ? "Per una polizza in essere indica la quota del valore di oggi, dall'estratto conto." : nil)
+            }
+        } else {
+            SezioneComposizione(
+                quotaGestione: .constant(nil),
+                rendimentoGestione: .constant(nil),
+                trattenuto: .constant(nil),
+                retrocessione: .constant(nil),
+                minimoGarantito: .constant(nil),
+                consolidamento: .constant(nil),
+                titoliStatoGestione: .constant(nil),
+                rendimentoFondi: $bozza.rendimentoAtteso,
+                costoFondi: $bozza.costoAnnuo,
+                sriFondi: $bozza.sri,
+                volatilitaFondi: $bozza.volatilita,
+                quotaAzionariaFondi: $bozza.quotaAzionaria,
+                titoliStatoFondi: $bozza.quotaTitoliStato,
+                ribilanciamento: .constant(nil),
+                conGestione: false)
+        }
+    }
+
+    /// La quota in gestione separata ammessa dalla scheda collegata (0–100), se la scheda la indica.
+    private var limitiQuota: ClosedRange<Double>? {
+        guard let s = prodotto, s.quotaGestioneMinima != nil || s.quotaGestioneMassima != nil else { return nil }
+        let minima = min(max(s.quotaGestioneMinima ?? 0, 0), 100)
+        let massima = min(max(s.quotaGestioneMassima ?? 100, 0), 100)
+        return minima <= massima ? minima...massima : nil
+    }
+
+    /// Il valore da dividere tra le due parti: quello di oggi in essere, il versamento iniziale per una proposta.
+    private var valoreComposizione: Double? {
+        if bozza.stato == .inEssere { return bozza.controvalore }
+        return bozza.versamentoIniziale > 0 ? bozza.versamentoIniziale : nil
     }
 
     // MARK: - Dati per l'analisi
@@ -262,7 +380,19 @@ struct ModuloPosizione: View {
             p.volatilita != nil, p.quotaAzionaria != nil, p.assicuratoId != nil, p.capitaleDecrescente != nil,
             p.contributoDatore != nil, p.tfrConferito != nil, p.tassoDebito != nil, p.quotaDebito != nil,
         ])
-        return rendimenti + rischioEFamiglia
+        // Multiramo: contano anche i dati delle due parti indicati nella composizione
+        let parti = !p.multiramo ? 0 : DatiPerAnalisi.conta([
+            p.rendimentoGestione != nil, p.rendimentoFondi != nil, p.costoFondi != nil, p.sriFondi != nil,
+            p.volatilitaFondi != nil, p.quotaAzionariaFondi != nil, p.titoliStatoGestione != nil,
+            p.titoliStatoFondi != nil, p.ribilanciamento == true,
+        ])
+        return rendimenti + rischioEFamiglia + parti
+    }
+
+    /// Il trattenuto in «Ipotesi e costi»: per il Ramo I e la previdenza (per una multiramo è nella colonna
+    /// della gestione separata). Se è già indicato su un'altra posizione resta visibile, perché conta nei calcoli.
+    private var mostraTrattenuto: Bool {
+        bozza.gestioneSeparata || (!bozza.multiramo && (bozza.regime == .previdenza || bozza.trattenuto != nil))
     }
 
     /// Riscatto anno per anno: solo polizze e fondi (la previdenza ha regole sue).
@@ -282,8 +412,11 @@ struct ModuloPosizione: View {
         if bozza.area.proiettabile && bozza.stato == .inEssere { gruppoMovimenti }
         if conRiscatto { gruppoRiscatto }
         if bozza.area.proiettabile { gruppoKID }
-        if bozza.area.proiettabile && bozza.regime == .polizza { gruppoGestioneSeparata }
-        if bozza.area.proiettabile { gruppoRischio }
+        // Solo il Ramo I puro: per la multiramo i dati della gestione separata sono nella composizione
+        if bozza.area.proiettabile && bozza.gestioneSeparata { gruppoGestioneSeparata }
+        // Unit linked e multiramo a due parti: il rischio è quello dei fondi, nella composizione. Una multiramo
+        // non ancora divisa lo tiene qui: i motori usano ancora quota azionaria e volatilità del contratto.
+        if bozza.area.proiettabile && !bozza.unitLinked && !bozza.multiramoDivisa { gruppoRischio }
         if bozza.area == .previdenza { gruppoPrevidenza }
         if conAssicurato { gruppoAssicurato }
         if bozza.area == .debiti { gruppoDebito }
@@ -543,7 +676,7 @@ struct ModuloPosizione: View {
 
     private var gruppoRischio: some View {
         VStack(alignment: .leading, spacing: Tema.Misura.Inserimento.spazioCampi) {
-            GruppoCampi(titolo: "Rischio",
+            GruppoCampi(titolo: bozza.multiramo ? "Rischio del contratto" : "Rischio",
                         spiegazione: "Per le crisi del passato e gli scenari con le probabilità. Se mancano, Prisma li stima da tipologia e SRI e lo dichiara.")
             CampoModulo(etichetta: "Quota azionaria") {
                 CampoCifraFacoltativa(valore: $bozza.quotaAzionaria, unita: "% investita in azioni")

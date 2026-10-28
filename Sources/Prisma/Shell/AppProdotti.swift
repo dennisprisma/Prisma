@@ -174,8 +174,7 @@ struct AppProdotti: View {
                 EtichettaCanale(canale: p.canale, compatta: true)
             }
             HStack(spacing: 6) {
-                Text([p.area.nome, p.costoAnnuo.map { "costo \(Formati.percentuale($0))" } ?? "", p.sri.map { "SRI \($0)" } ?? ""]
-                        .filter { !$0.isEmpty }.joined(separator: " · "))
+                Text(Self.riassunto(p))
                     .font(Tipo.chip)
                     .foregroundColor(Colori.Analisi.kpiNota)
                 if p.daVerificare {
@@ -185,6 +184,20 @@ struct AppProdotti: View {
         }
         .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
         .voceElencoStrumento(attiva: attiva)
+    }
+
+    /// La riga sotto il nome nell'elenco: area, costo e SRI; per una multiramo con le due parti
+    /// «GS 30% · trattenuto 1,30 — fondi 70% · costi 2,69 · SRI 3».
+    static func riassunto(_ p: Prodotto) -> String {
+        let q = p.proposta(per: "")
+        guard q.multiramoDivisa else {
+            return [p.area.nome, p.costoAnnuo.map { "costo \(Formati.percentuale($0))" } ?? "", p.sri.map { "SRI \($0)" } ?? ""]
+                .filter { !$0.isEmpty }.joined(separator: " · ")
+        }
+        let punti: (Double) -> String = { String(CifreDoc.percento($0, decimali: 2).dropLast()) }
+        let gestione = "GS \(Formati.percentuale(q.parteGestione * 100)) · trattenuto \(punti(q.trattenutoGestione))"
+        let fondi = "fondi \(Formati.percentuale(q.parteFondi * 100)) · costi \(punti(q.costoParteFondi))"
+        return "\(gestione) — \(fondi)" + (p.sri.map { " · SRI \($0)" } ?? "")
     }
 
     // MARK: - Condizioni e fonte
@@ -242,6 +255,9 @@ struct AppProdotti: View {
         let parametri = p.parametriEsempio
         let esito = MotoreProiezione.calcola(parametri)
         let impatto = MotoreProiezione.impattoCosti(parametri)
+        // Multiramo a due parti: costo e rendimento pesati sulle due parti (dalla proiezione d'esempio)
+        let dueParti = parametri.gestione != nil
+        let composizione = MotoreMultiramo.rigaComposizione(p.proposta(per: ""))
         let usi = stato.posizioniDelProdotto(p.id)
         let cliente = stato.clienteAttivo?.nome ?? "il cliente"
         return ScrollView {
@@ -258,9 +274,15 @@ struct AppProdotti: View {
                 }
                 if p.area.proiettabile {
                     FasciaKPI {
-                        KPI(titolo: "Costo annuo", valore: p.costoAnnuo.map { Formati.percentuale($0) } ?? "—") { Text("all'anno sul capitale") }
+                        KPI(titolo: "Costo annuo",
+                            valore: dueParti ? CifreDoc.percento(parametri.costoAnnuoEquivalente, decimali: 2) : (p.costoAnnuo.map { Formati.percentuale($0) } ?? "—")) {
+                            Text(dueParti ? "pesato sulle due parti, senza bollo" : "all'anno sul capitale")
+                        }
                         KPI(titolo: "Costo d'ingresso", valore: p.costoIngresso.map { Formati.percentuale($0) } ?? "—") { Text("sui versamenti") }
-                        KPI(titolo: "Rendimento ipotizzato", valore: p.rendimentoAtteso.map { Formati.percentuale($0) } ?? "—") { Text("dal KID, non garantito") }
+                        KPI(titolo: "Rendimento ipotizzato",
+                            valore: dueParti ? CifreDoc.percento(parametri.rendimentoEquivalente, decimali: 2) : (p.rendimentoAtteso.map { Formati.percentuale($0) } ?? "—")) {
+                            Text(composizione.isEmpty ? "dal KID, non garantito" : composizione)
+                        }
                         KPI(titolo: "Su 10.000 € in 10 anni", valore: Formati.euro(esito.netto), ultimo: true) {
                             Text("i costi tolgono \(Formati.euro(impatto))")
                         }
@@ -346,9 +368,13 @@ struct ModuloProdotto: View {
                 }
                 CampoModulo(etichetta: "Compagnia o emittente") { TextField("", text: $bozza.emittente).textFieldStyle(.roundedBorder) }
                 CampoModulo(etichetta: "Tipologia") { TextField("", text: $bozza.tipologia).textFieldStyle(.roundedBorder) }
-                CampoModulo(etichetta: "Rendimento ipotizzato") { percento($bozza.rendimentoAtteso, "% annuo") }
+                CampoModulo(etichetta: multiramo ? "Rendimento complessivo" : "Rendimento ipotizzato") {
+                    percento($bozza.rendimentoAtteso, multiramo ? "% annuo lordo, delle due parti insieme" : "% annuo")
+                }
                 CampoModulo(etichetta: "Costo d'ingresso") { percento($bozza.costoIngresso, "% dei versamenti") }
-                CampoModulo(etichetta: "Costo annuo") { percento($bozza.costoAnnuo, "% all'anno") }
+                CampoModulo(etichetta: "Costo annuo") {
+                    percento($bozza.costoAnnuo, multiramo ? "% all'anno: commissioni, senza il trattenuto" : "% all'anno")
+                }
                 CampoModulo(etichetta: "Costi nel KID (RIY)") {
                     percento($bozza.incidenzaCostiKID, "% l'anno al periodo raccomandato · Prisma lo confronta con il suo calcolo")
                 }
@@ -357,9 +383,20 @@ struct ModuloProdotto: View {
                 }
                 CampoModulo(etichetta: "Fiscalità") { percento($bozza.aliquotaFiscale, "% sul rendimento") }
                 CampoModulo(etichetta: "Rischio (SRI)") {
-                    MenuTendina(selezione: $bozza.sri,
-                                opzioni: [(Int?.none, "Non indicato")] + (1...7).map { (Optional($0), "\($0)") },
-                                larghezza: 140)
+                    HStack(spacing: Tema.Misura.Inserimento.spazioRiga) {
+                        MenuTendina(selezione: $bozza.sri,
+                                    opzioni: [(Int?.none, "Non indicato")] + (1...7).map { (Optional($0), "\($0)") },
+                                    larghezza: Tema.Misura.Multiramo.tendinaSRI)
+                        if multiramo {
+                            Text("della combinazione, dal KID")
+                                .font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                        }
+                    }
+                }
+                if multiramo {
+                    composizione
+                } else if gestioneSeparata {
+                    garanziaGestione
                 }
                 CampoModulo(etichetta: "Garanzie") { TextField("", text: $bozza.garanzie).textFieldStyle(.roundedBorder) }
                 CampoModulo(etichetta: "Riscatto e liquidabilità") { TextField("", text: $bozza.liquidabilita).textFieldStyle(.roundedBorder) }
@@ -387,6 +424,84 @@ struct ModuloProdotto: View {
             .keyboardShortcut(.defaultAction)
         }
         .frame(width: Misure.Analisi.modulo.width, height: Misure.Analisi.modulo.height)
+    }
+
+    // MARK: - Multiramo e gestione separata
+
+    /// La scheda descrive una multiramo: solo Investimento e Risparmio, perché una scheda di previdenza dà
+    /// posizioni con il regime della previdenza, mai multiramo.
+    private var multiramo: Bool {
+        Posizione.multiramo(tipologia: bozza.tipologia) && (bozza.area == .investimento || bozza.area == .risparmio)
+    }
+
+    /// La scheda descrive un Ramo I puro (come lo vedrà la proposta).
+    private var gestioneSeparata: Bool { !multiramo && bozza.proposta(per: "").gestioneSeparata }
+
+    /// Le due parti della multiramo, con gli stessi campi del modulo della posizione e i limiti della quota.
+    private var composizione: some View {
+        let m = Tema.Misura.Multiramo.self
+        let limiti: ClosedRange<Double>? = {
+            guard bozza.quotaGestioneMinima != nil || bozza.quotaGestioneMassima != nil else { return nil }
+            let minima = min(max(bozza.quotaGestioneMinima ?? 0, 0), 100)
+            let massima = min(max(bozza.quotaGestioneMassima ?? 100, 0), 100)
+            return minima <= massima ? minima...massima : nil
+        }()
+        // L'accreditato della parte in gestione separata, come lo vedrà la proposta (con le condizioni)
+        let accreditato = MotoreGestioneSeparata.calcolaParte(bozza.proposta(per: "")).map {
+            "\(Formati.percentuale($0.accreditato)) l'anno su un lordo ipotizzato del \(Formati.percentuale($0.lordo)) (stima, prima delle imposte)"
+        }
+        return VStack(alignment: .leading, spacing: m.spazioRighe) {
+            OcchielloSezione(titolo: "Composizione: gestione separata e fondi")
+            if let c = bozza.condizioni, !c.componenti.isEmpty {
+                Text("Le condizioni del contratto hanno già le parti (\(c.composizioneBreve)): i campi vuoti si prendono da lì.")
+                    .font(Tema.Testo.Multiramo.nota)
+                    .foregroundColor(Tema.Colore.Multiramo.nota)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            SezioneComposizione(
+                quotaGestione: $bozza.quotaGestioneSeparata,
+                rendimentoGestione: $bozza.rendimentoGestione,
+                trattenuto: $bozza.trattenuto,
+                retrocessione: $bozza.retrocessione,
+                minimoGarantito: $bozza.minimoGarantito,
+                consolidamento: $bozza.consolidamento,
+                titoliStatoGestione: $bozza.titoliStatoGestione,
+                rendimentoFondi: $bozza.rendimentoFondi,
+                costoFondi: $bozza.costoFondi,
+                sriFondi: $bozza.sriFondi,
+                volatilitaFondi: $bozza.volatilitaFondi,
+                quotaAzionariaFondi: $bozza.quotaAzionariaFondi,
+                titoliStatoFondi: $bozza.titoliStatoFondi,
+                ribilanciamento: $bozza.ribilanciamento,
+                conGestione: true,
+                limiti: limiti,
+                accreditato: accreditato)
+            CampoModulo(etichetta: "Quota GS ammessa") {
+                HStack(spacing: Tema.Misura.Inserimento.spazioRiga) {
+                    Text("da").font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                    CampoCifraFacoltativa(valore: $bozza.quotaGestioneMinima, unita: "%")
+                    Text("a").font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                    CampoCifraFacoltativa(valore: $bozza.quotaGestioneMassima, unita: "% · dalle condizioni, solo per avvisare")
+                }
+            }
+        }
+    }
+
+    /// Ramo I puro: le condizioni della gestione separata che la proposta eredita.
+    private var garanziaGestione: some View {
+        VStack(alignment: .leading, spacing: Tema.Misura.Inserimento.spazioCampi) {
+            OcchielloSezione(titolo: "Gestione separata")
+            CampoModulo(etichetta: "Trattenuto") { percento($bozza.trattenuto, "punti l'anno sul rendimento") }
+            CampoModulo(etichetta: "Retrocessione") { percento($bozza.retrocessione, "% del rendimento lordo · al posto del trattenuto") }
+            CampoModulo(etichetta: "Minimo garantito") { percento($bozza.minimoGarantito, "% l'anno · 0 = garantito solo il capitale") }
+            CampoModulo(etichetta: "Consolidamento") {
+                MenuTendina(selezione: $bozza.consolidamento,
+                            opzioni: [(Bool?.none, "Non indicato · si considera annuo"),
+                                      (Optional(true), "Annuo: l'accreditato non si perde"),
+                                      (Optional(false), "Solo a scadenza o al decesso")],
+                            larghezza: Tema.Misura.Inserimento.tendinaConsolidamento)
+            }
+        }
     }
 
     private func percento(_ valore: Binding<Double?>, _ unita: String) -> some View {

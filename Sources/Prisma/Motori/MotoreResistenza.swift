@@ -20,7 +20,7 @@ struct ProvaResistenza {
         var ipotesi: String {
             switch self {
             case .mercati:
-                return "Un anno come il 2008 o il 2022: ogni posizione perde secondo il suo indicatore di rischio (SRI); il capitale garantito tiene."
+                return "Un anno come il 2008 o il 2022: ogni posizione perde secondo il suo indicatore di rischio (SRI); il capitale garantito tiene. Nelle multiramo con i dati separati rischia solo la parte in fondi: la gestione separata non segue i mercati ed è garantita solo con il consolidamento annuo."
             case .inflazione:
                 return "Prezzi in salita del \(CifreDoc.condizione(MotoreResistenza.inflazioneAlta)) l'anno per \(MotoreResistenza.anniInflazione) anni: perde potere d'acquisto ciò che rende meno."
             case .immobili:
@@ -161,6 +161,7 @@ enum MotoreResistenza {
     }
 
     private static func voceMercati(_ p: Posizione) -> ProvaResistenza.Voce? {
+        if p.multiramoDivisa { return voceMercatiDueParti(p) }
         let esposta = quotaARischio(p)
         guard esposta > 0 else { return nil }
         let sri = min(max(p.sri ?? sriProbabile(p.area), 1), 7)
@@ -174,11 +175,33 @@ enum MotoreResistenza {
         return .init(posizione: p, perdita: p.valore * esposta * calo / 100, motivo: motivo)
     }
 
+    /// Multiramo a due parti: perde solo la parte in fondi, secondo l'SRI dei fondi (indicato o stimato dalla
+    /// loro volatilità). L'SRI della combinazione non si applica più alla sola parte esposta: niente doppio
+    /// sconto. La gestione separata non segue i mercati; è garantita solo con il consolidamento annuo
+    /// (non indicato = annuo, come per il Ramo I).
+    private static func voceMercatiDueParti(_ p: Posizione) -> ProvaResistenza.Voce? {
+        let fondi = p.parteFondi
+        guard fondi > 0 else { return nil }
+        let sri = p.sriParteFondi
+        let calo = caloPerSRI[sri] ?? 0
+        guard calo > 0 else { return nil }
+        let sriStimato = p.sriFondi == nil ? " (stimato)" : ""
+        var motivo = "Fondi: SRI \(sri) su 7\(sriStimato), calo del \(CifreDoc.condizione(calo)) sul \(CifreDoc.percento(fondi * 100, decimali: 0)) in fondi"
+        if p.parteGestione > 0 {
+            let stimata = p.quotaGestioneStimata ? " (stimato)" : ""
+            let garanzia = p.consolidamento == false ? "che non segue i mercati, senza garanzia prima della scadenza" : "garantita"
+            motivo += "; \(CifreDoc.percento(p.parteGestione * 100, decimali: 0)) in gestione separata\(stimata), \(garanzia)"
+        }
+        return .init(posizione: p, perdita: p.valore * fondi * calo / 100, motivo: motivo)
+    }
+
     /// Il potere d'acquisto perso in tre anni d'inflazione alta, per ciò che rende meno dell'inflazione
     /// (al netto dei costi; i conti senza rendimento indicato rendono zero).
     private static func voceInflazione(_ p: Posizione) -> ProvaResistenza.Voce? {
-        // Senza rendimento indicato: zero per i conti, l'ipotesi predefinita per il resto
-        let netto = (p.rendimentoAtteso ?? (p.area == .liquidita ? 0 : IpotesiCalcolo.rendimentoPredefinito)) - (p.costoComplessivo ?? 0)
+        // Senza rendimento indicato: zero per i conti, l'ipotesi predefinita per il resto.
+        // Multiramo a due parti: accreditato della gestione separata e netto dei fondi, pesati sulle quote.
+        let netto = p.multiramoDivisa ? p.rendimentoNettoComposto
+            : (p.rendimentoAtteso ?? (p.area == .liquidita ? 0 : IpotesiCalcolo.rendimentoPredefinito)) - (p.costoComplessivo ?? 0)
         guard netto < inflazioneAlta else { return nil }
         let anni = Double(anniInflazione)
         let reale = pow((1 + netto / 100) / (1 + inflazioneAlta / 100), anni)

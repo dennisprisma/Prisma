@@ -199,6 +199,13 @@ enum ClientiFittizi {
             p.decorrenza = anni(-da)
             p.rendimentoAtteso = 4; p.costoIngresso = 1; p.costoAnnuo = 1.8; p.aliquotaFiscale = 24; p.sri = 3
             p.quotaGestioneSeparata = 40
+            // Le due parti (dalla versione 20): gestione separata al 3% lordo con trattenuto 1,3 e consolidamento
+            // annuo; fondi al 4,5–5,5% lordo secondo l'anzianità (niente numeri casuali), costi 2,2%, SRI 4
+            p.rendimentoGestione = 3.0; p.trattenuto = 1.3; p.consolidamento = true; p.minimoGarantito = 0
+            p.rendimentoFondi = 4.5 + Double(da % 3) * 0.5; p.costoFondi = 2.2; p.sriFondi = 4
+            // Il rendimento complessivo torna alla media pesata delle due parti (come per Marco nei dati di prova):
+            // il modulo e il dettaglio mostrano lo stesso numero
+            p.rendimentoAtteso = ((0.4 * 3.0 + 0.6 * (p.rendimentoFondi ?? 4.5)) * 10).rounded() / 10
             p.prodottoId = "prodotto-multiramo"
             valori(&p, versato: importo, crescita: 0.028, anni: da)
         case .etf(let iniziale, let mensile, let da):

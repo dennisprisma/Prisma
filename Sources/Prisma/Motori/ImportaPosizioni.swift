@@ -166,13 +166,14 @@ enum ImportaPosizioni {
             p.note = "Importata da file il \(Formati.dataEstesa.string(from: oggi))."
             let scheda = prodottoPer(p, tra: prodotti)
             if let scheda {
-                applica(scheda, a: &p)
                 // La scheda sa canale e area meglio delle parole del nome
                 if canaleLetto == nil { p.canale = scheda.canale }
                 if areaLetta == nil {
                     p.area = scheda.area
                     p.rischio = p.area == .protezione ? (p.rischio ?? rischio(testoProdotto)) : nil
                 }
+                // Dopo l'area: con l'area e la tipologia si sa se è una multiramo (regime della polizza)
+                applica(scheda, a: &p)
             }
 
             var x = PosizioneImportata(posizione: p, clienteNelFile: nomeCliente.isEmpty ? cf : nomeCliente, cliente: cliente,
@@ -217,7 +218,8 @@ enum ImportaPosizioni {
         return contenuti.count == 1 ? contenuti.first : nil
     }
 
-    /// Le ipotesi della scheda prodotto che il file non dice: costi, rendimento, rischio, garanzie.
+    /// Le ipotesi della scheda prodotto che il file non dice: costi, rendimento, rischio, garanzie, condizioni
+    /// della gestione separata e le due parti della multiramo (dopo la tipologia, che decide se è multiramo).
     static func applica(_ s: Prodotto, a p: inout Posizione) {
         p.prodottoId = s.id
         if p.tipologia.isEmpty { p.tipologia = s.tipologia }
@@ -228,6 +230,7 @@ enum ImportaPosizioni {
         p.aliquotaFiscale = p.aliquotaFiscale ?? s.aliquotaFiscale
         p.sri = p.sri ?? s.sri
         if p.garanzie.isEmpty { p.garanzie = s.garanzie }
+        MotoreMultiramo.applica(s, a: &p)
     }
 
     /// Il segnaposto di un cliente nuovo in `clienteId`, finché l'importazione non gli dà il suo id:
@@ -280,6 +283,9 @@ enum ImportaPosizioni {
             (.protezione, ["caso morte", "tcm", "temporanea", "infortun", "ltc", "non autosufficien", "malattia", "invalidit", "salute", "rc ", "responsabilit", "casa", "danni"]),
             (.debiti, ["mutuo", "prestito", "finanziamento", "leasing", "cessione del quinto"]),
             (.liquidita, ["conto corrente", "conto deposito", "deposito", "libretto", "liquidit"]),
+            // Multiramo e unit linked prima del Risparmio: «Ramo I e Ramo III» non è una rivalutabile pura
+            // («unit» da solo no: coglierebbe «comunità», «unità»)
+            (.investimento, ["multiramo", "unit link", "unit-link", "ramo iii"]),
             (.risparmio, ["rivalutabil", "ramo i ", "ramo i)", "gestione separata", "risparmio", "capitalizzazione", "pac"]),
             (.investimento, ["ramo iii", "unit", "multiramo", "fondo", "etf", "sicav", "gestione", "azion", "obbligaz", "titol", "btp"]),
             (.immobili, ["immobil", "appartamento", "casa di proprieta"]),
