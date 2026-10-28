@@ -31,9 +31,10 @@ import SwiftUI
 /// il Portachiavi e non chiede il permesso delle notifiche; i promemoria del Mac sono spenti anche perché
 /// l'app è avviata con un argomento `--` (vedi `PromemoriaMac.disponibili`).
 ///
-/// I limiti sono larghissimi (il runner Intel virtuale è lento e senza una GPU vera): fallisce solo se la mediana
-/// dell'avvio supera 8 s, quella di un'azione 3 s, la prima apertura delle app pesanti 8 s, o se dopo un'azione
-/// lo stato non è quello atteso.
+/// I limiti valgono per l'aggiornamento (stato + impaginazione: il lavoro che dipende da Prisma). Il disegno qui
+/// è fatto dalla CPU del runner Intel virtuale, senza GPU, e costa 1-3 s per qualunque azione: ha solo un limite
+/// largo, contro i disastri. Fallisce se l'aggiornamento mediano dell'avvio supera 8 s, quello di un'azione 3 s,
+/// la prima apertura delle app pesanti 8 s, se un disegno supera 8 s, o se dopo un'azione lo stato non è quello atteso.
 @MainActor
 enum ProvaFluidita {
     static var misura: CGSize { Istantanee.dimensione }
@@ -42,11 +43,13 @@ enum ProvaFluidita {
     static let giri = 3
     static let giriPesanti = 2
     static let giriAvvio = 3
-    // Limiti oltre i quali la prova fallisce (sulla mediana dell'aggiornamento più il disegno), in secondi
+    // Limiti oltre i quali la prova fallisce (sulla mediana dell'aggiornamento), in secondi
     static let limiteAvvio = 8.0
     static let limiteAzione = 3.0
     /// La prima apertura delle quattro app pesanti con 200 clienti (una misura sola).
     static let limitePrimaApertura = 8.0
+    /// Il disegno di una schermata intera sul runner senza GPU (solo contro i disastri).
+    static let limiteDisegno = 8.0
     /// La durata a cui punta la prova (oltre, solo un'avvertenza: la build non deve allungarsi).
     static let durataAttesa = 300.0
     /// Oltre questa durata le misure rimaste si saltano (con un'avvertenza, senza fallire): rete di sicurezza.
@@ -595,10 +598,14 @@ private final class SessioneFluidita {
             if let avvisiFinestre { parti.append("\(avvisiFinestre) delle finestre") }
             print("INFO fluidità · \(r.scenario) · \(r.azione): \(parti.joined(separator: " · "))")
 
-            if mediana > r.limite {
-                controlla(false, "\(r.scenario) · \(r.azione): \(ProvaFluidita.ms(mediana)) di mediana, oltre il limite di \(ProvaFluidita.secondi(r.limite))")
-            } else if massimo > r.limite {
-                print("ATTENZIONE \(r.scenario) · \(r.azione): un giro da \(ProvaFluidita.ms(massimo)), oltre \(ProvaFluidita.secondi(r.limite)) (la mediana resta sotto)")
+            let aggiornamentoMassimo = r.aggiornamento.max() ?? 0
+            if aggiornamento > r.limite {
+                controlla(false, "\(r.scenario) · \(r.azione): aggiornamento di \(ProvaFluidita.ms(aggiornamento)) di mediana, oltre il limite di \(ProvaFluidita.secondi(r.limite))")
+            } else if aggiornamentoMassimo > r.limite {
+                print("ATTENZIONE \(r.scenario) · \(r.azione): un aggiornamento da \(ProvaFluidita.ms(aggiornamentoMassimo)), oltre \(ProvaFluidita.secondi(r.limite)) (la mediana resta sotto)")
+            }
+            if let disegno, disegno > ProvaFluidita.limiteDisegno {
+                controlla(false, "\(r.scenario) · \(r.azione): disegno di \(ProvaFluidita.ms(disegno)), oltre il limite di \(ProvaFluidita.secondi(ProvaFluidita.limiteDisegno))")
             }
             if r.incoerente {
                 controlla(false, "\(r.scenario) · \(r.azione): dopo l'azione lo stato non è quello atteso")
