@@ -124,50 +124,81 @@ enum CompositoreProspetti {
         }
         aggiungi("Capitale assicurato", p.capitaleAssicurato.map(euro))
         aggiungi("Rischio coperto", p.rischio?.nome)
-        aggiungi("Indicatore di rischio (SRI)", p.sri.map { "\($0) su 7" })
+        // Multiramo: l'SRI del KID è quello della combinazione; sotto, le due parti e il rischio dei soli fondi
+        aggiungi(p.multiramo ? "SRI della combinazione (KID)" : "Indicatore di rischio (SRI)", p.sri.map { "\($0) su 7" })
+        if p.multiramo {
+            aggiungi("Composizione", MotoreMultiramo.rigaComposizione(p))
+            aggiungi("SRI dei fondi", p.sriFondi.map { "\($0) su 7" })
+        }
         b.append(.voci(voci))
 
         // Costi
         if p.area.proiettabile || p.costoAnnuo != nil || p.trattenuto != nil || p.costoIngresso != nil {
             sezione("Costi e fiscalità")
             let impatto = MotoreProiezione.impattoCosti(par)
+            let ingressoPeriodo = costoIngressoNelPeriodo(par)
+            var righeCosti: [[CellaProspetto]] = [
+                [.t("Costo d'ingresso"), percentualeOpzionale(p.costoIngresso), .n(p.stato == .inEssere ? "versamenti futuri" : "capitale iniziale e versamenti"),
+                 .t(euro(ingressoPeriodo))],
+            ]
+            // Multiramo a due parti: il trattenuto vale sulla sola gestione separata, commissioni, costi dei fondi
+            // e bollo sulla sola parte in fondi (ognuno sul suo capitale)
+            let ribilanciata = par.gestione?.ribilanciamento == true
+            if p.multiramoDivisa, par.gestione != nil {
+                let annui = max(0, atteso.costi - ingressoPeriodo)
+                // Senza ribilanciamento le due parti sono indipendenti: gli euro del trattenuto si separano esatti
+                let trattenutoPeriodo: Double? = ribilanciata ? nil : min(annui, trattenutoGestioneNelPeriodo(par))
+                let suiFondi = "parte in fondi (\(quota(p.parteFondi)))" + (p.bolloFondi > 0 ? ", più bollo \(percentuale2(p.bolloFondi))" : "")
+                righeCosti.append([.t("Gestione separata: trattenuto sul rendimento"), .t("\(TestiMultiramo.punti(p.trattenutoGestione)) punti"),
+                                   .n("parte in gestione separata (\(quota(p.parteGestione)))"),
+                                   trattenutoPeriodo.map { CellaProspetto.t(euro($0)) } ?? .n("—")])
+                righeCosti.append([.t("Fondi: commissioni e costi dei fondi"), .t(percentuale2(p.costoParteFondi)), .n(suiFondi),
+                                   .t(euro(annui - (trattenutoPeriodo ?? 0)))])
+            } else {
+                righeCosti.append([.t(p.trattenuto == nil ? "Costo annuo di gestione" : "Costo annuo e trattenuto sul rendimento"),
+                                   condizioneCostoAnnuo(p),
+                                   .n("capitale investito, ogni anno, pro quota mensile"),
+                                   .t(euro(max(0, atteso.costi - ingressoPeriodo)))])
+            }
+            // Nel modo a due parti l'aliquota della proiezione è quella dei soli fondi: qui quella equivalente
+            righeCosti.append([.t("Imposta sulle plusvalenze"), .t(percentuale(par.aliquotaEquivalente)), .n("guadagno a fine periodo"), .t(euro(atteso.imposte))])
             b.append(.tabella(TabellaProspetto(
                 colonne: [ColonnaProspetto(titolo: "Voce", peso: 2.2), ColonnaProspetto(titolo: "Condizione", peso: 1, destra: true),
                           ColonnaProspetto(titolo: "Si applica a", peso: 2.2), ColonnaProspetto(titolo: "In \(par.anni) anni", peso: 1.1, destra: true)],
-                righe: [
-                    [.t("Costo d'ingresso"), percentualeOpzionale(p.costoIngresso), .n(p.stato == .inEssere ? "versamenti futuri" : "capitale iniziale e versamenti"),
-                     .t(euro(costoIngressoNelPeriodo(par)))],
-                    [.t(p.trattenuto == nil ? "Costo annuo di gestione" : "Costo annuo e trattenuto sul rendimento"),
-                     condizioneCostoAnnuo(p),
-                     .n("capitale investito, ogni anno, pro quota mensile"),
-                     .t(euro(max(0, atteso.costi - costoIngressoNelPeriodo(par))))],
-                    [.t("Imposta sulle plusvalenze"), .t(percentuale(par.aliquotaFiscale)), .n("guadagno a fine periodo"), .t(euro(atteso.imposte))],
-                ],
+                righe: righeCosti,
                 totale: [.f("Costi e imposte, scenario atteso"), .t(""), .t(""), .f(euro(atteso.costi + atteso.imposte))]
             )))
+            if p.multiramoDivisa && ribilanciata {
+                b.append(.nota("Con il ribilanciamento annuo le due parti si scambiano capitale ogni anno: i costi in euro del periodo sono un totale unico, nella riga dei fondi."))
+            }
             b.append(.voci([
                 CampoVoce(etichetta: "Effetto dei costi sul netto finale", valore: euro(impatto)),
-                CampoVoce(etichetta: "Rendimento ipotizzato al netto del costo annuo", valore: percentuale(par.rendimento - par.costoAnnuo)),
+                // Multiramo a due parti: rendimento e costo equivalenti di un comparto unico (pesati sulle quote)
+                CampoVoce(etichetta: "Rendimento ipotizzato al netto del costo annuo",
+                          valore: percentuale(par.rendimentoEquivalente - par.costoAnnuoEquivalente)),
                 CampoVoce(etichetta: "Costi sul versato totale", valore: atteso.versato > 0 ? percentuale((atteso.costi / atteso.versato * 1000).rounded() / 10) : "—"),
                 CampoVoce(etichetta: "Costo del primo anno", valore: euro(primoAnno(par))),
             ]))
             // Gestione separata: quanto trattiene la compagnia, minimo garantito, consolidamento, rendimento reale
-            if let g = MotoreGestioneSeparata.calcola(p) {
+            // Multiramo a due parti: lo stesso pannello sulla sola parte in gestione separata
+            if let g = MotoreGestioneSeparata.calcola(p) ?? MotoreGestioneSeparata.calcolaParte(p) {
+                let parte = p.multiramo
                 var gs: [CampoVoce] = [
                     // Etichetta corta: su carta le etichette stanno su una riga sola (maiuscole, si troncano)
-                    CampoVoce(etichetta: "Rendimento della gestione separata",
+                    CampoVoce(etichetta: parte ? "Gestione separata, \(quota(p.parteGestione)) del contratto" : "Rendimento della gestione separata",
                               valore: "lordo \(percentuale2(g.lordo)) · trattenuto \(percentuale2(g.trattenuto)) · accreditato \(percentuale2(g.accreditato))"),
                     CampoVoce(etichetta: "Minimo garantito", valore: minimoGarantito(g)),
                     CampoVoce(etichetta: "Consolidamento dei rendimenti", valore: consolidamento(g.consolidamento)),
                     CampoVoce(etichetta: "Rendimento reale (inflazione \(percentuale(g.inflazione)))", valore: percentuale2(g.reale)),
-                    CampoVoce(etichetta: "Trattenuto in un anno, sul valore di oggi", valore: euro(g.trattenutoEuro)),
+                    CampoVoce(etichetta: parte ? "Trattenuto in un anno, sulla parte" : "Trattenuto in un anno, sul valore di oggi", valore: euro(g.trattenutoEuro)),
                 ]
                 if let s = g.garantitoAScadenza {
-                    gs.append(CampoVoce(etichetta: "Garantito alla scadenza, prima delle imposte", valore: euro(s)))
+                    gs.append(CampoVoce(etichetta: parte ? "Garantito a scadenza, sulla parte" : "Garantito alla scadenza, prima delle imposte", valore: euro(s)))
                 }
                 b.append(.voci(gs))
                 if g.reale < 0 {
-                    b.append(.avviso("La gestione separata accredita meno dell'inflazione ipotizzata: il capitale non scende, ma perde potere d'acquisto (\(percentuale2(g.reale)) l'anno in termini reali)."))
+                    let soggetto = parte ? "La parte in gestione separata" : "La gestione separata"
+                    b.append(.avviso("\(soggetto) accredita meno dell'inflazione ipotizzata: il capitale non scende, ma perde potere d'acquisto (\(percentuale2(g.reale)) l'anno in termini reali)."))
                 }
                 // Come si legge: le ipotesi della stima a portata di mano
                 b.append(.nota(MotoreGestioneSeparata.metodo + " Rendimento lordo ipotizzato, non garantito."))
@@ -201,12 +232,17 @@ enum CompositoreProspetti {
         // Proiezione
         if p.area.proiettabile {
             sezione("Proiezione nei tre scenari")
+            // Multiramo a due parti: il rendimento del contratto (equivalente, pesato sulle quote); la tupla degli
+            // scenari porta già il rendimento equivalente
             b.append(.voci([
-                CampoVoce(etichetta: "Rendimento annuo atteso", valore: percentuale(par.rendimento)),
+                CampoVoce(etichetta: "Rendimento annuo atteso", valore: percentuale(par.rendimentoEquivalente)),
                 CampoVoce(etichetta: "Prudente e favorevole", valore: "\(percentuale(scenari[0].rendimento)) · \(percentuale(scenari[2].rendimento))"),
                 CampoVoce(etichetta: "Inflazione ipotizzata", valore: percentuale(par.inflazione)),
                 CampoVoce(etichetta: "Si parte da", valore: euro(par.capitaleIniziale)),
             ]))
+            if p.multiramoDivisa {
+                b.append(.testo("Rendimento del contratto, \(MotoreMultiramo.rigaComposizione(p)). \(scenariMultiramo)"))
+            }
             b.append(.grafico([
                 SerieGraficoProspetto(nome: "Prudente", tono: .prudente, punti: scenari[0].esito.punti),
                 SerieGraficoProspetto(nome: "Atteso", tono: .atteso, punti: scenari[1].esito.punti),
@@ -324,7 +360,9 @@ enum CompositoreProspetti {
             }
         }
 
-        b.append(.nota((p.area.proiettabile ? metodoProiezione + "\n\n" : "") + avvertenza))
+        // Multiramo a due parti: come si calcolano le due parti (garanzia, bollo, imposta unica)
+        let metodoParti = p.area.proiettabile && p.multiramoDivisa ? MotoreMultiramo.metodo + " " + scenariMultiramo + "\n\n" : ""
+        b.append(.nota((p.area.proiettabile ? metodoProiezione + "\n\n" : "") + metodoParti + avvertenza))
 
         let titoloStato = p.stato == .proposta ? "proposta" : p.stato == .inEssere ? "posizione in essere" : "posizione chiusa"
         return ContenutoProspetto(occhiello: "Prospetto di dettaglio · \(titoloStato)",
@@ -374,10 +412,12 @@ enum CompositoreProspetti {
                 [.t("Capitale di partenza"), .t(euro(pa.capitaleIniziale)), .t(euro(pb.capitaleIniziale))],
                 [.t("Versamento periodico"), versamento(pa), versamento(pb)],
                 [.t("Orizzonte"), .t("\(pa.anni) anni"), .t("\(pb.anni) anni")],
-                [.t("Rendimento atteso"), .t(percentuale(pa.rendimento)), .t(percentuale(pb.rendimento))],
+                // Equivalenti di un comparto unico: per una multiramo a due parti pesati sulle quote, altrimenti
+                // rendimento, costo annuo e aliquota della proiezione
+                [.t("Rendimento atteso"), .t(percentuale(pa.rendimentoEquivalente)), .t(percentuale(pb.rendimentoEquivalente))],
                 [.t("Costo d'ingresso"), .t(percentuale(pa.costoIngresso)), .t(percentuale(pb.costoIngresso))],
-                [.t("Costo annuo"), .t(percentuale(pa.costoAnnuo)), .t(percentuale(pb.costoAnnuo))],
-                [.t("Imposta sulle plusvalenze"), .t(percentuale(pa.aliquotaFiscale)), .t(percentuale(pb.aliquotaFiscale))],
+                [.t("Costo annuo"), .t(percentuale(pa.costoAnnuoEquivalente)), .t(percentuale(pb.costoAnnuoEquivalente))],
+                [.t("Imposta sulle plusvalenze"), .t(percentuale(pa.aliquotaEquivalente)), .t(percentuale(pb.aliquotaEquivalente))],
             ]
         )))
 
@@ -461,6 +501,24 @@ enum CompositoreProspetti {
         return ((p.ingressoSulCapitale ? p.capitaleIniziale : 0) + versamenti) * quota
     }
 
+    /// Multiramo a due parti: gli euro trattenuti dalla gestione separata nel periodo. Senza costi dei fondi la
+    /// proiezione costa ingresso più trattenuto; senza anche il trattenuto, solo l'ingresso: la differenza è il
+    /// trattenuto. Esatto senza ribilanciamento (le due parti non si scambiano capitale).
+    static func trattenutoGestioneNelPeriodo(_ p: ParametriProiezione) -> Double {
+        guard p.gestione != nil else { return 0 }
+        var soloGestione = p
+        soloGestione.costoAnnuo = 0
+        var libera = soloGestione
+        libera.gestione?.trattenuto = nil
+        libera.gestione?.retrocessione = nil
+        return max(0, MotoreProiezione.calcola(soloGestione).costi - MotoreProiezione.calcola(libera).costi)
+    }
+
+    /// Gli scenari delle multiramo a due parti: i fondi si spostano più della gestione separata.
+    static var scenariMultiramo: String {
+        "Scenari prudente e favorevole: fondi \(numero(IpotesiCalcolo.ampiezzaScenari)) punti in meno e in più, gestione separata \(numero(IpotesiCalcolo.ampiezzaScenariGestione))."
+    }
+
     /// Costi del primo anno: la proiezione su un anno, senza imposte.
     static func primoAnno(_ p: ParametriProiezione) -> Double {
         var q = p
@@ -525,8 +583,10 @@ enum CompositoreProspetti {
         return "ipotesi predefinita"
     }
 
-    /// "1,5%", oppure "1,5% + 1,3%" con il trattenuto sul rendimento.
+    /// "1,5%", oppure "1,5% + 1,3%" con il trattenuto sul rendimento; per una multiramo a due parti
+    /// "GS 1,30 punti · fondi 2,30%" (ognuno sulla sua parte).
     private static func condizioneCostoAnnuo(_ p: Posizione) -> CellaProspetto {
+        if p.multiramoDivisa { return .t(TestiMultiramo.costiPerParte(p)) }
         guard let trattenuto = p.trattenuto else { return percentualeOpzionale(p.costoAnnuo) }
         let gestione = p.costoAnnuo.map { percentuale($0) + " + " } ?? ""
         return .t(gestione + percentuale(trattenuto))
@@ -535,11 +595,36 @@ enum CompositoreProspetti {
     static func ipotesiMancanti(_ p: Posizione, orizzonteCliente: Int?) -> [String] {
         guard p.area.proiettabile else { return [] }
         var m: [String] = []
-        if p.rendimentoAtteso == nil { m.append("rendimento atteso \(percentuale(IpotesiCalcolo.rendimentoPredefinito))") }
-        if p.aliquotaFiscale == nil { m.append("imposta \(percentuale(IpotesiCalcolo.aliquotaPredefinita))") }
-        if p.costoAnnuo == nil && p.trattenuto == nil { m.append("costo annuo non indicato, calcolato a zero") }
+        if p.multiramoDivisa {
+            // Due parti: un rendimento mancante si ricava dal complessivo, o è l'ipotesi predefinita
+            if !p.rendimentoIndicato {
+                m.append("rendimento atteso \(percentuale(IpotesiCalcolo.rendimentoPredefinito))")
+            } else {
+                if p.rendimentoGestione == nil { m.append("rendimento della gestione separata \(origineRendimento(p, gestione: true))") }
+                if p.rendimentoFondi == nil { m.append("rendimento dei fondi \(origineRendimento(p, gestione: false))") }
+            }
+            if p.consolidamento == nil { m.append("consolidamento della gestione separata ipotizzato annuo") }
+            let titoli = p.quotaTitoliStato != nil || p.titoliStatoGestione != nil || p.titoliStatoFondi != nil
+            if p.aliquotaFiscale == nil && !titoli { m.append("imposta \(percentuale(IpotesiCalcolo.aliquotaPredefinita))") }
+            if !p.costiIndicati { m.append("costo annuo non indicato, calcolato a zero") }
+        } else {
+            if p.rendimentoAtteso == nil { m.append("rendimento atteso \(percentuale(IpotesiCalcolo.rendimentoPredefinito))") }
+            if p.multiramo { m.append("multiramo calcolata come comparto unico") }
+            if p.aliquotaFiscale == nil { m.append("imposta \(percentuale(IpotesiCalcolo.aliquotaPredefinita))") }
+            if p.costoAnnuo == nil && p.trattenuto == nil { m.append("costo annuo non indicato, calcolato a zero") }
+        }
+        if p.quotaGestioneStimata { m.append("quota in gestione separata \(percentuale(Posizione.quotaGestionePredefinita))") }
         if p.anniAllaScadenza == nil && orizzonteCliente == nil { m.append("orizzonte di \(IpotesiCalcolo.orizzontePredefinito) anni") }
         return m
+    }
+
+    /// Da dove viene il rendimento di una parte non indicato (lo stesso ordine di `lordoGestione` e
+    /// `lordoFondi`): ricavato dal complessivo e dall'altra parte, pari al complessivo, o l'ipotesi predefinita.
+    private static func origineRendimento(_ p: Posizione, gestione: Bool) -> String {
+        guard p.rendimentoAtteso != nil else { return percentuale(IpotesiCalcolo.rendimentoPredefinito) }
+        let altra = gestione ? p.rendimentoFondi : p.rendimentoGestione
+        let parte = gestione ? p.parteGestione : p.parteFondi
+        return altra != nil && parte >= 0.1 ? "ricavato dal complessivo" : "pari al complessivo"
     }
 
     private static func euro(_ v: Double) -> String { Formati.euro(v) }

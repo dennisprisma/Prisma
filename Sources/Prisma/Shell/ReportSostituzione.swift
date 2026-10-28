@@ -102,6 +102,9 @@ private struct SlideStrade: View {
                 riga("Imposta sul guadagno", CifreDoc.percento(l.aliquota, decimali: 2))
                 riga("Rischio", p.sri.map { "\($0) su 7" } ?? "—")
                 if let s = p.scadenza { riga("Scadenza", CifreDoc.dataBreve(s)) }
+                // Multiramo: le due parti, con i rendimenti lordi e i costi di ciascuna
+                if p.multiramo { riga("Composizione", TestiMultiramo.composizioneBreve(p)) }
+                if p.multiramoDivisa { riga("Costi per parte", TestiMultiramo.costiPerParte(p)) }
             }
             if !p.garanzie.isEmpty {
                 Text(verbatim: p.garanzie).font(T.minimo).foregroundColor(C.testo).lineSpacing(1.2).fixedSize(horizontal: false, vertical: true)
@@ -223,7 +226,7 @@ private struct SlideScenari: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             TestaReport(occhiello: "Se i mercati vanno diversamente", titolo: t.tenuta,
-                        sottotitolo: "Stessi \(t.periodo), con rendimenti di \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenari)) ?? "2") punti più bassi o più alti per entrambe le strade.")
+                        sottotitolo: "Stessi \(t.periodo), con rendimenti di \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenari)) ?? "2") punti più bassi o più alti per entrambe le strade\(TestiMultiramo.notaScenari([t.e.resto.posizione, t.e.cambio.posizione])).")
             HStack(alignment: .top, spacing: 12) {
                 ForEach(t.e.scenari) { s in scheda(s) }
             }
@@ -234,7 +237,9 @@ private struct SlideScenari: View {
         let colore = s.scarto < 0 ? C.sfavorevole : (s.scarto > 0 ? C.favorevole : C.intermedio)
         return VStack(alignment: .leading, spacing: 10) {
             Text(verbatim: s.nome).font(T.scenarioTitolo).foregroundColor(colore)
-            Text(verbatim: "rendimenti \(CifreDoc.percento(t.e.resto.rendimento + s.scarto)) e \(CifreDoc.percento(t.e.cambio.rendimento + s.scarto))")
+            // Multiramo a due parti: lo scenario sposta i fondi di tutto lo scarto, la gestione separata di metà
+            Text(verbatim: "rendimenti \(CifreDoc.percento(t.e.resto.rendimento + MotoreMultiramo.scartoEquivalente(t.e.resto.posizione, scarto: s.scarto)))"
+                 + " e \(CifreDoc.percento(t.e.cambio.rendimento + MotoreMultiramo.scartoEquivalente(t.e.cambio.posizione, scarto: s.scarto)))")
                 .font(T.minimo).foregroundColor(C.tenue)
             riga(t.nomeResto, CifreDoc.euro(s.nettoResto))
             riga(t.nomeCambio, CifreDoc.euro(s.nettoCambio))

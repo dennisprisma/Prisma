@@ -129,7 +129,11 @@ enum MotoreAndamento {
         let cumulato = (fattore - 1) * 100
         let anniTotali = periodi.reduce(0) { $0 + $1.anni }
         let annuo = anniTotali >= anniMinimi && fattore > 0 ? (pow(fattore, 1 / anniTotali) - 1) * 100 : nil
-        let atteso = p.rendimentoAtteso.map { $0 - (p.costoComplessivo ?? 0) }
+        // Multiramo a due parti: il netto composto (accreditato della GS e fondi meno i loro costi), senza bollo,
+        // che nelle polizze si paga al riscatto; senza nessun rendimento indicato niente linea dell'atteso
+        let atteso: Double? = p.multiramoDivisa
+            ? (p.rendimentoIndicato ? p.rendimentoNettoComposto : nil)
+            : p.rendimentoAtteso.map { $0 - (p.costoComplessivo ?? 0) }
 
         // La linea dell'atteso: dal primo valore, con gli stessi versamenti (a metà periodo)
         var punti = [AndamentoPosizione.Punto(data: primo.data, valore: primo.controvalore, versato: primo.versato,

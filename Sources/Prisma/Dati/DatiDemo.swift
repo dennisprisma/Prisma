@@ -344,7 +344,13 @@ enum DatiDemo {
             },
             p("prodotto-multiramo", "Polizza multiramo", .alleanza, .investimento) {
                 $0.emittente = alleanza; $0.tipologia = "Polizza multiramo (Ramo I e Ramo III)"
-                $0.rendimentoAtteso = 4; $0.costoIngresso = 1; $0.costoAnnuo = 1.8; $0.aliquotaFiscale = 24; $0.sri = 3
+                // Rendimento complessivo 4,5% = 0,4 × 3,0 (gestione separata) + 0,6 × 5,5 (fondi)
+                $0.rendimentoAtteso = 4.5; $0.costoIngresso = 1; $0.costoAnnuo = 1.8; $0.aliquotaFiscale = 24; $0.sri = 3
+                // Le due parti: tutti i campi della multiramo, così la prova di backup copre le CodingKeys della scheda
+                $0.quotaGestioneSeparata = 40; $0.quotaGestioneMinima = 30; $0.quotaGestioneMassima = 70
+                $0.rendimentoGestione = 3.0; $0.trattenuto = 1.3; $0.minimoGarantito = 0; $0.consolidamento = true
+                $0.rendimentoFondi = 5.5; $0.costoFondi = 2.3; $0.sriFondi = 4; $0.volatilitaFondi = 14; $0.quotaAzionariaFondi = 58
+                $0.titoliStatoGestione = 60; $0.titoliStatoFondi = 10; $0.ribilanciamento = false
                 $0.garanzie = "Solo la parte in gestione separata è garantita."
                 $0.liquidabilita = "Riscatto totale o parziale dopo un anno."
                 $0.verificatoIl = data(-420)
@@ -397,6 +403,8 @@ enum DatiDemo {
         gs.id = "gs-san-giorgio"
         gs.trattenuto = 1.30
         gs.titoliStato = 30.5
+        // «La rivalutazione può essere anche negativa»: niente consolidamento annuo
+        gs.consolidamento = false
         gs.descrizione = "La parte stabile: investe soprattutto in titoli di Stato e obbligazioni di buona qualità. Ogni anno si rivaluta con il rendimento della gestione, meno l'1,30% trattenuto dalla Compagnia. Negli ultimi anni il rendimento lordo è stato intorno al 3%, ma la rivalutazione può essere anche negativa."
         gs.caratteristiche = "Rivalutazione riconosciuta = rendimento lordo − 1,30%; può essere anche negativa. Periodo di osservazione 1° novembre – 31 ottobre."
         gs.storico = [PuntoStorico(etichetta: "2020", valore: 3.05), PuntoStorico(etichetta: "2021", valore: 2.84),
@@ -408,6 +416,9 @@ enum DatiDemo {
         fi.commissione = 1.70
         fi.costiSottostanti = 0.99
         fi.bollo = true
+        // Volatilità media annua attesa dal Regolamento; azioni dal 50% al 100%, al centro il 75%
+        fi.volatilita = 12
+        fi.quotaAzionaria = 75
         fi.descrizione = "Il motore della crescita: un fondo flessibile che investe dal 50% al 100% in azioni dei mercati internazionali. Il valore delle quote sale e scende con le borse. La commissione di gestione (1,70% l'anno) è già compresa nel valore delle quote."
         fi.caratteristiche = "Fondo flessibile con azioni dal 50% al 100%. Volatilità media annua attesa: 12% (Regolamento). I valori della quota sono già al netto dei costi del fondo."
         fi.storico = [PuntoStorico(etichetta: "Avvio, maggio 2025", valore: 10.000), PuntoStorico(etichetta: "31/12/2025", valore: 10.611),
@@ -441,6 +452,9 @@ enum DatiDemo {
         c.recesso = "Entro 30 giorni dalla conclusione del contratto si può recedere: viene restituito il premio, con la parte nel Fondo Interno al valore corrente delle quote."
         c.fonti = "Alleanza Assicurazioni: KID «30% Gestione separata – 70% Fondo Interno» (13/07/2026); DIP aggiuntivo IBIP (13/07/2026); Condizioni di assicurazione mod. 10320671 (13/07/2026); Regolamento e Rendiconto al 31/12/2025 del Fondo Interno Allocazione Dinamica; valore della quota pubblicato su alleanza.it al 12/10/2026; Prospetto annuale della Gestione separata Fondo Euro San Giorgio (28/11/2025)."
         x.condizioni = c
+        // Combinazione fissa: il KID è «30% GS – 70% FI»
+        x.quotaGestioneMinima = 30
+        x.quotaGestioneMassima = 30
         return x
     }
 
@@ -596,8 +610,17 @@ enum DatiDemo {
                 $0.tipologia = "Polizza multiramo (Ramo I e Ramo III)"; $0.emittente = alleanza
                 $0.numeroContratto = "AL-2021-118842"; $0.decorrenza = anni(-5); $0.versamentoIniziale = 60_000
                 $0.totaleVersato = 60_000; $0.controvalore = 62_000
-                $0.rendimentoAtteso = 4; $0.costoAnnuo = 1.8; $0.aliquotaFiscale = 24; $0.sri = 3
+                // Rendimento complessivo 4,5% = 0,4 × 3,0 + 0,6 × 5,5: lo stesso numero nel modulo e nel dettaglio.
+                // Costo annuo 2,3%: le commissioni del contratto senza il trattenuto, che con le due parti valgono per
+                // la parte in fondi (i costi dei fondi non sono indicati a parte). Così cambiare il costo annuo
+                // cambia i costi di Marco, come si aspetta la prova di Eve sulle analisi del dossier.
+                $0.rendimentoAtteso = 4.5; $0.costoAnnuo = 2.3; $0.aliquotaFiscale = 24; $0.sri = 3
                 $0.quotaAzionaria = 35
+                // Multiramo a due parti: 40% in gestione separata al 3,0% lordo (trattenuto 1,3, consolidata),
+                // 60% nei fondi al 5,5% lordo con costi del 2,3%, SRI 4 (volatilità 14%, azioni 58%)
+                $0.quotaGestioneSeparata = 40; $0.rendimentoGestione = 3.0; $0.trattenuto = 1.3; $0.minimoGarantito = 0
+                $0.consolidamento = true; $0.rendimentoFondi = 5.5; $0.sriFondi = 4
+                $0.volatilitaFondi = 14; $0.quotaAzionariaFondi = 58; $0.prodottoId = "prodotto-multiramo"
             },
             p("marco", .alleanza, .inEssere, .protezione, "Temporanea caso morte") {
                 $0.tipologia = "Temporanea caso morte a capitale costante"; $0.emittente = alleanza

@@ -1189,6 +1189,7 @@ enum ProvaCalcoli {
         ProvaCalcoliRendimenti.esegui(verificaEsterna)
         ProvaCalcoliRischio.esegui(verificaEsterna)
         ProvaCalcoliFamiglia.esegui(verificaEsterna)
+        ProvaCalcoliMultiramo.esegui(verificaEsterna)
 
         if errori == 0 {
             print("OK: motori di calcolo verificati")

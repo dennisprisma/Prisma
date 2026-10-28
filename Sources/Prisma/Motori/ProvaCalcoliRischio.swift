@@ -105,8 +105,8 @@ enum ProvaCalcoliRischio {
         // Giulia: ETF 36.400 € (azioni 100%) × 37% = 13.468 €; il fondo obbligazionario (metà Stato +4%,
         // metà societarie −4%) pareggia; sul patrimonio finanziario di 89.050 € (7.650 + 36.400 + 21.000
         // + 24.000) è il 15,12%: oltre il 12,5% (10% × 1,25) del profilo moderato.
-        // Marco: multiramo 62.000 € SRI 3 senza quota in gestione separata → metà esposta: 3.100 €;
-        // PIP 38.000 € SRI stimato 3: 3.800 € → mercati 6.900 € (prima della correzione erano 10.000 €).
+        // Marco: multiramo con il 40% in gestione separata e i fondi SRI 4: 62.000 × 0,6 × 20% = 7.440 €;
+        // PIP 38.000 € SRI stimato 3: 3.800 € → 11.240 € (con la sola combinazione erano 6.900 €).
         do {
             let demo = DatiPrisma.demo()
             if let giulia = demo.clienti.first(where: { $0.id == "giulia" }) {
@@ -120,7 +120,7 @@ enum ProvaCalcoliRischio {
             }
             if let marco = demo.clienti.first(where: { $0.id == "marco" }) {
                 let r = MotoreResistenza.calcola(demo.posizioni.filter { $0.clienteId == "marco" }, profilo: marco.profilo)
-                verifica("K4 Marco, mercati: multiramo esposta a metà (6.900 €)", r.scenario(.mercati)?.perdita ?? -1, 6_900, tolleranza: 1)
+                verifica("K4 Marco, mercati: fondi della multiramo al 60% con SRI 4, più il PIP (11.240 €)", r.scenario(.mercati)?.perdita ?? -1, 11_240, tolleranza: 1)
             } else {
                 verifica.vero("K4 Marco nei dati di prova", false)
             }

@@ -12,6 +12,11 @@ struct DettaglioPosizione: View {
 
     private var orizzonteCliente: Int? { stato.cliente(posizione.clienteId)?.profilo.orizzonteAnni }
 
+    /// SRI massimo del profilo del cliente (nil senza propensione), per la riga sull'SRI dei fondi di una multiramo.
+    private var sriMassimoProfilo: Int? {
+        stato.cliente(posizione.clienteId)?.profilo.propensione.map(MotoreCoerenza.sriMassimo)
+    }
+
     var body: some View {
         let p = posizione
         let prodotto = stato.prodotto(p.prodottoId)
@@ -19,7 +24,8 @@ struct DettaglioPosizione: View {
         // Calcoli del dettaglio: andamento, rendimento dei versamenti, gestione separata, riscatto
         let andamentoPosizione: AndamentoPosizione? = finanziariaInEssere ? MotoreAndamento.calcola(p) : nil
         let voce: VoceResoconto? = finanziariaInEssere ? MotoreResoconto.voce(p, prodotto: prodotto) : nil
-        let gestione: EsitoGestioneSeparata? = p.area.proiettabile ? MotoreGestioneSeparata.calcola(p) : nil
+        // Il Ramo I o, per una multiramo a due parti, la sola parte in gestione separata
+        let gestione: EsitoGestioneSeparata? = p.area.proiettabile ? (MotoreGestioneSeparata.calcola(p) ?? MotoreGestioneSeparata.calcolaParte(p)) : nil
         let riscatto: EsitoRiscatto? = MotoreRiscatto.calcola(p, prodotto: prodotto)
         VStack(spacing: 0) {
             barraNavigazione
@@ -30,8 +36,20 @@ struct DettaglioPosizione: View {
                         HStack(alignment: .top, spacing: 28) {
                             VStack(alignment: .leading, spacing: 22) {
                                 contratto
+                                if p.multiramo && p.area.proiettabile {
+                                    PannelloComposizione(posizione: p, sriMassimo: sriMassimoProfilo, completa: modifica)
+                                        .id("dettaglio-composizione")
+                                }
                                 if let g = gestione {
-                                    PannelloGestioneSeparata(esito: g, posizione: p).id("dettaglio-gestione")
+                                    if p.multiramoDivisa {
+                                        PannelloGestioneSeparata(
+                                            esito: g, posizione: p,
+                                            titolo: "La parte in gestione separata · \(Formati.percentuale(p.parteGestione * 100))",
+                                            notaQuota: "sul valore della parte, \(Formati.euro(p.valore * p.parteGestione))")
+                                            .id("dettaglio-gestione")
+                                    } else {
+                                        PannelloGestioneSeparata(esito: g, posizione: p).id("dettaglio-gestione")
+                                    }
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -202,9 +220,16 @@ struct DettaglioPosizione: View {
         let incoerenze = incoerenzeProposta
         return PannelloAnalisi(titolo: "Costi, ipotesi e rischio") { EmptyView() } contenuto: {
             VStack(spacing: 0) {
-                RigaDato("Rendimento atteso", p.rendimentoAtteso.map { Formati.percentuale($0) + " annuo" } ?? "", larghezza: 118)
-                RigaDato("Costo d'ingresso", p.costoIngresso.map { Formati.percentuale($0) + " dei versamenti" } ?? "", larghezza: 118)
-                RigaDato("Costo annuo", p.costoAnnuo.map { Formati.percentuale($0) + " all'anno" } ?? "", larghezza: 118)
+                if p.multiramoDivisa {
+                    // Multiramo a due parti: complessivi pesati sulle quote, con le due parti tra parentesi
+                    RigaDato("Rendimento", Self.rendimentoComposto(p), larghezza: l)
+                    RigaDato("Costo d'ingresso", p.costoIngresso.map { Formati.percentuale($0) + " dei versamenti" } ?? "", larghezza: l)
+                    RigaDato("Costo annuo", Self.costoComposto(p), larghezza: l)
+                } else {
+                    RigaDato("Rendimento atteso", p.rendimentoAtteso.map { Formati.percentuale($0) + " annuo" } ?? "", larghezza: 118)
+                    RigaDato("Costo d'ingresso", p.costoIngresso.map { Formati.percentuale($0) + " dei versamenti" } ?? "", larghezza: 118)
+                    RigaDato("Costo annuo", p.costoAnnuo.map { Formati.percentuale($0) + " all'anno" } ?? "", larghezza: 118)
+                }
                 if let u = p.costoUscita, u > 0 {
                     RigaDato("Costo d'uscita", "\(CifreDoc.percento(u, decimali: 2)) del riscattato", larghezza: l)
                 }
@@ -239,6 +264,13 @@ struct DettaglioPosizione: View {
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .bordoBasso(Colori.Analisi.tabellaRiga)
+                if p.multiramoDivisa {
+                    // L'SRI resta quello del KID della combinazione; i soli fondi rischiano di più
+                    RigaDato("SRI delle parti",
+                             "fondi \(p.sriParteFondi)\(p.sriFondi == nil ? " (stimato)" : "") · combinazione \(p.sriComposto)\(p.sri == nil ? " (stimato)" : "")",
+                             larghezza: l)
+                        .help("Per il profilo conta l'SRI della combinazione scelta, quello del KID; senza, la stima dalla volatilità combinata (solo rischio di mercato).")
+                }
                 // Le proposte oltre il profilo o l'orizzonte del cliente
                 ForEach(incoerenze) { i in
                     HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.MotoriPosizioni.spazioPillola) {
@@ -262,6 +294,22 @@ struct DettaglioPosizione: View {
         let esito = stato.coerenzaCliente(c)
         return esito.incoerenze.filter { $0.posizione?.id == posizione.id }
     }
+
+    /// «4,50% annuo complessivo (GS 3,00% · fondi 5,50%)»: lordi ipotizzati, pesati sulle quote di oggi.
+    static func rendimentoComposto(_ p: Posizione) -> String {
+        "\(CifreDoc.percento(p.rendimentoLordoComposto, decimali: 2)) annuo complessivo (GS \(CifreDoc.percento(p.lordoGestione(), decimali: 2)) · fondi \(CifreDoc.percento(p.lordoFondi(), decimali: 2)))"
+    }
+
+    /// «1,90% complessivo (GS 1,30 punti sul 40% · fondi 2,30% sul 60%)»; vuoto senza costi indicati.
+    static func costoComposto(_ p: Posizione) -> String {
+        guard let c = p.costoComplessivo else { return "" }
+        let punti = String(CifreDoc.percento(p.trattenutoGestione, decimali: 2).dropLast())
+        return "\(CifreDoc.percento(c, decimali: 2)) complessivo (GS \(punti) punti sul \(Formati.percentuale(p.parteGestione * 100))"
+            + " · fondi \(CifreDoc.percento(p.costoParteFondi, decimali: 2)) sul \(Formati.percentuale(p.parteFondi * 100)))"
+    }
+
+    /// "2", "1": l'ampiezza di uno scenario in punti, senza il segno %.
+    static func puntiScenario(_ v: Double) -> String { String(Formati.percentuale(v).dropLast()) }
 
     /// Una differenza in punti percentuali, con il segno: "+0,45 punti".
     static func punti(_ v: Double) -> String {
@@ -457,9 +505,24 @@ struct DettaglioPosizione: View {
         let scenari = MotoreProiezione.scenari(parametri)
         let atteso = scenari[1].esito
         let impatto = MotoreProiezione.impattoCosti(parametri)
+        // Multiramo a due parti: la gestione separata nel tempo, sotto la linea dell'atteso
+        let gestione = parametri.gestione
+        let nota = gestione.map {
+            "Ipotesi dimostrativa: gestione separata al \(CifreDoc.percento($0.lordo, decimali: 2)) lordo, fondi al \(CifreDoc.percento(parametri.rendimento, decimali: 2)) lordo. Non è una previsione."
+        } ?? "Ipotesi dimostrativa al \(Formati.percentuale(parametri.rendimento)) annuo lordo. Non è una previsione."
+        let principali: [GraficoProiezione.Serie] = [
+            .init(id: "prudente", punti: scenari[0].esito.punti, colore: Colori.Analisi.prudente),
+            .init(id: "favorevole", punti: scenari[2].esito.punti, colore: Colori.Analisi.favorevole),
+            .init(id: "atteso", punti: atteso.punti, colore: Colori.Analisi.linea, principale: true),
+        ]
+        let puntiGestione: [PuntoProiezione] = atteso.punti.map {
+            PuntoProiezione(anno: $0.anno, versato: $0.versato, valore: $0.valoreGestione ?? 0)
+        }
+        let serie: [GraficoProiezione.Serie] = gestione == nil ? principali
+            : principali + [GraficoProiezione.Serie(id: "gestione", punti: puntiGestione, colore: Tema.Colore.Multiramo.gestione)]
         return PannelloAnalisi(
             titolo: "Proiezione a \(parametri.anni) \(parametri.anni == 1 ? "anno" : "anni")",
-            nota: "Ipotesi dimostrativa al \(Formati.percentuale(parametri.rendimento)) annuo lordo. Non è una previsione."
+            nota: nota
         ) {
             Button(mostraMetodo ? "Nascondi il metodo" : "Come viene calcolato?") { mostraMetodo.toggle() }
                 .buttonStyle(StileSemplice())
@@ -467,15 +530,14 @@ struct DettaglioPosizione: View {
                 .foregroundColor(Colori.Colonna.collegamento)
         } contenuto: {
             VStack(alignment: .leading, spacing: 14) {
-                GraficoProiezione(serie: [
-                    .init(id: "prudente", punti: scenari[0].esito.punti, colore: Colori.Analisi.prudente),
-                    .init(id: "favorevole", punti: scenari[2].esito.punti, colore: Colori.Analisi.favorevole),
-                    .init(id: "atteso", punti: atteso.punti, colore: Colori.Analisi.linea, principale: true),
-                ])
+                GraficoProiezione(serie: serie)
                 HStack(spacing: 16) {
                     legenda(Colori.Analisi.linea, "Atteso \(Formati.percentuale(scenari[1].rendimento))")
                     legenda(Colori.Analisi.prudente, "Prudente \(Formati.percentuale(scenari[0].rendimento))")
                     legenda(Colori.Analisi.favorevole, "Favorevole \(Formati.percentuale(scenari[2].rendimento))")
+                    if gestione != nil {
+                        legenda(Tema.Colore.Multiramo.gestione, "di cui gestione separata")
+                    }
                     legenda(Colori.Analisi.lineaTratteggiata, "Versato cumulato", tratteggio: true)
                 }
                 FasciaKPI {
@@ -536,10 +598,21 @@ struct DettaglioPosizione: View {
                 if p.versamento > 0 {
                     Text("• Ogni versamento di \(Formati.euro(p.versamento)) (\(p.frequenza.nome.lowercased())) entra al netto del costo d'ingresso.")
                 }
-                Text("• Ogni mese il capitale cresce del rendimento mensile equivalente al \(Formati.percentuale(p.rendimento)) annuo e paga la quota mensile del costo annuo (\(Formati.percentuale(p.costoAnnuo))).")
-                Text("• Alla fine, sulla parte che supera il versato si applicano le imposte al \(Formati.percentuale(p.aliquotaFiscale)).")
+                if let g = p.gestione {
+                    // Multiramo a due parti: rendimento, costo e aliquota della proiezione sono quelli dei soli fondi
+                    Text("• \(MotoreMultiramo.metodo)")
+                    Text("• Qui: \(Formati.percentuale(g.quota * 100)) in gestione separata al \(Formati.percentuale(g.lordo)) lordo (accreditato \(Formati.percentuale(g.accreditato))), \(Formati.percentuale((1 - g.quota) * 100)) nei fondi al \(Formati.percentuale(p.rendimento)) lordo con costi e bollo del \(Formati.percentuale(p.costoAnnuo)) l'anno.")
+                    Text("• Alla fine, sulla parte che supera il versato si applicano le imposte al \(Formati.percentuale(p.aliquotaEquivalente)) (aliquota pesata sulle due parti).")
+                } else {
+                    Text("• Ogni mese il capitale cresce del rendimento mensile equivalente al \(Formati.percentuale(p.rendimento)) annuo e paga la quota mensile del costo annuo (\(Formati.percentuale(p.costoAnnuo))).")
+                    Text("• Alla fine, sulla parte che supera il versato si applicano le imposte al \(Formati.percentuale(p.aliquotaFiscale)).")
+                }
                 Text("• Il valore in euro di oggi divide il netto per l'inflazione cumulata al \(Formati.percentuale(p.inflazione)) annuo.")
-                Text("• Gli scenari spostano il rendimento di \(Formati.percentuale(IpotesiCalcolo.ampiezzaScenari)) punti in meno e in più. Rendimenti e costi sono quelli indicati nella posizione: verificali sul KID o sul prospetto.")
+                if p.gestione != nil {
+                    Text("• Gli scenari spostano il rendimento dei fondi di \(Self.puntiScenario(IpotesiCalcolo.ampiezzaScenari)) punti in meno e in più, quello della gestione separata di \(Self.puntiScenario(IpotesiCalcolo.ampiezzaScenariGestione)): si muove molto meno dei mercati. Rendimenti e costi sono quelli indicati nella posizione: verificali sul KID o sul prospetto.")
+                } else {
+                    Text("• Gli scenari spostano il rendimento di \(Formati.percentuale(IpotesiCalcolo.ampiezzaScenari)) punti in meno e in più. Rendimenti e costi sono quelli indicati nella posizione: verificali sul KID o sul prospetto.")
+                }
             }
             .font(Tipo.kpiNota)
             .foregroundColor(Colori.Analisi.tabellaTesto)

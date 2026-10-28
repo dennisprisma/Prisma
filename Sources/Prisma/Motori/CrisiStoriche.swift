@@ -159,6 +159,21 @@ extension MotoreResistenza {
         case .investimento, .risparmio, .previdenza:
             break
         }
+        if p.multiramoDivisa {
+            // Multiramo a due parti: la composizione dei soli fondi (quota azionaria e titoli di Stato dei
+            // fondi, o stimata dal loro SRI), riportata alla loro quota; il resto è gestione separata. Così i
+            // titoli di Stato della gestione separata non finiscono tra i governativi dei fondi.
+            var c = composizione(MotoreMultiramo.posizioneFondi(p)) ?? ComposizionePosizione()
+            let f = p.parteFondi
+            c.azioni *= f
+            c.governativi *= f
+            c.societarie *= f
+            c.liquidita *= f
+            c.immobili = 0
+            c.gestioneSeparata = p.parteGestione
+            c.stimata = c.stimata || p.quotaGestioneStimata
+            return c
+        }
         let esposta = quotaARischio(p)
         c.gestioneSeparata = 1 - esposta
         guard esposta > 0 else { return c }
@@ -225,7 +240,7 @@ extension MotoreResistenza {
             return "\(k.titolo) (\(k.periodo)): \(classi.joined(separator: ", ")); inflazione \(CifreDoc.percento(k.inflazione))."
         }
         return righe + [
-            "Le variazioni sono indicative e arrotondate (azioni mondiali in euro, titoli di Stato e obbligazioni societarie in euro); liquidità e gestioni separate restano a zero, il capitale è garantito. Si applicano alla composizione di ogni posizione: quota azionaria indicata o stimata dalla tipologia e dall'SRI, titoli di Stato secondo la quota indicata (altrimenti metà della parte obbligazionaria), multiramo con il 50% in gestione separata se non indicato. Non sono previsioni.",
+            "Le variazioni sono indicative e arrotondate (azioni mondiali in euro, titoli di Stato e obbligazioni societarie in euro); liquidità e gestioni separate restano a zero (non seguono i mercati; la gestione separata è garantita con il consolidamento annuo). Si applicano alla composizione di ogni posizione: quota azionaria indicata o stimata dalla tipologia e dall'SRI, titoli di Stato secondo la quota indicata (altrimenti metà della parte obbligazionaria), multiramo con il 50% in gestione separata se non indicato; nelle multiramo con i dati separati, rischio e composizione della sola parte in fondi. Non sono previsioni.",
         ]
     }
 }

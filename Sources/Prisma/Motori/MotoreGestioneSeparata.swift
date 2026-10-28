@@ -34,7 +34,7 @@ struct EsitoGestioneSeparata {
 
 enum MotoreGestioneSeparata {
     /// Nota di metodo per prospetti e schede.
-    static let metodo = "Gestione separata: rendimento al cliente = lordo meno trattenuto, o la quota retrocessa del lordo (non oltre il lordo meno il trattenuto minimo, se indicato). Con il consolidamento annuo il rendimento accreditato non scende mai sotto il minimo garantito (o sotto zero): il capitale non scende. Senza consolidamento la garanzia vale solo a scadenza o al decesso: prima il valore può scendere. Rendimento reale: tolta l'inflazione ipotizzata."
+    static let metodo = "Gestione separata: rendimento al cliente = lordo meno trattenuto, o la quota retrocessa del lordo (non oltre il lordo meno il trattenuto minimo, se indicato). Con il consolidamento annuo il rendimento accreditato non scende mai sotto il minimo garantito (o sotto zero): il capitale non scende. Senza consolidamento la garanzia vale solo a scadenza o al decesso: prima il valore può scendere. Rendimento reale: tolta l'inflazione ipotizzata. Nelle multiramo la garanzia vale solo sulla parte in gestione separata; per una posizione in essere il garantito a scadenza è stimato sulla quota di oggi dei versamenti."
 
     /// Rendimento al cliente (%) prima del minimo garantito. Senza retrocessione: lordo meno trattenuto
     /// (come sempre in Prisma). Con la retrocessione: la quota retrocessa del lordo e, se c'è anche il
@@ -93,6 +93,14 @@ enum MotoreGestioneSeparata {
                                      accreditato: accreditatoAnno, inflazione: inflazione,
                                      trattenutoEuro: valore * max(0, lordo - accreditatoAnno) / 100,
                                      garantitoAScadenza: garantitoAScadenza(p))
+    }
+
+    /// La parte in gestione separata di una multiramo a due parti, come un Ramo I a sé: lordo, accreditato e
+    /// trattenuto in euro valgono sul valore della sola parte; il garantito a scadenza sui versamenti in
+    /// gestione separata, rivalutati al minimo. nil se la posizione non è una multiramo a due parti.
+    static func calcolaParte(_ p: Posizione, inflazione: Double = IpotesiCalcolo.inflazione) -> EsitoGestioneSeparata? {
+        guard p.multiramoDivisa, p.parteGestione > 0 else { return nil }
+        return calcola(MotoreMultiramo.posizioneGestione(p), inflazione: inflazione)
     }
 
     /// Il valore minimo garantito alla scadenza, prima delle imposte: con il consolidamento il valore di oggi

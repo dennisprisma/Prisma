@@ -266,7 +266,8 @@ private struct PaginaInflazione: View {
                     ColonnaDoc(titolo: "Rende", sottotitolo: "netto costi", peso: 0.9), ColonnaDoc(titolo: "Potere d'acquisto", sottotitolo: "perso in \(MotoreResistenza.anniInflazione) anni", peso: 1.3),
                 ], gruppi: gruppi(t.inflazione) { v in
                     let p = v.posizione
-                    let netto = (p.rendimentoAtteso ?? 0) - (p.costoComplessivo ?? 0)
+                    // Multiramo a due parti: accreditato della gestione separata e netto dei fondi, pesati sulle quote
+                    let netto = p.multiramoDivisa ? p.rendimentoNettoComposto : (p.rendimentoAtteso ?? 0) - (p.costoComplessivo ?? 0)
                     return RigaDoc(celle: [CellaDoc(p.nome, sotto: p.tipologia, font: T.pTabellaForte),
                                            CellaDoc(CifreDoc.euro(p.valore), font: T.pTabella),
                                            CellaDoc(CifreDoc.percento(netto), font: T.pTabella),

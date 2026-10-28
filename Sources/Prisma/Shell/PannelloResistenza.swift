@@ -185,7 +185,8 @@ struct PannelloResistenza: View {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(v.posizione.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
-                        Text(v.motivo).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                        // Il motivo di una multiramo a due parti è più lungo: va a capo invece di tagliarsi
+                        Text(v.motivo).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     EtichettaCanale(canale: v.posizione.canale, compatta: true)

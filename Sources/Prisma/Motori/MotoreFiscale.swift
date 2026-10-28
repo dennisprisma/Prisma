@@ -224,10 +224,16 @@ enum MotoreFiscale {
     static func centesimi(_ v: Double) -> Double { (v * 100).rounded() / 100 }
 
     /// Aliquota sul guadagno di polizze e fondi: effettiva con i titoli di Stato, altrimenti quella
-    /// indicata nella posizione, altrimenti il 26%.
+    /// indicata nella posizione, altrimenti il 26%. Multiramo a due parti: pesata sulle quote di oggi.
     static func aliquotaGuadagno(_ p: Posizione) -> Double {
+        if p.multiramoDivisa { return p.aliquotaPesata(valore: 1, valoreGestione: p.parteGestione) }
         if let q = p.quotaTitoliStato { return RegoleFiscali.aliquotaEffettiva(quotaTitoliStato: q) }
         return p.aliquotaFiscale ?? RegoleFiscali.ordinaria
+    }
+
+    /// « (titoli di Stato 60%)» per la nota dell'aliquota pesata; vuoto se la quota non è indicata.
+    private static func notaTitoliStato(_ q: Double?) -> String {
+        q.map { " (titoli di Stato \(CifreDoc.condizione($0)))" } ?? ""
     }
 
     /// Anni interi di partecipazione alla previdenza complementare a una data (dalla prima adesione).
@@ -253,9 +259,12 @@ enum MotoreFiscale {
         let versato = p.totaleVersato ?? p.versamentoIniziale
         var note: [String] = []
 
-        // Costi di un anno: gestione, trattenuto sul rendimento, bollo
-        let gestione = centesimi((p.costoAnnuo ?? 0) / 100 * valore)
-        let trattenuto = centesimi((p.trattenuto ?? 0) / 100 * valore)
+        // Costi di un anno: gestione, trattenuto sul rendimento, bollo. Multiramo a due parti: i costi dei
+        // fondi sulla parte in fondi, il trattenuto sulla parte in gestione separata. Ramo I: il trattenuto
+        // effettivo (anche dalla sola retrocessione)
+        let gestione = centesimi((p.multiramoDivisa ? p.costoParteFondi * p.parteFondi : (p.costoAnnuo ?? 0)) / 100 * valore)
+        let trattenuto = centesimi((p.multiramoDivisa ? p.trattenutoGestione * p.parteGestione
+                                    : p.gestioneSeparata ? MotoreGestioneSeparata.trattenuto(p) : (p.trattenuto ?? 0)) / 100 * valore)
         let bolloAnno = bolloAnnuo(p, valore: valore)
 
         // Penale dalle condizioni del contratto: quelle della posizione se indicate, altrimenti della scheda prodotto
@@ -309,7 +318,13 @@ enum MotoreFiscale {
 
         case .polizza, .fondo, .deposito:
             let aliquota: Double
-            if let q = p.quotaTitoliStato {
+            if p.multiramoDivisa {
+                aliquota = aliquotaGuadagno(p)
+                note.append("Aliquota pesata sulle due parti: gestione separata \(CifreDoc.percento(p.aliquotaGestione, decimali: 2))"
+                            + notaTitoliStato(p.titoliStatoGestione ?? p.quotaTitoliStato)
+                            + ", fondi \(CifreDoc.percento(p.aliquotaFondi, decimali: 2))"
+                            + notaTitoliStato(p.titoliStatoFondi ?? p.quotaTitoliStato) + ".")
+            } else if let q = p.quotaTitoliStato {
                 aliquota = RegoleFiscali.aliquotaEffettiva(quotaTitoliStato: q)
                 note.append("Aliquota effettiva \(CifreDoc.percento(aliquota, decimali: 2)): \(CifreDoc.condizione(q)) in titoli di Stato al 12,5%, il resto al 26%.")
             } else if regime == .deposito {
@@ -325,7 +340,9 @@ enum MotoreFiscale {
                 let anni = max(0, data.timeIntervalSince(inizio) / (365.25 * 86_400))
                 bolloMaturato = centesimi(RegoleFiscali.bollo / 100 * valore * p.quotaBollo * anni)
                 if p.multiramo && p.quotaGestioneSeparata == nil {
-                    note.append("Multiramo: indica la quota in gestione separata, esente da bollo; senza, il bollo è calcolato su tutto il valore.")
+                    note.append(p.multiramoDivisa
+                                ? "Multiramo: quota in gestione separata non indicata, stimata al \(Formati.percentuale(Posizione.quotaGestionePredefinita)) (bollo, rischio e proiezione)."
+                                : "Multiramo: indica la quota in gestione separata, esente da bollo; senza, il bollo è calcolato su tutto il valore.")
                 }
                 note.append("Bollo maturato stimato sul valore di oggi per \(String(format: "%.1f", anni).replacingOccurrences(of: ".", with: ",")) anni: nelle polizze si paga al riscatto.")
             }

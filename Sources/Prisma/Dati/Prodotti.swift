@@ -28,6 +28,38 @@ struct Prodotto: Identifiable, Codable, Hashable {
     /// Periodo di detenzione raccomandato dal KID, in anni (se mancano le condizioni dettagliate).
     var periodoRaccomandato: Int?
 
+    // Gestione separata (anche per il Ramo I) e multiramo a due parti (dalla versione 20 dell'archivio):
+    // stesso significato dei campi di `Posizione`; la proposta li eredita (`MotoreMultiramo.applica`).
+    /// Trattenuto sul rendimento della gestione separata (punti l'anno).
+    var trattenuto: Double?
+    /// Quota del rendimento lordo retrocessa (0–100), alternativa al trattenuto fisso.
+    var retrocessione: Double?
+    /// Rendimento minimo garantito annuo della gestione separata (%).
+    var minimoGarantito: Double?
+    /// true se il rendimento della gestione separata si consolida ogni anno.
+    var consolidamento: Bool?
+    /// Multiramo: quota del premio in gestione separata (0–100).
+    var quotaGestioneSeparata: Double?
+    /// Multiramo: quota minima e massima ammessa in gestione separata (0–100), dalle condizioni
+    /// (es. 30 e 70). Solo per avvisare nel modulo, i calcoli non le usano.
+    var quotaGestioneMinima: Double?
+    var quotaGestioneMassima: Double?
+    /// Multiramo: rendimento lordo della gestione separata (%), prima del trattenuto.
+    var rendimentoGestione: Double?
+    /// Multiramo: rendimento lordo dei fondi (%), prima di commissioni e costi dei fondi.
+    var rendimentoFondi: Double?
+    /// Multiramo: costi annui della parte in fondi (%), commissione della compagnia più costi degli OICR.
+    var costoFondi: Double?
+    /// Multiramo: SRI (1–7), volatilità annua (%) e quota azionaria (0–100) della parte in fondi.
+    var sriFondi: Int?
+    var volatilitaFondi: Double?
+    var quotaAzionariaFondi: Double?
+    /// Multiramo: quota in titoli di Stato della gestione separata e dei fondi (0–100).
+    var titoliStatoGestione: Double?
+    var titoliStatoFondi: Double?
+    /// Multiramo: true se il contratto riporta ogni anno la gestione separata alla quota scelta.
+    var ribilanciamento: Bool?
+
     init(nome: String, canale: Canale, area: AreaPosizione) {
         self.nome = nome
         self.canale = canale
@@ -45,9 +77,18 @@ struct Prodotto: Identifiable, Codable, Hashable {
     /// Una scheda più vecchia di un anno va riletta sul KID aggiornato.
     var daVerificare: Bool { (mesiDallaVerifica ?? 99) >= 12 }
 
-    /// Ipotesi di prova per mostrare il peso dei costi: 10.000 € per 10 anni.
+    /// Ipotesi di prova per mostrare il peso dei costi: 10.000 € per 10 anni. Per una multiramo a due parti
+    /// la proiezione tiene le due parti, senza il bollo (come i KPI delle altre schede).
     var parametriEsempio: ParametriProiezione {
-        ParametriProiezione(capitaleIniziale: 10_000, versamento: 0, frequenza: .unica, anni: 10,
+        var q = proposta(per: "esempio")
+        q.versamentoIniziale = 10_000; q.premio = 0; q.frequenza = .unica; q.scadenza = nil
+        if q.multiramoDivisa {
+            var par = ParametriProiezione(posizione: q, orizzonteCliente: 10)
+            par.anni = 10
+            par.costoAnnuo = q.costoParteFondi
+            return par
+        }
+        return ParametriProiezione(capitaleIniziale: 10_000, versamento: 0, frequenza: .unica, anni: 10,
                             rendimento: rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito,
                             costoIngresso: costoIngresso ?? 0, costoAnnuo: costoAnnuo ?? 0,
                             aliquotaFiscale: aliquotaFiscale ?? IpotesiCalcolo.aliquotaPredefinita)
@@ -69,6 +110,8 @@ struct Prodotto: Identifiable, Codable, Hashable {
         p.periodoRaccomandato = periodoConsigliato
         p.prodottoId = id
         p.note = fonte.isEmpty ? "" : "Dati dalla scheda prodotto: \(fonte)"
+        // Garanzie della gestione separata e due parti della multiramo, dai campi o dalle condizioni
+        MotoreMultiramo.applica(self, a: &p)
         return p
     }
 
@@ -76,6 +119,9 @@ struct Prodotto: Identifiable, Codable, Hashable {
         case id, nome, canale, area, emittente, tipologia, rendimentoAtteso, costoIngresso, costoAnnuo, aliquotaFiscale, sri
         case garanzie, liquidabilita, fonte, verificatoIl, note, condizioni
         case incidenzaCostiKID, periodoRaccomandato
+        case trattenuto, retrocessione, minimoGarantito, consolidamento
+        case quotaGestioneSeparata, quotaGestioneMinima, quotaGestioneMassima, rendimentoGestione, rendimentoFondi
+        case costoFondi, sriFondi, volatilitaFondi, quotaAzionariaFondi, titoliStatoGestione, titoliStatoFondi, ribilanciamento
     }
 
     init(from decoder: Decoder) throws {
@@ -99,6 +145,22 @@ struct Prodotto: Identifiable, Codable, Hashable {
         condizioni = try? c.decodeIfPresent(CondizioniContratto.self, forKey: .condizioni)
         incidenzaCostiKID = try? c.decodeIfPresent(Double.self, forKey: .incidenzaCostiKID)
         periodoRaccomandato = try? c.decodeIfPresent(Int.self, forKey: .periodoRaccomandato)
+        trattenuto = try? c.decodeIfPresent(Double.self, forKey: .trattenuto)
+        retrocessione = try? c.decodeIfPresent(Double.self, forKey: .retrocessione)
+        minimoGarantito = try? c.decodeIfPresent(Double.self, forKey: .minimoGarantito)
+        consolidamento = try? c.decodeIfPresent(Bool.self, forKey: .consolidamento)
+        quotaGestioneSeparata = try? c.decodeIfPresent(Double.self, forKey: .quotaGestioneSeparata)
+        quotaGestioneMinima = try? c.decodeIfPresent(Double.self, forKey: .quotaGestioneMinima)
+        quotaGestioneMassima = try? c.decodeIfPresent(Double.self, forKey: .quotaGestioneMassima)
+        rendimentoGestione = try? c.decodeIfPresent(Double.self, forKey: .rendimentoGestione)
+        rendimentoFondi = try? c.decodeIfPresent(Double.self, forKey: .rendimentoFondi)
+        costoFondi = try? c.decodeIfPresent(Double.self, forKey: .costoFondi)
+        sriFondi = try? c.decodeIfPresent(Int.self, forKey: .sriFondi)
+        volatilitaFondi = try? c.decodeIfPresent(Double.self, forKey: .volatilitaFondi)
+        quotaAzionariaFondi = try? c.decodeIfPresent(Double.self, forKey: .quotaAzionariaFondi)
+        titoliStatoGestione = try? c.decodeIfPresent(Double.self, forKey: .titoliStatoGestione)
+        titoliStatoFondi = try? c.decodeIfPresent(Double.self, forKey: .titoliStatoFondi)
+        ribilanciamento = try? c.decodeIfPresent(Bool.self, forKey: .ribilanciamento)
     }
 }
 

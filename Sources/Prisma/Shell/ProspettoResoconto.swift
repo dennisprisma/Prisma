@@ -64,6 +64,9 @@ private func gruppiFinanziari(_ voci: [VoceResoconto], C: PaletteDocumento, tota
             var dodici = CellaDoc(v.variazione12.map { CifreDoc.euroSegno($0) } ?? "—", sotto: v.variazione12Percento.map { CifreDoc.variazione($0) } ?? "",
                                   colore: segno(v.variazione12), font: T.pTabella)
             dodici.coloreSotto = segno(v.variazione12)
+            // Multiramo a due parti: il costo composto (trattenuto sulla GS e costi dei fondi, ognuno sulla sua parte)
+            let costoIndicato: Double? = p.multiramoDivisa ? p.costoComplessivo : p.costoAnnuo
+            let costoSotto = costoIndicato.map { "\(CifreDoc.condizione($0)) annuo" } ?? ""
             return RigaDoc(celle: [
                 nome,
                 CellaDoc(TestiResoconto.quando(p.decorrenza), sotto: v.anni.map { String(format: "%.1f anni", $0).replacingOccurrences(of: ".", with: ",") } ?? "", font: T.pTabella),
@@ -72,7 +75,7 @@ private func gruppiFinanziari(_ voci: [VoceResoconto], C: PaletteDocumento, tota
                 risultato,
                 CellaDoc(v.rendimentoAnnuo.map { CifreDoc.variazione($0) } ?? "—", sotto: v.rendimentoAnnuo == nil ? "" : "l'anno", font: T.pTabella),
                 dodici,
-                CellaDoc(v.costoAnnuo.map { CifreDoc.euro($0) } ?? "—", sotto: p.costoAnnuo.map { "\(CifreDoc.condizione($0)) annuo" } ?? "", font: T.pTabella),
+                CellaDoc(v.costoAnnuo.map { CifreDoc.euro($0) } ?? "—", sotto: costoSotto, font: T.pTabella),
             ], altezza: 22)
         }
         if totali && mie.count > 1 {
@@ -589,10 +592,17 @@ private struct PaginaFisco: View {
                 ], righe: conCosti.map { v in
                     let f = v.fisco, p = v.posizione
                     func cella(_ x: Double, _ sotto: String) -> CellaDoc { CellaDoc(x > 0.005 ? CifreDoc.euroCentesimi(x) : "—", sotto: x > 0.005 ? sotto : "", font: T.pTabella) }
+                    // Multiramo a due parti: ogni costo sulla sua parte («sul 60% in fondi», «sul 40% in GS»)
+                    let sottoGestione: String = p.multiramoDivisa
+                        ? "\(CifreDoc.condizione(p.costoParteFondi)) \(TestiMultiramo.suiFondi(p))"
+                        : (p.costoAnnuo.map { CifreDoc.condizione($0) } ?? "")
+                    let sottoTrattenuto: String = p.multiramoDivisa
+                        ? "\(TestiMultiramo.punti(p.trattenutoGestione)) punti \(TestiMultiramo.sullaGestione(p))"
+                        : (p.trattenuto.map { "\(CifreDoc.condizione($0)) punti" } ?? "")
                     return RigaDoc(celle: [CellaDoc(p.nome, font: T.pTabellaForte),
                                            CellaDoc(p.canale.nomeBreve, colore: C.canale(p.canale), font: T.pTabellaForte),
-                                           cella(f.costoGestione, p.costoAnnuo.map { CifreDoc.condizione($0) } ?? ""),
-                                           cella(f.costoTrattenuto, p.trattenuto.map { "\(CifreDoc.condizione($0)) punti" } ?? ""),
+                                           cella(f.costoGestione, sottoGestione),
+                                           cella(f.costoTrattenuto, sottoTrattenuto),
                                            cella(f.costoBollo, ""),
                                            CellaDoc(CifreDoc.euroCentesimi(f.costoTotale), font: T.pTabellaForte)], altezza: 20)
                 } + [RigaDoc(celle: [CellaDoc("Totale", font: T.pTabellaForte), CellaDoc(""),

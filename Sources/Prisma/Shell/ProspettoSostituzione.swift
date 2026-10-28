@@ -148,6 +148,9 @@ private struct PaginaDueStrade: View {
                 dato("Costi annui", "\(CifreDoc.percento(l.costoAnnuo, decimali: 2))" + (l.costoIngresso > 0 ? " · ingresso \(CifreDoc.condizione(l.costoIngresso))" : ""))
                 dato("Imposta sul guadagno", "\(CifreDoc.percento(l.aliquota, decimali: 2)) · \(p.regime.nome.lowercased())")
                 dato("Rischio", p.sri.map { "\($0) su 7" } ?? "—")
+                // Multiramo: le due parti, con i rendimenti lordi e i costi di ciascuna
+                if p.multiramo { dato("Composizione", TestiMultiramo.composizioneBreve(p)) }
+                if p.multiramoDivisa { dato("Costi per parte", TestiMultiramo.costiPerParte(p)) }
             }
         }
         .padding(9)
@@ -184,7 +187,7 @@ private struct PaginaAnni: View {
                 ColonnaDoc(titolo: "Differenza", sottotitolo: "netti", peso: 1.1),
             ], righe: righeAnni, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 18, margine: 4)
             SezioneProspetto(titolo: "Se i mercati vanno diversamente",
-                             testo: Text(verbatim: "Netto dopo \(t.periodo) con \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenari)) ?? "2") punti di rendimento in meno o in più per entrambe le strade. \(t.tenuta)"))
+                             testo: Text(verbatim: "Netto dopo \(t.periodo) con \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenari)) ?? "2") punti di rendimento in meno o in più per entrambe le strade\(TestiMultiramo.notaScenari([e.resto.posizione, e.cambio.posizione])). \(t.tenuta)"))
             TabellaDoc(larghezza: larghezza, colonne: [
                 ColonnaDoc(titolo: "Scenario", peso: 1.2, destra: false), ColonnaDoc(titolo: "Rendimenti", sottotitolo: "\(t.nomeResto.lowercased()) · \(t.nomeCambio.lowercased())", peso: 1.6),
                 ColonnaDoc(titolo: t.nomeResto, sottotitolo: "netto"), ColonnaDoc(titolo: t.nomeCambio, sottotitolo: "netto"),
@@ -192,7 +195,10 @@ private struct PaginaAnni: View {
             ], righe: e.scenari.map { s in
                 let colore = s.scarto < 0 ? C.sfavorevole : (s.scarto > 0 ? C.favorevole : C.intermedio)
                 return RigaDoc(celle: [CellaDoc("■ \(s.nome)", colore: colore, font: T.pTabellaForte),
-                                       CellaDoc("\(CifreDoc.percento(e.resto.rendimento + s.scarto)) · \(CifreDoc.percento(e.cambio.rendimento + s.scarto))", font: T.pTabella),
+                                       // Multiramo a due parti: lo scenario sposta i fondi di tutto lo scarto, la gestione separata di metà
+                                       CellaDoc("\(CifreDoc.percento(e.resto.rendimento + MotoreMultiramo.scartoEquivalente(e.resto.posizione, scarto: s.scarto)))"
+                                                + " · \(CifreDoc.percento(e.cambio.rendimento + MotoreMultiramo.scartoEquivalente(e.cambio.posizione, scarto: s.scarto)))",
+                                                font: T.pTabella),
                                        CellaDoc(CifreDoc.euro(s.nettoResto), font: T.pTabella), CellaDoc(CifreDoc.euro(s.nettoCambio), font: T.pTabella),
                                        CellaDoc(CifreDoc.euroSegno(s.differenza), colore: s.differenza >= 0 ? C.positivo : C.negativo, font: T.pTabellaForte)],
                                altezza: 15)
@@ -227,10 +233,19 @@ private struct PaginaAnni: View {
             RigaDoc(celle: [CellaDoc(voce, font: T.pTabella), CellaDoc(a, font: T.pTabella), CellaDoc(b, font: T.pTabella)], altezza: 14)
         }
         let r = e.resto, c = e.cambio
+        // Multiramo a due parti: commissioni e costi dei fondi sulla parte in fondi, trattenuto sulla sola GS
+        func gestione(_ p: Posizione) -> String {
+            if p.multiramoDivisa { return "\(CifreDoc.condizione(p.costoParteFondi)) \(TestiMultiramo.suiFondi(p))" }
+            return p.costoAnnuo.map { CifreDoc.condizione($0) } ?? "—"
+        }
+        func trattenuto(_ p: Posizione) -> String {
+            if p.multiramoDivisa { return "\(TestiMultiramo.punti(p.trattenutoGestione)) \(TestiMultiramo.sullaGestione(p))" }
+            return p.trattenuto.map { CifreDoc.condizione($0) } ?? "—"
+        }
         return [
             riga("Costo d'ingresso", e.sostituzione ? "già pagato" : CifreDoc.condizione(r.costoIngresso), CifreDoc.condizione(c.costoIngresso)),
-            riga("Costo annuo di gestione", r.posizione.costoAnnuo.map { CifreDoc.condizione($0) } ?? "—", c.posizione.costoAnnuo.map { CifreDoc.condizione($0) } ?? "—"),
-            riga("Trattenuto sul rendimento", r.posizione.trattenuto.map { CifreDoc.condizione($0) } ?? "—", c.posizione.trattenuto.map { CifreDoc.condizione($0) } ?? "—"),
+            riga("Costo annuo di gestione", gestione(r.posizione), gestione(c.posizione)),
+            riga("Trattenuto sul rendimento", trattenuto(r.posizione), trattenuto(c.posizione)),
             riga("Bollo 0,20%", r.bollo ? "sì" : "no", c.bollo ? "sì" : "no"),
             riga("Costo annuo complessivo", CifreDoc.percento(r.costoAnnuo, decimali: 2), CifreDoc.percento(c.costoAnnuo, decimali: 2)),
             riga("Costi del primo anno", CifreDoc.euro(r.costiPrimoAnno), CifreDoc.euro(c.costiPrimoAnno)),
@@ -290,11 +305,17 @@ private struct PaginaCaratteristiche: View {
             return c.penali.isEmpty ? "riscatto dopo \(c.mesiBloccoRiscatto) mesi, senza penali"
                 : "riscatto dopo \(c.mesiBloccoRiscatto) mesi; penali \(c.penali.map { CifreDoc.penale($0) }.joined(separator: ", ")), poi nessuna"
         }
-        return [
+        var righe: [RigaDoc] = [
             riga("Tipologia", a.tipologia, b.tipologia, righe: 2),
             riga("Emittente", a.emittente, b.emittente),
             riga("Stato", a.stato.nome, b.stato == .proposta ? "Proposta · \(b.esito?.nome.lowercased() ?? "bozza")" : b.stato.nome),
             riga("Rendimento ipotizzato", CifreDoc.percento(e.resto.rendimento) + " lordo", CifreDoc.percento(e.cambio.rendimento) + " lordo"),
+        ]
+        if a.multiramo || b.multiramo {
+            // Multiramo: quote e rendimenti lordi delle due parti (il rendimento sopra è quello del contratto)
+            righe.append(riga("Composizione", TestiMultiramo.composizioneBreve(a), TestiMultiramo.composizioneBreve(b)))
+        }
+        return righe + [
             riga("Rischio (SRI)", a.sri.map { "\($0) su 7" } ?? "", b.sri.map { "\($0) su 7" } ?? ""),
             riga("Regime fiscale", "\(a.regime.nome) · \(CifreDoc.percento(e.resto.aliquota, decimali: 2))", "\(b.regime.nome) · \(CifreDoc.percento(e.cambio.aliquota, decimali: 2))"),
             riga("Garanzie", a.garanzie, b.garanzie, righe: 2),
