@@ -396,9 +396,13 @@ enum ProvaProspetti {
                 let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
                 verifica("\(nome): cliente e consulente", testo.contains(cliente.nome) && testo.contains(TestiValutazione.consulente))
                 // Le crisi del passato: ogni crisi che tocca il patrimonio, con la sua cifra
+                // Le cifre grandi delle schede si rimpiccioliscono per stare nella casella: nel testo del PDF
+                // gli spazi tra le cifre possono cambiare, quindi si confronta senza spazi (una cifra tagliata resta un errore)
+                let compatto = testo.filter { !$0.isWhitespace }
                 for k in r.crisi.prefix(Misure.Documento.Motori.crisiMassime) where !k.voci.isEmpty {
                     let cifra = spazi(cifraCrisiDoc(k.perdita))
-                    verifica("\(nome): crisi del \(k.crisi.anno) \(cifra) nel PDF", testo.contains(cifra) && testo.contains("\(k.crisi.anno)"))
+                    verifica("\(nome): crisi del \(k.crisi.anno) \(cifra) nel PDF",
+                             compatto.contains(cifra.filter { !$0.isWhitespace }) && testo.contains("\(k.crisi.anno)"))
                 }
                 if let m = t.mercati, !m.voci.isEmpty {
                     verifica("\(nome): perdita sui mercati \(CifreDoc.togli(m.perdita)) nel PDF", testo.contains(spazi(CifreDoc.togli(m.perdita))))
