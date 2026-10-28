@@ -1,35 +1,35 @@
 import SwiftUI
 
-// «Cerca ovunque»: tabella raggruppata alla maniera di iOS 5 (fondo a righe sottili, intestazioni
-// incise, celle bianche arrotondate, selezione blu lucida).
+// «Cerca ovunque» nel tema Liquid Glass: campo in pozzetto, risultati raggruppati in schede chiare,
+// voce scelta con l'accento al 18% (.spot e .sr-i del tema).
 
 extension Colori {
     enum Ricerca {
-        static let fondoAlto = Color(hex: "#d3d8de")
-        static let fondoBasso = Color(hex: "#c5ccd4")
-        static let righe = Color(r: 255, g: 255, b: 255, a: 0.18)
-        static let barraAlto = Color(hex: "#e8ebee")
-        static let barraBasso = Color(hex: "#b9c1ca")
-        static let barraBordo = Color(hex: "#8d97a3")
-        static let barraLuce = Color(r: 255, g: 255, b: 255, a: 0.7)
-        static let campoBordo = Color(hex: "#8e959d")
-        static let lente = Color(hex: "#8a919a")
-        static let tasto = Color(hex: "#6c7580")
-        static let sezione = Color(hex: "#4c566c")
-        static let sezioneIncisione = Color(r: 255, g: 255, b: 255, a: 0.8)
-        static let cella = Color.white
-        static let cellaBordo = Color(hex: "#abb2ba")
-        static let separatore = Color(hex: "#e0e0e0")
-        static let titolo = Color(hex: "#1f2328")
-        static let dettaglio = Color(hex: "#6d7480")
-        static let estratto = Color(hex: "#3d5a80")
-        static let freccia = Color(hex: "#9aa1aa")
-        static let selezioneAlto = Color(hex: "#058cf5")
-        static let selezioneBasso = Color(hex: "#015fe6")
-        static let selezioneTesto = Color.white
-        static let selezioneDettaglio = Color(hex: "#dce9fb")
-        static let vuotoTitolo = Color(hex: "#4c566c")
-        static let vuotoTesto = Color(hex: "#6d7480")
+        static let fondoAlto = Color.clear
+        static let fondoBasso = Color.clear
+        static let righe = Color.clear
+        static let barraAlto = Color.clear
+        static let barraBasso = Color.clear
+        static let barraBordo = Tema.Colore.separatore
+        static let barraLuce = Color.clear
+        static let campoBordo = Tema.Colore.separatore
+        static let lente = Tema.Colore.inchiostroTerziario
+        static let tasto = Tema.Colore.inchiostroSecondario
+        static let sezione = Tema.Colore.inchiostroSecondario
+        static let sezioneIncisione = Color.clear
+        static let cella = Tema.Colore.scheda
+        static let cellaBordo = Tema.Colore.bordoScheda
+        static let separatore = Tema.Colore.separatore
+        static let titolo = Tema.Colore.inchiostro
+        static let dettaglio = Tema.Colore.inchiostroSecondario
+        static let estratto = Tema.Colore.inchiostroSecondario
+        static let freccia = Tema.Colore.inchiostroTerziario
+        static let selezioneAlto = Tema.Colore.selezioneRicerca
+        static let selezioneBasso = Tema.Colore.selezioneRicerca
+        static let selezioneTesto = Tema.Colore.inchiostro
+        static let selezioneDettaglio = Tema.Colore.inchiostroSecondario
+        static let vuotoTitolo = Tema.Colore.inchiostroSecondario
+        static let vuotoTesto = Tema.Colore.inchiostroTerziario
     }
 }
 
@@ -42,12 +42,12 @@ extension Gradienti {
 extension Misure {
     enum Ricerca {
         static let larghezzaMassima: CGFloat = 720
-        static let campoAltezza: CGFloat = 32
-        static let campoRaggio: CGFloat = 16
+        static let campoAltezza: CGFloat = 36
+        static let campoRaggio: CGFloat = 18
         static let barraMargine = EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
-        static let raggioCella: CGFloat = 9
-        static let icona: CGFloat = 36
-        static let margineRiga = EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12)
+        static let raggioCella: CGFloat = Tema.Raggio.gruppo
+        static let icona: CGFloat = 28
+        static let margineRiga = EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10)
         static let spazioSezioni: CGFloat = 16
         static let margineContenuto: CGFloat = 16
         static let righeFondo: CGFloat = 7
@@ -55,25 +55,22 @@ extension Misure {
 }
 
 extension Tipo {
-    static let ricercaCampo = Tipo.sistema(15)
-    static let ricercaSezione = Tipo.sistema(13, .bold)
-    static let ricercaTitolo = Tipo.sistema(13, .semibold)
-    static let ricercaDettaglio = Tipo.sistema(11)
-    static let ricercaEstratto = Tipo.sistema(11).italic()
-    static let ricercaTasto = Tipo.sistema(11, .medium)
+    static let ricercaCampo = Tema.Testo.sf(16)
+    static let ricercaSezione = Tema.Testo.sf(11.5, .semibold)
+    static let ricercaTitolo = Tema.Testo.sf(13, .semibold)
+    static let ricercaDettaglio = Tema.Testo.sf(12)
+    static let ricercaEstratto = Tema.Testo.sf(12).italic()
+    static let ricercaTasto = Tema.Testo.tasto
 }
 
-/// Fondo a righe verticali sottili della tabella raggruppata di iOS.
+/// Fondo dei risultati: nessuna trama, si vede il vetro della finestra.
 struct FondoRicerca: View {
     var body: some View {
-        ZStack {
-            Gradienti.fondoRicerca
-            RigheRicerca().fill(Colori.Ricerca.righe)
-        }
+        Color.clear
     }
 }
 
-/// Le righe verticali del fondo (una forma, non un Canvas: niente Metal).
+/// Righe verticali del vecchio fondo a righe (resta per compatibilità: oggi il fondo è trasparente).
 struct RigheRicerca: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
@@ -87,6 +84,7 @@ struct RigheRicerca: Shape {
 }
 
 /// Una riga dei risultati: icona dell'app, titolo, dettaglio, riga trovata e canale.
+/// Scelta: accento al 18% (.sr-i del tema); al passaggio del mouse un velo leggero.
 struct RigaRicerca: View {
     let risultato: RisultatoRicerca
     let selezionata: Bool
@@ -112,13 +110,15 @@ struct RigaRicerca: View {
             .lineLimit(1)
             Spacer(minLength: 8)
             if let c = risultato.canale { EtichettaCanale(canale: c, compatta: true) }
-            Text("›")
-                .font(Tipo.rubricaFreccia)
-                .foregroundColor(selezionata ? Colori.Ricerca.selezioneTesto : Colori.Ricerca.freccia)
+            Image(systemName: "chevron.right")
+                .font(Tema.Testo.Componenti.frecciaRiga)
+                .foregroundColor(Colori.Ricerca.freccia)
         }
         .padding(Misure.Ricerca.margineRiga)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(selezionata ? AnyShapeStyle(Gradienti.selezioneRicerca) : AnyShapeStyle(Colori.Ricerca.cella))
+        .fondoPassaggio(.arrotondata(Tema.Raggio.voceRicerca), sopra: Tema.Colore.rigaSopra,
+                        selezionata: selezionata, selezione: Tema.Colore.selezioneRicerca)
+        .background(Colori.Ricerca.cella)
         .contentShape(Rectangle())
     }
 }

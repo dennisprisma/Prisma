@@ -3,10 +3,10 @@ import SwiftUI
 private typealias T = Tipo.Documento
 private typealias D = Misure.Documento
 
-// I pezzi comuni dei prospetti per il consulente (A4 verticale, tavolozza moderna): foglio con il piede,
-// titoli di sezione, riquadri con la barra, cifre in evidenza, firme.
+// I pezzi comuni dei prospetti per il consulente (A4 verticale, tavolozza moderna): foglio con il logo
+// e il piede, titoli di sezione, riquadri con la barra, cifre in evidenza, firme.
 
-/// Margini e piè di pagina del prospetto.
+/// Margini, logo piccolo in alto a destra (nel margine, fuori dall'impaginazione) e piè di pagina del prospetto.
 struct FoglioProspetto<Contenuto: View>: View {
     @Environment(\.paletteDocumento) private var C
     let piede: String
@@ -37,6 +37,11 @@ struct FoglioProspetto<Contenuto: View>: View {
                 }
             }
             .padding(EdgeInsets(top: 34, leading: D.margineProspetto, bottom: 22, trailing: D.margineProspetto))
+            .overlay(alignment: .topTrailing) {
+                LogoPrismaConNome(colore: Colori.Documento.logo, altezza: D.logoProspetto)
+                    .padding(.top, D.logoProspettoAlto)
+                    .padding(.trailing, D.margineProspetto)
+            }
         }
     }
 }

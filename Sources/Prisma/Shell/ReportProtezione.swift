@@ -7,8 +7,9 @@ private typealias D = Misure.Documento
 /// succedesse qualcosa, se non potessi lavorare, la mappa delle tutele, quanto costa, la sintesi.
 enum ReportProtezione {
     static func pagine(_ t: TestiProtezione, commento: String? = nil) -> [AnyView] {
-        let slide: [AnyView] = [AnyView(SlideFamiglia(t: t)), AnyView(SlideMorte(t: t)), AnyView(SlideLavoro(t: t)),
-                                AnyView(SlideMappaTutele(t: t)), AnyView(SlideCostoTutele(t: t)), AnyView(SlideSintesiProtezione(t: t))]
+        var slide: [AnyView] = [AnyView(SlideFamiglia(t: t)), AnyView(SlideMorte(t: t)), AnyView(SlideLavoro(t: t))]
+        if !t.e.persone.isEmpty { slide.append(AnyView(SlidePersone(t: t))) }
+        slide += [AnyView(SlideMappaTutele(t: t)), AnyView(SlideCostoTutele(t: t)), AnyView(SlideSintesiProtezione(t: t))]
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiProtezione.titolo) · \(t.cliente)",
                                      lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
@@ -171,6 +172,64 @@ private struct SlideLavoro: View {
         case .coperto: return C.positivo
         case .inProposta: return C.intermedio
         case .scoperto: return C.negativo
+        }
+    }
+}
+
+// MARK: - Per ogni persona
+
+private struct SlidePersone: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiProtezione
+
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        let persone = Array(t.e.persone.prefix(M.personeMassime))
+        return VStack(alignment: .leading, spacing: 14) {
+            TestaReport(occhiello: "Persona per persona", titolo: titolo,
+                        sottotitolo: "Ognuno porta in famiglia una parte del reddito: se venisse a mancare o non potesse più lavorare, servirebbe un capitale diverso. Qui lo confrontiamo con le coperture intestate a ciascuno. Sono stime, da rivedere insieme.")
+            HStack(alignment: .top, spacing: M.spazioRiquadri) {
+                ForEach(persone) { p in scheda(p) }
+            }
+            if t.e.persone.count > persone.count {
+                Text(verbatim: "…e altre \(t.e.persone.count - persone.count) persone: le vediamo insieme.").font(T.minimo).foregroundColor(C.tenue)
+            }
+        }
+    }
+
+    private var titolo: String {
+        let scoperte = t.e.persone.filter { $0.divarioMorte > 0.5 || $0.divarioInvalidita > 0.5 }
+        guard let prima = scoperte.first else { return "Persona per persona, le coperture bastano" }
+        if scoperte.count > 1 { return "Per \(scoperte.count) persone le coperture non bastano ancora" }
+        let nome = prima.nome.split(separator: " ").first.map(String.init) ?? prima.nome
+        return "\(nome): le coperture non bastano ancora"
+    }
+
+    private func scheda(_ p: FabbisognoPersona) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: p.descrizioneDoc).font(T.titoloRiquadro).foregroundColor(C.titolo).lineLimit(1).minimumScaleFactor(0.7)
+            Text(verbatim: "porta il \(CifreDoc.percento(p.quotaReddito * 100, decimali: 0)) del reddito di famiglia").font(T.piccolo).foregroundColor(C.tenue)
+            Rectangle().fill(C.filetto).frame(height: 0.6)
+            voce("Se venisse a mancare", p.fabbisognoMorte, p.capitaleMorte, p.divarioMorte)
+            voce("Se non potesse lavorare", p.fabbisognoInvalidita, p.capitaleInvalidita, p.divarioInvalidita)
+            voce("Se non fosse autosufficiente", p.fabbisognoLTC, p.capitaleLTC, p.divarioLTC)
+            if !p.dipendenti.isEmpty {
+                Text(verbatim: "Dipendono da questa persona: \(p.dipendentiDoc).").font(T.minimo).foregroundColor(C.testo)
+                    .lineSpacing(1.2).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(M.margineRiquadro)
+        .frame(maxWidth: .infinity, minHeight: M.schedaReport, alignment: .topLeading)
+        .riquadroDoc()
+    }
+
+    private func voce(_ titolo: String, _ serve: Double, _ coperto: Double, _ manca: Double) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: titolo).font(T.corpoForte).foregroundColor(C.titolo)
+            Text(verbatim: "servirebbero \(CifreDoc.euro(serve)), coperti \(CifreDoc.euro(coperto))").font(T.minimo).foregroundColor(C.testo)
+            Text(verbatim: manca > 0.5 ? "mancano \(CifreDoc.euro(manca))" : "coperto").font(T.piccolo.weight(.bold))
+                .foregroundColor(manca > 0.5 ? C.negativo : C.positivo)
         }
     }
 }

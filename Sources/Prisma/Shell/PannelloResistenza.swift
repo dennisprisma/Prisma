@@ -6,6 +6,9 @@ struct PannelloResistenza: View {
     @EnvironmentObject var stato: StatoShell
     let prova: ProvaResistenza
 
+    private typealias M = Tema.Misura.MotoriPosizioni
+    private typealias C = Tema.Colore.MotoriPosizioni
+
     var body: some View {
         PannelloAnalisi(titolo: "Prova di resistenza", nota: "Stime prudenti sulle posizioni in essere: non previsioni, ma un modo per parlarne") {
             HStack(spacing: 8) {
@@ -26,6 +29,7 @@ struct PannelloResistenza: View {
                 }
                 if let m = prova.scenario(.mercati), m.base > 0 { profilo(m) }
                 if let m = prova.scenario(.mercati), !m.voci.isEmpty { esposte(m) }
+                if prova.crisi.contains(where: { !$0.voci.isEmpty }) { crisiDelPassato }
                 Text(prova.scenari.map { "\($0.tipo.titolo): \($0.tipo.ipotesi.prefix(1).lowercased() + $0.tipo.ipotesi.dropFirst())" }.joined(separator: " "))
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.Analisi.kpiNota)
@@ -87,6 +91,83 @@ struct PannelloResistenza: View {
         return "Sui mercati la perdita stimata è il \(CifreDoc.percento(m.quota * 100)) del patrimonio finanziario; una propensione \(p.nome.lowercased()) ne sopporta fino al \(CifreDoc.condizione(s)) (il segno sulla barra). " + protetto
     }
 
+    // MARK: - Crisi del passato
+
+    /// Le crisi vere del 2008, 2020 e 2022 applicate alle posizioni di oggi, accanto agli scenari:
+    /// una riga per crisi con la perdita in euro e in quota del patrimonio finanziario e il giudizio sul profilo.
+    private var crisiDelPassato: some View {
+        let peggiore = prova.crisiPeggiore
+        return VStack(alignment: .leading, spacing: M.spazioElenco) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Se tornassero le crisi del passato")
+                    .font(Tema.Testo.MotoriPosizioni.sottotitolo)
+                    .foregroundColor(Colori.Analisi.tabellaTesto)
+                Spacer()
+                Text("stime indicative sul patrimonio di oggi")
+                    .font(Tipo.chip)
+                    .foregroundColor(Colori.Analisi.kpiNota)
+            }
+            VStack(spacing: 0) {
+                ForEach(Array(prova.crisi.enumerated()), id: \.element.id) { i, k in
+                    rigaCrisi(k, peggiore: k.id == peggiore?.id, alternata: i % 2 == 1)
+                }
+            }
+            .contornoTabella()
+            Text(fraseCrisi(peggiore))
+                .font(Tipo.kpiNota)
+                .foregroundColor(Colori.Analisi.kpiNota)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .help(MotoreResistenza.metodoCrisi.joined(separator: " "))
+    }
+
+    private func rigaCrisi(_ k: EsitoCrisi, peggiore: Bool, alternata: Bool) -> some View {
+        let tocca = !k.voci.isEmpty
+        let perde = k.perdita.rounded() > 0
+        let colore = !tocca ? Colori.Analisi.kpiNota : (perde ? C.negativo : C.positivo)
+        let euro: String = !tocca ? "—" : (perde ? Formati.euro(-k.perdita) : "+" + Formati.euro(abs(k.perdita)))
+        return HStack(spacing: 10) {
+            Text(String(k.crisi.anno))
+                .font(Tipo.tabellaCellaForte)
+                .foregroundColor(Colori.Analisi.tabellaTesto)
+                .frame(width: M.colonnaAnnoCrisi, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: M.spazioElenco) {
+                    Text(k.crisi.titolo).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
+                    if peggiore { Chip(testo: "la peggiore") }
+                }
+                Text(k.crisi.periodo).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 0) {
+                if let g = k.giudizio, tocca { Pillola(testo: g.etichetta, tono: tono(g)) }
+            }
+            .frame(width: M.colonnaGiudizioCrisi, alignment: .trailing)
+            Text(euro)
+                .font(Tipo.tabellaCellaForte)
+                .foregroundColor(colore)
+                .frame(width: M.colonnaPerditaCrisi, alignment: .trailing)
+            Text(tocca ? CifreDoc.variazione(-k.quota * 100) : "—")
+                .font(Tipo.numeroTabella)
+                .foregroundColor(colore)
+                .frame(width: M.colonnaQuotaCrisi, alignment: .trailing)
+        }
+        .padding(Misure.Analisi.cellaMargine)
+        .background(peggiore ? C.rigaPeggiore : (alternata ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale))
+        .bordoBasso(Colori.Analisi.tabellaRiga)
+    }
+
+    private func fraseCrisi(_ peggiore: EsitoCrisi?) -> String {
+        guard let w = peggiore, w.perdita > 0 else {
+            return "Nessuna delle tre crisi farebbe perdere qualcosa al patrimonio finanziario di oggi. Il giudizio sul profilo resta quello dello scenario sui mercati."
+        }
+        var testo = "La peggiore per il patrimonio di oggi: \(w.crisi.titolo.lowercased()) del \(w.crisi.anno), circa \(Formati.euro(w.perdita)) in meno, il \(CifreDoc.percento(w.quota * 100)) del patrimonio finanziario. \(w.crisi.recupero)"
+        if w.perditaImmobili >= 0.5 {
+            testo += " Sugli immobili, a parte, circa \(Formati.euro(w.perditaImmobili)) in meno."
+        }
+        return testo + " Il giudizio sul profilo resta quello dello scenario sui mercati."
+    }
+
     /// Le posizioni che perdono di più se i mercati crollano, con il canale ben visibile.
     private func esposte(_ m: ProvaResistenza.Scenario) -> some View {
         VStack(spacing: 0) {
@@ -120,6 +201,6 @@ struct PannelloResistenza: View {
                 .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 }

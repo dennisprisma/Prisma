@@ -1,9 +1,10 @@
 import SwiftUI
 
 extension View {
-    /// Testo inciso (text-shadow senza sfocatura, es. `0 1px #fff9`).
+    /// Ex testo inciso (text-shadow 1px del tema iOS 5): nel tema «Liquid Glass» non c'è rilievo,
+    /// il modificatore resta per compatibilità e non disegna nulla.
     func incisione(_ colore: Color, y: CGFloat = 1) -> some View {
-        shadow(color: colore, radius: 0, x: 0, y: y)
+        self
     }
 
     /// Ombra come `box-shadow`/`text-shadow` del CSS: la sfocatura CSS è circa il doppio del raggio SwiftUI.
@@ -11,16 +12,10 @@ extension View {
         shadow(color: colore, radius: sfocatura / 2, x: x, y: y)
     }
 
-    /// Filetto luminoso interno in alto (`inset 0 1px colore`).
+    /// Ex filetto luminoso interno in alto (`inset 0 1px`): il riflesso ora è del vetro,
+    /// il modificatore resta per compatibilità e non disegna nulla.
     func luceInterna(_ colore: Color, raggio: CGFloat = 0, bordo: CGFloat = 1) -> some View {
-        overlay(alignment: .top) {
-            Rectangle()
-                .fill(colore)
-                .frame(height: 1)
-                .padding(.top, bordo)
-                .padding(.horizontal, raggio * 0.6)
-                .allowsHitTesting(false)
-        }
+        self
     }
 
     /// Filetto interno in basso (`inset 0 -1px colore`).
@@ -34,15 +29,15 @@ extension View {
         }
     }
 
-    /// Bordo inferiore di un solo lato (`border-bottom`).
-    func bordoBasso(_ colore: Color, spessore: CGFloat = 1) -> some View {
+    /// Bordo inferiore di un solo lato (`border-bottom`): di norma il filo da 0,5 pt del tema.
+    func bordoBasso(_ colore: Color, spessore: CGFloat = Tema.Misura.filo) -> some View {
         overlay(alignment: .bottom) {
             Rectangle().fill(colore).frame(height: spessore).allowsHitTesting(false)
         }
     }
 
-    /// Bordo superiore di un solo lato (`border-top`).
-    func bordoAlto(_ colore: Color, spessore: CGFloat = 1) -> some View {
+    /// Bordo superiore di un solo lato (`border-top`): di norma il filo da 0,5 pt del tema.
+    func bordoAlto(_ colore: Color, spessore: CGFloat = Tema.Misura.filo) -> some View {
         overlay(alignment: .top) {
             Rectangle().fill(colore).frame(height: spessore).allowsHitTesting(false)
         }

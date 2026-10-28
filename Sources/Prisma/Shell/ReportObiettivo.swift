@@ -9,7 +9,9 @@ enum ReportObiettivo {
     static func pagine(_ t: TestiObiettivo, commento: String? = nil) -> [AnyView] {
         var slide: [AnyView] = [AnyView(SlideTraguardo(t: t)), AnyView(SlideArrivoObiettivo(t: t))]
         if !t.e.strade.isEmpty { slide.append(AnyView(SlideStradeObiettivo(t: t))) }
-        slide += [AnyView(SlideScenariObiettivo(t: t)), AnyView(SlideSintesiObiettivo(t: t))]
+        slide.append(AnyView(SlideScenariObiettivo(t: t)))
+        if let mc = ProspettoObiettivo.probabilita(t) { slide.append(AnyView(SlideProbabilitaObiettivo(t: t, mc: mc))) }
+        slide.append(AnyView(SlideSintesiObiettivo(t: t)))
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(t.o.titolo) · \(t.cliente)",
                                      lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
@@ -177,6 +179,50 @@ private struct SlideScenariObiettivo: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Scenari con le probabilità
+
+private struct SlideProbabilitaObiettivo: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiObiettivo
+    let mc: EsitoMonteCarlo
+
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TestaReport(occhiello: "Le probabilità", titolo: titolo,
+                        sottotitolo: "Abbiamo provato \(Formati.numeroFormatter.string(from: NSNumber(value: mc.traiettorie)) ?? "") percorsi possibili dei mercati, con alti e bassi come in passato. È una stima, non una promessa: serve a capire quanto margine hai.")
+            HStack(alignment: .top, spacing: M.spazioRiquadri) {
+                VStack(spacing: 8) {
+                    CifraObiettivo(etichetta: "Probabilità di arrivarci", valore: "\(mc.suDieci) su 10",
+                                   nota: "il traguardo vale \(CifreDoc.euro(mc.traguardo)) alla scadenza", colore: coloreProbabilita, font: T.numeroGrande)
+                    CifraObiettivo(etichetta: "Se va male (1 caso su 10)", valore: CifreDoc.euro(mc.p10), colore: C.sfavorevole)
+                    CifraObiettivo(etichetta: "Nel caso di mezzo", valore: CifreDoc.euro(mc.p50), colore: C.intermedio)
+                    CifraObiettivo(etichetta: "Se va bene (1 caso su 10)", valore: CifreDoc.euro(mc.p90), colore: C.favorevole)
+                }
+                .frame(width: M.colonnaLateraleReport)
+                GraficoVentaglioDoc(anni: mc.anni, traguardo: mc.traguardo, fontAssi: T.minimo, fontValori: T.minimo)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: M.graficoVentaglioReport)
+            }
+            Text(verbatim: "La fascia colorata contiene 8 percorsi su 10; la linea è quello di mezzo. Importi al netto delle imposte alla scadenza; nel grafico, valori prima delle imposte. Rendimenti non garantiti.")
+                .font(T.minimo).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var titolo: String {
+        switch mc.suDieci {
+        case 10: return "In quasi tutti i percorsi possibili arrivi al traguardo"
+        case 0: return "Così, in quasi nessun percorso arrivi al traguardo"
+        default: return "In \(mc.suDieci) percorsi su 10 arrivi al traguardo"
+        }
+    }
+
+    private var coloreProbabilita: Color {
+        mc.suDieci >= 7 ? C.positivo : (mc.suDieci >= 4 ? C.intermedio : C.negativo)
     }
 }
 

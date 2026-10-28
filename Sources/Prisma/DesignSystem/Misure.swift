@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Misure, spaziature e raggi del template (in punti, a 1440×900).
+/// Misure, spaziature e raggi delle schermate (in punti, a 1440×900). Nel tema «Liquid Glass»
+/// barra, dock, finestre e raggi seguono `Tema.Misura`/`Tema.Raggio`; il resto resta com'era
+/// perché le schermate ci sono impaginate.
 enum Misure {
     enum Barra {
-        static let altezza: CGFloat = 32
+        static let altezza: CGFloat = Tema.Misura.barra
         static let margine: CGFloat = 18
         /// Spazio a sinistra per i pulsanti nativi della finestra macOS.
         static let spazioSemaforiNativi: CGFloat = 70
@@ -12,10 +14,10 @@ enum Misure {
         static let spazioOra: CGFloat = 11
         static let spazioDestra: CGFloat = 17
         static let spazioCerca: CGFloat = 14
-        static let icona: CGFloat = 17
-        static let avatar: CGFloat = 23
-        static let badge: CGFloat = 13
-        static let raggioTasto: CGFloat = 3
+        static let icona: CGFloat = Tema.Misura.iconaBarra
+        static let avatar: CGFloat = Tema.Misura.avatarBarra
+        static let badge: CGFloat = Tema.Misura.badge
+        static let raggioTasto: CGFloat = Tema.Raggio.tasto
     }
 
     enum Scrivania {
@@ -27,7 +29,7 @@ enum Misure {
         static let spazioRighe: CGFloat = 6
         static let icona: CGFloat = 64
         static let lanciatoreSpazio: CGFloat = 6
-        static let lanciatoreRaggio: CGFloat = 7
+        static let lanciatoreRaggio: CGFloat = Tema.Raggio.riga
         static let badge: CGFloat = 21
         static let colonnaLarghezza: CGFloat = 300
         static let colonnaSpazio: CGFloat = 26
@@ -40,7 +42,8 @@ enum Misure {
         static let margineRail: CGFloat = 10
         static let segAltezza: CGFloat = 28
         static let navAltezza: CGFloat = 34
-        static let raggio: CGFloat = 4
+        /// Pannelli, KPI e tabelle: più tondi che nel tema iOS 5, meno delle schede del tema (il contenuto tocca i bordi).
+        static let raggio: CGFloat = 10
         static let kpiMargine = EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
         static let cellaMargine = EdgeInsets(top: 8, leading: 9, bottom: 8, trailing: 9)
         static let testaMargine = EdgeInsets(top: 7, leading: 9, bottom: 7, trailing: 9)
@@ -69,7 +72,7 @@ enum Misure {
 
     enum Rubrica {
         static let indice: CGFloat = 220
-        static let raggioLibro: CGFloat = 5
+        static let raggioLibro: CGFloat = Tema.Raggio.gruppo
         static let avatarElenco: CGFloat = 34
         static let avatarProfilo: CGFloat = 40
         static let cornicesAvatar: CGFloat = 3
@@ -88,8 +91,8 @@ enum Misure {
         /// La striscia della guida «Comincia con i tuoi dati» e il suo elenco.
         static let striscia: CGFloat = 34
         static let elencoGuida: CGFloat = 480
-        // Pannello del template (.os-desk-sidebar): raggio 6, bordo 1 px, una sola ombra
-        static let raggio: CGFloat = 6
+        // Widget di vetro del tema (--r-w)
+        static let raggio: CGFloat = Tema.Raggio.widget
         static let spazio: CGFloat = 20
         static let intestazione: CGFloat = 40
         /// Quota d'altezza della fila alta (Agenda, Cliente in primo piano con la barra di Eve).
@@ -104,7 +107,7 @@ enum Misure {
         /// Il pannello carta dentro il cliente (.os-panel) e i suoi numeri.
         static let pannelloMargine: CGFloat = 12
         static let pannelloMargineCompatto: CGFloat = 8
-        static let pannelloRaggio: CGFloat = 6
+        static let pannelloRaggio: CGFloat = Tema.Raggio.kpi
         /// Il widget del cliente: testata in pelle (.os-desk-client: 13/14/10, compatta 9/12 sugli
         /// schermi bassi), margine del corpo (ridotto nella variante compatta) e spazio fra
         /// pannello, righe e pulsanti.
@@ -118,19 +121,19 @@ enum Misure {
         /// La barra di Eve sotto il cliente (.os-desk-eve).
         static let barraEve: CGFloat = 60
         static let avatarCliente: CGFloat = 39
-        /// La cucitura della pelle (.os-desk-client:before).
+        /// Ex cucitura della pelle (nel tema non si vede più).
         static let cucituraRientro: CGFloat = 6
         static let cucituraRaggio: CGFloat = 3
-        /// La casella delle attività (.os-desk-check) e la barra del portafoglio (.os-progress).
+        /// La casella delle attività (tonda, come la spunta del tema) e la barra del portafoglio.
         static let casella: CGFloat = 14
-        static let casellaRaggio: CGFloat = 3
+        static let casellaRaggio: CGFloat = 7
         static let progresso: CGFloat = 7
     }
 
     enum Agenda {
         static let margine: CGFloat = 14
         static let cuoioMargine = EdgeInsets(top: 10, leading: 20, bottom: 14, trailing: 20)
-        static let cuoioRaggio: CGFloat = 4
+        static let cuoioRaggio: CGFloat = Tema.Raggio.riga
         static let cucitura: CGFloat = 7
         static let targhetta: CGFloat = 50
         static let anello = CGSize(width: 10, height: 26)
@@ -151,20 +154,20 @@ enum Misure {
         static let colonna: CGFloat = 300
         static let rigatura: CGFloat = 24
         static let margine: CGFloat = 34
-        static let raggio: CGFloat = 2
+        static let raggio: CGFloat = Tema.Raggio.miniatura
         static let campo: CGFloat = 110
     }
 
     enum Bisogni {
         static let ruota: CGFloat = 200
         static let foro: CGFloat = 0.38
-        static let raggioCarta: CGFloat = 4
+        static let raggioCarta: CGFloat = Tema.Raggio.riga
         static let icona: CGFloat = 26
     }
 
     enum Eve {
         static let giornata: CGFloat = 290
-        static let raggioNuvola: CGFloat = 10
+        static let raggioNuvola: CGFloat = 16
         static let larghezzaNuvola: CGFloat = 0.78
         static let sfera: CGFloat = 38
         static let display: CGFloat = 44
@@ -178,7 +181,7 @@ enum Misure {
         static let rigaCarta: CGFloat = 25
         static let schedaArea: CGFloat = 150
         static let colonnaConfronto: CGFloat = 150
-        static let raggio: CGFloat = 3
+        static let raggio: CGFloat = 8
     }
 
     enum Attivita {
@@ -195,20 +198,21 @@ enum Misure {
     }
 
     enum Colonna {
-        static let raggio: CGFloat = 6
+        static let raggio: CGFloat = Tema.Raggio.kpi
         static let avatar: CGFloat = 39
         static let schedeAltezza: CGFloat = 28
-        static let schedeRaggio: CGFloat = 5
+        /// Segmenti in capsula (metà dell'altezza).
+        static let schedeRaggio: CGFloat = 14
         static let data = CGSize(width: 36, height: 48)
-        static let dataRaggio: CGFloat = 4
+        static let dataRaggio: CGFloat = Tema.Raggio.tesseraData
         static let dataMese: CGFloat = 17
         static let iconaEve: CGFloat = 37
     }
 
     enum Dock {
-        // Icone grandi e con il nome sotto, come sulla home di iOS 5: a 40 punti erano illeggibili
-        static let elemento: CGFloat = 58
-        static let icona: CGFloat = 52
+        // Icone del tema (--dock-ic 50) con il nome sotto: a 40 punti erano illeggibili
+        static let elemento: CGFloat = 56
+        static let icona: CGFloat = Tema.Misura.dockIcona
         static let spazio: CGFloat = 8
         /// Il nome sotto l'icona.
         static let etichetta: CGFloat = 14
@@ -230,18 +234,19 @@ enum Misure {
     }
 
     enum Finestra {
-        static let raggio: CGFloat = 8
-        static let barraTitolo: CGFloat = 30
+        static let raggio: CGFloat = Tema.Raggio.finestra
+        /// Più alta che nel tema iOS 5 (il tema arriva a 52): resta spazio per i contenuti.
+        static let barraTitolo: CGFloat = 36
         static let margineTitolo: CGFloat = 11
         static let margineLato: CGFloat = 8
         static let margineAlto: CGFloat = 5
         static let margineBasso: CGFloat = 5
-        static let semaforo: CGFloat = 13
-        static let spazioSemafori: CGFloat = 7
-        static let iconaTitolo: CGFloat = 22
+        static let semaforo: CGFloat = Tema.Misura.semaforo
+        static let spazioSemafori: CGFloat = Tema.Misura.spazioSemafori
+        static let iconaTitolo: CGFloat = Tema.Misura.iconaFinestra
         static let affianca = CGSize(width: 27, height: 22)
         static let minima = CGSize(width: 560, height: 360)
-        static let raggioAffianca: CGFloat = 3
+        static let raggioAffianca: CGFloat = Tema.Raggio.tasto
     }
 
     enum IntestazioneApp {
@@ -250,38 +255,41 @@ enum Misure {
         static let spazio: CGFloat = 10
     }
 
+    /// Pulsanti in capsula del tema (raggio pari a circa metà dell'altezza).
     enum Pulsante {
-        static let raggio: CGFloat = 4
-        static let raggioBlu: CGFloat = 5
-        static let vetroMargine = EdgeInsets(top: 9, leading: 13, bottom: 9, trailing: 13)
-        static let bluMargine = EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)
+        static let raggio: CGFloat = 16
+        /// Anche l'etichetta del canale (che va pure nei PDF): quasi una capsula.
+        static let raggioBlu: CGFloat = 12
+        static let vetroMargine = EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14)
+        static let bluMargine = EdgeInsets(top: 6, leading: 13, bottom: 6, trailing: 13)
     }
 
     /// Il menu a tendina: margini come i pulsanti di vetro piccoli, altezza come un campo.
     enum Tendina {
-        static let margine = EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 8)
-        static let altezza: CGFloat = 24
-        static let raggio: CGFloat = 5
+        static let margine = EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 10)
+        static let altezza: CGFloat = 26
+        static let raggio: CGFloat = 13
         static let freccia: CGFloat = 8
         static let spazio: CGFloat = 8
     }
 
     enum Avvisi {
-        static let raggio: CGFloat = 7
+        /// Capsula di vetro del tema (toast).
+        static let raggio: CGFloat = 20
         static let distanzaBasso: CGFloat = 100
         static let margine = EdgeInsets(top: 13, leading: 19, bottom: 13, trailing: 19)
         /// Il riquadro tratteggiato quando si trascina un file su Prisma.
-        static let rilascioRaggio: CGFloat = 10
+        static let rilascioRaggio: CGFloat = Tema.Raggio.scheda
         static let rilascioMargine: CGFloat = 8
     }
 
     enum Impostazioni {
-        static let raggioGruppo: CGFloat = 10
+        static let raggioGruppo: CGFloat = Tema.Raggio.gruppo
         static let margineRiga = EdgeInsets(top: 14, leading: 17, bottom: 14, trailing: 17)
         static let altezzaRiga: CGFloat = 64
-        static let interruttore = CGSize(width: 58, height: 25)
-        static let raggioInterruttore: CGFloat = 5
-        static let schedeAltezza: CGFloat = 32
+        static let interruttore = Tema.Misura.interruttore
+        static let raggioInterruttore: CGFloat = 13
+        static let schedeAltezza: CGFloat = 30
         static let schedeMargine: CGFloat = 13
         static let spazioGruppi: CGFloat = 18
         static let informazioniLarghezza: CGFloat = 0.38
@@ -290,13 +298,13 @@ enum Misure {
     }
 
     enum Pannello {
-        static let raggio: CGFloat = 4
+        static let raggio: CGFloat = Tema.Raggio.tessera
     }
 
     /// Campi di testo (.os-input del template).
     enum Campo {
-        static let raggio: CGFloat = 5
-        static let margine = EdgeInsets(top: 4, leading: 7, bottom: 4, trailing: 7)
+        static let raggio: CGFloat = 8
+        static let margine = EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)
         /// Ombra interna in alto (inset 0 1px 3px).
         static let ombraSfocatura: CGFloat = 1.5
     }
@@ -307,13 +315,14 @@ enum Misure {
     }
 }
 
-/// Durate e curve delle animazioni del template.
+/// Durate e curve delle animazioni (tema «Liquid Glass», vedi `Tema.Moto`).
 enum Animazioni {
-    /// Apertura finestra: 0,18 s, cubic-bezier(.2,.8,.3,1).
-    static let apertura = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.18)
+    /// Apertura finestra: uscita morbida del tema (--out), un po' più breve dei 340 ms del tema.
+    static let apertura = Tema.Moto.uscita(0.28)
     /// Avviso: 0,24 s.
-    static let avviso = Animation.easeOut(duration: 0.24)
-    /// Icone al passaggio del mouse: 0,22 s.
-    static let passaggio = Animation.easeOut(duration: 0.22)
-    static let durataAvviso: TimeInterval = 3.4
+    static let avviso = Tema.Moto.pannello
+    /// Al passaggio del mouse: 0,15 s.
+    static let passaggio = Tema.Moto.passaggio
+    /// Il toast del tema resta 2,6 s.
+    static let durataAvviso: TimeInterval = 2.6
 }

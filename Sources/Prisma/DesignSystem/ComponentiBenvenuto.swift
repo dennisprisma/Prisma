@@ -1,41 +1,44 @@
 import SwiftUI
 
-// Schermata di benvenuto (#os-lock del template): lo sfondo della scrivania, la fascia con
-// l'ora, il marchio Prisma e il cursore «scorri per entrare» di iOS 5.
-// Riepilogo delle app aperte (.os-switcher-grid).
+// Schermata di benvenuto nel tema Liquid Glass (.lock): lo sfondo d'acqua, l'ora grande arrotondata,
+// il marchio Prisma e il cursore «scorri per entrare» in una capsula di vetro leggero.
+// Riepilogo delle app aperte (.switcher): schede chiare sul vetro del pannello.
 
 extension Colori {
     enum Benvenuto {
-        static let velo = Color(r: 25, g: 60, b: 87, a: 0.12)
-        static let fasciaAlto = Color(r: 39, g: 74, b: 102, a: 0.36)
-        static let fasciaBasso = Color(r: 24, g: 62, b: 94, a: 0.3)
-        static let fasciaLuce = Color(r: 214, g: 237, b: 245, a: 0.42)
-        static let fasciaBordo = Color(r: 20, g: 52, b: 77, a: 0.4)
-        static let testo = Color.white
-        static let ombraTesto = Color(hex: "#25455e")
-        static let binarioAlto = Color(r: 30, g: 61, b: 88, a: 0.35)
-        static let binarioBasso = Color(r: 16, g: 45, b: 73, a: 0.47)
-        static let binarioBordo = Color(hex: "#456681")
-        static let binarioOmbra = Color(r: 19, g: 47, b: 77, a: 0.6)
-        static let binarioLuce = Color(r: 224, g: 244, b: 255, a: 0.53)
-        static let scritta = Color(hex: "#e3f1fa")
-        static let cursoreAlto = Color(hex: "#f1f8fc")
-        static let cursoreMezzoAlto = Color(hex: "#cfdee8")
-        static let cursoreMezzoBasso = Color(hex: "#a5bdcf")
-        static let cursoreBasso = Color(hex: "#d6e4ed")
-        static let cursoreBordo = Color(hex: "#4b6b82")
-        static let cursoreOmbra = Color(r: 8, g: 40, b: 69, a: 0.4)
-        static let freccia = Color(hex: "#6f8aa0")
-        static let collegamento = Color(hex: "#d7e8f3")
-        static let nota = Color(r: 230, g: 242, b: 250, a: 0.75)
+        static let velo = Color.clear
+        static let fasciaAlto = Color.clear
+        static let fasciaBasso = Color.clear
+        static let fasciaLuce = Color.clear
+        static let fasciaBordo = Color.clear
+        static let testo = Tema.Colore.inchiostroBenvenuto
+        /// Ombra morbida dell'ora (0 2px 18px rgba(30,20,90,.22)).
+        static let ombraTesto = Color(r: 30, g: 20, b: 90, a: 0.16)
+        // Capsula di vetro del cursore
+        static let binarioAlto = Tema.Colore.riempimentoLeggeroColorato
+        static let binarioBasso = Tema.Colore.riempimentoLeggeroColorato
+        static let binarioBordo = Tema.Colore.bordoVetro
+        static let binarioOmbra = Color(r: 8, g: 40, b: 60, a: 0.14)
+        static let binarioLuce = Color.clear
+        static let scritta = Tema.Colore.inchiostro
+        // Manopola (--thumb)
+        static let cursoreAlto = Tema.Colore.cursore
+        static let cursoreMezzoAlto = Tema.Colore.cursore
+        static let cursoreMezzoBasso = Tema.Colore.cursore
+        static let cursoreBasso = Tema.Colore.cursore
+        static let cursoreBordo = Tema.Colore.bordoChip
+        static let cursoreOmbra = Color(r: 0, g: 0, b: 0, a: 0.3)
+        static let freccia = Tema.Colore.inchiostro
+        static let collegamento = Tema.Colore.inchiostroBenvenuto
+        static let nota: Color = Tema.Colore.inchiostroBenvenuto.opacity(0.7)
         // Riepilogo delle app aperte
-        static let veloApp = Color(r: 19, g: 45, b: 67, a: 0.5)
-        static let schedaAlto = Color(r: 255, g: 255, b: 255, a: 0.53)
-        static let schedaBasso = Color(r: 208, g: 225, b: 237, a: 0.2)
-        static let schedaBordo = Color(r: 186, g: 205, b: 216, a: 0.4)
-        static let schedaTitolo = Color(hex: "#527288")
-        static let schedaCliente = Color(hex: "#839caf")
-        static let schedaStato = Color(hex: "#a1b4c1")
+        static let veloApp = Tema.Colore.velo
+        static let schedaAlto = Tema.Colore.chip
+        static let schedaBasso = Tema.Colore.chip
+        static let schedaBordo = Tema.Colore.bordoChip
+        static let schedaTitolo = Tema.Colore.inchiostro
+        static let schedaCliente = Tema.Colore.inchiostroSecondario
+        static let schedaStato = Tema.Colore.inchiostroTerziario
     }
 }
 
@@ -52,16 +55,18 @@ extension Gradienti {
 extension Misure {
     enum Benvenuto {
         static let fascia: CGFloat = 15
-        static let marchio: CGFloat = 85
-        static let binario = CGSize(width: 310, height: 64)
-        static let raggioBinario: CGFloat = 14
-        static let cursore = CGSize(width: 75, height: 53)
-        static let raggioCursore: CGFloat = 10
+        /// Il marchio Prisma (icona della scrivania del tema).
+        static let marchio: CGFloat = Tema.Misura.iconaBenvenuto
+        /// Capsula del cursore 340 × 60 e manopola 50 × 50 (.lk-slide).
+        static let binario = CGSize(width: 340, height: 60)
+        static let raggioBinario: CGFloat = 30
+        static let cursore = CGSize(width: 50, height: 50)
+        static let raggioCursore: CGFloat = 25
         static let margineCursore: CGFloat = 5
-        static let scrittaSinistra: CGFloat = 87
+        static let scrittaSinistra: CGFloat = 82
         /// Oltre questa parte della corsa il cursore apre.
         static let soglia: CGFloat = 0.8
-        static let alto: CGFloat = 0.07
+        static let alto: CGFloat = 0.08
         static let basso: CGFloat = 0.05
         // Riepilogo delle app aperte
         /// Larghezza fissa e altezza massima: sotto il massimo il riquadro è alto quanto le schede.
@@ -70,22 +75,22 @@ extension Misure {
         static let corniceModulo: CGFloat = 144
         /// Il messaggio "La scrivania è tutta tua." quando non ci sono app aperte.
         static let vuotoAltezza: CGFloat = 140
-        static let iconaApp: CGFloat = 57
+        static let iconaApp: CGFloat = Tema.Misura.iconaAppAperte
         static let colonne = 3
     }
 }
 
 extension Tipo {
-    static let benvenutoOra = Tipo.sistema(85, .ultraLight)
-    static let benvenutoData = Tipo.sistema(17)
-    static let benvenutoMarchio = Tipo.sistema(31, .medium)
-    static let benvenutoMarchioLeggero = Tipo.sistema(31, .ultraLight)
-    static let benvenutoMotto = Tipo.sistema(11)
-    static let benvenutoScritta = Tipo.sistema(21, .light)
-    static let benvenutoFreccia = Tipo.sistema(26, .bold)
-    static let benvenutoCollegamento = Tipo.sistema(12)
-    static let benvenutoNota = Tipo.sistema(9)
-    static let appApertaTitolo = Tipo.sistema(12, .medium)
-    static let appApertaCliente = Tipo.sistema(9)
-    static let appApertaStato = Tipo.sistema(8)
+    static let benvenutoOra = Tema.Testo.sf(104, .bold, arrotondato: true).monospacedDigit()
+    static let benvenutoData = Tema.Testo.sf(22, .semibold)
+    static let benvenutoMarchio = Tema.Testo.sf(20, .bold)
+    static let benvenutoMarchioLeggero = Tema.Testo.sf(20)
+    static let benvenutoMotto = Tema.Testo.sf(13)
+    static let benvenutoScritta = Tema.Testo.sf(15, .medium)
+    static let benvenutoFreccia = Tema.Testo.sf(16, .semibold)
+    static let benvenutoCollegamento = Tema.Testo.sf(13)
+    static let benvenutoNota = Tema.Testo.didascalia
+    static let appApertaTitolo = Tema.Testo.sf(13, .semibold)
+    static let appApertaCliente = Tema.Testo.didascalia
+    static let appApertaStato = Tema.Testo.didascalia
 }

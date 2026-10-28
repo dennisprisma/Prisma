@@ -2,14 +2,14 @@ import SwiftUI
 
 /// Il grafico dell'andamento di una posizione: il valore rilevato (linea piena con l'area), il
 /// versato (tratteggiato) e dove sarebbe all'atteso netto (linea sottile), su un asse delle date.
-/// Stesse scale, griglia e colori del grafico della proiezione.
+/// Stesse scale, griglia e colori del grafico della proiezione (griglia e assi dal tema, linee dai colori dell'analisi).
 struct GraficoAndamento: View {
     let punti: [AndamentoPosizione.Punto]
 
     var body: some View {
         GeometryReader { geo in
-            let sinistra: CGFloat = 52
-            let basso: CGFloat = 18
+            let sinistra = Tema.Misura.Componenti.graficoSinistra
+            let basso = Tema.Misura.Componenti.graficoBasso
             let w = max(1, geo.size.width - sinistra - 10)
             let h = max(1, geo.size.height - basso - 6)
             let valori: [Double] = punti.flatMap { pt -> [Double] in [pt.valore, pt.versato ?? 0, pt.atteso ?? 0] }
@@ -26,17 +26,17 @@ struct GraficoAndamento: View {
                         p.move(to: CGPoint(x: sinistra, y: y(v)))
                         p.addLine(to: CGPoint(x: sinistra + w, y: y(v)))
                     }
-                    .stroke(Colori.Analisi.griglia, lineWidth: 1)
+                    .stroke(Tema.Colore.separatore, lineWidth: 1)
                     Text(Formati.euroBreve(v))
-                        .font(Tipo.assi)
-                        .foregroundColor(Colori.Analisi.assi)
+                        .font(Tema.Testo.Componenti.asse)
+                        .foregroundColor(Tema.Colore.inchiostroTerziario)
                         .frame(width: sinistra - 6, alignment: .trailing)
                         .position(x: (sinistra - 6) / 2, y: y(v))
                 }
                 ForEach(etichette, id: \.self) { d in
                     Text(Formati.meseAnnoBreve.string(from: d))
-                        .font(Tipo.assi)
-                        .foregroundColor(Colori.Analisi.assi)
+                        .font(Tema.Testo.Componenti.asse)
+                        .foregroundColor(Tema.Colore.inchiostroTerziario)
                         .position(x: x(d), y: geo.size.height - basso / 2)
                 }
                 // Versato (tratteggiato), dove noto
@@ -76,10 +76,12 @@ struct GraficoAndamento: View {
                 }
                 .stroke(Colori.Analisi.linea, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
                 ForEach(punti) { pt in
+                    let ultimo = pt.id == punti.last?.id
+                    let lato = ultimo ? Tema.Misura.Componenti.puntoGrafico : Tema.Misura.Componenti.puntoGraficoPiccolo
                     Circle()
-                        .fill(Color.white)
-                        .overlay(Circle().stroke(Colori.Analisi.linea, lineWidth: pt.id == punti.last?.id ? 2 : 1.5))
-                        .frame(width: pt.id == punti.last?.id ? 9 : 6, height: pt.id == punti.last?.id ? 9 : 6)
+                        .fill(Tema.Colore.Componenti.puntoGrafico)
+                        .overlay { Circle().stroke(Colori.Analisi.linea, lineWidth: ultimo ? 2 : 1.5) }
+                        .frame(width: lato, height: lato)
                         .position(x: x(pt.data), y: y(pt.valore))
                 }
             }

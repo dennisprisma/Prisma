@@ -42,6 +42,13 @@ struct ComponenteContratto: Identifiable, Codable, Hashable {
     /// Storico: rendimenti lordi annui (Gestione separata) o valori della quota (Fondo Interno).
     var storico: [PuntoStorico] = []
     var notaStorico = ""
+    /// Gestione separata: rendimento minimo garantito annuo (%); nil = non indicato (nessun pavimento, come prima).
+    var minimoGarantito: Double?
+    /// Gestione separata: true se il rendimento si consolida ogni anno, false se la garanzia vale solo
+    /// a scadenza o in caso di decesso; nil = non indicato.
+    var consolidamento: Bool?
+    /// Gestione separata: quota del rendimento lordo retrocessa (0–100), alternativa al trattenuto fisso.
+    var retrocessione: Double?
 
     init(tipo: Tipo, nome: String, quota: Double) {
         self.tipo = tipo
@@ -226,6 +233,7 @@ extension ComponenteContratto {
     private enum CodingKeys: String, CodingKey {
         case id, tipo, nome, quota, trattenuto, commissione, costiSottostanti, bollo, titoliStato
         case descrizione, caratteristiche, storico, notaStorico
+        case minimoGarantito, consolidamento, retrocessione
     }
 
     init(from decoder: Decoder) throws {
@@ -243,6 +251,9 @@ extension ComponenteContratto {
         caratteristiche = try c.decodeIfPresent(String.self, forKey: .caratteristiche) ?? ""
         storico = (try? c.decodeIfPresent([PuntoStorico].self, forKey: .storico)) ?? []
         notaStorico = try c.decodeIfPresent(String.self, forKey: .notaStorico) ?? ""
+        minimoGarantito = try? c.decodeIfPresent(Double.self, forKey: .minimoGarantito)
+        consolidamento = try? c.decodeIfPresent(Bool.self, forKey: .consolidamento)
+        retrocessione = try? c.decodeIfPresent(Double.self, forKey: .retrocessione)
     }
 }
 

@@ -1,91 +1,89 @@
 import SwiftUI
 
-// Spazi di lavoro: pannello a fumetto scuro di iOS 5 (cornice blu notte lucida, interno chiaro)
-// con le schede degli spazi e la miniatura della disposizione.
+// Spazi di lavoro nel tema Liquid Glass: pannello di vetro (.pop/.panel) con le schede degli spazi
+// e la miniatura della disposizione sullo sfondo d'acqua.
 
 extension Colori {
     enum Spazi {
-        static let velo = Color(r: 0, g: 0, b: 0, a: 0.35)
-        static let corniceAlto = Color(hex: "#56657c")
-        static let corniceBasso = Color(hex: "#1d2738")
-        static let corniceBordo = Color(hex: "#0d131d")
-        static let corniceLuce = Color(r: 255, g: 255, b: 255, a: 0.35)
-        static let titolo = Color.white
-        static let titoloIncisione = Color(r: 0, g: 0, b: 0, a: 0.55)
-        static let sottotitolo = Color(hex: "#c9d3e2")
-        static let interno = Color(hex: "#eceef1")
-        static let internoBordo = Color(hex: "#0d131d")
-        static let scheda = Color.white
-        static let schedaBordo = Color(hex: "#b5bcc3")
-        static let schedaOmbra = Color(r: 0, g: 0, b: 0, a: 0.18)
-        static let nome = Color(hex: "#2b3138")
-        static let app = Color(hex: "#6d7480")
-        static let pronto = Color(hex: "#7d8794")
-        static let schermoAlto = Color(hex: "#4f7aa8")
-        static let schermoBasso = Color(hex: "#2b4c74")
-        static let schermoBordo = Color(hex: "#23384f")
-        static let finestraAlto = Color(hex: "#f3f3f3")
-        static let finestraBasso = Color(hex: "#d4d7db")
-        static let finestraBordo = Color(hex: "#7f8790")
-        static let sezione = Color(hex: "#4c566c")
-        static let sezioneIncisione = Color(r: 255, g: 255, b: 255, a: 0.8)
-        static let elimina = Color(hex: "#9aa1aa")
-        static let piede = Color(hex: "#dfe2e6")
-        static let piedeBordo = Color(hex: "#c3c8ce")
-        static let piedeTesto = Color(hex: "#5b636e")
+        static let velo = Tema.Colore.velo
+        /// Vetro del pannello con riempimento coprente.
+        static let fondo = Tema.Colore.PannelliShell.coprente
+        static let titolo = Tema.Colore.inchiostro
+        static let sottotitolo = Tema.Colore.inchiostroSecondario
+        /// Le schede degli spazi (.card del tema), evidenziate al passaggio del mouse.
+        static let schedaSopra = Tema.Colore.rigaSopra
+        static let nome = Tema.Colore.inchiostro
+        static let app = Tema.Colore.inchiostroSecondario
+        static let pronto = Tema.Colore.inchiostroTerziario
+        // Miniatura: lo sfondo d'acqua e le finestre chiare
+        static let schermoAlto = Tema.Colore.cielo1
+        static let schermoBasso = Tema.Colore.cielo3
+        static let schermoBordo = Tema.Colore.bordoScheda
+        static let finestraAlto = Tema.Colore.finestraColorata
+        static let finestraBasso = Tema.Colore.finestraColorata
+        static let finestraBordo = Tema.Colore.bordoScheda
+        static let sezione = Tema.Colore.inchiostroSecondario
+        static let elimina = Tema.Colore.inchiostroTerziario
+        static let piedeBordo = Tema.Colore.separatore
+        static let piedeTesto = Tema.Colore.inchiostroSecondario
     }
 }
 
 extension Gradienti {
-    static let corniceSpazi = LinearGradient.verticale(Colori.Spazi.corniceAlto, Colori.Spazi.corniceBasso)
-    static let schermoSpazi = LinearGradient.verticale(Colori.Spazi.schermoAlto, Colori.Spazi.schermoBasso)
+    static let schermoSpazi = LinearGradient(colors: [Colori.Spazi.schermoAlto, Colori.Spazi.schermoBasso],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing)
     static let finestraSpazi = LinearGradient.verticale(Colori.Spazi.finestraAlto, Colori.Spazi.finestraBasso)
 }
 
 extension Misure {
     enum Spazi {
         /// Stacco tra due finestre affiancate.
-        static let stacco: CGFloat = 6
+        static let stacco: CGFloat = 8
         static let nomeMassimo = 40
         static let pannello = CGSize(width: 780, height: 560)
-        static let raggio: CGFloat = 12
+        static let raggio: CGFloat = Tema.Raggio.centroControllo
         static let cornice: CGFloat = 6
-        static let raggioInterno: CGFloat = 7
+        static let raggioInterno: CGFloat = Tema.Raggio.popover
         static let colonna: CGFloat = 220
-        static let spazioSchede: CGFloat = 14
-        static let raggioScheda: CGFloat = 8
+        static let spazioSchede: CGFloat = 12
+        static let raggioScheda: CGFloat = Tema.Raggio.schedaApp
+        static let margineScheda: CGFloat = 10
         static let miniatura = CGSize(width: 196, height: 112)
-        static let raggioMiniatura: CGFloat = 4
+        static let raggioMiniatura: CGFloat = Tema.Raggio.miniatura
         static let staccoMiniatura: CGFloat = 2
         static let iconaMiniatura: CGFloat = 26
         static let margine: CGFloat = 16
         static let campoNome: CGFloat = 260
+        /// Raggio delle finestre nella miniatura.
+        static let raggioFinestraMiniatura: CGFloat = 4
     }
 }
 
 extension Tipo {
-    static let spaziTitolo = Tipo.sistema(15, .bold)
-    static let spaziSottotitolo = Tipo.sistema(11)
-    static let spaziSezione = Tipo.sistema(12, .bold)
-    static let spaziNome = Tipo.sistema(12, .semibold)
-    static let spaziApp = Tipo.sistema(10)
+    static let spaziTitolo = Tema.Testo.sezione
+    static let spaziSottotitolo = Tema.Testo.secondario
+    static let spaziSezione = Tema.Testo.sf(12, .semibold)
+    static let spaziNome = Tema.Testo.sf(13, .semibold)
+    static let spaziApp = Tema.Testo.didascalia
 }
 
-/// La disposizione dello spazio in piccolo: lo schermo blu e le finestre con l'icona dell'app.
+/// La disposizione dello spazio in piccolo: lo sfondo e le finestre con l'icona dell'app.
 struct MiniaturaSpazio: View {
     let spazio: SpazioLavoro
 
     var body: some View {
         let m = Misure.Spazi.miniatura
+        let finestra = RoundedRectangle(cornerRadius: Misure.Spazi.raggioFinestraMiniatura, style: .continuous)
+        let schermo = RoundedRectangle(cornerRadius: Misure.Spazi.raggioMiniatura, style: .continuous)
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: Misure.Spazi.raggioMiniatura).fill(Gradienti.schermoSpazi)
+            schermo.fill(Gradienti.schermoSpazi)
             ForEach(Array(spazio.finestre.enumerated()), id: \.offset) { _, f in
                 let r = f.frazione
                 let c = CGRect(x: r.minX * m.width, y: r.minY * m.height, width: r.width * m.width, height: r.height * m.height)
                     .insetBy(dx: Misure.Spazi.staccoMiniatura, dy: Misure.Spazi.staccoMiniatura)
                 ZStack {
-                    RoundedRectangle(cornerRadius: 2).fill(Gradienti.finestraSpazi)
-                    RoundedRectangle(cornerRadius: 2).strokeBorder(Colori.Spazi.finestraBordo, lineWidth: 0.5)
+                    finestra.fill(Gradienti.finestraSpazi)
+                    finestra.strokeBorder(Colori.Spazi.finestraBordo, lineWidth: Tema.Misura.filo)
                     IconaApp(app: f.app, lato: min(Misure.Spazi.iconaMiniatura, c.height - 6))
                 }
                 .frame(width: c.width, height: c.height)
@@ -93,6 +91,7 @@ struct MiniaturaSpazio: View {
             }
         }
         .frame(width: m.width, height: m.height)
-        .overlay(RoundedRectangle(cornerRadius: Misure.Spazi.raggioMiniatura).strokeBorder(Colori.Spazi.schermoBordo, lineWidth: 1))
+        .clipShape(schermo)
+        .overlay { schermo.strokeBorder(Colori.Spazi.schermoBordo, lineWidth: Tema.Misura.filo) }
     }
 }

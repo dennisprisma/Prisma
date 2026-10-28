@@ -5,8 +5,11 @@ private typealias D = Misure.Documento
 
 /// Il report dei costi: A4 orizzontale, per il cliente.
 enum ReportCosti {
-    static func pagine(_ t: TestiCosti, commento: String? = nil) -> [AnyView] {
-        let slide: [AnyView] = [AnyView(SlideCostiOggi(t: t)), AnyView(SlideCostiTempo(t: t)), AnyView(SlideCostiCambio(t: t)), AnyView(SlideSintesiCosti(t: t))]
+    static func pagine(_ t: TestiCosti, commento: String? = nil, prodotti: [Prodotto] = []) -> [AnyView] {
+        let incidenze = ProspettoCosti.incidenze(t, prodotti: prodotti).filter { $0.calcolato != nil }
+        var slide: [AnyView] = [AnyView(SlideCostiOggi(t: t))]
+        if !incidenze.isEmpty { slide.append(AnyView(SlideCostiRendimento(incidenze: incidenze))) }
+        slide += [AnyView(SlideCostiTempo(t: t)), AnyView(SlideCostiCambio(t: t)), AnyView(SlideSintesiCosti(t: t))]
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiCosti.titolo) · \(t.cliente)",
                                      lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
@@ -77,6 +80,55 @@ private struct SlideCostiOggi: View {
             Text(verbatim: "Più lunga la barra, più alto il costo. Sotto il \(CifreDoc.condizione(MotoreCosti.sogliaBasso)) l'anno è contenuto, oltre il \(CifreDoc.condizione(MotoreCosti.sogliaAlto)) è alto e la barra diventa rossa.")
                 .font(T.minimo).foregroundColor(C.tenue)
         }
+    }
+}
+
+// MARK: - Quanto tolgono al rendimento ogni anno (come nel KID)
+
+private struct SlideCostiRendimento: View {
+    @Environment(\.paletteDocumento) private var C
+    let incidenze: [IncidenzaCostiKID]
+
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        let mostrate = Array(incidenze.prefix(D.schedeReport + 2))
+        let massimo = max(mostrate.compactMap(\.calcolato).max() ?? 1, MotoreCosti.sogliaAlto)
+        return VStack(alignment: .leading, spacing: 14) {
+            TestaReport(occhiello: "Il rendimento che i costi tolgono", titolo: titolo,
+                        sottotitolo: "È la misura che nel KID si chiama «incidenza annua dei costi»: di quanto si abbassa il tuo rendimento ogni anno, se tieni l'investimento per tutto il periodo consigliato. Più corta la barra, meglio è.")
+            VStack(spacing: 9) {
+                ForEach(Array(mostrate.enumerated()), id: \.offset) { _, k in
+                    RigaBarraDoc(canale: k.posizione.canale, nome: k.posizione.nome, quota: (k.calcolato ?? 0) / massimo,
+                                 colore: colore(k.calcolato ?? 0), valore: "\(CifreDoc.percento(k.calcolato ?? 0, decimali: 1)) l'anno",
+                                 nota: nota(k))
+                }
+            }
+            .padding(M.margineRiquadro)
+            .riquadroDoc()
+            if incidenze.count > mostrate.count {
+                Text(verbatim: "…e altre \(incidenze.count - mostrate.count) posizioni: le trovi nel prospetto di dettaglio.").font(T.minimo).foregroundColor(C.tenue)
+            }
+            Text(verbatim: "Stime di Prisma con i costi registrati e i rendimenti ipotizzati, prima delle imposte; penale e costo d'ingresso compresi. Il dato ufficiale resta quello del KID, che riportiamo accanto quando lo abbiamo.")
+                .font(T.minimo).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var titolo: String {
+        guard let k = incidenze.max(by: { ($0.calcolato ?? 0) < ($1.calcolato ?? 0) }), let c = k.calcolato else {
+            return "Quanto rendimento tolgono i costi ogni anno"
+        }
+        return "Ogni anno i costi tolgono fino a \(CifreDoc.percento(c, decimali: 1)) di rendimento"
+    }
+
+    private func colore(_ riy: Double) -> Color {
+        riy > MotoreCosti.sogliaAlto ? C.negativo : (riy > MotoreCosti.sogliaBasso ? C.intermedio : C.favorevole)
+    }
+
+    private func nota(_ k: IncidenzaCostiKID) -> String {
+        let anni = k.periodoRaccomandato == 1 ? "in 1 anno" : "in \(k.periodoRaccomandato) anni"
+        guard let d = k.dichiarato else { return anni }
+        return "\(anni) · nel KID \(CifreDoc.percento(d, decimali: 1))"
     }
 }
 

@@ -14,7 +14,7 @@ struct AppObiettivi: View {
 
     var body: some View {
         CorniceStrumento(
-            notaStato: "Calcoli eseguiti in locale · rendimento costante ipotizzato, nessuna garanzia di risultato",
+            notaStato: "Calcoli eseguiti in locale · piano a rendimento costante, probabilità da scenari simulati · nessuna garanzia di risultato",
             notaDestra: "\(elenco.count) \(elenco.count == 1 ? "obiettivo" : "obiettivi")"
         ) {
             rail
@@ -38,7 +38,7 @@ struct AppObiettivi: View {
                         dettaglio(o)
                             .frame(width: 340)
                             .overlay(alignment: .leading) {
-                                Rectangle().fill(Colori.Strumenti.ipotesiBordo).frame(width: 1)
+                                Rectangle().fill(Colori.Strumenti.ipotesiBordo).frame(width: Tema.Misura.filo)
                             }
                     }
                 }
@@ -104,9 +104,11 @@ struct AppObiettivi: View {
                     Text(o.area.nome.uppercased()).font(Tipo.chip).tracking(0.5).foregroundColor(Colori.Bisogni.area(o.area))
                     Spacer()
                     Text(o.priorita.nome.uppercased())
-                        .font(Tipo.bisognoArea).foregroundColor(.white)
-                        .padding(.horizontal, 5).padding(.vertical, 1)
-                        .background(RoundedRectangle(cornerRadius: 2).fill(Colori.Bisogni.importanza(o.priorita)))
+                        .font(Tipo.bisognoArea).foregroundColor(Tema.Colore.Componenti.testoSuColore)
+                        .padding(.horizontal, 6).padding(.vertical, 1)
+                        .background {
+                            FormaVetro.arrotondata(Tema.Raggio.Strumenti.priorita).fill(Colori.Bisogni.importanza(o.priorita))
+                        }
                 }
                 Text(o.titolo).font(Tipo.schedaAreaTitolo).foregroundColor(Colori.Strumenti.schedaTitolo).lineLimit(1)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -123,19 +125,9 @@ struct AppObiettivi: View {
                                          : (a.versamentoNecessario ?? 0) > a.versamentiAttivi ? Colori.Analisi.attenzioneTesto : Colori.Strumenti.schedaNota)
                 }
             }
-            .padding(EdgeInsets(top: 12, leading: 15, bottom: 12, trailing: 15))
+            .padding(EdgeInsets(top: 12, leading: 17, bottom: 12, trailing: 15))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                ZStack {
-                    Gradienti.schedaArea
-                    Materiale.Trama(nome: "Grana")
-                }
-            )
-            .overlay(alignment: .leading) { Rectangle().fill(Colori.Bisogni.area(o.area)).frame(width: 3) }
-            .clipShape(RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(attiva ? Colori.Analisi.navBasso : Colori.Strumenti.schedaBordo,
-                                                                   lineWidth: attiva ? 2 : 1))
-            .shadow(color: Colori.Strumenti.schedaOmbra2, radius: 0, x: 0, y: 2)
+            .schedaColorata(Colori.Bisogni.area(o.area), scelta: attiva)
         }
         .buttonStyle(StileSemplice())
     }
@@ -203,6 +195,11 @@ struct AppObiettivi: View {
                 if a.mancante > 0, let v = a.versamentoNecessario, v > a.versamentiAttivi {
                     NotaMetodo(testo: "Con i versamenti attivi mancano \(Formati.euro(v - a.versamentiAttivi)) al mese: si può allungare la data, ridurre l'importo o aggiungere un piano. Il simulatore parte già da questi numeri.")
                 }
+                // Scenari con le probabilità: calcolati una volta all'apertura e ricordati (non a ogni ridisegno)
+                if o.scadenza > Date() {
+                    SezioneProbabilitaObiettivo(esito: CacheMotoriAnalisi.scenari(o, posizioni: posizioni), importo: o.importo)
+                        .padding(.vertical, Tema.Misura.MotoriAnalisi.spazioElenco)
+                }
                 Text("POSIZIONI CHE LAVORANO PER L'OBIETTIVO").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Strumenti.occhiello)
                 if posizioni.isEmpty {
                     Text("Nessuna posizione adatta in essere.").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
@@ -250,7 +247,7 @@ struct AppObiettivi: View {
     }
 }
 
-/// Barra di avanzamento lucida (.os-progress).
+/// Barra di avanzamento (.os-progress): capsula nel pozzetto scuro, riempita del colore dell'area.
 struct BarraAvanzamento: View {
     let quota: Double
     let colore: Color
@@ -258,11 +255,10 @@ struct BarraAvanzamento: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Colori.Attivita.progressoFondo)
-                Capsule().fill(LinearGradient.verticale(colore.opacity(0.8), colore))
+                Capsule(style: .continuous).fill(Colori.Attivita.progressoFondo)
+                Capsule(style: .continuous).fill(colore)
                     .frame(width: max(0, geo.size.width * CGFloat(min(max(quota, 0), 1))))
             }
-            .overlay(Capsule().strokeBorder(Colori.Attivita.progressoBordo, lineWidth: 1))
         }
         .frame(height: Misure.Attivita.progresso)
     }

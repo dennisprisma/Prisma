@@ -100,7 +100,8 @@ extension StatoShell {
     }
 }
 
-/// Il velo scuro con la pagina al centro, grande quanto lo schermo permette, e una barra discreta in basso.
+/// La sala scura (il cielo scuro dello sfondo d'acqua) con la pagina al centro, grande quanto lo schermo
+/// permette, e una barra discreta in basso in una capsula di vetro scuro.
 struct VistaPresentazione: View {
     @EnvironmentObject var stato: StatoShell
     let p: Presentazione
@@ -115,14 +116,17 @@ struct VistaPresentazione: View {
                                 height: geo.size.height - Misure.Presentazione.margine * 2 - Misure.Presentazione.barra)
             let scala = max(0.1, min(spazio.width / p.formato.width, spazio.height / p.formato.height))
             ZStack {
-                Colori.Presentazione.sfondo.ignoresSafeArea()
+                LinearGradient(colors: [Tema.Colore.PannelliShell.salaAlto, Tema.Colore.PannelliShell.salaBasso],
+                               startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea()
                 VStack(spacing: 0) {
                     Spacer(minLength: Misure.Presentazione.margine)
                     p.pagine[min(p.pagina, p.pagine.count - 1)]
                         .frame(width: p.formato.width, height: p.formato.height)
                         .scaleEffect(scala)
                         .frame(width: p.formato.width * scala, height: p.formato.height * scala)
-                        .shadow(color: Colori.Presentazione.ombra, radius: 24, y: 8)
+                        .shadow(color: Tema.Colore.PannelliShell.ombraPaginaPresentazione,
+                                radius: Tema.Misura.PannelliShell.ombraPaginaRaggio, y: Tema.Misura.PannelliShell.ombraPaginaY)
                         .id(p.pagina)
                         .transition(.opacity)
                     Spacer(minLength: 0)
@@ -138,7 +142,7 @@ struct VistaPresentazione: View {
     }
 
     private var barra: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: Tema.Misura.PannelliShell.barraPresentazioneSpazio) {
             Text("\(p.titolo) · \(p.cliente)").lineLimit(1)
             Spacer()
             Button("←") { stato.paginaPrecedente() }
@@ -160,9 +164,9 @@ struct VistaPresentazione: View {
                 .keyboardShortcut(.cancelAction)
         }
         .buttonStyle(StileSemplice())
-        .font(Tipo.barraOra)
-        .foregroundColor(Colori.Presentazione.testo)
-        .padding(.horizontal, Misure.Presentazione.margine)
+        .font(Tema.Testo.PannelliShell.presentazione)
+        .foregroundColor(Tema.Colore.PannelliShell.testoPresentazione)
+        .modifier(CapsulaPresentazione())
     }
 
     private func inizia() {
@@ -180,7 +184,7 @@ struct VistaPresentazione: View {
     /// La riga per scrivere: Invio salva negli appunti, ⌘Invio anche come attività, esc annulla.
     private var editor: some View {
         HStack(spacing: 12) {
-            Text("Pagina \(p.pagina + 1)").foregroundColor(Colori.Presentazione.testo)
+            Text("Pagina \(p.pagina + 1)").foregroundColor(Tema.Colore.PannelliShell.testoPresentazione)
             TextField("Una reazione, una decisione, una cosa da fare…", text: $nota)
                 .textFieldStyle(.roundedBorder)
                 .focused($campo)
@@ -191,8 +195,32 @@ struct VistaPresentazione: View {
                 .keyboardShortcut(.cancelAction)
         }
         .buttonStyle(StileSemplice())
-        .font(Tipo.barraOra)
-        .foregroundColor(Colori.Presentazione.testo)
-        .padding(.horizontal, Misure.Presentazione.margine)
+        .font(Tema.Testo.PannelliShell.presentazione)
+        .foregroundColor(Tema.Colore.PannelliShell.testoPresentazione)
+        .modifier(CapsulaPresentazione())
+    }
+}
+
+/// La barra della presentazione in una capsula di vetro scuro dai colori fissi: la sala è sempre scura.
+private struct CapsulaPresentazione: ViewModifier {
+    func body(content: Content) -> some View {
+        let m = Tema.Misura.PannelliShell.self
+        let c = Tema.Colore.PannelliShell.self
+        return content
+            .padding(.horizontal, m.barraPresentazioneMargine)
+            .frame(height: m.barraPresentazioneAltezza)
+            .background {
+                FormaVetro.capsula
+                    .fill(c.barraPresentazione)
+                    .overlay {
+                        FormaVetro.capsula.strokeBorder(c.bordoBarraPresentazione, lineWidth: Tema.Misura.filo)
+                    }
+                    .overlay {
+                        FiloInterno(forma: .capsula)
+                            .fill(c.luceBarraPresentazione, style: FillStyle(eoFill: true))
+                            .clipShape(FormaVetro.capsula)
+                    }
+            }
+            .padding(.horizontal, Misure.Presentazione.margine)
     }
 }

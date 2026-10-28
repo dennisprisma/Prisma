@@ -33,50 +33,14 @@ struct ShellView: View {
         GeometryReader { geo in
             let area = ShellView.area(per: geo.size, dockNascosto: dockNascosto)
             ZStack(alignment: .topLeading) {
-                Materiale.SfondoScrivania()
+                // Un solo sfondo d'acqua, anche sotto la schermata di benvenuto: si muove solo se si vede
+                Materiale.SfondoScrivania(animato: stato.dati.impostazioni.sfondoAnimato && !stato.scrivaniaCoperta && !modoIstantanea)
 
-                Scrivania()
-                    .frame(width: geo.size.width, height: max(0, geo.size.height - Misure.Barra.altezza - Misure.Dock.riservato))
-                    .offset(y: Misure.Barra.altezza)
-
-                livelloFinestre(area: area)
-
-                if dockNascosto && !dockRichiamato {
-                    // Striscia invisibile sul bordo in basso: richiama il dock
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .frame(width: geo.size.width, height: Misure.Dock.strisciaRichiamo)
-                        .offset(y: geo.size.height - Misure.Dock.strisciaRichiamo)
-                        .onHover { if $0 { withAnimation(Animazioni.passaggio) { dockRichiamato = true } } }
-                }
-
-                Dock()
-                    .onHover { sopra in
-                        if !sopra { withAnimation(Animazioni.passaggio) { dockRichiamato = false } }
-                    }
-                    .offset(y: dockNascosto && !dockRichiamato ? Misure.Dock.corsaNascosto : 0)
-                    .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
-                    .clipped()
-
-                if stato.pannelloSpazi {
-                    PannelloSpazi()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .transition(.opacity)
-                }
-
-                if stato.pannelloNotifiche {
-                    PannelloNotifiche()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .transition(.opacity.combined(with: .offset(x: 12)))
-                }
-
-                BarraSuperiore()
-
-                if stato.pannelloAppAperte {
-                    PannelloAppAperte()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .transition(.opacity)
-                }
+                // Con la schermata di benvenuto la scrivania si nasconde senza sparire: le app restano come sono
+                livelliScrivania(geo.size, area: area)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+                    .opacity(stato.bloccato ? 0 : 1)
+                    .allowsHitTesting(!stato.bloccato)
 
                 if let p = stato.presentazione {
                     VistaPresentazione(p: p)
@@ -91,9 +55,10 @@ struct ShellView: View {
                 }
 
                 if fileSopra {
-                    RoundedRectangle(cornerRadius: Misure.Avvisi.rilascioRaggio)
-                        .strokeBorder(Colori.Analisi.navBasso, style: StrokeStyle(lineWidth: 3, dash: [8, 5]))
-                        .background(Colori.Analisi.navBasso.opacity(0.06))
+                    RoundedRectangle(cornerRadius: Tema.Raggio.scheda, style: .continuous)
+                        .strokeBorder(Tema.Colore.Shell.rilascio,
+                                      style: StrokeStyle(lineWidth: Tema.Misura.Shell.rilascioTratto, dash: Tema.Misura.Shell.rilascioTrattino))
+                        .background(RoundedRectangle(cornerRadius: Tema.Raggio.scheda, style: .continuous).fill(Tema.Colore.Shell.rilascioFondo))
                         .padding(Misure.Avvisi.rilascioMargine)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .allowsHitTesting(false)
@@ -132,6 +97,55 @@ struct ShellView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
             stato.schermoIntero = false
+        }
+    }
+
+    /// Scrivania, finestre, dock, pannelli e barra superiore, nell'ordine in cui si sovrappongono.
+    private func livelliScrivania(_ misura: CGSize, area: CGRect) -> some View {
+        ZStack(alignment: .topLeading) {
+            Scrivania()
+                .frame(width: misura.width, height: max(0, misura.height - Misure.Barra.altezza - Misure.Dock.riservato))
+                .offset(y: Misure.Barra.altezza)
+
+            livelloFinestre(area: area)
+
+            if dockNascosto && !dockRichiamato {
+                // Striscia invisibile sul bordo in basso: richiama il dock
+                Color.clear
+                    .contentShape(Rectangle())
+                    .frame(width: misura.width, height: Misure.Dock.strisciaRichiamo)
+                    .offset(y: misura.height - Misure.Dock.strisciaRichiamo)
+                    .onHover { if $0 { withAnimation(Animazioni.passaggio) { dockRichiamato = true } } }
+            }
+
+            Dock()
+                .onHover { sopra in
+                    if !sopra { withAnimation(Animazioni.passaggio) { dockRichiamato = false } }
+                }
+                .padding(.bottom, Tema.Misura.dockDalBasso)
+                .offset(y: dockNascosto && !dockRichiamato ? Misure.Dock.corsaNascosto : 0)
+                .frame(width: misura.width, height: misura.height, alignment: .bottom)
+                .clipped()
+
+            if stato.pannelloSpazi {
+                PannelloSpazi()
+                    .frame(width: misura.width, height: misura.height)
+                    .transition(.opacity)
+            }
+
+            if stato.pannelloNotifiche {
+                PannelloNotifiche()
+                    .frame(width: misura.width, height: misura.height)
+                    .transition(.opacity.combined(with: .offset(x: 12)))
+            }
+
+            BarraSuperiore()
+
+            if stato.pannelloAppAperte {
+                PannelloAppAperte()
+                    .frame(width: misura.width, height: misura.height)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            }
         }
     }
 
@@ -180,7 +194,7 @@ struct ShellView: View {
     }
 }
 
-/// Imposta la finestra macOS: barra del titolo trasparente, sfondo, dimensione minima.
+/// Imposta la finestra macOS: barra del titolo trasparente, fondo del colore del cielo (chiaro o scuro), dimensione minima.
 struct ConfiguraFinestra: NSViewRepresentable {
     final class Vista: NSView {
         override func viewDidMoveToWindow() {
@@ -190,7 +204,7 @@ struct ConfiguraFinestra: NSViewRepresentable {
             w.titleVisibility = .hidden
             w.titlebarAppearsTransparent = true
             w.isMovableByWindowBackground = false
-            w.backgroundColor = NSColor(Colori.Sfondo.base)
+            w.backgroundColor = Tema.Colore.Shell.fondoFinestraMac
             w.minSize = NSSize(width: 1100, height: 720)
             w.collectionBehavior.insert(.fullScreenPrimary)
         }

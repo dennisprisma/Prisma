@@ -19,6 +19,9 @@ enum ProvaProspetti {
             ("proposta-giulia-previdenza", "giulia", .posizione("pos-giulia-piano-previdenziale-integrativo")),
             ("posizione-giulia-etf", "giulia", .posizione("pos-giulia-etf-azionario-globale")),
             ("copertura-marco-infortuni", "marco", .posizione("pos-marco-infortuni-famiglia")),
+            // Gestione separata in essere e proposta con penali e blocco del riscatto
+            ("posizione-sofia-polizza", "sofia", .posizione("pos-sofia-polizza-rivalutabile")),
+            ("proposta-andrea-risparmio", "andrea", .posizione("pos-andrea-piano-di-risparmio-rivalutabile")),
         ]
         var tutti = casi
         tutti.append(("portafoglio", "", .portafoglio))
@@ -85,6 +88,26 @@ enum ProvaProspetti {
                         if case .tabella(let t) = b, t.colonne.first?.titolo == "Anno" { return t } else { return nil }
                     }.first
                     verifica("\(nome): anno per anno da oggi alla fine", anni?.righe.count == par.anni + 1, "\(anni?.righe.count ?? 0) righe")
+                    // Le cifre nuove dei motori: incidenza dei costi come nel KID, riscatto anno per anno, gestione separata
+                    let prodotto = p.prodottoId.flatMap { id in dati.prodotti.first { $0.id == id } }
+                    if let kid = MotoreCosti.incidenzaKID(p, prodotto: prodotto), let riy = kid.calcolato {
+                        let cifra = spazi(CifreDoc.percento(riy, decimali: 2))
+                        verifica("\(nome): RIY calcolato \(cifra) nel PDF", testo.contains("come nel KID") && testo.contains(cifra))
+                    }
+                    if let r = MotoreRiscatto.calcola(p, prodotto: prodotto) {
+                        verifica("\(nome): riscatto anno per anno nel PDF", testo.contains("Riscatto anno per anno"))
+                        if let x = r.righe.last, x.possibile {
+                            verifica("\(nome): netto dell'ultimo riscatto \(Formati.euro(x.netto)) nel PDF", testo.contains(spazi(Formati.euro(x.netto))))
+                        }
+                        if r.righe.contains(where: { !$0.possibile }) {
+                            verifica("\(nome): anni di blocco segnati come non riscattabili", testo.contains("non riscattabile"))
+                        }
+                    }
+                    if let g = MotoreGestioneSeparata.calcola(p) {
+                        let accreditato = spazi(CifreDoc.percento(g.accreditato, decimali: 2))
+                        // Le etichette delle voci sono in maiuscolo: «minimo garantito» si cerca nel metodo, in nota
+                        verifica("\(nome): gestione separata, accreditato \(accreditato) nel PDF", testo.contains(accreditato) && testo.contains("minimo garantito"))
+                    }
                 } else if p.area == .protezione, let mille = CompositoreProspetti.costoPerMille(p) {
                     verifica("\(nome): costo per 1.000 € assicurati", testo.contains(spazi(Formati.euroDecimali(mille))), Formati.euroDecimali(mille))
                 }
@@ -139,6 +162,16 @@ enum ProvaProspetti {
                     verifica("\(nome): incasso al 13° mese \(cifra) nel PDF", testo.contains(cifra))
                 }
                 verifica("\(nome): intestatari e consulente", testo.contains(v.intestatari) && testo.contains(TestiValutazione.consulente))
+                // Incidenza annua dei costi come nel KID, dalla valutazione (anno per anno)
+                if let r = t.intermedio?.riscatti.first(where: { $0.possibile }), let riy = r.incidenzaCosti {
+                    let cifra = spazi(CifreDoc.percento(riy, decimali: report ? 1 : 2))
+                    verifica("\(nome): incidenza annua dei costi \(cifra) nel PDF", testo.contains(cifra) && (report || testo.contains("Incidenza annua dei costi")))
+                }
+                // Rivalutazione netta della gestione separata dal motore (trattenuto, retrocessione, minimo garantito)
+                if !report, let g = t.gestione {
+                    let netta = spazi(CifreDoc.percento(MotoreGestioneSeparata.accreditato(g, lordo: v.scenario(.intermedio).rendimento(g)), decimali: 2))
+                    verifica("\(nome): rivalutazione netta della gestione separata \(netta) nel PDF", testo.contains(netta))
+                }
                 if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
             }
         } else {
@@ -255,6 +288,14 @@ enum ProvaProspetti {
                 verifica("\(nome): proiezione \(CifreDoc.euro(e.proiezione)) e titolo nel PDF",
                          testo.contains(spazi(CifreDoc.euro(e.proiezione))) && testo.contains(spazi(o.titolo)))
                 verifica("\(nome): cliente e consulente", testo.contains(cliente?.nome ?? "?") && testo.contains(TestiValutazione.consulente))
+                // Scenari con le probabilità: la stessa stima (seme fisso) nel prospetto e nel report
+                if let mc = ProspettoObiettivo.probabilita(t) {
+                    verifica("\(nome): probabilità \(mc.suDieci) su 10 nel PDF", testo.contains("\(mc.suDieci) su 10"))
+                    if !report {
+                        let mediano = spazi(CifreDoc.euro(mc.p50))
+                        verifica("\(nome): capitale mediano \(mediano) nel PDF", testo.contains(mediano))
+                    }
+                }
                 if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
             }
         }
@@ -282,6 +323,16 @@ enum ProvaProspetti {
                 if !report {
                     let mancanti = (e.coperture + e.proposte).filter { !testo.contains(spazi($0.nome)) }.map(\.nome)
                     verifica("\(nome): tutte le coperture", mancanti.isEmpty, mancanti.joined(separator: ", "))
+                }
+                // Per ogni persona che porta reddito (le prime, quelle che entrano nella pagina)
+                let persone = e.persone.prefix(Misure.Documento.Motori.personeMassime)
+                if !persone.isEmpty {
+                    let assenti = persone.filter { !testo.contains(spazi($0.nome.split(separator: " ").first.map(String.init) ?? $0.nome)) }.map(\.nome)
+                    verifica("\(nome): una scheda per ogni persona", assenti.isEmpty, assenti.joined(separator: ", "))
+                    if !report, let prima = persone.first {
+                        let cifra = spazi(CifreDoc.euro(prima.fabbisognoMorte))
+                        verifica("\(nome): fabbisogno caso morte di \(prima.nome) \(cifra) nel PDF", testo.contains(cifra))
+                    }
                 }
                 if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
             }
@@ -312,6 +363,15 @@ enum ProvaProspetti {
                     let mancanti = e.piani.filter { !testo.contains(spazi($0.posizione.nome)) }.map(\.posizione.nome)
                     verifica("\(nome): tutti i piani", mancanti.isEmpty, mancanti.joined(separator: ", "))
                 }
+                // La pensione pubblica stimata con il contributivo, se il cliente ha i dati del lavoro
+                if let stima = e.stimaPensione {
+                    let netta = spazi(TestiPrevidenza.mese(stima.nettaMensile))
+                    verifica("\(nome): pensione stimata \(netta) nel PDF", testo.contains(netta))
+                    if !report, let divario = e.divarioStimato {
+                        let cifra = spazi(TestiPrevidenza.mese(divario))
+                        verifica("\(nome): divario con la stima \(cifra) nel PDF", testo.contains(cifra))
+                    }
+                }
                 if let cartella { try? pdf.write(to: cartella.appendingPathComponent("\(nome).pdf")) }
             }
         }
@@ -335,6 +395,19 @@ enum ProvaProspetti {
                 verifica("\(nome): \(report ? "A4 orizzontale" : "A4 verticale")", orizzontale == report)
                 let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
                 verifica("\(nome): cliente e consulente", testo.contains(cliente.nome) && testo.contains(TestiValutazione.consulente))
+                // Le crisi del passato: ogni crisi che tocca il patrimonio, con la sua cifra
+                // Le cifre grandi delle schede si rimpiccioliscono per stare nella casella: nel testo del PDF
+                // gli spazi tra le cifre possono cambiare, quindi si confronta senza spazi (una cifra tagliata resta un errore)
+                let compatto = testo.filter { !$0.isWhitespace }
+                for k in r.crisi.prefix(Misure.Documento.Motori.crisiMassime) where !k.voci.isEmpty {
+                    let cifra = spazi(cifraCrisiDoc(k.perdita))
+                    // anche l'anno senza spazi: nei titoli spaziati delle schede esce «2 0 2 0»
+                    let trovata = compatto.contains(cifra.filter { !$0.isWhitespace }) && compatto.contains("\(k.crisi.anno)")
+                    // Se manca, si stampa il testo letto attorno all'anno: si capisce subito cosa c'è nel PDF
+                    let attorno = trovata ? "" : compatto.components(separatedBy: "\(k.crisi.anno)").dropFirst().prefix(3)
+                        .map { "«\(k.crisi.anno)\($0.prefix(140))»" }.joined(separator: " · ")
+                    verifica("\(nome): crisi del \(k.crisi.anno) \(cifra) nel PDF", trovata, attorno)
+                }
                 if let m = t.mercati, !m.voci.isEmpty {
                     verifica("\(nome): perdita sui mercati \(CifreDoc.togli(m.perdita)) nel PDF", testo.contains(spazi(CifreDoc.togli(m.perdita))))
                     if !report {
@@ -355,7 +428,8 @@ enum ProvaProspetti {
             verifica("costi-\(cliente.id): il grafico parte dallo stesso valore e i costi tolgono", t.serie.con.first == t.serie.senza.first
                      && (t.serie.con.last ?? 0) < (t.serie.senza.last ?? 0))
             for report in [false, true] {
-                let d = DocumentoStampabile(t, report: report)
+                // Con le schede del catalogo, come in stampa (StatoShell.documentoProspetto)
+                let d = DocumentoStampabile(t, report: report, prodotti: dati.prodotti)
                 let nome = "costi-\(cliente.id)-\(report ? "report" : "prospetto")"
                 guard let pdf = StampaCarta.pdf(d), let documento = PDFDocument(data: pdf) else {
                     verifica("\(nome): PDF creato", false)
@@ -368,6 +442,12 @@ enum ProvaProspetti {
                 let testo = spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
                 verifica("\(nome): cliente e consulente", testo.contains(cliente.nome) && testo.contains(TestiValutazione.consulente))
                 verifica("\(nome): costi di quest'anno \(CifreDoc.euro(a.euroAnno)) nel PDF", testo.contains(spazi(CifreDoc.euro(a.euroAnno))))
+                // Incidenza annua dei costi come nel KID, posizione per posizione
+                if let k = ProspettoCosti.incidenze(t, prodotti: dati.prodotti).first(where: { $0.calcolato != nil }), let riy = k.calcolato {
+                    let cifra = spazi(CifreDoc.percento(riy, decimali: report ? 1 : 2))
+                    verifica("\(nome): incidenza annua dei costi \(cifra) nel PDF",
+                             testo.contains(cifra) && (report || testo.contains("Incidenza annua dei costi, come nel KID")))
+                }
                 if !report {
                     let mancanti = a.voci.filter { !testo.contains(spazi($0.posizione.nome)) }.map(\.posizione.nome)
                     verifica("\(nome): tutte le posizioni con i costi", mancanti.isEmpty, mancanti.joined(separator: ", "))
@@ -538,7 +618,11 @@ enum ProvaProspetti {
     static func spazi(_ s: String) -> String {
         // Le legature tipografiche (ﬁ, ﬃ…) tornano lettere separate: "autosufficienza" resta cercabile
         let legature = ["\u{FB00}": "ff", "\u{FB01}": "fi", "\u{FB02}": "fl", "\u{FB03}": "ffi", "\u{FB04}": "ffl"]
-        return legature.reduce(s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")) {
+        var t = s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")
+        // Gli a capo del PDF diventano spazi e gli spazi ripetuti uno solo: una frase che va a capo resta cercabile
+        t = t.replacingOccurrences(of: "\r\n", with: " ").replacingOccurrences(of: "\r", with: " ").replacingOccurrences(of: "\n", with: " ")
+        t = t.replacingOccurrences(of: " {2,}", with: " ", options: .regularExpression)
+        return legature.reduce(t) {
             $0.replacingOccurrences(of: $1.key, with: $1.value)
         }
     }

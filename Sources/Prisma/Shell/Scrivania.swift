@@ -1,31 +1,35 @@
 import SwiftUI
 
-/// La scrivania: saluto, griglia delle 16 app e colonna del cliente in primo piano.
+/// La scrivania (tema «Liquid Glass»): saluto sullo sfondo d'acqua, pulsanti di vetro,
+/// «La tua giornata» con i widget e il piede.
 struct Scrivania: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                introduzione
-                Spacer(minLength: 20)
-                pulsantiRapidi
-            }
-            if stato.guidaVisibile && !stato.inModoCliente {
-                StrisciaGuida()
-                    .padding(.top, 12)
-            }
+        GeometryReader { geo in
+            // Margine laterale del tema: 3% della larghezza, tra 16 e 44 punti; contenuto al massimo 1480
+            let margine = min(max(geo.size.width * Tema.Misura.margineScrivaniaQuota, Tema.Misura.margineScrivaniaMinimo),
+                              Tema.Misura.margineScrivaniaMassimo)
             VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top) {
+                    introduzione
+                    Spacer(minLength: 20)
+                    pulsantiRapidi
+                }
+                if stato.guidaVisibile && !stato.inModoCliente {
+                    StrisciaGuida()
+                        .padding(.top, Tema.Misura.Shell.guidaAlto)
+                }
                 intestazioneBacheca
                 BachecaWidget()
-                    .padding(.vertical, 6)
                 piede
             }
-            .padding(.top, 12)
+            .frame(maxWidth: Tema.Misura.scrivaniaMassima)
+            .padding(.top, Tema.Misura.Shell.scrivaniaAlto)
+            .padding(.horizontal, margine)
+            .padding(.bottom, Tema.Misura.Shell.scrivaniaBasso)
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
         }
-        .padding(.top, Misure.Scrivania.margineAlto)
-        .padding(.horizontal, Misure.Scrivania.margineLato)
-        .padding(.bottom, Misure.Scrivania.margineBasso)
     }
 
     private var saluto: String {
@@ -35,30 +39,23 @@ struct Scrivania: View {
     }
 
     private var introduzione: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("PRISMA OS   •   CLASSIC EDITION")
-                .font(Tipo.scrivaniaKicker)
-                .tracking(0.3)
-                .foregroundColor(Colori.Scrivania.kicker)
-                .ombraCSS(Colori.Scrivania.ombraTesto, y: 1, sfocatura: 2)
-                .padding(.bottom, 4)
+        VStack(alignment: .leading, spacing: Tema.Misura.Shell.salutoSpazio) {
             TimelineView(.everyMinute) { _ in
                 Text(saluto)
-                    .font(Tipo.scrivaniaTitolo)
-                    .foregroundColor(Colori.Scrivania.titolo)
-                    .ombraCSS(Colori.Scrivania.ombraTesto, y: 1, sfocatura: 3)
+                    .font(Tema.Testo.saluto)
+                    .tracking(Tema.Testo.spaziaturaSaluto)
+                    .foregroundColor(Tema.Colore.inchiostroSfondo)
+                    .lineLimit(1)
             }
-            .padding(.bottom, 3)
             Text("Tutto il tuo lavoro, a portata di mano.")
-                .font(Tipo.scrivaniaSottotitolo)
-                .foregroundColor(Colori.Scrivania.sottotitolo)
-                .ombraCSS(Colori.Scrivania.ombraTesto, y: 1, sfocatura: 2)
+                .font(Tema.Testo.sottotitoloSaluto)
+                .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
         }
-        .padding(.top, 14)
+        .aloneSfondo()
     }
 
     private var pulsantiRapidi: some View {
-        HStack(spacing: Misure.Scrivania.spazioPulsanti) {
+        HStack(spacing: Tema.Misura.Shell.pulsantiSpazio) {
             Button {
                 stato.pannelloSpazi = true
             } label: {
@@ -68,10 +65,10 @@ struct Scrivania: View {
             Button {
                 stato.cercaOvunque()
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: Tema.Misura.Shell.pulsanteVetroSpazio) {
                     Image(systemName: "magnifyingglass")
                     Text("Cerca ovunque")
-                    Text("⌘ K").font(Tipo.barraTasto).foregroundColor(Colori.Barra.tasto)
+                    TastoBarra(testo: "⌘K")
                 }
             }
             Button {
@@ -81,30 +78,40 @@ struct Scrivania: View {
                       systemImage: stato.schermoIntero ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
             }
         }
-        .buttonStyle(StileVetro())
+        .buttonStyle(StilePulsanteVetro())
         .labelStyle(EtichettaPulsante())
-        .padding(.top, 15)
+        .padding(.top, Tema.Misura.Shell.pulsantiAlto)
     }
 
     private var intestazioneBacheca: some View {
         HStack {
             Text("La tua giornata")
-                .font(Tipo.scrivaniaSezione)
-                .foregroundColor(Colori.Scrivania.intestazione)
-                .ombraCSS(Colori.Scrivania.intestazioneOmbra, y: 1, sfocatura: 3)
+                .font(Tema.Testo.sezione)
+                .tracking(Tema.Testo.spaziaturaSezione)
+                .foregroundColor(Tema.Colore.inchiostroSfondo)
+                .aloneSfondo()
             Spacer()
             Button {
                 stato.pannelloAppAperte = true
             } label: {
-                HStack(spacing: 8) {
-                    Text("\(stato.finestre.count) \(stato.finestre.count == 1 ? "aperta" : "aperte")")
-                    Image(systemName: "square.grid.2x2")
+                HStack(spacing: Tema.Misura.Shell.pulsanteVetroSpazio) {
+                    Text(testoAppAperte)
+                    Image(systemName: "square.grid.2x2.fill")
                 }
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)))
+            .buttonStyle(StilePulsanteVetro(piccolo: true))
         }
-        .padding(.horizontal, 4)
-        .frame(height: Misure.Scrivania.altezzaSezione)
+        .padding(.top, Tema.Misura.Shell.sezioneAlto)
+        .padding(.bottom, Tema.Misura.Shell.sezioneBasso)
+        .padding(.horizontal, Tema.Misura.Shell.sezioneLato)
+    }
+
+    private var testoAppAperte: String {
+        switch stato.finestre.count {
+        case 0: return "Nessuna app aperta"
+        case 1: return "1 app aperta"
+        default: return "\(stato.finestre.count) app aperte"
+        }
     }
 
     private var piede: some View {
@@ -114,20 +121,54 @@ struct Scrivania: View {
             Text(stato.dati.impostazioni.backup.ultimo.map { "Ultimo backup: \(Formati.dataOra.string(from: $0)) · archivio locale" }
                  ?? "Nessun backup ancora · archivio locale")
         }
-        .font(Tipo.scrivaniaPiede)
-        .foregroundColor(Colori.Scrivania.piedeLeggibile)
-        .ombraCSS(Colori.Scrivania.piedeOmbra, y: 1, sfocatura: 2)
-        .padding(.horizontal, 3)
-        .padding(.top, 4)
+        .font(Tema.Testo.Shell.piede)
+        .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
+        .lineLimit(1)
+        .aloneSfondo()
+        .padding(.horizontal, Tema.Misura.Shell.sezioneLato)
+        .padding(.top, Tema.Misura.Shell.piedeAlto)
     }
 }
 
-/// Icona + testo dei pulsanti di vetro, con lo spazio del template (8 pt).
+/// Icona + testo dei pulsanti di vetro, con lo spazio del tema.
 struct EtichettaPulsante: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Tema.Misura.Shell.pulsanteVetroSpazio) {
             configuration.icon
             configuration.title
         }
+    }
+}
+
+/// Pulsante di vetro sullo sfondo (.gbtn del tema): capsula di vetro sottile, più chiara al passaggio,
+/// molla alla pressione. `piccolo`: alto 30 invece di 34.
+struct StilePulsanteVetro: ButtonStyle {
+    var piccolo = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        CorpoPulsanteVetro(etichetta: configuration.label, piccolo: piccolo, premuto: configuration.isPressed)
+    }
+}
+
+private struct CorpoPulsanteVetro<Etichetta: View>: View {
+    let etichetta: Etichetta
+    let piccolo: Bool
+    let premuto: Bool
+    @State var sopra = false
+    @Environment(\.isEnabled) var abilitato
+
+    var body: some View {
+        etichetta
+            .font(piccolo ? Tema.Testo.pulsantePiccolo : Tema.Testo.pulsante)
+            .foregroundColor(Tema.Colore.inchiostro)
+            .lineLimit(1)
+            .padding(.horizontal, piccolo ? Tema.Misura.Shell.pulsanteVetroPiccoloMargine : Tema.Misura.Shell.pulsanteVetroMargine)
+            .frame(height: piccolo ? Tema.Misura.pulsanteVetroPiccolo : Tema.Misura.pulsanteVetro)
+            .contentShape(Capsule(style: .continuous))
+            .vetro(.leggero, forma: .capsula, tinta: sopra ? Tema.Colore.Shell.passaggioVetro : nil, interattivo: true)
+            .scaleEffect(premuto ? Tema.Moto.scalaPressione : 1)
+            .animation(Tema.Moto.molla, value: premuto)
+            .opacity(abilitato ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
+            .onHover { sopra = $0 }
     }
 }

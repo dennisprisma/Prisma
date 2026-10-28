@@ -23,16 +23,12 @@ struct PannelloSpazi: View {
                     }
                     piede
                 }
-                .background(Colori.Spazi.interno)
-                .clipShape(RoundedRectangle(cornerRadius: Misure.Spazi.raggioInterno))
-                .overlay(RoundedRectangle(cornerRadius: Misure.Spazi.raggioInterno).strokeBorder(Colori.Spazi.internoBordo, lineWidth: 1))
+                .clipShape(FormaVetro.arrotondata(Misure.Spazi.raggioInterno))
             }
             .padding(Misure.Spazi.cornice)
-            .background(RoundedRectangle(cornerRadius: Misure.Spazi.raggio).fill(Gradienti.corniceSpazi))
-            .luceInterna(Colori.Spazi.corniceLuce, raggio: Misure.Spazi.raggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Spazi.raggio).strokeBorder(Colori.Spazi.corniceBordo, lineWidth: 1))
-            .ombraCSS(Colori.Spazi.schedaOmbra, y: 8, sfocatura: 24)
             .frame(width: Misure.Spazi.pannello.width, height: Misure.Spazi.pannello.height)
+            // Vetro del pannello con riempimento coprente: la finestra dietro non si legge attraverso
+            .vetro(.pannello, forma: .arrotondata(Misure.Spazi.raggio), riempimento: Colori.Spazi.fondo)
         }
         .onExitCommand { stato.pannelloSpazi = false }
     }
@@ -44,7 +40,6 @@ struct PannelloSpazi: View {
                 Text("Le app che ti servono, già disposte: si riaprono con un clic.")
                     .font(Tipo.spaziSottotitolo).foregroundColor(Colori.Spazi.sottotitolo)
             }
-            .incisione(Colori.Spazi.titoloIncisione, y: -1)
             Spacer()
             Button("Chiudi") { stato.pannelloSpazi = false }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
@@ -59,7 +54,6 @@ struct PannelloSpazi: View {
             Text(titolo)
                 .font(Tipo.spaziSezione)
                 .foregroundColor(Colori.Spazi.sezione)
-                .incisione(Colori.Spazi.sezioneIncisione)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: Misure.Spazi.colonna), spacing: Misure.Spazi.spazioSchede, alignment: .top)],
                       alignment: .leading, spacing: Misure.Spazi.spazioSchede) {
                 ForEach(spazi) { scheda($0) }
@@ -80,12 +74,12 @@ struct PannelloSpazi: View {
                     .foregroundColor(Colori.Spazi.app)
                     .lineLimit(1)
             }
-            .padding(10)
+            .padding(Misure.Spazi.margineScheda)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Misure.Spazi.raggioScheda).fill(Colori.Spazi.scheda))
-            .overlay(RoundedRectangle(cornerRadius: Misure.Spazi.raggioScheda).strokeBorder(Colori.Spazi.schedaBordo, lineWidth: 1))
-            .ombraCSS(Colori.Spazi.schedaOmbra, y: 1, sfocatura: 2)
-            .contentShape(Rectangle())
+            // Scheda del tema (.card), evidenziata al passaggio del mouse
+            .fondoPassaggio(.arrotondata(Misure.Spazi.raggioScheda), sopra: Colori.Spazi.schedaSopra)
+            .vetro(.sottile, forma: .arrotondata(Misure.Spazi.raggioScheda))
+            .contentShape(FormaVetro.arrotondata(Misure.Spazi.raggioScheda))
         }
         .buttonStyle(StileSemplice())
         .help("Apri lo spazio «\(s.nome)»")
@@ -114,7 +108,7 @@ struct PannelloSpazi: View {
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 TextField("Nome dello spazio", text: $nome)
-                    .textFieldStyle(.roundedBorder)
+                    .campoTesto()
                     .frame(width: Misure.Spazi.campoNome)
                     .onSubmit(salva)
                 Button("Salva", action: salva)
@@ -125,7 +119,6 @@ struct PannelloSpazi: View {
         }
         .padding(.horizontal, Misure.Spazi.margine)
         .padding(.vertical, 10)
-        .background(Colori.Spazi.piede)
         .bordoAlto(Colori.Spazi.piedeBordo)
     }
 

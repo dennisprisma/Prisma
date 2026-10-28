@@ -80,7 +80,7 @@ struct ModuloImportaPosizioni: View {
                 VStack(spacing: 0) {
                     ForEach(importazione.posizioni) { x in riga(x) }
                 }
-                .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+                .contornoTabella()
                 Text("Quando il nome del prodotto corrisponde a una scheda di Prodotti, costi, rendimento e rischio vengono dalla scheda. Area e canale si possono correggere anche dopo, nella scheda di ogni posizione. Il controvalore entra con la data del file o di oggi: è il primo punto dell'andamento.")
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.Analisi.kpiNota)

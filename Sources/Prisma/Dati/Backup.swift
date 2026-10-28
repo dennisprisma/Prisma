@@ -6,7 +6,21 @@ struct VoceBackup: Identifiable, Equatable {
     let data: Date
     let dimensione: Int64
     var id: URL { url }
-    var nome: String { url.deletingPathExtension().lastPathComponent }
+    /// Il nome senza estensioni: senza «.zip» e, per i protetti, anche senza «.cifrato»
+    /// (la rotazione riconosce i backup automatici dalla fine del nome).
+    var nome: String {
+        let senzaCifrato = cifrato ? url.deletingPathExtension() : url
+        return senzaCifrato.deletingPathExtension().lastPathComponent
+    }
+    /// Backup protetto da password («… .zip.cifrato»): solo per l'elenco; il ripristino lo
+    /// riconosce dal contenuto.
+    var cifrato: Bool { url.pathExtension == GestoreBackup.estensioneCifrata }
+}
+
+/// Un ripristino di un backup protetto in attesa della password scritta dal consulente.
+struct RichiestaPasswordBackup: Equatable {
+    let url: URL
+    let messaggio: String
 }
 
 enum ErroreBackup: LocalizedError {
@@ -15,6 +29,15 @@ enum ErroreBackup: LocalizedError {
     case archivioNonValido(String)
     case cartellaNonRaggiungibile(String)
     case versionePiuRecente
+    /// Backup protetto aperto senza password.
+    case serveLaPassword
+    /// La password non apre il backup protetto.
+    case passwordErrata
+    /// Backup protetto alterato, troncato o con i pezzi fuori posto.
+    case backupDanneggiato
+    case cifratura(String)
+    /// Protezione attiva ma password non disponibile: il backup non si fa in chiaro.
+    case passwordNonDisponibile
 
     var errorDescription: String? {
         switch self {
@@ -23,14 +46,29 @@ enum ErroreBackup: LocalizedError {
         case .archivioNonValido(let m): return "Il backup non è leggibile: \(m)"
         case .cartellaNonRaggiungibile(let p): return "La cartella dei backup non è raggiungibile (\(p)): collega il disco o scegline un'altra."
         case .versionePiuRecente: return "Il backup è stato creato da una versione più recente di Prisma: aprilo con l'ultima versione."
+        case .serveLaPassword: return "Questo backup è protetto da una password: scrivila per ripristinarlo."
+        case .passwordErrata: return "La password non apre questo backup. Controlla di averla scritta bene: i backup fatti prima di un cambio di password si aprono con la password di allora."
+        case .backupDanneggiato: return "Il backup protetto è danneggiato o incompleto e non si può aprire: prova con un altro backup."
+        case .cifratura(let m): return "Protezione del backup non riuscita: \(m)"
+        case .passwordNonDisponibile: return "La password dei backup non è disponibile: scrivila in Impostazioni › Archivio. Senza password il backup non si fa, per non salvarlo in chiaro."
         }
+    }
+
+    /// true per la password sbagliata (si richiede la password invece di fermarsi).
+    var passwordSbagliata: Bool {
+        if case .passwordErrata = self { return true }
+        return false
     }
 }
 
 /// Backup dell'intera cartella dell'archivio in file .zip, con rotazione.
 /// Usa /usr/bin/ditto, presente su ogni Mac: nessuna dipendenza esterna.
+/// Con una password il backup è un «… .zip.cifrato» (vedi `CifraturaBackup`): lo zip in chiaro
+/// nasce solo nella cartella temporanea del Mac e si cancella subito.
 enum GestoreBackup {
     static let prefisso = "Prisma backup "
+    /// Estensione aggiunta a «.zip» dai backup protetti da password.
+    static let estensioneCifrata = "cifrato"
     /// Rotazione: si tengono le ultime 8 copie automatiche (8 settimane) e, a parte, le ultime 8
     /// copie fatte a mano o di sicurezza: un ripristino non consuma la storia settimanale.
     static let massimo = 8
@@ -40,8 +78,12 @@ enum GestoreBackup {
     /// - creaCartella: false per la cartella scelta dall'utente: se non c'è (disco scollegato) è un
     ///   errore, non si ricrea il percorso sul disco del Mac.
     /// - proteggi: un backup da non eliminare con la rotazione (quello che si sta ripristinando).
+    /// - password: con una password il backup è protetto («… .zip.cifrato»); nil = zip in chiaro.
+    /// - iterazioni: solo per la prova (più bassa per la durata); l'app usa sempre quelle predefinite.
     @discardableResult
-    static func crea(sorgente: URL, destinazione: URL, nota: String? = nil, creaCartella: Bool = true, proteggi: URL? = nil) throws -> URL {
+    static func crea(sorgente: URL, destinazione: URL, nota: String? = nil, creaCartella: Bool = true, proteggi: URL? = nil,
+                     password: String? = nil, iterazioni: UInt32 = CifraturaBackup.iterazioniPredefinite) throws -> URL {
+        if let password, password.isEmpty { throw ErroreBackup.passwordNonDisponibile }
         let fm = FileManager.default
         if creaCartella {
             try fm.createDirectory(at: destinazione, withIntermediateDirectories: true)
@@ -53,15 +95,25 @@ enum GestoreBackup {
         }
         // Copie parziali rimaste da un backup interrotto: contengono dati dei clienti
         for vecchia in (try? fm.contentsOfDirectory(at: destinazione, includingPropertiesForKeys: nil)) ?? []
-        where vecchia.lastPathComponent.hasPrefix(prefisso) && vecchia.lastPathComponent.hasSuffix(".zip.parziale") {
+        where vecchia.lastPathComponent.hasPrefix(prefisso) && vecchia.lastPathComponent.hasSuffix(".parziale") {
             try? fm.removeItem(at: vecchia)
         }
         var nome = prefisso + Formati.nomeFile.string(from: Date())
         if let nota { nome += " (\(nota))" }
-        let finale = destinazione.appendingPathComponent(nome + ".zip")
-        let parziale = destinazione.appendingPathComponent(nome + ".zip.parziale")
+        let estensione = password == nil ? ".zip" : ".zip." + estensioneCifrata
+        let finale = destinazione.appendingPathComponent(nome + estensione)
+        let parziale = destinazione.appendingPathComponent(nome + estensione + ".parziale")
         do {
-            try ditto(["-c", "-k", "--sequesterRsrc", "--keepParent", sorgente.path, parziale.path])
+            if let password {
+                // Lo zip in chiaro solo nella cartella temporanea del Mac, mai nella cartella dei
+                // backup (può essere iCloud Drive): si cifra da lì e si cancella subito
+                let chiaro = fm.temporaryDirectory.appendingPathComponent("Prisma-chiaro-\(UUID().uuidString).zip")
+                defer { try? fm.removeItem(at: chiaro) }
+                try ditto(["-c", "-k", "--sequesterRsrc", "--keepParent", sorgente.path, chiaro.path])
+                try CifraturaBackup.cifra(chiaro, in: parziale, password: password, iterazioni: iterazioni)
+            } else {
+                try ditto(["-c", "-k", "--sequesterRsrc", "--keepParent", sorgente.path, parziale.path])
+            }
             try? fm.removeItem(at: finale)
             try fm.moveItem(at: parziale, to: finale)
         } catch {
@@ -79,7 +131,11 @@ enum GestoreBackup {
         let chiavi: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey]
         let file = (try? FileManager.default.contentsOfDirectory(at: cartella, includingPropertiesForKeys: chiavi)) ?? []
         return file
-            .filter { $0.pathExtension == "zip" && $0.lastPathComponent.hasPrefix(prefisso) }
+            // In chiaro e protetti insieme: la rotazione li conta come un'unica serie
+            .filter { url in
+                let n = url.lastPathComponent
+                return n.hasPrefix(prefisso) && (n.hasSuffix(".zip") || n.hasSuffix(".zip." + estensioneCifrata))
+            }
             .map { url in
                 let v = try? url.resourceValues(forKeys: Set(chiavi))
                 return VoceBackup(url: url, data: v?.contentModificationDate ?? .distantPast, dimensione: Int64(v?.fileSize ?? 0))
@@ -98,7 +154,20 @@ enum GestoreBackup {
 
     /// Estrae un backup in una cartella temporanea e ne verifica l'archivio.
     /// Restituisce i dati e la cartella "Prisma" estratta.
-    static func estrai(_ zip: URL) throws -> (dati: DatiPrisma, cartella: URL) {
+    /// Un backup protetto si riconosce dal contenuto (non dall'estensione) e si apre con la
+    /// password: senza → `.serveLaPassword`, sbagliata → `.passwordErrata`. I vecchi .zip in
+    /// chiaro si ripristinano come sempre (la password, se c'è, non serve).
+    static func estrai(_ backup: URL, password: String? = nil) throws -> (dati: DatiPrisma, cartella: URL) {
+        guard CifraturaBackup.cifrato(backup) else { return try estraiZip(backup) }
+        guard let password, !password.isEmpty else { throw ErroreBackup.serveLaPassword }
+        // Lo zip decifrato vive solo nella cartella temporanea, il tempo di estrarlo
+        let chiaro = FileManager.default.temporaryDirectory.appendingPathComponent("Prisma-decifrato-\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: chiaro) }
+        try CifraturaBackup.decifra(backup, in: chiaro, password: password)
+        return try estraiZip(chiaro)
+    }
+
+    private static func estraiZip(_ zip: URL) throws -> (dati: DatiPrisma, cartella: URL) {
         let fm = FileManager.default
         let tmp = fm.temporaryDirectory.appendingPathComponent("Prisma-ripristino-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: tmp, withIntermediateDirectories: true)

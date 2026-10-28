@@ -95,9 +95,11 @@ struct AppRicerca: View {
         .padding(.horizontal, 12)
         .frame(height: Misure.Ricerca.campoAltezza)
         .frame(maxWidth: Misure.Ricerca.larghezzaMassima)
-        .background(RoundedRectangle(cornerRadius: Misure.Ricerca.campoRaggio).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Ricerca.campoRaggio).strokeBorder(Colori.Ricerca.campoBordo, lineWidth: 1))
-        .ombraCSS(Colori.Ricerca.barraLuce, y: 1, sfocatura: 0)
+        .background(RoundedRectangle(cornerRadius: Misure.Ricerca.campoRaggio, style: .continuous).fill(Tema.Colore.scheda))
+        .overlay {
+            RoundedRectangle(cornerRadius: Misure.Ricerca.campoRaggio, style: .continuous)
+                .strokeBorder(Colori.Ricerca.campoBordo, lineWidth: Tema.Misura.filo)
+        }
         .padding(Misure.Ricerca.barraMargine)
         .frame(maxWidth: .infinity)
         .background(Gradienti.barraRicerca)
@@ -114,7 +116,6 @@ struct AppRicerca: View {
             }
             .font(Tipo.ricercaSezione)
             .foregroundColor(Colori.Ricerca.sezione)
-            .incisione(Colori.Ricerca.sezioneIncisione)
             .padding(.horizontal, 6)
             VStack(spacing: 0) {
                 ForEach(Array(s.risultati.enumerated()), id: \.element.id) { i, r in
@@ -125,13 +126,15 @@ struct AppRicerca: View {
                     .buttonStyle(StileSemplice())
                     .id(r.id)
                     if i < s.risultati.count - 1 {
-                        Rectangle().fill(Colori.Ricerca.separatore).frame(height: 1)
+                        Rectangle().fill(Colori.Ricerca.separatore).frame(height: Tema.Misura.filo)
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: Misure.Ricerca.raggioCella))
-            .overlay(RoundedRectangle(cornerRadius: Misure.Ricerca.raggioCella).strokeBorder(Colori.Ricerca.cellaBordo, lineWidth: 1))
-            .ombraCSS(Colori.Ricerca.barraLuce, y: 1, sfocatura: 0)
+            .clipShape(RoundedRectangle(cornerRadius: Misure.Ricerca.raggioCella, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: Misure.Ricerca.raggioCella, style: .continuous)
+                    .strokeBorder(Colori.Ricerca.cellaBordo, lineWidth: Tema.Misura.filo)
+            }
         }
     }
 
@@ -146,7 +149,6 @@ struct AppRicerca: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 420)
         }
-        .incisione(Colori.Ricerca.sezioneIncisione)
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
     }

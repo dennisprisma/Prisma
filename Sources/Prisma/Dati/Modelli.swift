@@ -154,8 +154,117 @@ struct Familiare: Identifiable, Codable, Hashable {
     var aCarico = false
     var nota = ""
 
+    // Dati per la protezione per persona e la pensione (facoltativi: Codable sintetizzato, solo Optional)
+    /// Reddito netto annuo che questa persona porta in famiglia (€); nil = nessun reddito o non indicato.
+    var redditoNettoAnnuo: Double?
+    /// Non autosufficiente o con disabilità: il sostegno serve per tutta la vita, non fino a un'età.
+    var nonAutosufficiente: Bool?
+    /// Età fino a cui resta a carico (per i figli di solito 25); nil = regola predefinita del motore.
+    var etaFineCarico: Int?
+    /// Lavoro e contributi, per la pensione pubblica stimata con il contributivo.
+    var lavoro: DatiLavoro?
+
     var eta: Int? {
         dataNascita.flatMap { Calendar.current.dateComponents([.year], from: $0, to: Date()).year }
+    }
+
+    /// Reddito lordo annuo da lavoro, se indicato.
+    var redditoDaLavoro: Double? { lavoro?.redditoLavoro }
+}
+
+/// Tipo di lavoratore ai fini della pensione pubblica: decide l'aliquota di computo dei contributi.
+/// Le aliquote predefinite sono quelle di legge più comuni; il consulente può sempre indicare la sua
+/// (`DatiLavoro.aliquotaContributiva`).
+enum TipoLavoratore: String, Codable, CaseIterable, Identifiable {
+    /// Lavoratore dipendente (FPLD INPS): aliquota di computo 33%.
+    case dipendente
+    /// Artigiano o commerciante (gestioni speciali INPS): circa 24%.
+    case autonomo
+    /// Professionista senza cassa iscritto alla Gestione separata INPS: 25% (quota pensionistica IVS).
+    case gestioneSeparata
+    /// Collaboratore (parasubordinato) nella Gestione separata INPS: 33%.
+    case collaboratore
+    /// Professionista con una cassa propria (Inarcassa, Cassa Forense…): regole diverse, nessuna stima.
+    case cassaProfessionale
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .dipendente: return "Lavoratore dipendente"
+        case .autonomo: return "Artigiano o commerciante"
+        case .gestioneSeparata: return "Professionista in Gestione separata"
+        case .collaboratore: return "Collaboratore in Gestione separata"
+        case .cassaProfessionale: return "Professionista con cassa propria"
+        }
+    }
+
+    /// Aliquota di computo predefinita (% del reddito lordo); nil se Prisma non la stima.
+    var aliquotaPredefinita: Double? {
+        switch self {
+        case .dipendente, .collaboratore: return 33
+        case .autonomo: return 24
+        case .gestioneSeparata: return 25
+        case .cassaProfessionale: return nil
+        }
+    }
+}
+
+/// Lavoro e contributi di una persona (cliente o familiare), per la pensione pubblica con il metodo
+/// contributivo. Tutti i campi sono facoltativi: chi calcola usa i ripieghi dichiarati.
+struct DatiLavoro: Codable, Hashable {
+    var tipo: TipoLavoratore?
+    /// Aliquota di computo indicata dal consulente (%); se manca vale `tipo.aliquotaPredefinita`.
+    var aliquotaContributiva: Double?
+    /// Reddito lordo annuo da lavoro di oggi (€). Per il cliente, se manca, `ProfiloInvestitore.redditoLordoAnnuo`.
+    var redditoLavoro: Double?
+    /// Crescita reale attesa del reddito da lavoro (% all'anno, oltre l'inflazione).
+    var crescitaReddito: Double?
+    /// Anni di contributi già versati.
+    var anniContributi: Double?
+    /// Anno del primo contributo: prima del 1996 il sistema è misto e la stima contributiva è solo indicativa.
+    var annoPrimoContributo: Int?
+    /// Montante contributivo già maturato (€), dall'estratto conto INPS: se c'è prevale sulla stima dagli anni.
+    var montanteContributivo: Double?
+    /// Età prevista di pensionamento; per il cliente, se manca, `IpotesiPrevidenza.etaPensione`.
+    var etaPensione: Int?
+
+    init(tipo: TipoLavoratore? = nil, aliquotaContributiva: Double? = nil, redditoLavoro: Double? = nil,
+         crescitaReddito: Double? = nil, anniContributi: Double? = nil, annoPrimoContributo: Int? = nil,
+         montanteContributivo: Double? = nil, etaPensione: Int? = nil) {
+        self.tipo = tipo
+        self.aliquotaContributiva = aliquotaContributiva
+        self.redditoLavoro = redditoLavoro
+        self.crescitaReddito = crescitaReddito
+        self.anniContributi = anniContributi
+        self.annoPrimoContributo = annoPrimoContributo
+        self.montanteContributivo = montanteContributivo
+        self.etaPensione = etaPensione
+    }
+
+    /// Aliquota di computo da usare (%): quella indicata o quella del tipo di lavoratore.
+    var aliquota: Double? { aliquotaContributiva ?? tipo?.aliquotaPredefinita }
+
+    /// Contributi versati anche prima del 1996: sistema misto, la stima contributiva pura è indicativa.
+    var sistemaMisto: Bool { (annoPrimoContributo ?? 9_999) < 1996 }
+
+    private enum CodingKeys: String, CodingKey {
+        case tipo, aliquotaContributiva, redditoLavoro, crescitaReddito, anniContributi, annoPrimoContributo
+        case montanteContributivo, etaPensione
+    }
+
+    /// Lettura tollerante: un valore illeggibile (per esempio un tipo sconosciuto) diventa nil.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+        tipo = try? c.decodeIfPresent(TipoLavoratore.self, forKey: .tipo)
+        aliquotaContributiva = try? c.decodeIfPresent(Double.self, forKey: .aliquotaContributiva)
+        redditoLavoro = try? c.decodeIfPresent(Double.self, forKey: .redditoLavoro)
+        crescitaReddito = try? c.decodeIfPresent(Double.self, forKey: .crescitaReddito)
+        anniContributi = try? c.decodeIfPresent(Double.self, forKey: .anniContributi)
+        annoPrimoContributo = try? c.decodeIfPresent(Int.self, forKey: .annoPrimoContributo)
+        montanteContributivo = try? c.decodeIfPresent(Double.self, forKey: .montanteContributivo)
+        etaPensione = try? c.decodeIfPresent(Int.self, forKey: .etaPensione)
     }
 }
 
@@ -180,6 +289,14 @@ struct ProfiloInvestitore: Codable, Hashable {
     var aggiornatoIl: Date?
     /// Reddito complessivo lordo annuo, per l'aliquota IRPEF marginale (deducibilità della previdenza).
     var redditoLordoAnnuo: Double?
+    // Dati per la pensione e la protezione per persona (facoltativi: Codable sintetizzato, solo Optional)
+    /// Reddito netto annuo che il cliente porta in famiglia (€); se manca si stima dal lordo.
+    var redditoNettoAnnuo: Double?
+    /// Lavoro e contributi del cliente, per la pensione pubblica stimata con il contributivo.
+    var lavoro: DatiLavoro?
+
+    /// Reddito lordo annuo da lavoro: quello del lavoro se indicato, altrimenti il reddito complessivo.
+    var redditoDaLavoro: Double? { lavoro?.redditoLavoro ?? redditoLordoAnnuo }
 }
 
 struct Consensi: Codable, Hashable {

@@ -1,63 +1,266 @@
+import AppKit
 import SwiftUI
+
+// MARK: - Gettoni dei componenti di base (tema Liquid Glass)
+
+extension Tema.Colore {
+    /// Colori dei componenti di base che non stanno tra i gettoni comuni del tema.
+    enum Componenti {
+        /// Testo e simboli sui fondi pieni (accento, rosso) e iniziali degli avatar.
+        static let testoSuColore = Color.white
+        /// Filo di luce in alto sui pulsanti pieni (inset 0 1px 0 rgba(255,255,255,.35)).
+        static let luceSuColore = Color(r: 255, g: 255, b: 255, a: 0.35)
+        /// Avatar: filo chiaro in alto e ombra interna in basso.
+        static let luceAvatar = Color(r: 255, g: 255, b: 255, a: 0.5)
+        static let ombraBassoAvatar = Color(r: 0, g: 0, b: 0, a: 0.15)
+        /// Tinte degli avatar del tema (radiale dal chiaro allo scuro).
+        static let avatarBluAlto = Color(hex: "#A3BEDF")
+        static let avatarBluBasso = Color(hex: "#4C72A8")
+        static let avatarRosaAlto = Color(hex: "#E4AEB9")
+        static let avatarRosaBasso = Color(hex: "#B0687A")
+        static let avatarVerdeAlto = Color(hex: "#A5CDB5")
+        static let avatarVerdeBasso = Color(hex: "#4B8566")
+        static let avatarViolaAlto = Color(hex: "#BCB0D8")
+        static let avatarViolaBasso = Color(hex: "#6E62A0")
+        static let avatarOroAlto = Color(hex: "#E2CC98")
+        static let avatarOroBasso = Color(hex: "#A9853C")
+        /// Contorno del badge (0 0 0 1.5px rgba(255,255,255,.75)).
+        static let bordoBadge = Color(r: 255, g: 255, b: 255, a: 0.75)
+        /// Contorno del pomello dell'interruttore (0 0 0 .5px rgba(0,0,0,.05)).
+        static let bordoPomello = Color(r: 0, g: 0, b: 0, a: 0.05)
+        /// Fondo delle pillole d'errore (rosso 15%).
+        static let fondoErrore: Color = Tema.Colore.rosso.opacity(0.15)
+        /// Punto finale dei grafici: bianco in chiaro, colore della finestra in scuro.
+        static let puntoGrafico = Color.dinamico(chiaro: .white, scuro: Color(r: 18, g: 29, b: 38, a: 1))
+        /// Icona Agenda: la piastrella è sempre bianca, mese rosso e giorno quasi nero.
+        static let meseIconaAgenda = Color(hex: "#E0443A")
+        static let giornoIconaAgenda = Color(hex: "#1C1C1E")
+        static let ombraIconaAgenda = Color(r: 0, g: 0, b: 0, a: 0.22)
+        /// Etichette dei canali sui documenti (PDF e anteprime su carta): colori opachi e fissi.
+        static let fondoCanaleAlleanzaStampa = Color(hex: "#E1E9FC")
+        static let fondoCanaleIndipendenteStampa = Color(hex: "#F2E8D9")
+        static let bordoCanaleAlleanzaStampa = Color(hex: "#9DB9F6")
+        static let bordoCanaleIndipendenteStampa = Color(hex: "#DCBE94")
+        static let testoCanaleStampa = Color(hex: "#1C2733")
+    }
+}
+
+extension Tema.Misura {
+    /// Misure dei componenti di base.
+    enum Componenti {
+        /// Altezza minima dei pulsanti in capsula, anche con margini stretti.
+        static let pulsanteMinimo: CGFloat = 26
+        /// Margine laterale minimo del testo dentro una capsula.
+        static let margineCapsula: CGFloat = 12
+        /// Controllo a segmenti (.segc): altezza, margine delle voci (normale e compatto) e del cursore.
+        static let segmenti: CGFloat = 30
+        static let margineSegmento: CGFloat = 12
+        static let margineSegmentoCompatto: CGFloat = 8
+        static let margineCursore: CGFloat = 2
+        /// Badge sulle icone (quello della barra è `Tema.Misura.badge`).
+        static let badgeGrande: CGFloat = 18
+        static let bordoBadge: CGFloat = 1.5
+        static let margineBadge: CGFloat = 4
+        /// Tessera della data (.dt).
+        static let tesseraData = CGSize(width: 40, height: 44)
+        /// Avviso temporaneo (.toast).
+        static let avviso = EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
+        /// Campo di testo (.field): margine laterale, altezza minima e margine verticale.
+        static let margineCampo: CGFloat = 12
+        static let campoPiccolo: CGFloat = 30
+        static let margineCampoVerticale: CGFloat = 6
+        /// Icona Agenda, in 256esimi del lato: centro del mese e del giorno.
+        static let meseIconaAgenda = CGPoint(x: 128, y: 68.9)
+        static let giornoIconaAgenda = CGPoint(x: 128, y: 151.6)
+        /// Icona Agenda, in frazioni del lato: spaziatura del mese e del giorno, ombra del giorno.
+        static let spaziaturaMeseIconaAgenda: CGFloat = 0.0123
+        static let spaziaturaGiornoIconaAgenda: CGFloat = -0.0146
+        static let ombraIconaAgendaRaggio: CGFloat = 0.0094
+        static let ombraIconaAgendaY: CGFloat = 0.0141
+        /// Etichetta del canale sui documenti: margini, simbolo Alleanza e pallino.
+        static let etichettaStampa = EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 9)
+        static let etichettaStampaCompatta = EdgeInsets(top: 2, leading: 6, bottom: 2, trailing: 7)
+        static let simboloStampa: CGFloat = 11
+        static let simboloStampaCompatto: CGFloat = 9
+        static let pallinoStampa: CGFloat = 6
+        static let spazioStampa: CGFloat = 5
+        static let bordoStampa: CGFloat = 0.75
+    }
+}
+
+extension Tema.Testo {
+    /// Caratteri dei componenti di base.
+    enum Componenti {
+        static let segmento = Tema.Testo.sf(12.5, .medium)
+        static let segmentoAttivo = Tema.Testo.sf(12.5, .semibold)
+        static let segmentoCompatto = Tema.Testo.sf(12, .medium)
+        static let segmentoCompattoAttivo = Tema.Testo.sf(12, .semibold)
+        static let badgeGrande = Tema.Testo.sf(11, .bold)
+        static let avviso = Tema.Testo.sf(13, .medium)
+        /// Simboli ×, −, + dei semafori (7 pt, non seguono la dimensione del testo).
+        static let simboloSemaforo = Font.system(size: 7, weight: .black)
+        /// Mese e giorno sull'icona Agenda, in proporzione al lato.
+        static func meseIconaAgenda(_ lato: CGFloat) -> Font { .system(size: lato * 0.1538, weight: .bold) }
+        static func giornoIconaAgenda(_ lato: CGFloat) -> Font { .system(size: lato * 0.4395, weight: .light) }
+    }
+}
+
+extension Tema.Ombra {
+    /// Ombre dei componenti di base.
+    enum Componenti {
+        /// Pulsante pieno (accento o rosso): 0 3px 10px -3px, l'espansione negativa resa con meno sfocatura.
+        static let pulsantePieno = StratoOmbra(colore: Tema.Colore.accento.opacity(0.45), y: 3, sfocatura: 8)
+        static let pulsanteRosso = StratoOmbra(colore: Tema.Colore.rosso.opacity(0.45), y: 3, sfocatura: 8)
+    }
+}
+
+// MARK: - Pezzi comuni
+
+/// Filo interno di 1 pt lungo il bordo alto (spostamento 1) o basso (-1) di una forma, come `inset 0 ±1px 0`:
+/// si riempie con lo stile pari-dispari e si taglia alla forma.
+struct FiloInterno: Shape {
+    let forma: FormaVetro
+    var spostamento: CGFloat = 1
+
+    func path(in rect: CGRect) -> Path {
+        var p = forma.path(in: rect)
+        p.addPath(forma.path(in: rect.offsetBy(dx: 0, dy: spostamento)))
+        return p
+    }
+}
+
+/// Fondo che compare al passaggio del mouse (righe, voci laterali, schede), oppure quello della selezione.
+struct FondoPassaggio: ViewModifier {
+    let forma: FormaVetro
+    let sopra: Color
+    let selezionata: Bool
+    let selezione: Color
+    @State private var passaggio = false
+
+    init(forma: FormaVetro, sopra: Color, selezionata: Bool, selezione: Color) {
+        self.forma = forma
+        self.sopra = sopra
+        self.selezionata = selezionata
+        self.selezione = selezione
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                forma.fill(selezionata ? selezione : (passaggio ? sopra : Color.clear))
+                    .allowsHitTesting(false)
+            }
+            .onHover { passaggio = $0 }
+    }
+}
+
+extension View {
+    /// Fondo al passaggio del mouse (`--chip` del tema) o della selezione (accento 17%).
+    func fondoPassaggio(_ forma: FormaVetro,
+                        sopra: Color = Tema.Colore.chip,
+                        selezionata: Bool = false,
+                        selezione: Color = Tema.Colore.selezione) -> some View {
+        modifier(FondoPassaggio(forma: forma, sopra: sopra, selezionata: selezionata, selezione: selezione))
+    }
+}
 
 // MARK: - Pulsanti
 
-/// Pulsante di vetro della scrivania (.os-glass-button).
+/// Aspetto dei pulsanti in capsula del tema.
+enum AspettoPulsante {
+    /// `.btn`: capsula di vetro chiaro, testo inchiostro.
+    case vetro
+    /// `.btn.primary`: capsula piena dell'accento, testo bianco.
+    case principale
+    /// Capsula piena rossa (il microfono di Eve mentre ascolta).
+    case rosso
+}
+
+/// Il corpo comune dei pulsanti in capsula: riempimento, passaggio del mouse e pressione a molla.
+struct CorpoPulsante<Etichetta: View>: View {
+    let etichetta: Etichetta
+    let aspetto: AspettoPulsante
+    let premuto: Bool
+    let margine: EdgeInsets
+    /// Altezza fissa (nil: quanto il testo con i margini, almeno `pulsanteMinimo`).
+    let altezza: CGFloat?
+    @State private var sopra = false
+    @Environment(\.isEnabled) private var abilitato
+
+    init(etichetta: Etichetta, aspetto: AspettoPulsante, premuto: Bool, margine: EdgeInsets, altezza: CGFloat? = nil) {
+        self.etichetta = etichetta
+        self.aspetto = aspetto
+        self.premuto = premuto
+        self.margine = margine
+        self.altezza = altezza
+    }
+
+    var body: some View {
+        let m = Tema.Misura.Componenti.self
+        let base = etichetta
+            .font(Tema.Testo.pulsantePiccolo)
+            .foregroundColor(aspetto == .vetro ? Tema.Colore.inchiostro : Tema.Colore.Componenti.testoSuColore)
+            .padding(.leading, max(margine.leading, m.margineCapsula))
+            .padding(.trailing, max(margine.trailing, m.margineCapsula))
+            .padding(.top, altezza == nil ? margine.top : 0)
+            .padding(.bottom, altezza == nil ? margine.bottom : 0)
+            .frame(minHeight: altezza == nil ? m.pulsanteMinimo : nil)
+            .frame(height: altezza)
+        Group {
+            switch aspetto {
+            case .vetro:
+                base.vetro(.chip, forma: .capsula, riempimento: sopra ? Tema.Colore.chipSopra : nil, interattivo: true)
+            case .principale, .rosso:
+                base.background { pieno }
+            }
+        }
+        .contentShape(FormaVetro.capsula)
+        .scaleEffect(premuto ? Tema.Moto.scalaPressione : 1)
+        .animation(Tema.Moto.molla, value: premuto)
+        .opacity(abilitato ? 1 : 0.55)
+        .onHover { sopra = $0 }
+    }
+
+    /// Capsula piena con il filo di luce in alto e l'ombra colorata (solo sotto la forma piena, non sul testo).
+    private var pieno: some View {
+        let rosso = aspetto == .rosso
+        let colore: Color = rosso ? Tema.Colore.rosso : (sopra ? Tema.Colore.accentoSopra : Tema.Colore.accento)
+        let ombra = rosso ? Tema.Ombra.Componenti.pulsanteRosso : Tema.Ombra.Componenti.pulsantePieno
+        return FormaVetro.capsula
+            .fill(colore)
+            .overlay {
+                FiloInterno(forma: .capsula)
+                    .fill(Tema.Colore.Componenti.luceSuColore, style: FillStyle(eoFill: true))
+                    .clipShape(FormaVetro.capsula)
+            }
+            .ombraTema(ombra)
+    }
+}
+
+/// Pulsante di vetro (.btn del tema): capsula chiara traslucida, più chiara al passaggio, molla alla pressione.
 struct StileVetro: ButtonStyle {
     var margine = Misure.Pulsante.vetroMargine
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Tipo.pulsanteVetro)
-            .foregroundColor(Colori.Pulsante.testo)
-            .incisione(Colori.Barra.incisione)
-            .padding(margine)
-            .background(
-                RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).fill(Gradienti.vetro)
-            )
-            .luceInterna(.white, raggio: Misure.Pulsante.raggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggio).strokeBorder(Colori.Pulsante.vetroBordo, lineWidth: 1))
-            .ombraCSS(Colori.Pulsante.vetroOmbra, y: 1, sfocatura: 2)
-            .brightness(configuration.isPressed ? -0.08 : 0)
-            .contentShape(Rectangle())
+        CorpoPulsante(etichetta: configuration.label, aspetto: .vetro, premuto: configuration.isPressed, margine: margine)
     }
 }
 
-/// Pulsante principale blu iOS 5 (--ios5-button-bg).
+/// Pulsante principale (.btn.primary): capsula piena del colore d'accento, testo bianco.
 struct StileBlu: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Tipo.pulsanteBlu)
-            .foregroundColor(.white)
-            .incisione(Colori.Pulsante.bluIncisione, y: -1)
-            .padding(Misure.Pulsante.bluMargine)
-            .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu).fill(Gradienti.pulsanteBlu))
-            .luceInterna(Colori.Pulsante.bluLuce, raggio: Misure.Pulsante.raggioBlu)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu).strokeBorder(Colori.Pulsante.bluBordo, lineWidth: 1))
-            .shadow(color: Colori.Pulsante.bluRiflesso, radius: 0, x: 0, y: 1)
-            .brightness(configuration.isPressed ? -0.1 : 0)
-            .contentShape(Rectangle())
+        CorpoPulsante(etichetta: configuration.label, aspetto: .principale, premuto: configuration.isPressed,
+                      margine: Misure.Pulsante.bluMargine)
     }
 }
 
-/// Il pulsante del microfono di Eve: blu come gli altri, rosso lucido mentre Eve ascolta.
+/// Il pulsante del microfono di Eve: accento come gli altri, rosso mentre Eve ascolta.
 struct StileMicrofono: ButtonStyle {
     let acceso: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Tipo.pulsanteBlu)
-            .foregroundColor(.white)
-            .incisione(acceso ? Colori.Eve.microfonoIncisione : Colori.Pulsante.bluIncisione, y: -1)
-            .padding(Misure.Pulsante.bluMargine)
-            .background(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu)
-                .fill(acceso ? Gradienti.microfonoAcceso : Gradienti.pulsanteBlu))
-            .luceInterna(Colori.Pulsante.bluLuce, raggio: Misure.Pulsante.raggioBlu)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Pulsante.raggioBlu)
-                .strokeBorder(acceso ? Colori.Eve.microfonoBordo : Colori.Pulsante.bluBordo, lineWidth: 1))
-            .shadow(color: acceso ? Colori.Eve.spiaAscolto.opacity(0.6) : Colori.Pulsante.bluRiflesso, radius: acceso ? 4 : 0, x: 0, y: acceso ? 0 : 1)
-            .brightness(configuration.isPressed ? -0.1 : 0)
-            .contentShape(Rectangle())
+        CorpoPulsante(etichetta: configuration.label, aspetto: acceso ? .rosso : .principale,
+                      premuto: configuration.isPressed, margine: Misure.Pulsante.bluMargine)
     }
 }
 
@@ -72,111 +275,136 @@ struct StileSemplice: ButtonStyle {
 
 // MARK: - Campo di testo
 
-/// Campo di testo del template (.os-input): bianco velato, bordo grigio-azzurro, ombra interna in alto.
-/// Al posto di `.roundedBorder`, che sullo stile iOS 5 stona.
+/// Campo di testo del tema (.field): pozzetto arrotondato con un filo sottile, testo inchiostro.
 ///
 ///     TextField("Nome", text: $nome).campoTesto()
 struct CampoTesto: ViewModifier {
     func body(content: Content) -> some View {
-        let forma = RoundedRectangle(cornerRadius: Misure.Campo.raggio)
+        let m = Tema.Misura.Componenti.self
+        let forma = FormaVetro.arrotondata(m.campoPiccolo / 2)
         return content
             .textFieldStyle(.plain)
-            .foregroundColor(Colori.Campo.testo)
-            .padding(Misure.Campo.margine)
-            .background(
-                ZStack {
-                    forma.fill(Colori.Campo.riflesso).offset(y: 1)
-                    forma.fill(Colori.Campo.fondo)
-                }
-            )
-            .overlay(
-                // inset 0 1px 3px: l'ombra interna, solo dentro il bordo
-                forma.stroke(Colori.Campo.ombraInterna, lineWidth: 3)
-                    .blur(radius: Misure.Campo.ombraSfocatura)
-                    .offset(y: 1)
-                    .mask { forma }
-                    .allowsHitTesting(false)
-            )
-            .overlay(forma.strokeBorder(Colori.Campo.bordo, lineWidth: 1).allowsHitTesting(false))
+            .font(Tema.Testo.corpo)
+            .foregroundColor(Tema.Colore.inchiostro)
+            .padding(.horizontal, m.margineCampo)
+            .padding(.vertical, m.margineCampoVerticale)
+            .frame(minHeight: m.campoPiccolo)
+            .background { forma.fill(Tema.Colore.pozzetto) }
+            .overlay { forma.strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo).allowsHitTesting(false) }
     }
 }
 
 extension View {
-    /// Il campo di testo di Prisma (.os-input).
+    /// Il campo di testo di Prisma (.field del tema).
     func campoTesto() -> some View { modifier(CampoTesto()) }
 }
 
 // MARK: - Controllo a segmenti
 
-/// Controllo a segmenti grafite (Lion), come le schede della colonna della scrivania.
+/// Controllo a segmenti del tema (.segc): pozzetto in capsula e cursore chiaro che scorre a molla
+/// sotto la voce scelta. Base di Segmentato, SegmentiAnalisi, SchedeApp, SchedeRisultati e SchedeRubrica.
+struct ControlloSegmenti<Valore: Hashable>: View {
+    let opzioni: [(Valore, String)]
+    @Binding var selezione: Valore
+    /// true: voci di larghezza uguale che riempiono lo spazio; false: larghe quanto il testo.
+    let riempi: Bool
+    /// Voci più strette e testo più piccolo (finestre strette).
+    let compatto: Bool
+    let altezza: CGFloat
+    @Namespace private var spazio
+
+    init(opzioni: [(Valore, String)], selezione: Binding<Valore>, riempi: Bool = false, compatto: Bool = false,
+         altezza: CGFloat = Tema.Misura.Componenti.segmenti) {
+        self.opzioni = opzioni
+        self._selezione = selezione
+        self.riempi = riempi
+        self.compatto = compatto
+        self.altezza = altezza
+    }
+
+    var body: some View {
+        let m = Tema.Misura.Componenti.self
+        HStack(spacing: 0) {
+            ForEach(Array(opzioni.enumerated()), id: \.offset) { _, opzione in
+                voce(opzione)
+            }
+        }
+        .padding(m.margineCursore)
+        .frame(height: altezza)
+        .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
+        .overlay {
+            FormaVetro.capsula.strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo).allowsHitTesting(false)
+        }
+    }
+
+    private func voce(_ opzione: (Valore, String)) -> some View {
+        let attiva = opzione.0 == selezione
+        let t = Tema.Testo.Componenti.self
+        let carattere: Font = compatto ? (attiva ? t.segmentoCompattoAttivo : t.segmentoCompatto)
+                                       : (attiva ? t.segmentoAttivo : t.segmento)
+        return Button {
+            withAnimation(Tema.Moto.segmented) { selezione = opzione.0 }
+        } label: {
+            Text(opzione.1)
+                .font(carattere)
+                .foregroundColor(attiva ? Tema.Colore.inchiostro : Tema.Colore.inchiostroSecondario)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, compatto ? Tema.Misura.Componenti.margineSegmentoCompatto : Tema.Misura.Componenti.margineSegmento)
+                .frame(maxWidth: riempi ? .infinity : nil, maxHeight: .infinity)
+                .background {
+                    if attiva {
+                        FormaVetro.capsula
+                            .fill(Tema.Colore.cursore)
+                            .overlay { FormaVetro.capsula.strokeBorder(Tema.Colore.bordoChip, lineWidth: Tema.Misura.filo) }
+                            .ombraTema(Tema.Ombra.cursore)
+                            .matchedGeometryEffect(id: "cursore", in: spazio)
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(StileSemplice())
+    }
+}
+
+/// Controllo a segmenti a larghezza piena (filtri delle app).
 struct Segmentato<Valore: Hashable>: View {
     let opzioni: [(Valore, String)]
     @Binding var selezione: Valore
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(opzioni.enumerated()), id: \.offset) { indice, opzione in
-                let attivo = opzione.0 == selezione
-                Button {
-                    selezione = opzione.0
-                } label: {
-                    Text(opzione.1)
-                        .font(Tipo.colonnaScheda)
-                        .foregroundColor(attivo ? .white : Colori.Pulsante.testo)
-                        .incisione(attivo ? Color.black.opacity(0.25) : Colori.Barra.incisione, y: attivo ? -1 : 1)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(attivo ? AnyShapeStyle(Gradienti.segmentoAttivo) : AnyShapeStyle(Gradienti.vetro))
-                        .overlay(alignment: .top) {
-                            if attivo {
-                                LinearGradient(colors: [Colori.Pulsante.segmentoAttivoOmbra, .clear], startPoint: .top, endPoint: .bottom)
-                                    .frame(height: 3)
-                            } else {
-                                Rectangle().fill(Color.white).frame(height: 1)
-                            }
-                        }
-                }
-                .buttonStyle(StileSemplice())
-                if indice < opzioni.count - 1 {
-                    Rectangle().fill(Colori.Pulsante.segmentoBordo).frame(width: 1)
-                }
-            }
-        }
-        .frame(height: Misure.Colonna.schedeAltezza)
-        .clipShape(RoundedRectangle(cornerRadius: Misure.Colonna.schedeRaggio))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Colonna.schedeRaggio).strokeBorder(Colori.Pulsante.segmentoBordo, lineWidth: 1))
+        ControlloSegmenti(opzioni: opzioni, selezione: $selezione, riempi: true)
     }
 }
 
 // MARK: - Badge
 
-/// Badge rosso lucido con il numero (app e notifiche).
+/// Badge rosso del tema con il numero (app e notifiche), con il contorno chiaro.
 struct Badge: View {
     let numero: Int
     var grande = true
 
     var body: some View {
-        let lato = grande ? Misure.Scrivania.badge : Misure.Barra.badge
-        let bordo: CGFloat = grande ? 2 : 1
+        let lato = grande ? Tema.Misura.Componenti.badgeGrande : Tema.Misura.badge
+        let bordo = Tema.Misura.Componenti.bordoBadge
         Text("\(numero)")
-            .font(grande ? Tipo.badgeGrande : Tipo.badgePiccolo)
-            .foregroundColor(.white)
-            .incisione(grande ? Colori.Badge.grandeIncisione : Colori.Badge.piccoloIncisione, y: -1)
+            .font(grande ? Tema.Testo.Componenti.badgeGrande : Tema.Testo.badge)
+            .foregroundColor(Tema.Colore.Componenti.testoSuColore)
+            .padding(.horizontal, numero > 9 ? Tema.Misura.Componenti.margineBadge : 0)
             .frame(minWidth: lato, minHeight: lato)
-            .padding(.horizontal, numero > 9 ? 3 : 0)
-            .background(Capsule().fill(grande ? Gradienti.badgeGrande : Gradienti.badgePiccolo))
-            .overlay(alignment: .top) {
-                if grande {
-                    Capsule().fill(Colori.Badge.grandeLuce).frame(height: 1).padding(.horizontal, 5).padding(.top, bordo)
-                }
+            .background { FormaVetro.capsula.fill(Tema.Colore.rosso) }
+            .overlay {
+                FormaVetro.capsula.inset(by: -bordo / 2)
+                    .stroke(Tema.Colore.Componenti.bordoBadge, lineWidth: bordo)
             }
-            .overlay(Capsule().strokeBorder(Color.white, lineWidth: bordo))
-            .ombraCSS(Colori.Badge.ombra, y: grande ? 2 : 1, sfocatura: grande ? 4 : 2)
             .fixedSize()
     }
 }
 
 // MARK: - Semafori della finestra
 
+/// I tre pulsanti della finestra interna: cerchi piatti, grigi se la finestra non è in primo piano,
+/// simboli visibili solo al passaggio del mouse.
 struct Semafori: View {
     let attiva: Bool
     let chiudi: () -> Void
@@ -185,37 +413,30 @@ struct Semafori: View {
     @State var sopra = false
 
     var body: some View {
-        HStack(spacing: Misure.Finestra.spazioSemafori) {
-            pulsante(Colori.Semafori.chiudi, (0, 0.45, 0.95), Colori.Semafori.chiudiBordo, "×", chiudi)
-            pulsante(Colori.Semafori.riduci, (0, 0.48, 0.95), Colori.Semafori.riduciBordo, "−", riduci)
-            pulsante(Colori.Semafori.ingrandisci, (0, 0.46, 0.95), Colori.Semafori.ingrandisciBordo, "+", ingrandisci)
+        HStack(spacing: Tema.Misura.spazioSemafori) {
+            pulsante(Tema.Colore.semaforoChiudi, "xmark", chiudi)
+            pulsante(Tema.Colore.semaforoRiduci, "minus", riduci)
+            pulsante(Tema.Colore.semaforoIngrandisci, "plus", ingrandisci)
         }
         .onHover { sopra = $0 }
     }
 
-    private func pulsante(_ colori: [Color], _ fermate: (CGFloat, CGFloat, CGFloat), _ bordo: Color,
-                          _ simbolo: String, _ azione: @escaping () -> Void) -> some View {
-        let lato = Misure.Finestra.semaforo
+    private func pulsante(_ colore: Color, _ simbolo: String, _ azione: @escaping () -> Void) -> some View {
+        let lato = Tema.Misura.semaforo
         let colorato = attiva || sopra
         return Button(action: azione) {
             ZStack {
-                if colorato {
-                    Circle().fill(Gradienti.semaforo(colori, fermate: fermate, lato: lato))
-                } else {
-                    Circle().fill(LinearGradient.verticale(Colori.Semafori.inattivoAlto, Colori.Semafori.inattivoBasso))
-                }
-                // inset 0 1px 1px #fff8 / inset 0 -1px 1px #0003
-                Circle().strokeBorder(
-                    LinearGradient(colors: [Color.white.opacity(0.5), .clear, Color.black.opacity(0.2)], startPoint: .top, endPoint: .bottom),
-                    lineWidth: 1.5
-                ).padding(1)
-                Circle().strokeBorder(colorato ? bordo : Colori.Semafori.inattivoBordo, lineWidth: 1)
+                Circle().fill(colorato ? colore : Tema.Colore.pozzettoScuro)
+                // inset 0 0 0 .5px rgba(0,0,0,.2)
+                Circle().strokeBorder(Tema.Colore.bordoSemaforo, lineWidth: Tema.Misura.filo)
                 if sopra {
-                    Text(simbolo).font(Tipo.semaforo).foregroundColor(Colori.Semafori.simbolo).offset(y: -0.5)
+                    Image(systemName: simbolo)
+                        .font(Tema.Testo.Componenti.simboloSemaforo)
+                        .foregroundColor(Tema.Colore.simboloSemaforo)
                 }
             }
             .frame(width: lato, height: lato)
-            .shadow(color: Color.white.opacity(0.5), radius: 0, x: 0, y: 1)
+            .contentShape(Circle())
         }
         .buttonStyle(StileSemplice())
     }
@@ -223,97 +444,153 @@ struct Semafori: View {
 
 // MARK: - Avatar
 
+extension Colori.Avatar.Tinta {
+    /// I colori del tema per questa tinta (radiale dal chiaro allo scuro): `Colori.Avatar` ha già le tinte
+    /// del tema. (Il confronto sul colore delle iniziali, ora bianche per tutte, le faceva diventare tutte blu.)
+    var coloriTema: (alto: Color, basso: Color) {
+        (alto, basso)
+    }
+}
+
+/// Avatar del cliente (.av): cerchio con radiale a 30% 18%, iniziali bianche arrotondate, fili di luce.
 struct AvatarCliente: View {
     let iniziali: String
     let tinta: Colori.Avatar.Tinta
     var lato: CGFloat = Misure.Colonna.avatar
 
     var body: some View {
+        let colori = tinta.coloriTema
         Text(iniziali)
-            .font(Tipo.contenuto(lato * 0.33, .medium))
-            .foregroundColor(tinta.testo)
-            .incisione(Color.white.opacity(0.76))
+            .font(Tema.Testo.avatar(lato))
+            .foregroundColor(Tema.Colore.Componenti.testoSuColore)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .frame(width: lato, height: lato)
-            .background(Circle().fill(Gradienti.avatar(tinta)))
-            .overlay(alignment: .top) {
-                Circle().trim(from: 0.6, to: 0.9).stroke(Colori.Avatar.luce, lineWidth: 1).padding(1.5)
+            .background {
+                Circle()
+                    .fill(RadialGradient(colors: [colori.alto, colori.basso], center: UnitPoint(x: 0.3, y: 0.18),
+                                         startRadius: 0, endRadius: lato * 1.2))
+                    .ombraTema(Tema.Ombra.avatar)
             }
-            .overlay(Circle().strokeBorder(tinta.bordo, lineWidth: 1))
-            .ombraCSS(Colori.Avatar.ombra, y: 1, sfocatura: 2)
+            .overlay {
+                ZStack {
+                    FiloInterno(forma: .capsula, spostamento: 1)
+                        .fill(Tema.Colore.Componenti.luceAvatar, style: FillStyle(eoFill: true))
+                    FiloInterno(forma: .capsula, spostamento: -1)
+                        .fill(Tema.Colore.Componenti.ombraBassoAvatar, style: FillStyle(eoFill: true))
+                }
+                .clipShape(Circle())
+                .allowsHitTesting(false)
+            }
     }
 }
 
-// MARK: - Piastrella data (agenda della scrivania)
+// MARK: - Tessera della data
 
+/// Tessera della data (.dt): mese rosso in maiuscolo, giorno arrotondato.
 struct PiastrellaData: View {
     let data: Date
 
     var body: some View {
+        let misura = Tema.Misura.Componenti.tesseraData
+        let forma = FormaVetro.arrotondata(Tema.Raggio.tesseraData)
         VStack(spacing: 0) {
+            Text(Formati.meseBreve.string(from: data).uppercased())
+                .font(Tema.Testo.meseTessera)
+                .tracking(Tema.Testo.spaziatura(0.04, 9.5))
+                .foregroundColor(Tema.Colore.rosso)
             Text(Formati.giorno.string(from: data))
-                .font(Tipo.dataGiorno)
-                .foregroundColor(Colori.Colonna.dataGiorno)
-                .padding(.top, 4)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Text(Formati.meseBreve.string(from: data))
-                .font(Tipo.dataMese)
-                .foregroundColor(Colori.Colonna.dataMeseTesto)
-                .frame(maxWidth: .infinity)
-                .frame(height: Misure.Colonna.dataMese)
-                .background(Gradienti.dataMese)
-                .bordoAlto(Colori.Colonna.dataMeseBordo)
-                .clipShape(RettangoloAngoli(bassoDestra: 2, bassoSinistra: 2))
-                .padding([.horizontal, .bottom], 1)
+                .font(Tema.Testo.giornoTessera)
+                .foregroundColor(Tema.Colore.inchiostro)
         }
-        .frame(width: Misure.Colonna.data.width, height: Misure.Colonna.data.height)
-        .background(RoundedRectangle(cornerRadius: Misure.Colonna.dataRaggio).fill(Gradienti.data))
-        .luceInterna(.white, raggio: Misure.Colonna.dataRaggio)
-        .overlay(RoundedRectangle(cornerRadius: Misure.Colonna.dataRaggio).strokeBorder(Colori.Colonna.dataBordo, lineWidth: 1))
-        .ombraCSS(Colori.Colonna.dataOmbra, y: 2, sfocatura: 2)
+        .frame(width: misura.width, height: misura.height)
+        .background { forma.fill(Tema.Colore.tesseraData).ombraTema(Tema.Ombra.tesseraData) }
+        .overlay { forma.strokeBorder(Tema.Colore.bordoChip, lineWidth: Tema.Misura.filo).allowsHitTesting(false) }
     }
 }
 
 // MARK: - Etichetta del canale
 
+private struct ChiaveEtichetteStampa: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// true sui documenti (PDF e anteprime su carta): `EtichettaCanale` diventa l'etichetta opaca da stampa.
+    ///
+    ///     paginaDelDocumento.environment(\.etichetteStampa, true)
+    var etichetteStampa: Bool {
+        get { self[ChiaveEtichetteStampa.self] }
+        set { self[ChiaveEtichetteStampa.self] = newValue }
+    }
+}
+
 /// Canale di una posizione o di una proposta: sempre riconoscibile a colpo d'occhio.
+/// Nelle schermate è la capsula in vetro del tema (blu con il simbolo Alleanza, cuoio con la scritta
+/// «Denis Vicenzoni · Consulenza finanziaria»; compatta: pallino e una parola). Sui documenti, con
+/// `\.etichetteStampa` a true, è `EtichettaCanaleStampa`.
 struct EtichettaCanale: View {
+    let canale: Canale
+    var compatta = false
+    @Environment(\.etichetteStampa) private var stampa
+
+    var body: some View {
+        if stampa {
+            EtichettaCanaleStampa(canale: canale, compatta: compatta)
+        } else {
+            CapsulaCanale(canale: canale, compatta: compatta, completa: !compatta)
+        }
+    }
+}
+
+/// Etichetta del canale per i documenti su carta bianca (PDF e anteprime): capsula opaca dai colori fissi,
+/// simbolo Alleanza blu o pallino cuoio, scritta completa (compatta: una parola). Sempre chiara.
+struct EtichettaCanaleStampa: View {
     let canale: Canale
     var compatta = false
 
     var body: some View {
-        let raggio: CGFloat = compatta ? 3 : Misure.Pulsante.raggioBlu
-        HStack(spacing: compatta ? 4 : 6) {
-            if canale == .alleanza {
-                ImmagineNitida(percorso: "Loghi/Alleanza_simbolo.png", altezza: compatta ? 11 : 15)
+        let c = Tema.Colore.Componenti.self
+        let m = Tema.Misura.Componenti.self
+        let alleanza = canale == .alleanza
+        let colore = alleanza ? Tema.Colore.canaleAlleanzaStampa : Tema.Colore.canaleIndipendenteStampa
+        let forma = Capsule(style: .continuous)
+        HStack(spacing: m.spazioStampa) {
+            if alleanza, let simbolo = Risorse.immagine("Loghi/Alleanza_simbolo.png") {
+                Image(nsImage: simbolo)
+                    .renderingMode(.template)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: compatta ? m.simboloStampaCompatto : m.simboloStampa)
+                    .foregroundColor(colore)
+            } else {
+                Circle()
+                    .fill(colore)
+                    .frame(width: m.pallinoStampa, height: m.pallinoStampa)
             }
             Text(compatta ? canale.nomeBreve : canale.nome)
                 .font(compatta ? Tipo.etichettaCanalePiccola : Tipo.etichettaCanale)
-                .foregroundColor(.white)
-                .incisione(canale == .alleanza ? Colori.Pulsante.bluIncisione : Colori.Pulsante.cuoioIncisione, y: -1)
+                .foregroundColor(c.testoCanaleStampa)
                 .lineLimit(1)
         }
-        .padding(.horizontal, compatta ? 5 : 9)
-        .padding(.vertical, compatta ? 2 : 4)
-        .background(
-            RoundedRectangle(cornerRadius: raggio)
-                .fill(canale == .alleanza ? Gradienti.pulsanteBlu : Gradienti.pulsanteCuoio)
-        )
-        .luceInterna(Color.white.opacity(canale == .alleanza ? 0.33 : 0.45), raggio: raggio)
-        .overlay(
-            RoundedRectangle(cornerRadius: raggio)
-                .strokeBorder(canale == .alleanza ? Colori.Pulsante.bluBordo : Colori.Pulsante.cuoioBordo, lineWidth: 1)
-        )
+        .padding(compatta ? m.etichettaStampaCompatta : m.etichettaStampa)
+        .background { forma.fill(alleanza ? c.fondoCanaleAlleanzaStampa : c.fondoCanaleIndipendenteStampa) }
+        .overlay {
+            forma.strokeBorder(alleanza ? c.bordoCanaleAlleanzaStampa : c.bordoCanaleIndipendenteStampa, lineWidth: m.bordoStampa)
+        }
         .fixedSize()
+        .environment(\.colorScheme, .light)
     }
 }
 
 // MARK: - Icone delle app
 
-/// Icona di un'app. L'Agenda mostra la data del giorno, come su iOS 5.
+/// Icona di un'app. L'Agenda mostra la data del giorno.
 struct IconaApp: View {
     let app: AppPrisma
     let lato: CGFloat
-    /// 1,13 nel dock: l'icona resta nitida anche ingrandita al passaggio del mouse.
+    /// Più di 1 nel dock: l'icona resta nitida anche ingrandita al passaggio del mouse.
     var riservaIngrandimento: CGFloat = 1
 
     var body: some View {
@@ -328,8 +605,8 @@ struct IconaApp: View {
     }
 }
 
-/// Icona Agenda: base senza data, mese e giorno scritti dall'app, vetro sopra.
-/// Posizioni e proporzioni ricavate dai tracciati di Design/Icone/Agenda.svg (viewBox 256).
+/// Icona Agenda: piastrella bianca senza data, mese (rosso, maiuscolo) e giorno scritti dall'app, riflesso sopra.
+/// Posizioni e proporzioni dal tema (vedi Design/Icone/LEGGIMI.txt).
 struct IconaAgenda: View {
     let lato: CGFloat
     var riservaIngrandimento: CGFloat = 1
@@ -338,20 +615,23 @@ struct IconaAgenda: View {
         TimelineView(.everyMinute) { contesto in
             let oggi = contesto.date
             let u = lato / 256
+            let m = Tema.Misura.Componenti.self
             ZStack {
                 ImmagineNitida(percorso: "Icone/Agenda_base.png", lato: lato, riservaIngrandimento: riservaIngrandimento)
                 Text(Formati.meseBreve.string(from: oggi).uppercased())
-                    .font(Tipo.agendaMese(lato))
-                    .foregroundColor(Colori.Agenda.mese)
-                    .shadow(color: Colori.Agenda.meseOmbra, radius: 0, x: 0, y: 1.2 * u)
+                    .font(Tema.Testo.Componenti.meseIconaAgenda(lato))
+                    .tracking(lato * m.spaziaturaMeseIconaAgenda)
+                    .foregroundColor(Tema.Colore.Componenti.meseIconaAgenda)
                     .fixedSize()
-                    .position(x: 128 * u, y: 40 * u + lato * 0.012)
+                    .position(x: m.meseIconaAgenda.x * u, y: m.meseIconaAgenda.y * u)
                 Text(Formati.giorno.string(from: oggi))
-                    .font(Tipo.agendaGiorno(lato))
-                    .foregroundStyle(Gradienti.agendaInchiostro)
-                    .shadow(color: Color.black.opacity(0.2), radius: 0.25 * u, x: 0, y: 0.9 * u)
+                    .font(Tema.Testo.Componenti.giornoIconaAgenda(lato))
+                    .tracking(lato * m.spaziaturaGiornoIconaAgenda)
+                    .foregroundColor(Tema.Colore.Componenti.giornoIconaAgenda)
+                    .shadow(color: Tema.Colore.Componenti.ombraIconaAgenda,
+                            radius: lato * m.ombraIconaAgendaRaggio, x: 0, y: lato * m.ombraIconaAgendaY)
                     .fixedSize()
-                    .position(x: 128.5 * u, y: 157.5 * u + lato * 0.058)
+                    .position(x: m.giornoIconaAgenda.x * u, y: m.giornoIconaAgenda.y * u)
                 ImmagineNitida(percorso: "Icone/Agenda_vetro.png", lato: lato, riservaIngrandimento: riservaIngrandimento)
             }
             .frame(width: lato, height: lato)
@@ -359,21 +639,19 @@ struct IconaAgenda: View {
     }
 }
 
-// MARK: - Avviso temporaneo (#os-toast)
+// MARK: - Avviso temporaneo (.toast)
 
+/// Avviso che compare per qualche secondo sopra il dock: capsula di vetro leggero.
 struct VistaAvviso: View {
     let testo: String
 
     var body: some View {
         Text(testo)
-            .font(Tipo.avviso)
-            .foregroundColor(Colori.Avvisi.testo)
-            .incisione(.black, y: -1)
-            .padding(Misure.Avvisi.margine)
-            .background(RoundedRectangle(cornerRadius: Misure.Avvisi.raggio).fill(Gradienti.avviso))
-            .luceInterna(Colori.Avvisi.luce, raggio: Misure.Avvisi.raggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Avvisi.raggio).strokeBorder(Colori.Avvisi.bordo, lineWidth: 1))
-            .ombraCSS(Colori.Avvisi.ombra, y: 4, sfocatura: 14)
+            .font(Tema.Testo.Componenti.avviso)
+            .foregroundColor(Tema.Colore.inchiostro)
+            .multilineTextAlignment(.center)
+            .padding(Tema.Misura.Componenti.avviso)
+            .vetro(.leggero, forma: .capsula)
     }
 }
 

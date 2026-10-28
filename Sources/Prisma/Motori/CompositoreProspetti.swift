@@ -85,6 +85,18 @@ enum CompositoreProspetti {
         if !mancanti.isEmpty {
             b.append(.avviso("Dati mancanti sostituiti da ipotesi predefinite: " + mancanti.joined(separator: "; ") + ". Completa la posizione per un prospetto più preciso."))
         }
+        // Per le proposte: cosa cambierebbe rispetto al profilo del cliente (rischio, orizzonte, concentrazione)
+        if p.stato == .proposta, let cliente {
+            let coerenza = MotoreCoerenza.calcola(cliente: cliente, posizioni: dati.posizioni.filter { $0.clienteId == cliente.id },
+                                                  prodotti: dati.prodotti)
+            let rilievi = coerenza.incoerenze.filter { i in
+                i.dopoLeProposte && (i.posizione?.id == p.id || i.posizione == nil)
+            }
+            if !rilievi.isEmpty {
+                let frasi: [String] = rilievi.prefix(3).map { i in i.dettaglio }
+                b.append(.avviso("Con le proposte, rispetto al profilo del cliente. " + frasi.joined(separator: " ")))
+            }
+        }
 
         // Dati del contratto
         sezione("Dati del contratto")
@@ -139,6 +151,51 @@ enum CompositoreProspetti {
                 CampoVoce(etichetta: "Costi sul versato totale", valore: atteso.versato > 0 ? percentuale((atteso.costi / atteso.versato * 1000).rounded() / 10) : "—"),
                 CampoVoce(etichetta: "Costo del primo anno", valore: euro(primoAnno(par))),
             ]))
+            // Gestione separata: quanto trattiene la compagnia, minimo garantito, consolidamento, rendimento reale
+            if let g = MotoreGestioneSeparata.calcola(p) {
+                var gs: [CampoVoce] = [
+                    // Etichetta corta: su carta le etichette stanno su una riga sola (maiuscole, si troncano)
+                    CampoVoce(etichetta: "Rendimento della gestione separata",
+                              valore: "lordo \(percentuale2(g.lordo)) · trattenuto \(percentuale2(g.trattenuto)) · accreditato \(percentuale2(g.accreditato))"),
+                    CampoVoce(etichetta: "Minimo garantito", valore: minimoGarantito(g)),
+                    CampoVoce(etichetta: "Consolidamento dei rendimenti", valore: consolidamento(g.consolidamento)),
+                    CampoVoce(etichetta: "Rendimento reale (inflazione \(percentuale(g.inflazione)))", valore: percentuale2(g.reale)),
+                    CampoVoce(etichetta: "Trattenuto in un anno, sul valore di oggi", valore: euro(g.trattenutoEuro)),
+                ]
+                if let s = g.garantitoAScadenza {
+                    gs.append(CampoVoce(etichetta: "Garantito alla scadenza, prima delle imposte", valore: euro(s)))
+                }
+                b.append(.voci(gs))
+                if g.reale < 0 {
+                    b.append(.avviso("La gestione separata accredita meno dell'inflazione ipotizzata: il capitale non scende, ma perde potere d'acquisto (\(percentuale2(g.reale)) l'anno in termini reali)."))
+                }
+                // Come si legge: le ipotesi della stima a portata di mano
+                b.append(.nota(MotoreGestioneSeparata.metodo + " Rendimento lordo ipotizzato, non garantito."))
+            }
+            // Incidenza annua dei costi come nel KID (RIY): il calcolo di Prisma accanto al dato dichiarato nel KID
+            if let kid = MotoreCosti.incidenzaKID(p, prodotto: prodotto), !kid.periodi.isEmpty {
+                b.append(.tabella(TabellaProspetto(
+                    // Intestazioni brevi e pesi misurati: su carta le intestazioni sono in maiuscolo su una riga sola
+                    colonne: [ColonnaProspetto(titolo: "Uscita, come nel KID", peso: 1.6),
+                              ColonnaProspetto(titolo: "Rend. senza costi", peso: 1.15, destra: true), ColonnaProspetto(titolo: "Rend. con i costi", peso: 1.15, destra: true),
+                              ColonnaProspetto(titolo: "RIY l'anno", peso: 0.8, destra: true), ColonnaProspetto(titolo: "Costi in euro", destra: true)],
+                    righe: kid.periodi.map { q -> [CellaProspetto] in
+                        [.t(q.anni == 1 ? "Uscita dopo 1 anno" : "Uscita dopo \(q.anni) anni"), .t(percentuale2(q.senzaCosti)),
+                         .t(percentuale2(q.conCosti)), .f(percentuale2(q.riy)), .t(euro(q.costi))]
+                    }
+                )))
+                var riy: [CampoVoce] = [
+                    CampoVoce(etichetta: "RIY calcolato da Prisma a \(kid.periodoRaccomandato) \(kid.periodoRaccomandato == 1 ? "anno" : "anni")",
+                              valore: kid.calcolato.map { percentuale2($0) } ?? "—"),
+                    CampoVoce(etichetta: "RIY dichiarato nel KID", valore: kid.dichiarato.map { percentuale2($0) } ?? "non indicato"),
+                ]
+                if let s = kid.scarto {
+                    riy.append(CampoVoce(etichetta: "Calcolo meno KID", valore: CifreDoc.variazione(s, decimali: 2)
+                                         + (s > sogliaScartoKID ? " · i costi pesano più di quanto dice il KID" : "")))
+                }
+                b.append(.voci(riy))
+                b.append(.nota(IncidenzaCostiKID.metodo))
+            }
         }
 
         // Proiezione
@@ -187,6 +244,34 @@ enum CompositoreProspetti {
                 evidenzia: [atteso.punti.count - 1]
             )))
             b.append(.nota("Valori di fine anno al netto dei costi e prima delle imposte, che si applicano al riscatto o alla scadenza."))
+        }
+
+        // Riscatto anno per anno (polizze, fondi ed ETF): blocco, penali, costo d'uscita, imposte
+        if let r = MotoreRiscatto.calcola(p, prodotto: prodotto), !r.righe.isEmpty {
+            sezione("Riscatto anno per anno")
+            b.append(.testo(fraseRiscatto(r)))
+            var primo = Set<Int>()
+            if let k = r.righe.firstIndex(where: { $0.recuperaVersato }) { primo.insert(k) }
+            let inEssere = p.stato == .inEssere
+            b.append(.tabella(TabellaProspetto(
+                // Pesi misurati sulle cifre e su «non riscattabile»: su carta le celle si troncano, non vanno a capo
+                colonne: [ColonnaProspetto(titolo: "Riscatto al", peso: 1.1), ColonnaProspetto(titolo: "Anno", peso: 0.55, destra: true),
+                          ColonnaProspetto(titolo: "Versato", peso: 0.85, destra: true), ColonnaProspetto(titolo: "Valore", peso: 0.85, destra: true),
+                          ColonnaProspetto(titolo: "Penale", peso: 0.7, destra: true), ColonnaProspetto(titolo: "Imposte e bollo", peso: 1.3, destra: true),
+                          ColonnaProspetto(titolo: "Netto", peso: 1.15, destra: true), ColonnaProspetto(titolo: "Netto − versato", peso: 1.3, destra: true)],
+                righe: r.righe.map { x -> [CellaProspetto] in
+                    let quando: CellaProspetto = .t(x.anni == 0 ? (inEssere ? "Oggi" : "Sottoscrizione") : Formati.dataBreve.string(from: x.data))
+                    guard x.possibile else {
+                        return [quando, .n("\(x.annoContratto)°"), .n(euro(x.versato)), .n(euro(x.valore)), .n("—"), .n("—"),
+                                .n("non riscattabile"), .n("—")]
+                    }
+                    let penale: CellaProspetto = x.penalePercento > 0 ? .t(percentuale(x.penalePercento)) : .n("nessuna")
+                    return [quando, .t("\(x.annoContratto)°"), .t(euro(x.versato)), .t(euro(x.valore)), penale,
+                            .t(euro(x.imposta + x.bollo)), .f(euro(x.netto)), .t(segno(x.guadagno))]
+                },
+                evidenzia: primo
+            )))
+            b.append(.nota(EsitoRiscatto.criterio + " " + EsitoRiscatto.metodo))
         }
 
         // Copertura
@@ -383,6 +468,57 @@ enum CompositoreProspetti {
         return MotoreProiezione.calcola(q).costi
     }
 
+    /// Oltre questo scarto (punti l'anno) il RIY calcolato si segnala come più alto di quello del KID.
+    static let sogliaScartoKID = 0.3
+
+    /// Il riscatto in parole: quando si può chiedere, quando restituisce il versato, quando finiscono le penali.
+    static func fraseRiscatto(_ r: EsitoRiscatto) -> String {
+        var frasi: [String] = []
+        if let d = r.riscattabileDal {
+            frasi.append("Il riscatto si può chiedere dal \(Formati.dataBreve.string(from: d)).")
+        }
+        if let x = r.primoRecupero {
+            frasi.append(x.anni == 0 ? "Già oggi il riscatto restituisce almeno quanto versato."
+                         : "Dal \(Formati.dataBreve.string(from: x.data)) il riscatto restituisce almeno quanto versato (\(euro(x.netto)) netti su \(euro(x.versato))).")
+        } else {
+            frasi.append("Negli anni mostrati il riscatto non restituisce quanto versato, al rendimento atteso.")
+        }
+        if r.annoSenzaPenali > 1, let d = r.senzaPenaliDal {
+            frasi.append("Penali fino al \(r.annoSenzaPenali - 1)° anno di contratto: senza penali dal \(Formati.dataBreve.string(from: d))"
+                         + (r.costoUscita > 0 ? ", resta il costo d'uscita del \(percentuale(r.costoUscita))." : "."))
+        } else if r.costoUscita > 0 {
+            frasi.append("Nessuna penale; costo d'uscita del \(percentuale(r.costoUscita)) sul valore.")
+        } else {
+            frasi.append("Nessuna penale di riscatto.")
+        }
+        // La legenda della tabella, solo per quello che c'è davvero
+        if r.righe.contains(where: { !$0.possibile }) {
+            frasi.append("Righe «non riscattabile»: mesi in cui il contratto non permette ancora il riscatto.")
+        }
+        if r.primoRecupero != nil {
+            frasi.append("Riga evidenziata: primo anno conveniente.")
+        }
+        frasi.append("«Anno» è l'anno di contratto. Cifre stimate al rendimento atteso, non garantite.")
+        return frasi.joined(separator: " ")
+    }
+
+    /// "1,00% l'anno · decide il minimo", "solo il capitale", "non indicato".
+    private static func minimoGarantito(_ g: EsitoGestioneSeparata) -> String {
+        guard let m = g.minimoGarantito else {
+            return g.minimoDecisivo ? "non indicato · conta il capitale garantito" : "non indicato"
+        }
+        let base = m > 0 ? percentuale2(m) + " l'anno" : "solo il capitale"
+        return base + (g.minimoDecisivo ? " · decide il minimo" : "")
+    }
+
+    private static func consolidamento(_ c: Bool?) -> String {
+        switch c {
+        case .some(true): return "annuo: i rendimenti accreditati restano acquisiti"
+        case .some(false): return "solo a scadenza o al decesso: prima il valore può scendere"
+        case .none: return "non indicato (si considera annuo)"
+        }
+    }
+
     private static func origineOrizzonte(_ p: Posizione, _ orizzonteCliente: Int?) -> String {
         if p.anniAllaScadenza != nil { return "fino alla scadenza" }
         if orizzonteCliente != nil { return "orizzonte del cliente" }
@@ -408,6 +544,8 @@ enum CompositoreProspetti {
 
     private static func euro(_ v: Double) -> String { Formati.euro(v) }
     private static func percentuale(_ v: Double) -> String { Formati.percentuale(v) }
+    /// Percentuale con due decimali ("1,25%", "−0,40%"), per rendimenti e incidenze dei costi.
+    private static func percentuale2(_ v: Double) -> String { CifreDoc.percento(v, decimali: 2) }
     private static func numero(_ v: Double) -> String { Formati.numeroFormatter.string(from: NSNumber(value: v)) ?? "\(v)" }
     private static func percentualeOpzionale(_ v: Double?) -> CellaProspetto { v.map { CellaProspetto.t(percentuale($0)) } ?? .n("non indicato") }
     /// Quota 0–1 come percentuale con al più un decimale ("13,2%").

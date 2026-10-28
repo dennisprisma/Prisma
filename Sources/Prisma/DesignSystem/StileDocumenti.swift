@@ -2,23 +2,24 @@ import AppKit
 import SwiftUI
 
 // Stile dei documenti per i clienti (report A4 orizzontale e prospetto A4 verticale).
-// È lo stile scelto da Denis con i suoi esempi (Orizzonte Valore, ottobre 2026): pulito e moderno,
-// diverso dall'interfaccia iOS 5 dell'app. Titoli in Avenir Next, testo in Helvetica Neue,
-// verde, blu e rosso per i tre scenari, ardesia e ocra per Gestione separata e Fondo Interno.
+// È lo stile scelto da Denis con i suoi esempi (Orizzonte Valore, ottobre 2026): pulito e moderno.
+// Testi in SF del sistema, verde, blu e rosso per i tre scenari, ardesia e ocra per Gestione separata
+// e Fondo Interno. I documenti restano su carta chiara con colori fissi e opachi, anche con l'app in scuro.
 
 /// I colori di un documento per i clienti. Due tavolozze: "moderna" per il prospetto (lo stile degli
-/// esempi di Denis) e "Prisma" per il report, con i materiali dell'app (carta avorio, cuoio, Georgia).
+/// esempi di Denis) e "Prisma" per il report (carta avorio, copertina blu notte con il logo bianco).
 /// I componenti comuni la leggono dall'ambiente.
 struct PaletteDocumento {
     // Foglio (sfumatura radiale dall'alto a sinistra)
     var foglio: Color
     var foglioFine: Color
-    // Copertina
+    // Copertina (sfumatura da copertina a copertinaFine)
     var copertina: Color
+    var copertinaFine: Color
     var copertinaRiquadro: Color
     var copertinaEtichetta: Color
     var copertinaTesto: Color
-    var cucitura: Color
+    var copertinaFilo: Color
     var ombraCartellino: Color
     // Testo
     var titolo: Color
@@ -57,7 +58,7 @@ struct PaletteDocumento {
     var cascataMeno: Color
     /// Aree delle posizioni, nell'ordine di AreaPosizione.ordine (previdenza … debiti).
     var aree: [Color]
-    /// Canali nei grafici: blu Alleanza e cuoio dell'indipendente, come le etichette.
+    /// Canali nei grafici: blu Alleanza e ambra/cuoio dell'indipendente, come le etichette da stampa.
     var alleanza: Color
     var indipendente: Color
 
@@ -91,8 +92,9 @@ extension Colori {
         /// Prospetto: pulito e moderno, come gli esempi di Denis (Orizzonte Valore, ottobre 2026).
         static let moderna = PaletteDocumento(
             foglio: .white, foglioFine: .white,
-            copertina: Color(hex: "#1b2a41"), copertinaRiquadro: Color(hex: "#2d3c55"),
-            copertinaEtichetta: Color(hex: "#8fa1bd"), copertinaTesto: Color(hex: "#e9eef5"), cucitura: .clear, ombraCartellino: Color(hex: "#00000033"),
+            copertina: Color(hex: "#0F2433"), copertinaFine: Color(hex: "#1E3A4F"), copertinaRiquadro: .white,
+            copertinaEtichetta: Color(hex: "#5f6b7a"), copertinaTesto: Color(hex: "#c9d6e1"), copertinaFilo: Color(hex: "#ffffff29"),
+            ombraCartellino: Color(hex: "#00000040"),
             titolo: Color(hex: "#1d2737"), testo: Color(hex: "#2b3342"), tenue: Color(hex: "#5f6b7a"),
             occhiello: Color(hex: "#5f6b7a"), marchio: Color(hex: "#1d2737"),
             riquadro: Color(hex: "#f2f4f7"), riquadroBordo: .clear, riquadroLuce: .clear,
@@ -107,17 +109,18 @@ extension Colori {
             cascataTotale: Color(hex: "#8e98a8"), cascataPiu: Color(hex: "#7fb093"), cascataMeno: Color(hex: "#d3897a"),
             aree: [Color(hex: "#2f5ea8"), Color(hex: "#2e7d5b"), Color(hex: "#6f86a6"), Color(hex: "#8a6fb0"),
                    Color(hex: "#c4913f"), Color(hex: "#9aa3ad"), Color(hex: "#c0553a")],
-            alleanza: Color(hex: "#2a5fa8"), indipendente: Color(hex: "#9a6a3e")
+            alleanza: Tema.Colore.canaleAlleanzaStampa, indipendente: Tema.Colore.canaleIndipendenteStampa
         )
 
-        /// Report: l'identità di Prisma (template, app Presentazioni: .slides-stage). Carta avorio con la
-        /// sfumatura delle slide, inchiostro blu ardesia, Georgia, copertina in cuoio come il dossier del
-        /// cliente; scenari nei toni dell'app (salvia, blu Prisma, terracotta), Gestione separata e Fondo
+        /// Report: l'identità di Prisma. Carta avorio con la sfumatura delle slide, inchiostro blu ardesia,
+        /// copertina blu notte del tema (#0F2433 → #1E3A4F) con il logo bianco e i cartellini bianchi;
+        /// scenari nei toni dell'app (salvia, blu Prisma, terracotta), Gestione separata e Fondo
         /// Interno in ardesia e cuoio.
         static let prisma = PaletteDocumento(
             foglio: Color(hex: "#fffef8"), foglioFine: Color(hex: "#f1eee4"),
-            copertina: Color(hex: "#7c4d2b"), copertinaRiquadro: Color(hex: "#fbf6ea"),
-            copertinaEtichetta: Color(hex: "#8a6a48"), copertinaTesto: Color(hex: "#f6e6cc"), cucitura: Color(hex: "#e9c79a"), ombraCartellino: Color(hex: "#00000073"),
+            copertina: Color(hex: "#0F2433"), copertinaFine: Color(hex: "#1E3A4F"), copertinaRiquadro: .white,
+            copertinaEtichetta: Color(hex: "#6a7f8c"), copertinaTesto: Color(hex: "#c9d6e1"), copertinaFilo: Color(hex: "#ffffff29"),
+            ombraCartellino: Color(hex: "#00000040"),
             titolo: Color(hex: "#253f4b"), testo: Color(hex: "#4f605d"), tenue: Color(hex: "#748a8a"),
             occhiello: Color(hex: "#7e9996"), marchio: Color(hex: "#3d626a"),
             riquadro: Color(hex: "#fbf9f1"), riquadroBordo: Color(hex: "#d8d6ca"), riquadroLuce: .white,
@@ -132,12 +135,19 @@ extension Colori {
             cascataTotale: Color(hex: "#9aa6a2"), cascataPiu: Color(hex: "#8fb194"), cascataMeno: Color(hex: "#cf9c84"),
             aree: [Color(hex: "#2f6e9b"), Color(hex: "#4d7f5b"), Color(hex: "#6d8a96"), Color(hex: "#8b6f93"),
                    Color(hex: "#b98a4e"), Color(hex: "#a89f8c"), Color(hex: "#a65a3c")],
-            alleanza: Color(hex: "#2f6ea5"), indipendente: Color(hex: "#8a5a33")
+            alleanza: Tema.Colore.canaleAlleanzaStampa, indipendente: Tema.Colore.canaleIndipendenteStampa
         )
     }
 }
 
 extension Colori.Documento {
+    /// Il logo di Prisma su carta (sempre scuro) e sulla copertina blu notte (bianco). Colori fissi.
+    static let logo = Tema.Colore.logoStampa
+    static let logoCopertina = Color.white
+    /// Trasparenza del logo in filigrana nelle pagine del report e sulla copertina.
+    static let filigrana: Double = 0.06
+    static let filigranaCopertina: Double = 0.05
+
     /// Toni della carta delle pagine del report (.slide-tone-0…3 del template): avorio, crema, salvia, cielo.
     static let toniReport: [(Color, Color)] = [
         (Color(hex: "#fffef8"), Color(hex: "#f1eee4")),
@@ -160,91 +170,85 @@ extension EnvironmentValues {
 }
 
 extension Tipo {
+    /// Caratteri dei prospetti: SF del sistema a dimensioni fisse (non seguono la Dimensione del testo).
     enum Documento {
-        static let titoli = "Avenir Next"
-        static let testo = "Helvetica Neue"
-
-        /// Avenir Next ha pesi per nome; Helvetica Neue si appesantisce con `.weight`.
-        static func avenir(_ dimensione: CGFloat, _ peso: String = "Regular") -> Font {
-            Font.custom("AvenirNext-\(peso)", fixedSize: dimensione)
+        static func sf(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
+            Font.system(size: dimensione, weight: peso)
         }
 
-        static func helvetica(_ dimensione: CGFloat, grassetto: Bool = false) -> Font {
-            Font.custom(testo, fixedSize: dimensione).weight(grassetto ? .bold : .regular)
+        static func sf(_ dimensione: CGFloat, grassetto: Bool) -> Font {
+            sf(dimensione, grassetto ? .bold : .regular)
         }
 
-        static func nsHelvetica(_ dimensione: CGFloat) -> NSFont {
-            NSFont(name: testo, size: dimensione) ?? NSFont.systemFont(ofSize: dimensione)
+        static func nsSF(_ dimensione: CGFloat) -> NSFont {
+            NSFont.systemFont(ofSize: dimensione)
         }
 
         // Comuni (valori predefiniti dei componenti)
-        static let occhiello = helvetica(7.5, grassetto: true)
-        static let corpo = helvetica(10.5)
-        static let corpoForte = helvetica(10.5, grassetto: true)
-        static let piccolo = helvetica(8.5)
-        static let minimo = helvetica(7)
+        static let occhiello = sf(7.5, grassetto: true)
+        static let corpo = sf(10.5)
+        static let corpoForte = sf(10.5, grassetto: true)
+        static let piccolo = sf(8.5)
+        static let minimo = sf(7)
 
         // Prospetto (A4 verticale)
-        static let pOcchiello = helvetica(6.5, grassetto: true)
-        static let pTitolo = avenir(20, "Medium")
-        static let pSottotitolo = helvetica(8.5)
-        static let pSezione = avenir(12.5, "Medium")
-        static let pSottosezione = avenir(10, "Medium")
-        static let pCorpo = helvetica(7.8)
-        static let pCorpoForte = helvetica(7.8, grassetto: true)
-        static let pTabella = helvetica(7.2)
-        static let pTabellaForte = helvetica(7.2, grassetto: true)
-        static let pTabellaTesta = helvetica(6.5, grassetto: true)
-        static let pTabellaNota = helvetica(5.8)
-        static let pKpiEtichetta = helvetica(6.6)
-        static let pKpiValore = avenir(15, "Medium")
-        static let pKpiNota = helvetica(6)
-        static let pValoreScenario = avenir(11.5, "Medium")
-        static let pPiede = helvetica(6)
-        static let pAssi = helvetica(6)
+        static let pOcchiello = sf(6.5, grassetto: true)
+        static let pTitolo = sf(20, .medium)
+        static let pSottotitolo = sf(8.5)
+        static let pSezione = sf(12.5, .medium)
+        static let pSottosezione = sf(10, .medium)
+        static let pCorpo = sf(7.8)
+        static let pCorpoForte = sf(7.8, grassetto: true)
+        static let pTabella = sf(7.2)
+        static let pTabellaForte = sf(7.2, grassetto: true)
+        static let pTabellaTesta = sf(6.5, grassetto: true)
+        static let pTabellaNota = sf(5.8)
+        static let pKpiEtichetta = sf(6.6)
+        static let pKpiValore = sf(15, .medium)
+        static let pKpiNota = sf(6)
+        static let pValoreScenario = sf(11.5, .medium)
+        static let pPiede = sf(6)
+        static let pAssi = sf(6)
 
-        static let nsCorpo = nsHelvetica(10.5)
-        static let nsPCorpo = nsHelvetica(7.8)
+        static let nsCorpo = nsSF(10.5)
+        static let nsPCorpo = nsSF(7.8)
     }
 
-    /// Caratteri del report per il cliente, nell'identità di Prisma: Georgia per titoli e cifre
-    /// (.slides-stage h2), Helvetica Neue per le note, occhielli spaziati (.slides-chapter).
+    /// Caratteri del report per il cliente: SF del sistema, titoli e cifre più grandi (.slides-stage h2),
+    /// note piccole, occhielli spaziati (.slides-chapter).
     enum Report {
-        static func georgia(_ dimensione: CGFloat, grassetto: Bool = false) -> Font {
-            Font.custom("Georgia", fixedSize: dimensione).weight(grassetto ? .bold : .regular)
+        static func sf(_ dimensione: CGFloat, grassetto: Bool = false) -> Font {
+            Documento.sf(dimensione, grassetto: grassetto)
         }
 
-        static let marchio = georgia(11)
-        static let testata = Documento.helvetica(6.5)
-        static let capitolo = Documento.helvetica(7, grassetto: true)
-        static let piede = Documento.helvetica(5.8)
-        static let copertinaMarchio = georgia(15)
-        static let copertinaOcchiello = Documento.helvetica(7.5, grassetto: true)
-        static let copertinaTitolo = georgia(32)
-        static let copertinaSottotitolo = georgia(13)
-        static let copertinaNomi = georgia(15)
-        static let copertinaConsulente = Documento.helvetica(10.5, grassetto: true)
-        static let copertinaRuolo = Documento.helvetica(9)
-        static let copertinaEtichetta = Documento.helvetica(7.5, grassetto: true)
-        static let copertinaValore = georgia(14)
-        static let occhiello = Documento.helvetica(7, grassetto: true)
-        static let titoloSlide = georgia(23)
-        static let sottotitoloSlide = Documento.helvetica(10)
-        static let corpo = georgia(10.5)
-        static let corpoForte = georgia(10.5, grassetto: true)
-        static let piccolo = Documento.helvetica(8)
-        static let minimo = Documento.helvetica(6.8)
-        static let numeroGrande = georgia(22)
-        static let numeroMedio = georgia(17)
-        static let numeroPiccolo = georgia(13)
-        static let titoloRiquadro = georgia(12.5, grassetto: true)
-        static let scenarioTitolo = georgia(13, grassetto: true)
-        static let scenarioRendimento = georgia(25)
-        static let sintesiNumero = georgia(30)
-        static let filigrana = georgia(150)
+        static let testata = Documento.sf(6.5)
+        static let capitolo = Documento.sf(7, grassetto: true)
+        static let piede = Documento.sf(5.8)
+        static let copertinaOcchiello = Documento.sf(7.5, grassetto: true)
+        static let copertinaTitolo = sf(32)
+        static let copertinaSottotitolo = sf(13)
+        static let copertinaNomi = sf(15)
+        static let copertinaConsulente = Documento.sf(10.5, grassetto: true)
+        static let copertinaRuolo = Documento.sf(9)
+        static let copertinaEtichetta = Documento.sf(7.5, grassetto: true)
+        static let copertinaValore = sf(14)
+        static let occhiello = Documento.sf(7, grassetto: true)
+        static let titoloSlide = sf(23)
+        static let sottotitoloSlide = Documento.sf(10)
+        static let corpo = sf(10.5)
+        static let corpoForte = sf(10.5, grassetto: true)
+        static let piccolo = Documento.sf(8)
+        static let minimo = Documento.sf(6.8)
+        static let numeroGrande = sf(22)
+        static let numeroMedio = sf(17)
+        static let numeroPiccolo = sf(13)
+        static let titoloRiquadro = sf(12.5, grassetto: true)
+        static let scenarioTitolo = sf(13, grassetto: true)
+        static let scenarioRendimento = sf(25)
+        static let sintesiNumero = sf(30)
         /// La lettera del consulente dopo la copertina.
-        static let lettera = georgia(11.5)
-        static let letteraFirma = Font.custom("Georgia-Italic", fixedSize: 19)
+        static let lettera = sf(11.5)
+        static let letteraFirma = Font.system(size: 19, weight: .light).italic()
     }
 }
 
@@ -257,6 +261,20 @@ extension Misure {
         static let margineProspetto: CGFloat = 40
         static let raggio: CGFloat = 5
         static let raggioPiccolo: CGFloat = 3
+        /// Il logo (altezza del simbolo): testata dei prospetti, testata e filigrana del report, copertina.
+        static let logoProspetto: CGFloat = 9
+        static let logoProspettoAlto: CGFloat = 13
+        static let logoReport: CGFloat = 11
+        static let logoFiligrana: CGFloat = 110
+        static let logoCopertina: CGFloat = 22
+        static let logoCopertinaFiligrana: CGFloat = 330
+        /// Cornice sottile della copertina (rientro dal bordo e raggio).
+        static let copertinaCornice: CGFloat = 18
+        static let copertinaRaggio: CGFloat = 12
+        /// I cartellini bianchi della copertina e la loro ombra.
+        static let cartellinoRaggio: CGFloat = 6
+        static let cartellinoOmbra: CGFloat = 6
+        static let cartellinoOmbraY: CGFloat = 3
         static let spazio: CGFloat = 12
         static let rigaTabellaReport: CGFloat = 22
         static let rigaTabellaProspetto: CGFloat = 13.5

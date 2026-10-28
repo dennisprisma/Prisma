@@ -44,11 +44,12 @@ struct AppPosizioni: View {
     }
 
     var body: some View {
+        let forma = FormaVetro.arrotondata(Tema.Raggio.scheda)
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 rail
                     .frame(width: Misure.Analisi.rail)
-                    .bordoDestro(Colori.Analisi.kpiBordo)
+                    .bordoDestro(Colori.Analisi.railFilo)
                 Group {
                     if let id = stato.posizioneInDettaglio, let p = stato.posizioni.first(where: { $0.id == id }) {
                         DettaglioPosizione(posizione: p, modifica: { modulo = p })
@@ -64,7 +65,9 @@ struct AppPosizioni: View {
             }
             barraStato
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        // La scheda del tema: angoli tondi e filo da 0,5 pt (il contenuto si taglia prima del contorno)
+        .clipShape(forma)
+        .overlay { forma.strokeBorder(Colori.Analisi.kpiBordo, lineWidth: Tema.Misura.filo).allowsHitTesting(false) }
         .sheet(item: $modulo) { p in
             ModuloPosizione(bozza: p, nuova: !stato.posizioni.contains { $0.id == p.id }) { stato.salvaPosizione($0) }
         }
@@ -111,7 +114,6 @@ struct AppPosizioni: View {
                     Text("Tutti i clienti").font(Tipo.railTitolo).foregroundColor(Colori.Analisi.railTesto)
                     Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti") in rubrica").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                 }
-                .incisione(.white)
                 .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .bordoBasso(Colori.Analisi.railFilo)
@@ -131,7 +133,6 @@ struct AppPosizioni: View {
                 .popover(isPresented: $sceltaCliente, arrowEdge: .trailing) { ElencoClienti(aperto: $sceltaCliente) }
                 Text(stato.clienteAttivo?.tema ?? "").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
             }
-            .incisione(.white)
             .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
             .frame(maxWidth: .infinity, alignment: .leading)
             .bordoBasso(Colori.Analisi.railFilo)
@@ -156,7 +157,8 @@ struct AppPosizioni: View {
             if !stato.portafoglio {
                 EtichettaRail(testo: "Analisi")
                 VStack(spacing: 0) {
-                    ForEach([("Il patrimonio nel tempo", "patrimonio"), ("Prova di resistenza", "resistenza"), ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
+                    ForEach([("Il patrimonio nel tempo", "patrimonio"), ("Prova di resistenza", "resistenza"), ("Coerenza con il profilo", "coerenza"),
+                             ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
                         // Chiusa la scheda di una posizione, il dossier è visibile e l'ancora si consuma
                         VoceNavigazione(titolo: voce.0, attiva: false) {
                             stato.posizioneInDettaglio = nil
@@ -181,14 +183,13 @@ struct AppPosizioni: View {
                     Text("Solo su questo Mac").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.railTesto)
                 }
             }
-            .incisione(.white)
             .padding(.top, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .bordoAlto(Colori.Analisi.railFilo)
         }
         .padding(Misure.Analisi.margineRail)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Gradienti.railAnalisi)
+        .background(Colori.Analisi.railAlto)
     }
 
     // MARK: - Pannello principale
@@ -233,6 +234,13 @@ struct AppPosizioni: View {
                     }
                     if !analisi.prova.vuota {
                         PannelloResistenza(prova: analisi.prova).id("resistenza")
+                    }
+                    // Coerenza con il profilo: rischio oltre la propensione e concentrazione su emittente o canale
+                    if let c = stato.clienteAttivo {
+                        let coerenza = CacheMotoriPosizioni.coerenza(cliente: c, posizioni: stato.posizioniCliente(c.id), prodotti: stato.dati.prodotti)
+                        if coerenza.oggi.patrimonioFinanziario > 0 || coerenza.conProposte != nil {
+                            PannelloCoerenza(esito: coerenza).id("coerenza")
+                        }
                     }
                     if !analisi.costi.vuota {
                         PannelloCosti(analisi: analisi.costi).id("costi")
@@ -286,7 +294,7 @@ struct AppPosizioni: View {
                 ForEach(aree) { a in
                     let v = r.perArea[a] ?? 0
                     HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 2).fill(Colori.Analisi.area(a)).frame(width: 10, height: 10)
+                        RoundedRectangle(cornerRadius: Tema.Raggio.Dossier.quadratinoArea).fill(Colori.Analisi.area(a)).frame(width: 10, height: 10)
                         Text(a.nome).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
                         Spacer()
                         Text(Formati.euro(v)).font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
@@ -300,7 +308,7 @@ struct AppPosizioni: View {
                 }
                 if r.debiti > 0 {
                     HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 2).fill(Colori.Analisi.area(.debiti)).frame(width: 10, height: 10)
+                        RoundedRectangle(cornerRadius: Tema.Raggio.Dossier.quadratinoArea).fill(Colori.Analisi.area(.debiti)).frame(width: 10, height: 10)
                         Text("Debiti").font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
                         Spacer()
                         Text("−\(Formati.euro(r.debiti))").font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.erroreTesto)
@@ -357,10 +365,8 @@ struct AppPosizioni: View {
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Analisi.kpiNota)
         }
-        .incisione(.white)
         .padding(.horizontal, 12)
         .frame(height: Misure.Analisi.barraStato)
-        .background(Gradienti.barraStato)
         .bordoAlto(Colori.Analisi.statoBordo)
     }
 }
@@ -405,7 +411,7 @@ struct TabellaPosizioni: View {
                             .padding(Misure.Analisi.cellaMargine)
                             .frame(width: 130, alignment: .leading)
                         HStack(spacing: 6) {
-                            RoundedRectangle(cornerRadius: 2).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
+                            RoundedRectangle(cornerRadius: Tema.Raggio.Dossier.quadratinoArea).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
                             Text(p.area.nome).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
                                 .lineLimit(1)
                                 .fixedSize()
@@ -437,7 +443,7 @@ struct TabellaPosizioni: View {
                 .buttonStyle(StileSemplice())
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 
     @ViewBuilder private func valore(_ p: Posizione) -> some View {
@@ -458,9 +464,8 @@ struct TabellaPosizioni: View {
     private func riga<C: View>(testa: Bool, alternata: Bool = false, @ViewBuilder _ contenuto: () -> C) -> some View {
         HStack(spacing: 0) { contenuto() }
             .frame(maxWidth: .infinity)
-            .background(testa ? AnyShapeStyle(Gradienti.testaTabella)
-                        : AnyShapeStyle(alternata ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale))
-            .overlay(alignment: .top) { if testa { Rectangle().fill(Color.white).frame(height: 1) } }
+            .background(testa ? Colori.Analisi.tabellaTestaAlto
+                        : (alternata ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale))
             .bordoBasso(testa ? Colori.Analisi.tabellaTestaBordo : Colori.Analisi.tabellaRiga)
     }
 
@@ -468,7 +473,6 @@ struct TabellaPosizioni: View {
         Text(t)
             .font(Tipo.tabellaTesta)
             .foregroundColor(Colori.Analisi.tabellaTesta)
-            .incisione(.white)
             .padding(Misure.Analisi.testaMargine)
             .frame(width: larghezza, alignment: destra ? .trailing : .leading)
             .frame(maxWidth: larghezza == nil ? .infinity : larghezza, alignment: destra ? .trailing : .leading)
@@ -500,8 +504,8 @@ struct PillolaStato: View {
 }
 
 extension View {
-    /// Bordo destro di un solo lato.
-    func bordoDestro(_ colore: Color, spessore: CGFloat = 1) -> some View {
+    /// Bordo destro di un solo lato: di norma il filo da 0,5 pt del tema.
+    func bordoDestro(_ colore: Color, spessore: CGFloat = Tema.Misura.filo) -> some View {
         overlay(alignment: .trailing) {
             Rectangle().fill(colore).frame(width: spessore).allowsHitTesting(false)
         }

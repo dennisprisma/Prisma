@@ -36,7 +36,7 @@ struct ModuloImportaClienti: View {
                         riga(c)
                     }
                 }
-                .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+                .contornoTabella()
             }
         } piede: {
             Text("Prima dell'importazione Prisma salva un backup.")

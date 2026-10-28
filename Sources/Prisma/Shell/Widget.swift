@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Bacheca dei widget della scrivania, con i materiali e le misure del pannello laterale del template
-/// (.os-desk-sidebar): carta avorio, pelle con la cucitura, righe con la piastrella della data, lino per Eve.
+/// Bacheca dei widget della scrivania (tema «Liquid Glass»): sei pannelli di vetro, come nel tema.
 ///
 ///   ┌──────── Agenda ────────┐┌── Cliente in primo piano ──┐
 ///   │                        ││                            │
@@ -11,21 +10,27 @@ import SwiftUI
 struct BachecaWidget: View {
     var body: some View {
         GeometryReader { geo in
-            let s = Misure.Widget.spazio
-            let alta = (geo.size.height - s) * Misure.Widget.quotaAlta
+            let s = Tema.Misura.grigliaSpazio
+            let eve = Tema.Misura.widgetEve
+            // Righe 1fr / 64 / 1.04fr
+            let fila = max(0, (geo.size.height - eve - 2 * s) / (1 + Tema.Misura.Shell.quotaFilaBassa))
+            let meta = max(0, (geo.size.width - s) / 2)
+            let terzo = max(0, (geo.size.width - 2 * s) / 3)
             VStack(spacing: s) {
                 HStack(spacing: s) {
                     WidgetAgenda()
+                        .frame(width: meta)
                     VStack(spacing: s) {
                         WidgetCliente()
                         WidgetEve()
                     }
+                    .frame(width: meta)
                 }
-                .frame(height: alta)
+                .frame(height: fila + s + eve)
                 HStack(spacing: s) {
-                    WidgetAttivita()
-                    WidgetScadenze()
-                    WidgetPortafoglio()
+                    WidgetAttivita().frame(width: terzo)
+                    WidgetScadenze().frame(width: terzo)
+                    WidgetPortafoglio().frame(width: terzo)
                 }
             }
         }
@@ -35,56 +40,84 @@ struct BachecaWidget: View {
 // MARK: - Cornice comune
 
 extension View {
-    /// Cornice dei widget come il pannello del template: raggio 6, bordo 1 px, filetto bianco interno, una sola ombra.
-    func corniceWidget<Fondo: View>(_ fondo: Fondo, bordo: Color = Colori.Widget.bordo) -> some View {
-        frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(fondo)
-            .clipShape(RoundedRectangle(cornerRadius: Misure.Widget.raggio))
-            .luceInterna(.white, raggio: Misure.Widget.raggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Widget.raggio).strokeBorder(bordo, lineWidth: 1).allowsHitTesting(false))
-            .ombraCSS(Colori.Widget.ombra, y: 4, sfocatura: 13)
+    /// Cornice dei widget: vetro spesso del tema (raggio 26), contenuto tagliato alla forma.
+    func corniceWidget(raggio: CGFloat = Tema.Raggio.widget) -> some View {
+        let forma = FormaVetro.arrotondata(raggio)
+        return frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .clipShape(forma)
+            .vetro(.spesso, forma: forma)
+    }
+
+    /// Elenco che sfuma negli ultimi punti in basso (.w-scroll del tema).
+    func sfumaInBasso() -> some View {
+        mask {
+            VStack(spacing: 0) {
+                Rectangle()
+                LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: Tema.Misura.Shell.sfumaturaElenco)
+            }
+        }
     }
 }
 
+/// Collegamento a un'app nella testata di un widget: capsula chiara con il testo del colore dei link.
 struct CollegamentoApp: View {
     @EnvironmentObject var stato: StatoShell
     let testo: String
     let app: AppPrisma
-    var colore: Color = Colori.Colonna.collegamento
+    /// Da fare prima di aprire l'app (per esempio scegliere il portafoglio).
+    var prima: (() -> Void)? = nil
 
     var body: some View {
-        Button(testo) { stato.apri(app) }
-            .buttonStyle(StileSemplice())
-            .font(Tipo.colonnaCollegamento)
-            .foregroundColor(colore)
+        Button {
+            prima?()
+            stato.apri(app)
+        } label: {
+            Text(testo)
+                .font(Tema.Testo.Shell.collegamento)
+                .foregroundColor(Tema.Colore.link)
+                .lineLimit(1)
+                .padding(.horizontal, Tema.Misura.Shell.collegamentoMargine)
+                .frame(height: Tema.Misura.testaWidget)
+                .vetro(.chip, forma: .capsula)
+        }
+        .buttonStyle(StileSemplice())
     }
 }
 
-/// Intestazione di un pannello (.os-desk-panel-heading): etichetta in maiuscoletto e collegamento a destra.
-private struct IntestazionePannello<Destra: View>: View {
+/// Testata di un widget (.w-head): icona dell'app, titolo e collegamento a destra.
+private struct IntestazioneWidget<Destra: View>: View {
     let titolo: String
+    var icona: AppPrisma? = nil
     @ViewBuilder let destra: () -> Destra
 
     var body: some View {
-        HStack {
+        HStack(spacing: Tema.Misura.Shell.testaSpazio) {
+            if let icona {
+                IconaApp(app: icona, lato: Tema.Misura.Shell.iconaWidget)
+            }
             Text(titolo)
-                .font(Tipo.colonnaIntestazione)
-                .tracking(0.8)
-                .foregroundColor(Colori.Colonna.intestazione)
-            Spacer()
+                .font(Tema.Testo.titolo)
+                .foregroundColor(Tema.Colore.inchiostro)
+                .lineLimit(1)
+            Spacer(minLength: 0)
             destra()
         }
-        .padding(Misure.Widget.intestazionePannello)
+        .frame(minHeight: Tema.Misura.testaWidget)
+        .padding(.bottom, Tema.Misura.Shell.testaSpazio)
     }
 }
 
-/// Il filetto fra le righe dei pannelli: bordo e luce.
-private struct FilettoRiga: View {
+/// Messaggio di un elenco vuoto.
+private struct ElencoVuoto: View {
+    let testo: String
+
     var body: some View {
-        VStack(spacing: 0) {
-            Rectangle().fill(Colori.Colonna.rigaBordo).frame(height: 1)
-            Rectangle().fill(Colori.Colonna.rigaLuce).frame(height: 1)
-        }
+        Text(testo)
+            .font(Tema.Testo.Shell.secondarioRiga)
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Tema.Misura.Shell.rigaMargine)
     }
 }
 
@@ -98,82 +131,116 @@ struct WidgetAgenda: View {
             TimelineView(.everyMinute) { contesto in
                 giorno(contesto.date)
             }
-            .frame(width: Misure.Widget.colonnaGiorno)
-            Rectangle().fill(Colori.Colonna.rigaBordo).frame(width: 1)
+            .frame(width: Tema.Misura.Shell.colonnaGiorno)
+            Rectangle().fill(Tema.Colore.separatore).frame(width: Tema.Misura.filo)
             incontri
+                .padding(.leading, Tema.Misura.widgetMargine)
         }
-        .corniceWidget(Colori.Colonna.sfondo)
+        .padding(Tema.Misura.widgetMargine)
+        .corniceWidget()
     }
 
-    /// La piastrella grande del giorno, come quella delle righe ma a tutta altezza.
+    /// Il giorno grande: giorno della settimana in rosso, numero, mese e il riepilogo di oggi.
     private func giorno(_ oggi: Date) -> some View {
         let incontriOggi = stato.appuntamentiDiOggi.count
-        return VStack(spacing: 10) {
-            VStack(spacing: 0) {
-                Text(Formati.giorno.string(from: oggi))
-                    .font(Tipo.piastrellaGiorno)
-                    .foregroundColor(Colori.Colonna.dataGiorno)
-                    .padding(.top, 6)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Text(Formati.meseBreve.string(from: oggi).uppercased())
-                    .font(Tipo.piastrellaMese)
-                    .tracking(0.5)
-                    .foregroundColor(Colori.Colonna.dataMeseTesto)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 24)
-                    .background(Gradienti.dataMese)
-                    .bordoAlto(Colori.Colonna.dataMeseBordo)
-                    .clipShape(RettangoloAngoli(bassoDestra: 3, bassoSinistra: 3))
-                    .padding([.horizontal, .bottom], 1)
-            }
-            .frame(width: Misure.Widget.piastrellaGrande.width, height: Misure.Widget.piastrellaGrande.height)
-            .background(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).fill(Gradienti.data))
-            .luceInterna(.white, raggio: Misure.Widget.pannelloRaggio)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).strokeBorder(Colori.Colonna.dataBordo, lineWidth: 1))
-            .ombraCSS(Colori.Colonna.dataOmbra, y: 2, sfocatura: 2)
+        let prossimo = stato.prossimiAppuntamenti.first { $0.inizio >= oggi }
+        return VStack(alignment: .leading, spacing: 0) {
             Text(Formati.giornoSettimana.string(from: oggi).capitalized)
-                .font(Tipo.rigaNome)
-                .foregroundColor(Colori.Colonna.rigaNome)
+                .font(Tema.Testo.Shell.giornoSettimana)
+                .foregroundColor(Tema.Colore.rosso)
+            Text(Formati.giorno.string(from: oggi))
+                .font(Tema.Testo.giornoAgenda)
+                .tracking(Tema.Testo.spaziaturaGiornoAgenda)
+                .foregroundColor(Tema.Colore.inchiostro)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(Formati.meseAnno.string(from: oggi).components(separatedBy: " ").first ?? "")
+                .font(Tema.Testo.Shell.meseAgenda)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+            Spacer(minLength: Tema.Misura.Shell.rigaMargine)
             Text(incontriOggi == 0 ? "Nessun incontro oggi" : "\(incontriOggi) \(incontriOggi == 1 ? "incontro" : "incontri") oggi")
-                .font(Tipo.rigaSecondario)
-                .foregroundColor(Colori.Colonna.rigaSecondario)
-                .multilineTextAlignment(.center)
+                .font(Tema.Testo.Shell.riepilogoAgendaForte)
+                .foregroundColor(Tema.Colore.inchiostro)
+            if let p = prossimo {
+                Text("Il prossimo: \(Formati.giornoRelativo(p.inizio).lowercased()) alle \(Formati.ora.string(from: p.inizio))")
+                    .font(Tema.Testo.Shell.riepilogoAgenda)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, Tema.Misura.Shell.rigaTestoSpazio)
+            }
         }
-        .padding(.top, 18)
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(Tema.Misura.Shell.colonnaGiornoMargine)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var incontri: some View {
         VStack(alignment: .leading, spacing: 0) {
-            IntestazionePannello(titolo: "PROSSIMI INCONTRI") {
-                CollegamentoApp(testo: "Apri Agenda ↗", app: .agenda)
+            IntestazioneWidget(titolo: "Prossimi incontri") {
+                CollegamentoApp(testo: "Apri Agenda", app: .agenda)
             }
             ScrollView {
                 VStack(spacing: 0) {
                     let eventi = Array(stato.prossimiAppuntamenti.prefix(6))
                     if eventi.isEmpty {
-                        Text("Nessun appuntamento in programma.")
-                            .font(Tipo.rigaSecondario)
-                            .foregroundColor(Colori.Colonna.rigaSecondario)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 12)
+                        ElencoVuoto(testo: "Nessun appuntamento in programma.")
                     }
                     ForEach(eventi) { e in
-                        RigaAppuntamento(evento: e, cliente: stato.cliente(e.clienteId), ultima: e.id == eventi.last?.id) {
+                        RigaIncontro(evento: e, cliente: stato.cliente(e.clienteId)) {
                             stato.clienteAttivoId = e.clienteId
                             stato.mostraInAgenda(e)
                         }
                     }
                 }
-                .padding(.horizontal, Misure.Widget.margineElenco)
             }
+            .sfumaInBasso()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
-// MARK: - Cliente in primo piano: testata in pelle e pannello con i numeri
+/// Un incontro nel widget dell'Agenda: barretta del colore del cliente, nome e titolo, giorno e ora a destra.
+private struct RigaIncontro: View {
+    let evento: Appuntamento
+    let cliente: Cliente?
+    let azione: () -> Void
+
+    var body: some View {
+        let m = Tema.Misura.Shell.self
+        Button(action: azione) {
+            HStack(spacing: m.rigaSpazio) {
+                Capsule(style: .continuous)
+                    .fill(cliente?.tinta.colori.basso ?? Tema.Colore.accento)
+                    .frame(width: m.barrettaEvento)
+                VStack(alignment: .leading, spacing: m.rigaTestoSpazio) {
+                    Text(cliente?.nome ?? evento.titolo)
+                        .font(Tema.Testo.Shell.nomeRiga)
+                        .foregroundColor(Tema.Colore.inchiostro)
+                    Text(evento.titolo)
+                        .font(Tema.Testo.Shell.secondarioRiga)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                }
+                .lineLimit(1)
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: m.rigaTestoSpazio) {
+                    Text(Formati.giornoRelativo(evento.inizio))
+                        .font(Tema.Testo.Shell.nomeRiga)
+                        .foregroundColor(Tema.Colore.inchiostro)
+                    Text("\(Formati.ora.string(from: evento.inizio)) · \(evento.luogo)")
+                        .font(Tema.Testo.Shell.secondarioRiga)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                }
+                .lineLimit(1)
+            }
+            .padding(m.rigaMargine)
+            .frame(maxWidth: .infinity)
+            .fixedSize(horizontal: false, vertical: true)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(StileSemplice())
+    }
+}
+
+// MARK: - Cliente in primo piano
 
 struct WidgetCliente: View {
     @EnvironmentObject var stato: StatoShell
@@ -195,8 +262,7 @@ struct WidgetCliente: View {
         // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri: ViewThatFits
         // misura l'altezza che serve a ogni variante e prende la prima che ci sta, in quest'ordine:
         // tutto; senza la nota; senza i pulsanti; una riga di numeri con i pulsanti; solo quella;
-        // poi la testata compatta del template (senza il tema, margini ridotti) con una riga;
-        // infine la sola testata compatta, che entra sempre (≈ 57 pt).
+        // poi la sola testata, che entra sempre.
         // Il GeometryReader fissa la misura del widget alla sua cella: anche l'ultima variante,
         // se mai non ci stesse, resta dentro la cornice invece di sporgere sui vicini.
         GeometryReader { geo in
@@ -206,135 +272,109 @@ struct WidgetCliente: View {
                 contenuto(numeri, righe: 2, nota: false, pulsanti: false)
                 contenuto(numeri, righe: 1, nota: false, pulsanti: true)
                 contenuto(numeri, righe: 1, nota: false, pulsanti: false)
-                contenuto(numeri, righe: 1, nota: false, pulsanti: false, compatta: true)
-                contenuto(numeri, righe: 0, nota: false, pulsanti: false, compatta: true)
+                contenuto(numeri, righe: 0, nota: false, pulsanti: false)
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
-        .corniceWidget(Colori.Colonna.sfondo)
+        .padding(Tema.Misura.widgetMargine)
+        .corniceWidget()
     }
 
-    private func contenuto(_ n: Numeri, righe: Int, nota: Bool, pulsanti: Bool, compatta: Bool = false) -> some View {
+    private func contenuto(_ n: Numeri, righe: Int, nota: Bool, pulsanti: Bool) -> some View {
         let r = n.riepilogo
-        return VStack(alignment: .leading, spacing: 0) {
-            testata(compatta: compatta)
-            VStack(alignment: .leading, spacing: Misure.Widget.clienteSpazio) {
-                // Il pannello carta con i numeri (.os-panel + .os-kpi)
-                if righe >= 1 {
-                    VStack(alignment: .leading, spacing: Misure.Widget.clienteSpazio) {
-                        HStack(alignment: .top, spacing: 0) {
-                            dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
-                            dato("Prossimo incontro", n.incontro)
-                            dato("Da fare", "\(n.aperte) attività")
-                        }
-                        if righe >= 2 {
-                            HStack(alignment: .top, spacing: 0) {
-                                dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
-                                dato("Premi annui", Formati.euro(r.premiAnnui))
-                                dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
-                            }
-                        }
-                        if nota, let nota = stato.clienteAttivo?.nota, !nota.isEmpty {
-                            Text(nota)
-                                .font(Tipo.rigaSecondario)
-                                .foregroundColor(Colori.Colonna.rigaSecondario)
-                                .lineLimit(2)
-                                .fixedSize(horizontal: false, vertical: true)
+        let m = Tema.Misura.Shell.self
+        return VStack(alignment: .leading, spacing: m.clienteSpazio) {
+            testata
+            // I numeri (.kpis): griglia di tre colonne sul chip di vetro
+            if righe >= 1 {
+                VStack(alignment: .leading, spacing: m.kpiSpazioRighe) {
+                    HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
+                        dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
+                        dato("Prossimo incontro", n.incontro)
+                        dato("Da fare", "\(n.aperte) attività")
+                    }
+                    if righe >= 2 {
+                        HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
+                            dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
+                            dato("Premi annui", Formati.euro(r.premiAnnui))
+                            dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
                         }
                     }
-                    .padding(compatta ? Misure.Widget.pannelloMargineCompatto : Misure.Widget.pannelloMargine)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).fill(Gradienti.pannelloWidget))
-                    .luceInterna(.white, raggio: Misure.Widget.pannelloRaggio)
-                    .overlay(RoundedRectangle(cornerRadius: Misure.Widget.pannelloRaggio).strokeBorder(Colori.Widget.pannelloBordo, lineWidth: 1))
-                    .ombraCSS(Colori.Widget.pannelloOmbra, y: 2, sfocatura: 6)
                 }
-                if pulsanti {
-                    // Lo Spacer solo qui: nelle varianti senza pulsanti costerebbe comunque lo spazio della pila
-                    Spacer(minLength: 0)
-                    HStack(spacing: 8) {
-                        Button("Apri la scheda") { stato.apri(.clienti) }
-                        Button("Posizioni") {
-                            stato.portafoglio = false
-                            stato.apri(.posizioni)
-                        }
-                        Button("Chiedi a Eve") { stato.apri(.eve) }
-                    }
-                    .buttonStyle(StileCuoioChiaro())
-                }
+                .padding(m.kpiMargine)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .vetro(.chip, forma: .arrotondata(Tema.Raggio.kpi))
             }
-            .padding(compatta ? Misure.Widget.clienteMargineCompatto : Misure.Widget.clienteMargine)
+            if nota, let testo = stato.clienteAttivo?.nota, !testo.isEmpty {
+                Text(testo)
+                    .font(Tema.Testo.Shell.notaCliente)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if pulsanti {
+                // Lo Spacer solo qui: nelle varianti senza pulsanti costerebbe comunque lo spazio della pila
+                Spacer(minLength: 0)
+                HStack(spacing: m.pulsantiSpazio) {
+                    Button("Apri la scheda") { stato.apri(.clienti) }
+                    Button("Posizioni") {
+                        stato.portafoglio = false
+                        stato.apri(.posizioni)
+                    }
+                    Button("Chiedi a Eve") { stato.apri(.eve) }
+                }
+                .buttonStyle(StileVetro())
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// La testata in pelle con la cucitura (.os-desk-client): avatar, etichetta, nome, tema, canali.
-    /// Compatta come sugli schermi bassi del template: niente tema e margini ridotti.
-    private func testata(compatta: Bool) -> some View {
-        HStack(alignment: .center, spacing: 11) {
+    /// Avatar, occhiello, nome (con la scelta del cliente), tema e canali.
+    private var testata: some View {
+        let m = Tema.Misura.Shell.self
+        return HStack(alignment: .center, spacing: m.rigaSpazio) {
             if let c = stato.clienteAttivo {
-                AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: Misure.Widget.avatarCliente)
+                AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: m.avatarCliente)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("IL CLIENTE IN PRIMO PIANO")
-                    .font(Tipo.colonnaEtichetta)
-                    .tracking(0.5)
-                    .foregroundColor(Colori.Colonna.pelleEtichetta)
+            VStack(alignment: .leading, spacing: m.rigaTestoSpazio) {
+                Text("Cliente in primo piano")
+                    .font(Tema.Testo.Shell.occhielloCliente)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
                 Button { sceltaCliente = true } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: m.pulsanteBarraSpazio) {
                         Text(stato.clienteAttivo?.nome ?? "Nessun cliente")
-                            .font(Tipo.colonnaNome)
+                            .font(Tema.Testo.nomeCliente)
+                            .tracking(Tema.Testo.Shell.spaziaturaNomeCliente)
                             .lineLimit(1)
-                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
+                        Image(systemName: "chevron.down").font(Tema.Testo.Shell.chevron)
                     }
-                    .foregroundColor(Colori.Colonna.pelleNome)
+                    .foregroundColor(Tema.Colore.inchiostro)
                 }
                 .buttonStyle(StileSemplice())
                 .popover(isPresented: $sceltaCliente, arrowEdge: .bottom) { ElencoClienti(aperto: $sceltaCliente) }
-                if !compatta {
-                    Text(stato.clienteAttivo?.tema ?? "")
-                        .font(Tipo.colonnaTema)
-                        .foregroundColor(Colori.Colonna.pelleTema)
-                        .lineLimit(1)
-                }
+                Text(stato.clienteAttivo?.tema ?? "")
+                    .font(Tema.Testo.Shell.temaCliente)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    .lineLimit(1)
             }
-            .incisione(Colori.Colonna.pelleBordo, y: -1)
             Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: 5) {
-                ForEach(stato.clienteAttivo?.canali ?? []) { EtichettaCanale(canale: $0, compatta: true) }
+            VStack(alignment: .trailing, spacing: m.canaliSpazio) {
+                ForEach(stato.clienteAttivo?.canali ?? []) { CapsulaCanale(canale: $0) }
             }
         }
-        .padding(compatta ? Misure.Widget.clienteTestataCompatta : Misure.Widget.clienteTestata)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Materiale.Pelle())
-        .overlay(
-            // La cucitura: tratteggio chiaro con l'ombra di un punto sotto
-            ZStack {
-                RoundedRectangle(cornerRadius: Misure.Widget.cucituraRaggio)
-                    .inset(by: Misure.Widget.cucituraRientro)
-                    .stroke(Colori.Colonna.cucituraOmbra, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .offset(y: 1)
-                RoundedRectangle(cornerRadius: Misure.Widget.cucituraRaggio)
-                    .inset(by: Misure.Widget.cucituraRientro)
-                    .stroke(Colori.Colonna.cucitura, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-            }
-            .allowsHitTesting(false)
-        )
-        .luceInterna(Colori.Colonna.pelleLuce)
-        .ombraInternaBasso(Colori.Colonna.pelleOmbra, spessore: 2)
-        .bordoBasso(Colori.Colonna.pelleBordo)
     }
 
     private func dato(_ etichetta: String, _ valore: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(etichetta.uppercased())
-                .font(Tipo.kpiEtichettaWidget)
-                .tracking(0.4)
-                .foregroundColor(Colori.Widget.kpiEtichetta)
+        VStack(alignment: .leading, spacing: Tema.Misura.Shell.rigaTestoSpazio) {
+            Text(etichetta)
+                .font(Tema.Testo.Shell.etichettaKpi)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .lineLimit(1)
             Text(valore)
-                .font(Tipo.kpiValoreWidget)
-                .tracking(-0.5)
-                .foregroundColor(Colori.Widget.kpiValore)
+                .font(Tema.Testo.valoreKpi)
+                .tracking(Tema.Testo.Shell.spaziaturaKpi)
+                .foregroundColor(Tema.Colore.inchiostro)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
@@ -342,37 +382,37 @@ struct WidgetCliente: View {
     }
 }
 
-// MARK: - Eve: la barra in lino
+// MARK: - Eve: la barra per ritrovare il filo
 
 struct WidgetEve: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
         Button { stato.apri(.eve) } label: {
-            HStack(spacing: 12) {
-                IconaApp(app: .eve, lato: Misure.Colonna.iconaEve)
-                    .ombraCSS(Colori.Colonna.eveIconaOmbra, y: 2, sfocatura: 1)
-                VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: Tema.Misura.Shell.rigaSpazio) {
+                IconaApp(app: .eve, lato: Tema.Misura.Shell.iconaEve)
+                VStack(alignment: .leading, spacing: Tema.Misura.Shell.rigaTestoSpazio) {
                     Text("Ritrova il filo con Eve.")
-                        .font(Tipo.eveTitolo)
-                        .foregroundColor(Colori.Colonna.eveTitolo)
+                        .font(Tema.Testo.Shell.titoloEve)
+                        .foregroundColor(Tema.Colore.inchiostro)
                     Text(stato.evePortafoglio ? "Il tuo portafoglio, chi ricontattare, le scadenze" : "Incontri, sintesi e prossimi passi")
-                        .font(Tipo.eveTesto)
-                        .foregroundColor(Colori.Colonna.eveTesto)
+                        .font(Tema.Testo.Shell.testoEve)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
                         .lineLimit(1)
                 }
-                .incisione(Colori.Colonna.eveIncisione, y: -1)
                 Spacer(minLength: 0)
-                Text("›").font(Tipo.rigaFreccia).foregroundColor(Colori.Colonna.eveFreccia)
+                Image(systemName: "chevron.right")
+                    .font(Tema.Testo.Shell.chevron)
+                    .foregroundColor(Tema.Colore.inchiostroTerziario)
             }
-            .padding(EdgeInsets(top: 11, leading: 13, bottom: 11, trailing: 13))
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Tema.Misura.widgetMargine)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(StileSemplice())
-        .frame(height: Misure.Widget.barraEve)
-        .corniceWidget(Materiale.Lino(), bordo: Colori.Colonna.eveBordo)
-        .frame(height: Misure.Widget.barraEve)
+        .frame(height: Tema.Misura.widgetEve)
+        .corniceWidget(raggio: Tema.Raggio.widgetEve)
+        .frame(height: Tema.Misura.widgetEve)
     }
 }
 
@@ -384,17 +424,14 @@ struct WidgetAttivita: View {
     var body: some View {
         let aperte = stato.attivitaAperte
         VStack(alignment: .leading, spacing: 0) {
-            IntestazionePannello(titolo: aperte.isEmpty ? "DA FARE" : "\(aperte.count) \(aperte.count == 1 ? "ATTIVITÀ APERTA" : "ATTIVITÀ APERTE")") {
-                CollegamentoApp(testo: "Apri Attività ↗", app: .attivita)
+            IntestazioneWidget(titolo: aperte.isEmpty ? "Da fare" : "\(aperte.count) \(aperte.count == 1 ? "attività aperta" : "attività aperte")",
+                               icona: .attivita) {
+                CollegamentoApp(testo: "Apri Attività", app: .attivita)
             }
             ScrollView {
                 VStack(spacing: 0) {
                     if aperte.isEmpty {
-                        Text("Tutto fatto.")
-                            .font(Tipo.rigaSecondario)
-                            .foregroundColor(Colori.Colonna.rigaSecondario)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 12)
+                        ElencoVuoto(testo: "Tutto fatto.")
                     }
                     ForEach(aperte) { a in
                         RigaAttivita(attivita: a, cliente: stato.cliente(a.clienteId), ultima: a.id == aperte.last?.id) {
@@ -402,14 +439,15 @@ struct WidgetAttivita: View {
                         }
                     }
                 }
-                .padding(.horizontal, Misure.Widget.margineElenco)
             }
+            .sfumaInBasso()
         }
-        .corniceWidget(Colori.Colonna.sfondo)
+        .padding(Tema.Misura.widgetMargine)
+        .corniceWidget()
     }
 }
 
-// MARK: - Scadenze: le posizioni in scadenza, con la piastrella della data
+// MARK: - Scadenze: le posizioni in scadenza, con la tessera della data
 
 struct WidgetScadenze: View {
     @EnvironmentObject var stato: StatoShell
@@ -417,49 +455,64 @@ struct WidgetScadenze: View {
     var body: some View {
         let scadenze = Array(RiepilogoPosizioni(stato.posizioni).inScadenza.prefix(6))
         VStack(alignment: .leading, spacing: 0) {
-            IntestazionePannello(titolo: "SCADENZE · \(RiepilogoPosizioni.giorniScadenza) GIORNI") {
-                CollegamentoApp(testo: "Apri Posizioni ↗", app: .posizioni)
+            IntestazioneWidget(titolo: "In scadenza entro \(RiepilogoPosizioni.giorniScadenza) giorni", icona: .posizioni) {
+                CollegamentoApp(testo: "Apri Posizioni", app: .posizioni, prima: { stato.portafoglio = false })
             }
             ScrollView {
                 VStack(spacing: 0) {
                     if scadenze.isEmpty {
-                        Text("Nessuna nei prossimi \(RiepilogoPosizioni.giorniScadenza) giorni.")
-                            .font(Tipo.rigaSecondario)
-                            .foregroundColor(Colori.Colonna.rigaSecondario)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 12)
+                        ElencoVuoto(testo: "Nessuna nei prossimi \(RiepilogoPosizioni.giorniScadenza) giorni.")
                     }
                     ForEach(scadenze) { p in
-                        Button { stato.apriPosizione(p) } label: {
-                            HStack(spacing: 12) {
-                                PiastrellaData(data: p.scadenza ?? Date())
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(stato.cliente(p.clienteId)?.nome ?? "")
-                                        .font(Tipo.rigaSecondario)
-                                        .foregroundColor(Colori.Colonna.rigaSecondario)
-                                    Text(p.nome)
-                                        .font(Tipo.rigaNome)
-                                        .foregroundColor(p.scaduta ? Colori.Analisi.erroreTesto : Colori.Colonna.rigaNome)
-                                    Text(p.scaduta ? "Scaduta" : "\(p.area.nome) · \(p.canale.nomeBreve)")
-                                        .font(Tipo.rigaSecondario)
-                                        .foregroundColor(p.scaduta ? Colori.Analisi.erroreTesto : Colori.Colonna.rigaSecondario)
-                                }
-                                .lineLimit(1)
-                                Spacer(minLength: 0)
-                                Text("›").font(Tipo.rigaFreccia).foregroundColor(Colori.Colonna.freccia)
-                            }
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: .infinity)
-                            .overlay(alignment: .bottom) { if p.id != scadenze.last?.id { FilettoRiga() } }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(StileSemplice())
+                        riga(p)
                     }
                 }
-                .padding(.horizontal, Misure.Widget.margineElenco)
             }
+            .sfumaInBasso()
         }
-        .corniceWidget(Colori.Colonna.sfondo)
+        .padding(Tema.Misura.widgetMargine)
+        .corniceWidget()
+    }
+
+    private func riga(_ p: Posizione) -> some View {
+        let m = Tema.Misura.Shell.self
+        let giorni = giorniAllaScadenza(p)
+        let colore = p.scaduta || giorni <= 30 ? Tema.Colore.scadenzaOra : Tema.Colore.scadenzaVicina
+        return Button { stato.apriPosizione(p) } label: {
+            HStack(spacing: m.rigaSpazio) {
+                PiastrellaData(data: p.scadenza ?? Date())
+                VStack(alignment: .leading, spacing: m.rigaTestoSpazio) {
+                    Text(stato.cliente(p.clienteId)?.nome ?? "")
+                        .font(Tema.Testo.Shell.secondarioRiga)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    Text(p.nome)
+                        .font(Tema.Testo.Shell.nomeRiga)
+                        .foregroundColor(Tema.Colore.inchiostro)
+                    HStack(spacing: 0) {
+                        Text("\(p.area.nome) · ")
+                            .foregroundColor(Tema.Colore.inchiostroSecondario)
+                        Text(p.scaduta ? "scaduta" : giorni == 0 ? "scade oggi" : "scade tra \(giorni) \(giorni == 1 ? "giorno" : "giorni")")
+                            .foregroundColor(colore)
+                    }
+                    .font(Tema.Testo.Shell.secondarioRiga)
+                }
+                .lineLimit(1)
+                Spacer(minLength: 0)
+                CapsulaCanale(canale: p.canale, compatta: true)
+            }
+            .padding(m.rigaMargine)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(StileSemplice())
+    }
+
+    /// Giorni da oggi alla scadenza (0 se oggi o già passata).
+    private func giorniAllaScadenza(_ p: Posizione) -> Int {
+        guard let s = p.scadenza else { return 0 }
+        let cal = Calendar.current
+        let giorni = cal.dateComponents([.day], from: cal.startOfDay(for: Date()), to: cal.startOfDay(for: s)).day ?? 0
+        return max(0, giorni)
     }
 }
 
@@ -471,91 +524,109 @@ struct WidgetPortafoglio: View {
     var body: some View {
         let r = RiepilogoPosizioni(stato.posizioni)
         VStack(alignment: .leading, spacing: 0) {
-            IntestazionePannello(titolo: "PORTAFOGLIO CLIENTI") {
-                Button("Apri ↗") {
-                    stato.portafoglio = true
-                    stato.apri(.posizioni)
-                }
-                .buttonStyle(StileSemplice())
-                .font(Tipo.colonnaCollegamento)
-                .foregroundColor(Colori.Colonna.collegamento)
+            IntestazioneWidget(titolo: "Portafoglio clienti", icona: .posizioni) {
+                CollegamentoApp(testo: "Apri", app: .posizioni, prima: { stato.portafoglio = true })
             }
-            // Dove l'altezza non basta sparisce prima la riga delle proposte, poi le barre dei canali;
+            // Dove l'altezza non basta sparisce prima la riga delle proposte, poi la legenda dei canali;
             // il GeometryReader tiene il widget nella sua cella, mai sopra il piede della scrivania
             GeometryReader { geo in
                 ViewThatFits(in: .vertical) {
-                    numeri(r, canali: true, proposte: true)
-                    numeri(r, canali: true, proposte: false)
-                    numeri(r, canali: false, proposte: false)
+                    numeri(r, legenda: true, proposte: true)
+                    numeri(r, legenda: true, proposte: false)
+                    numeri(r, legenda: false, proposte: false)
                 }
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             }
         }
-        .corniceWidget(Colori.Colonna.sfondo)
+        .padding(Tema.Misura.widgetMargine)
+        .corniceWidget()
     }
 
-    private func numeri(_ r: RiepilogoPosizioni, canali: Bool, proposte: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Misure.Widget.portafoglioSpazio) {
-            VStack(alignment: .leading, spacing: 2) {
+    private func numeri(_ r: RiepilogoPosizioni, legenda: Bool, proposte: Bool) -> some View {
+        let m = Tema.Misura.Shell.self
+        return VStack(alignment: .leading, spacing: m.portafoglioSpazio) {
+            VStack(alignment: .leading, spacing: m.rigaTestoSpazio) {
                 Text(Formati.euro(r.attivita))
-                    .font(Tipo.portafoglioTotale)
-                    .tracking(-0.7)
-                    .foregroundColor(Colori.Widget.kpiValore)
+                    .font(Tema.Testo.totale)
+                    .tracking(Tema.Testo.spaziaturaTotale)
+                    .foregroundColor(Tema.Colore.inchiostro)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                Text("seguiti in essere · \(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti")")
-                    .font(Tipo.rigaSecondario)
-                    .foregroundColor(Colori.Colonna.rigaSecondario)
+                Text("In essere, \(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente seguito" : "clienti seguiti")")
+                    .font(Tema.Testo.Shell.secondarioRiga)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
             }
-            if canali, r.attivita > 0 {
-                canale(.alleanza, importo: r.perCanale[.alleanza] ?? 0, quota: r.quota(.alleanza))
-                canale(.indipendente, importo: r.perCanale[.indipendente] ?? 0, quota: r.quota(.indipendente))
+            .padding(.horizontal, m.rigaMargine)
+            if r.attivita > 0 {
+                barraCanali(r)
+                    .padding(.horizontal, m.rigaMargine)
+                if legenda {
+                    VStack(spacing: m.rigaMargine) {
+                        ForEach(Canale.allCases) { c in
+                            voceCanale(c, importo: r.perCanale[c] ?? 0, quota: r.quota(c))
+                        }
+                    }
+                    .padding(.horizontal, m.rigaMargine)
+                }
             }
             if proposte {
                 Spacer(minLength: 0)
                 HStack(alignment: .firstTextBaseline) {
                     Text("Proposte aperte")
-                        .font(Tipo.widgetMetricaEtichetta)
-                        .foregroundColor(Colori.Colonna.metricaEtichetta)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
                     Spacer()
-                    Text(r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
-                        .font(Tipo.widgetMetricaValore)
-                        .foregroundColor(Colori.Colonna.metricaValore)
+                    Text(r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euro(r.valoreProposte))")
+                        .font(Tema.Testo.importo)
+                        .foregroundColor(Tema.Colore.inchiostro)
                 }
-                .padding(.top, 10)
-                .bordoAlto(Colori.Colonna.rigaBordo)
+                .font(Tema.Testo.corpo)
+                .padding(.top, m.rigaMargine)
+                .padding(.horizontal, m.rigaMargine)
+                .bordoAlto(Tema.Colore.separatore)
             }
         }
-        .padding(EdgeInsets(top: 2, leading: Misure.Widget.margineElenco, bottom: Misure.Widget.portafoglioSpazio, trailing: Misure.Widget.margineElenco))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// Un canale con l'importo e la barra (.os-progress).
-    private func canale(_ c: Canale, importo: Double, quota: Double) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                EtichettaCanale(canale: c, compatta: true)
-                Spacer()
-                Text(Formati.euro(importo))
-                    .font(Tipo.rigaNome)
-                    .foregroundColor(Colori.Colonna.rigaNome)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Colori.Widget.progressoFondo)
-                    Capsule()
-                        .fill(LinearGradient(colors: [Colori.Widget.progressoOmbra, .clear], startPoint: .top, endPoint: .center))
-                        .padding(1)
-                    Capsule()
-                        .fill(c == .alleanza ? Colori.Analisi.canaleAlleanza : Colori.Analisi.canaleIndipendente)
-                        .frame(width: max(0, geo.size.width * CGFloat(min(max(quota, 0), 1))))
-                        .overlay(alignment: .top) {
-                            Capsule().fill(Colori.Widget.progressoLuce).frame(height: 1).padding(.horizontal, 3).padding(.top, 1)
-                        }
+    /// La barra divisa per canale (.split): blu Alleanza, cuoio indipendente.
+    private func barraCanali(_ r: RiepilogoPosizioni) -> some View {
+        let m = Tema.Misura.Shell.self
+        return GeometryReader { geo in
+            let disponibile = max(0, geo.size.width - m.barraCanaliSpazio)
+            HStack(spacing: m.barraCanaliSpazio) {
+                ForEach(Canale.allCases) { c in
+                    let quota = CGFloat(min(max(r.quota(c), 0), 1))
+                    if quota > 0 {
+                        RoundedRectangle(cornerRadius: Tema.Raggio.barraCanali, style: .continuous)
+                            .fill(Tema.Colore.canale(c))
+                            .frame(width: max(m.barraCanali / 2, disponibile * quota))
+                            .help("\(c.nomeBreve): \(Formati.euro(r.perCanale[c] ?? 0))")
+                    }
                 }
             }
-            .frame(height: Misure.Widget.progresso)
-            .overlay(Capsule().strokeBorder(Colori.Widget.progressoBordo, lineWidth: 1))
         }
+        .frame(height: m.barraCanali)
+    }
+
+    /// Una riga della legenda: quadratino del canale, nome, importo e quota.
+    private func voceCanale(_ c: Canale, importo: Double, quota: Double) -> some View {
+        let m = Tema.Misura.Shell.self
+        return HStack(spacing: m.rigaMargine) {
+            RoundedRectangle(cornerRadius: Tema.Raggio.quadratinoCanale, style: .continuous)
+                .fill(Tema.Colore.canale(c))
+                .frame(width: m.quadratinoCanale, height: m.quadratinoCanale)
+            Text(c.nomeBreve)
+                .font(Tema.Testo.corpo)
+                .foregroundColor(Tema.Colore.inchiostro)
+            Spacer(minLength: 0)
+            Text(Formati.euro(importo))
+                .font(Tema.Testo.importo)
+                .foregroundColor(Tema.Colore.inchiostro)
+            Text(Formati.percentuale((quota * 100).rounded()))
+                .font(Tema.Testo.corpo.monospacedDigit())
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .frame(width: m.colonnaQuota, alignment: .trailing)
+        }
+        .lineLimit(1)
     }
 }

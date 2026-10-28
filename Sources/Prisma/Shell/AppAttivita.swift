@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// App Attività (.os-app-tasks): testata grafite, riepilogo, registro a righe e dettaglio.
+/// App Attività (.os-app-tasks): testata, riepilogo, registro delle attività e dettaglio, su schede del tema.
 struct AppAttivita: View {
     @EnvironmentObject var stato: StatoShell
     @State var modulo: Attivita?
@@ -78,21 +78,12 @@ struct AppAttivita: View {
                         .foregroundColor(Colori.Attivita.testataTesto)
                 }
             }
-            .incisione(Colori.Attivita.testataIncisione, y: -1)
             Spacer(minLength: 0)
             Button("＋ Nuova attività") { nuova() }
                 .buttonStyle(StileBlu())
         }
-        .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
-        .background(
-            ZStack {
-                Gradienti.testataAttivita
-                Materiale.Trama(nome: "Grana")
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 3))
-        )
-        .luceInterna(Colori.Attivita.testataLuce, raggio: 3)
-        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Attivita.testataBordo, lineWidth: 1))
+        .padding(Tema.Misura.Dossier.testataAttivita)
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
     }
 
     private var riepilogo: some View {
@@ -113,14 +104,12 @@ struct AppAttivita: View {
                 Text("\(Int((quota * 100).rounded()))% completato")
                     .font(Tipo.attivitaNumeroEtichetta)
                     .foregroundColor(Colori.Attivita.numero)
-                    .incisione(Colori.Attivita.numeroIncisione, y: -1)
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Colori.Attivita.progressoFondo)
-                        Capsule().fill(Gradienti.progressoAttivita)
+                        FormaVetro.capsula.fill(Colori.Attivita.progressoFondo)
+                        FormaVetro.capsula.fill(Colori.Attivita.progressoAlto)
                             .frame(width: geo.size.width * quota)
                     }
-                    .overlay(Capsule().strokeBorder(Colori.Attivita.progressoBordo, lineWidth: 1))
                 }
                 .frame(height: Misure.Attivita.progresso)
             }
@@ -135,16 +124,12 @@ struct AppAttivita: View {
             Text(etichetta).font(Tipo.attivitaNumeroEtichetta).lineLimit(1)
         }
         .foregroundColor(Colori.Attivita.numero)
-        .incisione(Colori.Attivita.numeroIncisione, y: -1)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var separatore: some View {
-        HStack(spacing: 0) {
-            Rectangle().fill(Colori.Attivita.separatore).frame(width: 1)
-            Rectangle().fill(Colori.Attivita.separatoreLuce).frame(width: 1)
-        }
-        .frame(height: 34)
+        Rectangle().fill(Colori.Attivita.separatore)
+            .frame(width: Tema.Misura.filo, height: Tema.Misura.Dossier.separatoreRiepilogo)
     }
 
     // MARK: - Registro
@@ -165,11 +150,9 @@ struct AppAttivita: View {
                 }
             }
         }
-        .background(Colori.Attivita.registroFondo)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Attivita.registroBordo, lineWidth: 1))
-        .shadow(color: Colori.Attivita.registroOmbra1, radius: 0, x: 0, y: 1)
-        .shadow(color: Colori.Attivita.registroOmbra2, radius: 0, x: 0, y: 2)
+        // Una scheda del tema: il contenuto si taglia alla forma prima del vetro
+        .clipShape(FormaVetro.arrotondata(Tema.Raggio.scheda))
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
     }
 
     private var filtri: some View {
@@ -186,8 +169,7 @@ struct AppAttivita: View {
                         larghezza: 150)
         }
         .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
-        .background(Gradienti.metalloAttivita)
-        .luceInterna(Color.white.opacity(0.6))
+        .background(Colori.Attivita.metalloAlto)
         .bordoBasso(Colori.Attivita.metalloBordo)
     }
 
@@ -203,7 +185,6 @@ struct AppAttivita: View {
                     .font(Tipo.elencoTitolo)
             }
             .foregroundColor(Colori.Attivita.titoloElenco)
-            .incisione(Color.white.opacity(0.5))
             .padding(.leading, Misure.Attivita.margineRiga + 14)
             .padding(.trailing, 16)
             .frame(height: 32)
@@ -225,16 +206,6 @@ struct AppAttivita: View {
                 }
             }
         }
-        .background(
-            ZStack(alignment: .topLeading) {
-                Colori.Attivita.carta
-                Materiale.Trama(nome: "Grana")
-                Rigatura(passo: Misure.Attivita.rigatura).fill(Colori.Attivita.rigatura)
-                Rectangle().fill(Colori.Attivita.margine)
-                    .frame(width: 1)
-                    .padding(.leading, Misure.Attivita.margineRiga)
-            }
-        )
     }
 
     private var vuoto: some View {
@@ -282,14 +253,9 @@ struct AppAttivita: View {
         }
         .padding(EdgeInsets(top: 12, leading: 16, bottom: 9, trailing: 16))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(
-            ZStack {
-                Gradienti.dettaglioAttivita
-                Materiale.Trama(nome: "Grana")
-            }
-        )
+        .background(Colori.Attivita.dettaglioFondo)
         .overlay(alignment: .leading) {
-            Rectangle().fill(Colori.Attivita.dettaglioBordo).frame(width: 1)
+            Rectangle().fill(Colori.Attivita.dettaglioBordo).frame(width: Tema.Misura.filo)
         }
     }
 }
@@ -347,14 +313,13 @@ struct SpuntaAttivita: View {
     var body: some View {
         Button(action: azione) {
             ZStack {
-                Circle().fill(fatta ? Gradienti.spuntaFatta : Gradienti.spunta)
+                Circle().fill(fatta ? Colori.Attivita.spuntaFattaAlto : Colori.Attivita.spuntaAlto)
                 Circle().strokeBorder(fatta ? Colori.Attivita.spuntaFattaBordo : Colori.Attivita.spuntaBordo, lineWidth: 1)
                 if fatta {
-                    Text("✓").font(Tipo.spunta).foregroundColor(.white).incisione(Color.black.opacity(0.25), y: -1)
+                    Text("✓").font(Tipo.spunta).foregroundColor(Tema.Colore.Componenti.testoSuColore)
                 }
             }
             .frame(width: Misure.Attivita.spunta, height: Misure.Attivita.spunta)
-            .shadow(color: .white, radius: 0, x: 0, y: 1)
         }
         .buttonStyle(StileSemplice())
         .help(fatta ? "Riapri" : "Segna completata")
@@ -453,9 +418,7 @@ struct DettaglioAttivita: View {
                         }
                         .padding(8)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 3).fill(Colori.Attivita.collegamentoFondo))
-                        .luceInterna(Color.white.opacity(0.6), raggio: 3)
-                        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Attivita.collegamentoBordo, lineWidth: 1))
+                        .vetro(.chip, forma: .arrotondata(Tema.Raggio.Dossier.riquadro), riempimento: Colori.Attivita.collegamentoFondo)
                         .padding(.vertical, 10)
                     }
                 }

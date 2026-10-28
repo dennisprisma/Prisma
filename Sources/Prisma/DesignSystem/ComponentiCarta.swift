@@ -157,15 +157,16 @@ struct PaginaCarta: View {
         .padding(EdgeInsets(top: M.margineAlto, leading: M.margineLato, bottom: M.margineBasso, trailing: M.margineLato))
         .frame(width: M.pagina.width, height: M.pagina.height)
         .background(Colori.Carta.foglio)
+        // Su carta le etichette dei canali sono quelle opache da stampa, e tutto resta chiaro
+        .environment(\.etichetteStampa, true)
         .environment(\.colorScheme, .light)
     }
 
     private var testataPrima: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
-                Text(verbatim: "◈").font(Tipo.Carta.marchio).foregroundColor(Colori.Carta.intestazione)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(verbatim: "PRISMA").font(Tipo.Carta.testata).tracking(3).foregroundColor(Colori.Carta.intestazione)
+                    LogoPrismaConNome(colore: Colori.Carta.logo, altezza: M.logoTestata)
                     Text(verbatim: genere.uppercased()).font(Tipo.Carta.testataPiccola).tracking(1.5).foregroundColor(Colori.Carta.intestazione)
                 }
                 Spacer()
@@ -201,7 +202,7 @@ struct PaginaCarta: View {
     private var testataCorrente: some View {
         VStack(spacing: 5) {
             HStack(spacing: 6) {
-                Text(verbatim: "◈ PRISMA").font(Tipo.Carta.corrente).tracking(2).foregroundColor(Colori.Carta.intestazione)
+                LogoPrismaConNome(colore: Colori.Carta.logo, altezza: M.logoCorrente)
                 Text(verbatim: "· \(contenuto.titolo)").font(Tipo.Carta.corrente).foregroundColor(Colori.Carta.testoTenue).lineLimit(1)
                 Spacer()
                 Text(verbatim: contenuto.cliente).font(Tipo.Carta.corrente).foregroundColor(Colori.Carta.testoTenue)

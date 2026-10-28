@@ -1,50 +1,65 @@
-PRISMA OS — ICONE RIDISEGNATE
+PRISMA — ICONE IN VETRO (TEMA LIQUID GLASS)
 
-Collezione originale ispirata allo stile skeuomorfico di iOS 5 e OS X Lion.
-Ogni icona è stata ridisegnata con oggetti, materiali, volumi e riflessi dedicati.
+Le icone delle app seguono il tema Liquid Glass approvato dall'utente
+(Design/tema-liquid-glass.html, stile icone «colori»): piastrella arrotondata
+(raggio 23,5%) con gradiente c1 → c2 a 165°, filo di luce in alto, bordo
+chiaro sottile, ombra interna in basso, ombra esterna morbida, glifo bianco
+«in vetro» al centro e riflesso obliquo sopra (come .ic e .ic::after del tema).
+Colori e glifi non sono copiati a mano: lo script li legge dal tema stesso
+(tabelle APPS, HOME, ACC e GLYPH).
 
-CONTENUTO
-- 17 SVG individuali: 16 applicazioni e Prisma / Scrivania.
-- Tutte_le_icone_SVG.txt: sorgente completo di tutte le icone, da caricare a Claude.
-- Anteprima_icone.png: tavola di confronto.
+DA DOVE VENGONO
+- Design/tema-liquid-glass.html  colori delle app e glifi SVG 64×64
+- Design/Logo/                   simbolo di Prisma (triangolo diviso in tre:
+                                 opacità 1 / 0,66 / 0,38, colore #0F2433,
+                                 bianco sugli sfondi scuri), anche con il nome
+- Design/Icone/genera-icone.js   lo script che produce tutto
 
-SPECIFICHE
-Dimensioni predefinite: 512 × 512 px. ViewBox: 0 0 256 256.
-Ridimensionabili mantenendo il rapporto 1:1.
-Sfondi esterni trasparenti; ombra, angoli arrotondati e riflessi già inclusi.
-Tutto è vettoriale: tracciati, gradienti e filtri SVG. Nessuna immagine raster
-incorporata, risorsa esterna, libreria, script o dipendenza da font.
-Gli ID sono prefissati per icona per evitare collisioni tra icone diverse.
+CONTENUTO DI QUESTA CARTELLA
+- <Nome>.svg              sorgente vettoriale di ogni icona, 512 × 512
+- Agenda_base.svg         Agenda senza data e senza riflesso
+- Agenda_vetro.svg        solo il riflesso, da posare sopra la data
+- Agenda.svg              esempio con una data (solo riferimento)
+- Prisma.svg              Scrivania: simbolo di Prisma bianco sulla piastrella
+                          blu notte del tema (#2F4C63 → #0E1D29)
+- AppIcon.svg/.png        icona del Mac, 1024 × 1024: piastrella 824 px
+                          centrata ad angoli continui, gradiente blu notte,
+                          alone azzurro, riflesso di vetro, simbolo bianco.
+                          La CI ne ricava AppIcon.icns.
+- Anteprima_icone.png     tavola di controllo su fondo chiaro e scuro
 
-ISTRUZIONI PER CLAUDE
-Carica Tutte_le_icone_SVG.txt insieme al file Prisma_OS.html e chiedi:
+Le PNG usate dall'app (stessi nomi di prima, l'app non cambia codice) stanno in
+Sources/Prisma/Risorse/Icone/: 512 × 512, trasparenti attorno alla piastrella.
 
-«Sostituisci le icone di Prisma OS con questi SVG completi. Mantieni la
-struttura, le 16 app, i testi italiani, i dati demo, tutti i data-action,
-i collegamenti e il salvataggio locale. Conserva il file HTML autonomo e
-lo sfondo attuale. Usa gli SVG inline, senza risorse esterne. Rispetta il
-viewBox quadrato e lascia visibile l'intera ombra; non aggiungere cornici,
-riflessi, sfondi o ombre che duplicano quelli già disegnati negli SVG.
-Per istanze inline ripetute della stessa icona (es. dock e scrivania),
-rendi univoci gli ID di ogni istanza e i relativi riferimenti url(#...).»
+GEOMETRIA
+- Tela 512 × 512, piastrella 480 × 480 in (16, 12), raggio 112,8.
+- Le misure in px del tema valgono per l'icona del dock da 50 px: nello script
+  sono moltiplicate per 480/50 = 9,6. I glifi (riquadro 64) sono scalati di 7,5:
+  un punto (gx, gy) del glifo cade in (16 + 7,5·gx, 12 + 7,5·gy) sulla tela.
+- L'ombra esterna sfuma verso il bordo della tela, senza tagli netti.
 
-MAPPATURA
-Clienti: Clienti.svg → clients
-Analisi: Analisi.svg → analysis
-Analisi 360: Analisi_360.svg → planning
-Obiettivi: Obiettivi.svg → goals
-Simulazioni: Simulazioni.svg → simulations
-Agenda: Agenda.svg → agenda
-Attività: Attivita.svg → tasks
-Note: Note.svg → notes
-Documenti: Documenti.svg → documents
-Presentazioni: Presentazioni.svg → presentation (ID app: presentations)
-Incontri: Incontri.svg → meetings
-Prodotti: Prodotti.svg → products
-Confronti: Confronti.svg → comparisons
-Eve: Eve.svg → eve
-Ricerca: Ricerca.svg → search
-Impostazioni: Impostazioni.svg → settings
-Prisma: Prisma.svg → home
+AGENDA (la data la scrive l'app)
+L'app disegna Agenda_base, poi mese e giorno, poi Agenda_vetro. Nel tema:
+- mese: maiuscolo, 700, colore #E0443A, corpo 10,5/64 del lato della piastrella,
+  spaziatura 0,08 em, linea di base a y = 20,5/64, centrato in x = 32/64;
+- giorno: 300 (Light, SF Pro Display), colore #1C1C1E, corpo 30/64,
+  spaziatura −1/64, linea di base a y = 49,5/64.
+In unità u = lato/256 dell'immagine intera: mese centrato in (128; 68,9),
+corpo 39,4 u; giorno centrato in (128; 151,6), corpo 112,5 u.
 
-Verificati: XML, ID, riferimenti interni e rendering a 512, 64 e 32 px.
+RIGENERARE
+Dalla radice del repository (servono Node, Playwright e Chromium, già presenti
+nell'ambiente di sviluppo; nulla da installare sul Mac):
+  NODE_PATH=$(npm root -g) node Design/Icone/genera-icone.js
+Per una prova senza toccare il repository:
+  NODE_PATH=$(npm root -g) node Design/Icone/genera-icone.js --uscita /tmp/prova
+I testi dei glifi («360», «12,5») usano il carattere arrotondato di sistema;
+dove manca (Linux) ripiegano su Inter.
+
+MAPPATURA (nome del file → app)
+Clienti → Clienti · Analisi → Posizioni · Analisi_360 → Analisi 360 ·
+Incontri → Incontri · Obiettivi → Obiettivi · Confronti → Confronti ·
+Prodotti → Prodotti · Simulazioni → Simulazioni · Agenda_base/Agenda_vetro →
+Agenda · Attivita → Attività · Note → Note · Documenti → Documenti ·
+Presentazioni → Prospetti e report · Eve → Eve · Ricerca → Ricerca ·
+Impostazioni → Impostazioni · Prisma → Scrivania (dock, benvenuto, impostazioni)

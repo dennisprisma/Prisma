@@ -127,10 +127,21 @@ struct Impostazioni: Codable, Equatable {
     var guidaNascosta = false
     /// Dimensione dei testi dell'interfaccia (si applica all'avvio).
     var dimensioneTesto = DimensioneTesto.normale
+    /// Aspetto dell'interfaccia: segue il Mac, sempre chiaro o sempre scuro (i PDF restano chiari).
+    var aspetto = AspettoInterfaccia.automatico
+    /// Lo sfondo d'acqua della scrivania si muove (no = «Sfondo fermo»).
+    var sfondoAnimato = true
+    /// Quanta pioggia cade sull'acqua della scrivania.
+    var pioggia = IntensitaPioggia.leggera
+    /// Promemoria nel Centro notifiche del Mac (spenti finché non li accendi).
+    var promemoria = ImpostazioniPromemoria()
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto }
+    private enum CodingKeys: String, CodingKey {
+        case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
+        case promemoria
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -143,6 +154,51 @@ struct Impostazioni: Codable, Equatable {
         pdf = (try? c.decodeIfPresent(ImpostazioniPDF.self, forKey: .pdf)) ?? ImpostazioniPDF()
         guidaNascosta = (try? c.decodeIfPresent(Bool.self, forKey: .guidaNascosta)) ?? false
         dimensioneTesto = (try? c.decodeIfPresent(DimensioneTesto.self, forKey: .dimensioneTesto)) ?? .normale
+        // Impostazioni del tema: gli archivi di prima non le hanno
+        aspetto = (try? c.decodeIfPresent(AspettoInterfaccia.self, forKey: .aspetto)) ?? .automatico
+        sfondoAnimato = (try? c.decodeIfPresent(Bool.self, forKey: .sfondoAnimato)) ?? true
+        pioggia = (try? c.decodeIfPresent(IntensitaPioggia.self, forKey: .pioggia)) ?? .leggera
+        // Promemoria del Mac: gli archivi di prima non li hanno
+        promemoria = (try? c.decodeIfPresent(ImpostazioniPromemoria.self, forKey: .promemoria)) ?? ImpostazioniPromemoria()
+    }
+}
+
+/// Aspetto dell'interfaccia (Impostazioni → Aspetto).
+enum AspettoInterfaccia: String, Codable, CaseIterable, Identifiable {
+    case automatico, chiaro, scuro
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .automatico: return "Automatico"
+        case .chiaro: return "Chiaro"
+        case .scuro: return "Scuro"
+        }
+    }
+}
+
+/// Quanta pioggia cade sull'acqua della scrivania.
+enum IntensitaPioggia: String, Codable, CaseIterable, Identifiable {
+    case leggera, media, forte
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .leggera: return "Leggera"
+        case .media: return "Media"
+        case .forte: return "Forte"
+        }
+    }
+
+    /// Forza della pioggia per lo sfondo animato (come FORZE nel prototipo approvato).
+    var forza: Double {
+        switch self {
+        case .leggera: return 0.14
+        case .media: return 0.3
+        case .forte: return 0.55
+        }
     }
 }
 
@@ -210,6 +266,51 @@ struct ImpostazioniPDF: Codable, Equatable {
     }
 
     static let lunghezzaMinima = 6
+}
+
+/// Promemoria nel Centro notifiche del Mac: appuntamenti, attività, scadenze delle posizioni e compleanni.
+/// Spenti di partenza: il permesso di macOS si chiede solo quando li accendi. Letti con tolleranza
+/// (gli archivi di prima non li hanno); il permesso di macOS non sta nell'archivio.
+struct ImpostazioniPromemoria: Codable, Equatable {
+    var attivi = false
+    var appuntamenti = true
+    var attivita = true
+    var scadenze = true
+    var compleanni = true
+    /// Quanti minuti prima dell'inizio arriva il promemoria di un appuntamento.
+    var anticipoMinuti = 30
+    /// Il nome del cliente nel promemoria (spento: solo l'ora e cosa fare).
+    var nomiClienti = true
+
+    /// Gli anticipi che si possono scegliere.
+    static let anticipi = [15, 30, 60]
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case attivi, appuntamenti, attivita, scadenze, compleanni, anticipoMinuti, nomiClienti
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        attivi = (try? c.decodeIfPresent(Bool.self, forKey: .attivi)) ?? false
+        appuntamenti = (try? c.decodeIfPresent(Bool.self, forKey: .appuntamenti)) ?? true
+        attivita = (try? c.decodeIfPresent(Bool.self, forKey: .attivita)) ?? true
+        scadenze = (try? c.decodeIfPresent(Bool.self, forKey: .scadenze)) ?? true
+        compleanni = (try? c.decodeIfPresent(Bool.self, forKey: .compleanni)) ?? true
+        let anticipo = (try? c.decodeIfPresent(Int.self, forKey: .anticipoMinuti)) ?? 30
+        anticipoMinuti = ImpostazioniPromemoria.anticipi.contains(anticipo) ? anticipo : 30
+        nomiClienti = (try? c.decodeIfPresent(Bool.self, forKey: .nomiClienti)) ?? true
+    }
+
+    /// «15 minuti», «30 minuti», «1 ora».
+    static func nomeAnticipo(_ minuti: Int) -> String {
+        if minuti >= 60, minuti % 60 == 0 {
+            let ore = minuti / 60
+            return ore == 1 ? "1 ora" : "\(ore) ore"
+        }
+        return "\(minuti) minuti"
+    }
 }
 
 /// Impostazioni di Eve (comprese nel backup).
@@ -280,6 +381,13 @@ struct ImpostazioniBackup: Codable, Equatable {
     /// L'ultimo tentativo e l'errore dell'ultimo backup non riuscito (disco scollegato, cartella piena…).
     var ultimoTentativo: Date?
     var ultimoErrore: String?
+    /// I backup si proteggono con una password (che sta nel Portachiavi del Mac, mai qui).
+    /// Opzionale: gli archivi di prima non hanno il campo e si leggono lo stesso.
+    var protetto: Bool?
+
+    /// true se i nuovi backup vanno protetti con la password.
+    var cifrato: Bool { protetto == true }
+    static let lunghezzaMinimaPassword = 8
 
     /// true se l'ultimo backup riuscito ha più di 8 giorni (o non c'è): va segnalato.
     var inRitardo: Bool {

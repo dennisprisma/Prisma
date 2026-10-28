@@ -1,11 +1,13 @@
 import Foundation
 
-/// Le cose da sistemare nei dossier che vengono dalle analisi delle posizioni: rischio oltre il profilo,
-/// costi alti, beneficiari mancanti, convivente non tutelato. Calcoli leggeri (senza cercare alternative
+/// Le cose da sistemare nei dossier che vengono dalle analisi delle posizioni: rischio oltre il profilo
+/// (anche nelle crisi vere del passato), costi alti, beneficiari mancanti, convivente non tutelato,
+/// concentrazione su un emittente o sul canale Alleanza. Calcoli leggeri (senza cercare alternative
 /// nel catalogo), per tutto il portafoglio e per le notifiche.
 struct Attenzione: Identifiable {
     enum Tipo: Int, CaseIterable {
-        case beneficiari, convivente, rischio, costi
+        // I nuovi tipi vanno in fondo: l'elenco si ordina per rawValue
+        case beneficiari, convivente, rischio, costi, concentrazione
 
         var nome: String {
             switch self {
@@ -13,6 +15,7 @@ struct Attenzione: Identifiable {
             case .convivente: return "Convivente"
             case .rischio: return "Rischio"
             case .costi: return "Costi"
+            case .concentrazione: return "Concentrazione"
             }
         }
 
@@ -22,6 +25,8 @@ struct Attenzione: Identifiable {
             case .beneficiari, .convivente: return "successione"
             case .rischio: return "resistenza"
             case .costi: return "costi"
+            // La spiega il pannello «Coerenza con il profilo» del dossier
+            case .concentrazione: return "coerenza"
             }
         }
     }
@@ -55,6 +60,15 @@ enum MotoreAttenzioni {
         if let g = r.giudizio, g != .dentro, let m = r.scenario(.mercati) {
             elenco.append(.init(cliente: c, tipo: .rischio, titolo: g == .oltre ? "Rischio oltre il profilo" : "Rischio al limite del profilo",
                                 dettaglio: "In un anno di crisi \(CifreDoc.percento(m.quota * 100)) contro il \(CifreDoc.condizione(r.sopportabile ?? 0)) sopportabile"))
+        }
+        // Coerenza con il profilo, solo sulle posizioni in essere: un avviso di rischio se la prova sui
+        // mercati non l'ha già dato, e uno di concentrazione
+        let coerenza = MotoreCoerenza.calcola(cliente: c, posizioni: mie)
+        if !elenco.contains(where: { $0.tipo == .rischio }), let i = coerenza.rischio.first {
+            elenco.append(.init(cliente: c, tipo: .rischio, titolo: i.titolo, dettaglio: i.dettaglio))
+        }
+        if let i = coerenza.concentrazione.first {
+            elenco.append(.init(cliente: c, tipo: .concentrazione, titolo: i.titolo, dettaglio: i.dettaglio))
         }
         // Solo il costo annuo dichiarato, senza proiezioni: il pannello gira su tutti i clienti
         let alti = mie.filter { $0.stato == .inEssere && $0.area.proiettabile && ($0.costoComplessivo ?? 0) > MotoreCosti.sogliaAlto }

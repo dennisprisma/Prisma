@@ -95,6 +95,24 @@ struct AppProdotti: View {
         }
     }
 
+    /// I costi come nel KID: l'incidenza annua (RIY) dichiarata, quella che calcola Prisma su un esempio di
+    /// 10.000 € in un'unica soluzione (stima, prima delle imposte) e il periodo raccomandato.
+    private func testoKID(_ p: Prodotto) -> String {
+        var parti: [String] = []
+        if let dichiarato = p.incidenzaCostiKID {
+            parti.append("RIY dichiarato \(Formati.percentuale(dichiarato)) l'anno")
+        }
+        var esempio = p.proposta(per: "")
+        esempio.versamentoIniziale = 10_000
+        if let incidenza = MotoreCosti.incidenzaKID(esempio, prodotto: p), let calcolato = incidenza.calcolato {
+            parti.append("calcolato da Prisma \(Formati.percentuale(calcolato)) a \(incidenza.periodoRaccomandato) anni (stima su 10.000 € in un'unica soluzione)")
+        }
+        if let anni = p.periodoConsigliato {
+            parti.append("periodo raccomandato \(anni) anni")
+        }
+        return parti.joined(separator: " · ")
+    }
+
     private func nuova() {
         var p = Prodotto(nome: "", canale: stato.filtroCanaleProdotti ?? .alleanza, area: stato.filtroAreaProdotti ?? .investimento)
         p.verificatoIl = Calendar.current.startOfDay(for: Date())
@@ -143,6 +161,7 @@ struct AppProdotti: View {
                             .buttonStyle(StileSemplice())
                     }
                 }
+                .padding(.vertical, Tema.Misura.Strumenti.margineElenco)
             }
         }
         .background(Gradienti.railAnalisi)
@@ -151,8 +170,9 @@ struct AppProdotti: View {
     private func rigaElenco(_ p: Prodotto, attiva: Bool) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
-                RoundedRectangle(cornerRadius: 2).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
-                Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(attiva ? .white : Colori.Analisi.tabellaTesto).lineLimit(1)
+                RoundedRectangle(cornerRadius: Tema.Raggio.quadratinoCanale, style: .continuous)
+                    .fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
+                Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
                 Spacer(minLength: 4)
                 EtichettaCanale(canale: p.canale, compatta: true)
             }
@@ -160,16 +180,14 @@ struct AppProdotti: View {
                 Text([p.area.nome, p.costoAnnuo.map { "costo \(Formati.percentuale($0))" } ?? "", p.sri.map { "SRI \($0)" } ?? ""]
                         .filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(Tipo.chip)
-                    .foregroundColor(attiva ? Color.white.opacity(0.85) : Colori.Analisi.kpiNota)
+                    .foregroundColor(Colori.Analisi.kpiNota)
                 if p.daVerificare {
-                    Text("DA VERIFICARE").font(Tipo.chip).foregroundColor(attiva ? .white : Colori.Analisi.attenzioneTesto)
+                    Text("DA VERIFICARE").font(Tipo.chip).foregroundColor(Colori.Analisi.attenzioneTesto)
                 }
             }
         }
         .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(attiva ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
-        .bordoBasso(Colori.Strumenti.ipotesiRiga)
+        .voceElencoStrumento(attiva: attiva)
     }
 
     // MARK: - Dettaglio
@@ -183,13 +201,12 @@ struct AppProdotti: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .center, spacing: 14) {
-                    RoundedRectangle(cornerRadius: 6).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 46)
+                    Capsule(style: .continuous).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 46)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(p.nome).font(Tipo.profiloNome).tracking(-0.4).foregroundColor(Colori.Analisi.kpiValore)
                         Text([p.area.nome, p.tipologia, p.emittente].filter { !$0.isEmpty }.joined(separator: " · "))
                             .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                     }
-                    .incisione(.white)
                     Spacer()
                     EtichettaCanale(canale: p.canale)
                 }
@@ -209,6 +226,9 @@ struct AppProdotti: View {
                             RigaDato("Garanzie", p.garanzie)
                             RigaDato("Riscatto e liquidabilità", p.liquidabilita)
                             RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "")
+                            if p.area.proiettabile {
+                                RigaDato("Costi come nel KID", testoKID(p))
+                            }
                             HStack(alignment: .center, spacing: 12) {
                                 Text("Rischio (SRI)").font(Tipo.campoEtichetta).foregroundColor(Colori.Analisi.kpiNota)
                                     .frame(width: 150, alignment: .leading)
@@ -314,6 +334,12 @@ struct ModuloProdotto: View {
                 CampoModulo(etichetta: "Rendimento ipotizzato") { percento($bozza.rendimentoAtteso, "% annuo") }
                 CampoModulo(etichetta: "Costo d'ingresso") { percento($bozza.costoIngresso, "% dei versamenti") }
                 CampoModulo(etichetta: "Costo annuo") { percento($bozza.costoAnnuo, "% all'anno") }
+                CampoModulo(etichetta: "Costi nel KID (RIY)") {
+                    percento($bozza.incidenzaCostiKID, "% l'anno al periodo raccomandato · Prisma lo confronta con il suo calcolo")
+                }
+                CampoModulo(etichetta: "Periodo raccomandato") {
+                    CampoInteroFacoltativo(valore: $bozza.periodoRaccomandato, unita: notaPeriodo)
+                }
                 CampoModulo(etichetta: "Fiscalità") { percento($bozza.aliquotaFiscale, "% sul rendimento") }
                 CampoModulo(etichetta: "Rischio (SRI)") {
                     MenuTendina(selezione: $bozza.sri,
@@ -355,6 +381,15 @@ struct ModuloProdotto: View {
                 .multilineTextAlignment(.trailing)
                 .frame(width: 70)
             Text(unita).font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Il periodo raccomandato della scheda prevale su quello delle condizioni del contratto.
+    private var notaPeriodo: String {
+        if bozza.periodoRaccomandato == nil, let anni = bozza.condizioni?.periodoRaccomandato {
+            return "anni, dal KID · se vuoto, \(anni) dalle condizioni del contratto"
+        }
+        return "anni, dal KID"
     }
 }

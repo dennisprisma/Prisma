@@ -77,6 +77,9 @@ struct EsitoProtezioneFamiglia {
     var detrazioneConProposte: Double { detraibiliConProposte * RegoleFiscali.detrazionePremi / 100 }
     let avvisi: [AvvisoTutela]
     let note: [String]
+    /// Il fabbisogno per ogni persona che porta reddito (`MotoreProtezioneFamiglia.perPersona`), affiancato a
+    /// quello del nucleo qui sopra, che non cambia; vuoto senza il cliente.
+    var persone: [FabbisognoPersona] = []
 
     var scoperti: [TutelaRischio] { tutele.filter { $0.importante && $0.stato == .scoperto } }
     var canali: [Canale] { Canale.allCases.filter { c in (coperture + proposte).contains { $0.canale == c } } }
@@ -152,6 +155,7 @@ enum MotoreProtezioneFamiglia {
             anniSuggeriti: anniSuggeriti, tutele: tutele, coperture: coperture, proposte: proposte,
             reddito: cliente?.profilo.redditoLordoAnnuo,
             detraibili: detraibili(coperture), detraibiliConProposte: detraibili(coperture + proposte),
-            avvisi: avvisi, note: note + Semplificazioni.protezione)
+            avvisi: avvisi, note: note + Semplificazioni.protezione,
+            persone: cliente.map { MotoreProtezioneFamiglia.perPersona(posizioni, cliente: $0, analisi: analisi, data: data) } ?? [])
     }
 }

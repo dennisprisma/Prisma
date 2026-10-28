@@ -1,58 +1,51 @@
 import SwiftUI
 
-/// Materiali skeuomorfici del template, ricavati dal CSS e salvati come PNG in Risorse/Materiali.
+/// Superfici di fondo. Nel tema «Liquid Glass» le vecchie trame (grana, lino, righe, pelle) non si
+/// disegnano più: i nomi restano per i chiamanti, e lo sfondo della scrivania è l'acqua.
 enum Materiale {
-    /// Trama ripetuta (PNG a doppia risoluzione).
+    /// Ex trama ripetuta (grana, lino, righe): sotto resta il vetro della finestra.
     struct Trama: View {
         let nome: String
 
         var body: some View {
-            if let img = Risorse.immagine("Materiali/\(nome).png", scala: 2) {
-                Image(nsImage: img).resizable(resizingMode: .tile)
-            } else {
-                Color.clear
-            }
+            Color.clear
         }
     }
 
-    /// Pelle (--prisma-leather): la ricetta del template a livelli, senza foto stirate.
-    /// Gradiente caldo, puntinatura fine (tile da 3 pt), riflesso in alto a sinistra e grana.
+    /// Ex pelle: niente superficie propria. Sullo schermo resta il vetro del widget;
+    /// nella copertina del report (PDF) si vede il colore pieno della carta, che è fisso.
     struct Pelle: View {
         var body: some View {
-            ZStack {
-                Gradienti.pelle
-                Trama(nome: "Pelle_punti")
-                Gradienti.pelleRiflesso
-                Trama(nome: "Grana").opacity(0.5)
-            }
+            Color.clear
         }
     }
 
-    /// Lino grafite (--prisma-linen): riquadro di Eve, pannelli scuri.
+    /// Ex lino grafite: il riempimento dei pannelli di vetro del tema (senza materiali di sistema).
     struct Lino: View {
         var body: some View {
-            ZStack {
-                Gradienti.lino
-                Trama(nome: "Lino_trama")
-            }
+            LinearGradient.verticale(Colori.Lino.alto, Colori.Lino.basso)
         }
     }
 
-    /// Sfondo della scrivania "Gocce" con velo e vignettatura.
+    /// Sfondo della scrivania e del benvenuto: l'acqua con la pioggia (SfondoAcqua).
+    /// Intensità della pioggia e «Sfondo animato» vengono dalle impostazioni, chiaro o scuro dall'aspetto.
+    /// `animato` dice se in questo punto lo sfondo può muoversi (false = fermo, per esempio quando è coperto);
+    /// finestra nascosta, basso consumo e «Riduci movimento» li gestisce già SfondoAcqua.
+    /// Nelle istantanee SfondoAcqua mostra da sé il fermo-immagine.
     struct SfondoScrivania: View {
+        var animato: Bool
+        @EnvironmentObject private var stato: StatoShell
+        @Environment(\.colorScheme) private var schema
+
+        init(animato: Bool = false) {
+            self.animato = animato
+        }
+
         var body: some View {
-            GeometryReader { geo in
-                ZStack {
-                    Colori.Sfondo.base
-                    ImmagineRisorsa(percorso: "Sfondi/Gocce.jpg")
-                        .scaledToFill()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .clipped()
-                    Gradienti.veloSfondo
-                    Vignettatura(colore: Colori.Sfondo.vignettatura, ampiezza: 170)
-                }
-            }
-            .ignoresSafeArea()
+            SfondoAcqua(animato: animato && stato.dati.impostazioni.sfondoAnimato,
+                        intensita: stato.dati.impostazioni.pioggia.forza,
+                        scuro: schema == .dark)
+                .ignoresSafeArea()
         }
     }
 

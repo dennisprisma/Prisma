@@ -121,6 +121,8 @@ final class StatoShell: ObservableObject {
     private var timerNotifiche: Timer?
     /// Le notifiche già viste in questa sessione (la campanella conta le altre).
     @Published var notificheViste: Set<String> = []
+    /// Promemoria del Mac: il permesso di macOS (nil finché non si sa, e sempre nelle istantanee e nelle prove).
+    @Published var permessoPromemoria: PermessoPromemoria?
 
     /// Eve parla del portafoglio (tutti i clienti) invece che del cliente attivo.
     @Published var evePortafoglio = false { didSet { if evePortafoglio && modoCliente != nil { evePortafoglio = false } } }
@@ -188,6 +190,15 @@ final class StatoShell: ObservableObject {
     // Backup
     @Published private(set) var elencoBackup: [VoceBackup] = []
     @Published private(set) var backupInCorso = false
+    /// La password dei backup per questa sessione (dal Portachiavi o appena scritta): mai nell'archivio.
+    private var passwordBackupInMemoria: String?
+    /// Il Portachiavi si legge da solo una volta per sessione (il Mac può chiedere il permesso):
+    /// i backup automatici non lo richiedono a ogni controllo.
+    private var portachiaviLetto = false
+    /// Impostazioni › Archivio: si apre la richiesta della password dei backup.
+    @Published var chiediPasswordBackup = false
+    /// Un backup protetto da ripristinare, in attesa della password.
+    @Published var ripristinoDaSbloccare: RichiestaPasswordBackup?
 
     /// Area disponibile per le finestre (sotto la barra, sopra il dock), aggiornata dalla vista.
     /// Area delle finestre interne (sotto la barra, sopra il dock). Pubblicata: quando cambia la
@@ -227,6 +238,8 @@ final class StatoShell: ObservableObject {
             verificaMotoreLocale()
             DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
             aggiornaElencoBackup()
+            // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
+            avviaPromemoria()
             // I file rimasti da un'importazione interrotta vanno nel Cestino; solo con l'archivio
             // letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
             if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
@@ -268,6 +281,49 @@ final class StatoShell: ObservableObject {
 
     /// App in primo piano (nil = scrivania).
     var appAttiva: AppPrisma? { finestreVisibili.last?.app }
+
+    /// La scrivania non si vede: la copre una finestra ingrandita (resta solo una cornice di pochi punti)
+    /// o una presentazione. Allora lo sfondo d'acqua si ferma. Con la schermata di benvenuto lo sfondo si vede.
+    var scrivaniaCoperta: Bool {
+        if presentazione != nil { return true }
+        if bloccato { return false }
+        return finestreVisibili.contains { $0.ingrandita }
+    }
+
+    /// Di chi parla la finestra di un'app: il suo cliente, tutti i clienti (filtri vuoti, portafoglio)
+    /// o nil se l'app non riguarda i clienti. Le app del dossier mostrano il cliente attivo;
+    /// Agenda, Attività e Note il cliente del loro filtro.
+    func contesto(di app: AppPrisma) -> String? {
+        let attivo = clienteAttivo?.nome ?? "Nessun cliente"
+        let tutti = "Tutti i clienti"
+        let delPortafoglio = "Portafoglio · tutti i clienti"
+        func filtro(_ id: String?) -> String {
+            guard let id else { return tutti }
+            return cliente(id)?.nome ?? tutti
+        }
+        switch app {
+        case .clienti, .analisi360, .obiettivi, .simulazioni, .confronti, .documenti, .incontri:
+            return attivo
+        case .posizioni:
+            return portafoglio ? delPortafoglio : attivo
+        case .eve:
+            return evePortafoglio ? delPortafoglio : attivo
+        case .presentazioni:
+            return sceltaProspetto.tipo == .portafoglio ? delPortafoglio : attivo
+        case .agenda:
+            return filtro(filtroClienteAgenda)
+        case .attivita:
+            return filtro(filtroClienteAttivita)
+        case .note:
+            return filtro(filtroClienteNote)
+        case .prodotti:
+            return "Catalogo dei prodotti"
+        case .ricerca:
+            return testoRicerca.isEmpty ? nil : "«\(testoRicerca)»"
+        case .impostazioni:
+            return nil
+        }
+    }
 
     func aperta(_ app: AppPrisma) -> Bool { finestre.contains { $0.app == app } }
 
@@ -1003,7 +1059,7 @@ final class StatoShell: ObservableObject {
             return DocumentoStampabile(testiSuccessione(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         if case .costi(let report) = scelta {
-            return DocumentoStampabile(testiCosti(clienteAttivoId), report: report, commento: testoCommento(scelta))
+            return DocumentoStampabile(testiCosti(clienteAttivoId), report: report, commento: testoCommento(scelta), prodotti: dati.prodotti)
         }
         if case .resistenza(let report) = scelta {
             return DocumentoStampabile(testiResistenza(clienteAttivoId), report: report, commento: testoCommento(scelta))
@@ -1217,7 +1273,10 @@ final class StatoShell: ObservableObject {
         p.tipologia = d.confermato(.tipologia) ?? ""
         p.sri = d.confermato(.sri).flatMap { Int($0.prefix(1)) }
         p.costoIngresso = EstrattoreDocumento.numero(d.confermato(.costoIngresso))
-        p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo)) ?? EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
+        // Il RIY del KID è un'incidenza complessiva, non il costo corrente: resta nel suo campo, mai come costo annuo
+        p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo))
+        p.incidenzaCostiKID = EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
+        p.periodoRaccomandato = Self.anniDaDocumento(d.confermato(.periodoDetenzione))
         p.rendimentoAtteso = EstrattoreDocumento.numero(d.confermato(.rendimentoModerato))
         p.fonte = "\(d.titolo) (\(d.tipo.breve), importato il \(Formati.dataBreve.string(from: d.importatoIl)))"
         p.verificatoIl = Calendar.current.startOfDay(for: Date())
@@ -1252,11 +1311,22 @@ final class StatoShell: ObservableObject {
         }
         p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo))
         p.costoIngresso = EstrattoreDocumento.numero(d.confermato(.costoIngresso))
+        p.costoUscita = EstrattoreDocumento.numero(d.confermato(.costoUscita))
+        p.incidenzaCostiKID = EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
+        p.periodoRaccomandato = Self.anniDaDocumento(d.confermato(.periodoDetenzione))
         p.sri = d.confermato(.sri).flatMap { Int($0.prefix(1)) }
         p.note = "Dati dal documento «\(d.titolo)», da completare."
         salvaPosizione(p)
         aggiornaDocumento(id) { $0.posizioneId = p.id }
         apriPosizione(p)
+    }
+
+    /// Gli anni del periodo di detenzione raccomandato letti da un documento («5» o «5 anni»), tra 1 e 60.
+    static func anniDaDocumento(_ testo: String?) -> Int? {
+        guard let testo else { return nil }
+        let cifre = testo.trimmingCharacters(in: .whitespaces).prefix(while: { $0.isASCII && $0.isNumber })
+        guard let anni = Int(String(cifre)), anni >= 1, anni <= 60 else { return nil }
+        return anni
     }
 
     /// Porta nella posizione il valore confermato di un estratto conto e collega il documento.
@@ -2087,6 +2157,37 @@ final class StatoShell: ObservableObject {
         if nuove != notifiche { notifiche = nuove }
     }
 
+    /// Promemoria del Mac (vedi PromemoriaMac.swift): solo dentro Prisma.app con l'archivio sul disco.
+    /// All'avvio legge il permesso senza chiederlo; poi ricalcola dopo le modifiche, al cambio di giorno
+    /// e tornando a Prisma.
+    private func avviaPromemoria() {
+        guard persistente, PromemoriaMac.disponibili else { return }
+        PromemoriaMac.condiviso.collega(self)
+        if dati.impostazioni.promemoria.attivi {
+            aggiornaPromemoria()
+        } else {
+            // Spenti: niente promemoria rimasti da una sessione di prima
+            PromemoriaMac.condiviso.spegni()
+        }
+        aggiornaPermessoPromemoria()
+        $dati
+            .dropFirst()
+            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in self?.aggiornaPromemoria() }
+            .store(in: &abbonamenti)
+        NotificationCenter.default.publisher(for: .NSCalendarDayChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.aggiornaPromemoria() }
+            .store(in: &abbonamenti)
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.aggiornaPermessoPromemoria()
+                self?.aggiornaPromemoria()
+            }
+            .store(in: &abbonamenti)
+    }
+
     // MARK: - Salvataggio
 
     /// Salva l'archivio 0,8 s dopo l'ultima modifica e alla chiusura dell'app.
@@ -2148,9 +2249,92 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    // MARK: - Password dei backup
+
+    /// La password con cui proteggere i backup (nil = backup non protetti). Con la protezione
+    /// attiva e la password non disponibile lancia `.passwordNonDisponibile`: niente backup in chiaro.
+    /// - riprova: false per i backup automatici (il Portachiavi non si richiede a ogni controllo).
+    func passwordPerBackup(riprova: Bool = true) throws -> String? {
+        guard dati.impostazioni.backup.cifrato else { return nil }
+        guard let password = passwordBackupNota(riprova: riprova) else { throw ErroreBackup.passwordNonDisponibile }
+        return password
+    }
+
+    /// La password dei backup se è nota: in memoria, altrimenti dal Portachiavi (mai nelle prove
+    /// e nelle istantanee).
+    private func passwordBackupNota(riprova: Bool) -> String? {
+        if let password = passwordBackupInMemoria { return password }
+        guard persistente, riprova || !portachiaviLetto else { return nil }
+        portachiaviLetto = true
+        passwordBackupInMemoria = PortachiaviBackup.leggi()
+        return passwordBackupInMemoria
+    }
+
+    /// Imposta o cambia la password dei backup: vale dai prossimi backup.
+    /// false se è troppo corta o se il Portachiavi non l'ha salvata.
+    @discardableResult
+    func impostaPasswordBackup(_ password: String) -> Bool {
+        guard password.count >= ImpostazioniBackup.lunghezzaMinimaPassword else { return false }
+        if persistente, !PortachiaviBackup.salva(password) { return false }
+        let cambio = dati.impostazioni.backup.cifrato
+        passwordBackupInMemoria = password
+        portachiaviLetto = true
+        dati.impostazioni.backup.protetto = true
+        if dati.impostazioni.backup.ultimoErrore == ErroreBackup.passwordNonDisponibile.localizedDescription {
+            dati.impostazioni.backup.ultimoErrore = nil
+        }
+        mostraAvviso(cambio ? "Password dei backup cambiata: vale dai prossimi backup."
+                            : "Backup protetti: da ora si aprono solo con la password.")
+        return true
+    }
+
+    /// Toglie la protezione: i prossimi backup sono .zip in chiaro; quelli protetti restano protetti.
+    func togliPasswordBackup() {
+        if persistente { PortachiaviBackup.elimina() }
+        passwordBackupInMemoria = nil
+        dati.impostazioni.backup.protetto = false
+        if dati.impostazioni.backup.ultimoErrore == ErroreBackup.passwordNonDisponibile.localizedDescription {
+            dati.impostazioni.backup.ultimoErrore = nil
+        }
+        mostraAvviso("Password tolta: i prossimi backup non sono protetti. Quelli già protetti si aprono con la loro password.")
+    }
+
+    /// Apre Impostazioni › Archivio con la richiesta della password dei backup.
+    private func chiediPasswordBackupInImpostazioni() {
+        schedaImpostazioni = .archivio
+        apri(.impostazioni)
+        // Dopo l'apertura della finestra, perché la richiesta abbia dove comparire
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in self?.chiediPasswordBackup = true }
+    }
+
+    /// Un'operazione che prima salva un backup di sicurezza si ferma se il backup protetto non si può fare.
+    private func annullaSenzaPassword(_ errore: Error, _ operazione: String) {
+        mostraAvviso("\(operazione): \(errore.localizedDescription)")
+        chiediPasswordBackupInImpostazioni()
+    }
+
+    /// Chiede la password di un backup protetto da ripristinare (dopo che la conferma si è chiusa).
+    private func chiediPasswordRipristino(_ url: URL, messaggio: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            self?.ripristinoDaSbloccare = RichiestaPasswordBackup(url: url, messaggio: messaggio)
+        }
+    }
+
     /// Crea un backup completo della cartella dell'archivio.
     func creaBackup(automatico: Bool = false) {
         guard persistente, !backupInCorso else { return }
+        // Con la protezione attiva il backup si fa solo con la password, mai in chiaro
+        let password: String?
+        do {
+            password = try passwordPerBackup(riprova: !automatico)
+        } catch {
+            let giaSegnalato = dati.impostazioni.backup.ultimoErrore == error.localizedDescription
+            dati.impostazioni.backup.ultimoTentativo = Date()
+            dati.impostazioni.backup.ultimoErrore = error.localizedDescription
+            if !automatico || !giaSegnalato { mostraAvviso("Backup non fatto: \(error.localizedDescription)") }
+            if !automatico { chiediPasswordBackupInImpostazioni() }
+            return
+        }
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
@@ -2159,7 +2343,8 @@ final class StatoShell: ObservableObject {
         DispatchQueue.global(qos: .utility).async {
             do {
                 let url = try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione,
-                                                 nota: automatico ? GestoreBackup.notaAutomatico : nil, creaCartella: creaCartella)
+                                                 nota: automatico ? GestoreBackup.notaAutomatico : nil, creaCartella: creaCartella,
+                                                 password: password)
                 DispatchQueue.main.async {
                     self.backupInCorso = false
                     self.dati.impostazioni.backup.ultimo = Date()
@@ -2178,9 +2363,27 @@ final class StatoShell: ObservableObject {
     }
 
     /// Ripristina un backup. Prima salva una copia di sicurezza dello stato attuale.
-    func ripristina(_ zip: URL) {
+    /// Un backup protetto si apre con `password scritta` (dalla richiesta) o con la password dei
+    /// backup; se nessuna lo apre si chiede la password.
+    func ripristina(_ zip: URL, password scritta: String? = nil) {
         guard persistente, !backupInCorso else { return }
         guard !ripristinoBloccato else { mostraAvviso("Archivio in sola lettura: apri l'ultima versione di Prisma per ripristinare."); return }
+        // Riconosciuto dal contenuto: anche un backup protetto rinominato
+        let protetto = CifraturaBackup.cifrato(zip)
+        let daPortachiavi = protetto && scritta == nil
+        let chiave: String? = protetto ? (scritta ?? passwordBackupNota(riprova: true)) : nil
+        if protetto, chiave == nil {
+            chiediPasswordRipristino(zip, messaggio: "«\(zip.lastPathComponent)» è protetto: scrivi la password con cui è stato fatto.")
+            return
+        }
+        // La copia di sicurezza di prima del ripristino segue la protezione di oggi
+        let perSicurezza: String?
+        do {
+            perSicurezza = try passwordPerBackup()
+        } catch {
+            annullaSenzaPassword(error, "Ripristino annullato")
+            return
+        }
         salvaOra()
         salvataggioSospeso = true
         backupInCorso = true
@@ -2192,10 +2395,10 @@ final class StatoShell: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async {
             var estratta: URL?
             do {
-                let estratto = try GestoreBackup.estrai(zip)
+                let estratto = try GestoreBackup.estrai(zip, password: chiave)
                 estratta = estratto.cartella
                 try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima del ripristino",
-                                       creaCartella: creaCartella, proteggi: zip)
+                                       creaCartella: creaCartella, proteggi: zip, password: perSicurezza)
                 try GestoreBackup.sostituisci(cartellaDati: Archivio.cartella, con: estratto.cartella)
                 Archivio.segnaCopieGestite()
                 DispatchQueue.main.async {
@@ -2220,7 +2423,13 @@ final class StatoShell: ObservableObject {
                 DispatchQueue.main.async {
                     self.salvataggioSospeso = self.solaLettura
                     self.backupInCorso = false
-                    self.mostraAvviso("Ripristino non riuscito: \(error.localizedDescription)")
+                    if (error as? ErroreBackup)?.passwordSbagliata == true {
+                        self.chiediPasswordRipristino(zip, messaggio: daPortachiavi
+                            ? "La password dei backup salvata su questo Mac non apre «\(zip.lastPathComponent)»: forse è stato fatto con una password di prima. Scrivila qui."
+                            : "La password non è corretta: riprova.")
+                    } else {
+                        self.mostraAvviso("Ripristino non riuscito: \(error.localizedDescription)")
+                    }
                 }
             }
         }
@@ -2250,13 +2459,20 @@ final class StatoShell: ObservableObject {
     /// lasciando i clienti veri. Prima salva un backup.
     func togliDatiDiProva() {
         guard persistente, !backupInCorso, !solaLettura else { return }
+        let password: String?
+        do {
+            password = try passwordPerBackup()
+        } catch {
+            annullaSenzaPassword(error, "Operazione annullata")
+            return
+        }
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
             let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima di togliere i dati di prova",
-                                                        creaCartella: creaCartella) }
+                                                        creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
                 switch esito {
@@ -2279,13 +2495,20 @@ final class StatoShell: ObservableObject {
             return
         }
         guard !backupInCorso else { return }
+        let password: String?
+        do {
+            password = try passwordPerBackup()
+        } catch {
+            annullaSenzaPassword(error, "Operazione annullata")
+            return
+        }
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
             let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione dei clienti",
-                                                        creaCartella: creaCartella) }
+                                                        creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
                 switch esito {
@@ -2310,13 +2533,20 @@ final class StatoShell: ObservableObject {
             return
         }
         guard !backupInCorso else { return }
+        let password: String?
+        do {
+            password = try passwordPerBackup()
+        } catch {
+            annullaSenzaPassword(error, "Operazione annullata")
+            return
+        }
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
             let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione delle posizioni",
-                                                        creaCartella: creaCartella) }
+                                                        creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
                 switch esito {
@@ -2378,13 +2608,20 @@ final class StatoShell: ObservableObject {
     /// oppure con `completi` anche i 30 clienti fittizi.
     func ripristinaDatiDiProva(completi: Bool = false) {
         guard persistente, !backupInCorso, !solaLettura else { return }
+        let password: String?
+        do {
+            password = try passwordPerBackup()
+        } catch {
+            annullaSenzaPassword(error, "Operazione annullata")
+            return
+        }
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
             let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dei dati di prova",
-                                                        creaCartella: creaCartella) }
+                                                        creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
                 switch esito {

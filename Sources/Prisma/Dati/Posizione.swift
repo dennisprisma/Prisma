@@ -200,6 +200,49 @@ struct Posizione: Identifiable, Codable, Hashable {
     /// Multiramo: quota del valore in gestione separata (Ramo I, 0–100), esente da bollo.
     var quotaGestioneSeparata: Double?
 
+    // Dati per i motori di analisi (rendimenti, riscatto, rischio, famiglia). Tutti facoltativi:
+    // il Codable è sintetizzato, quindi ogni campo nuovo DEVE essere Optional (gli archivi di prima
+    // non lo hanno). Senza questi dati i motori si comportano come prima.
+
+    /// Movimenti reali con la loro data (versamenti, riscatti parziali, cedole), dal più vecchio.
+    /// Se mancano, i flussi si ricostruiscono da decorrenza, premi e rilevazioni.
+    var movimenti: [Movimento]?
+    /// Penali di riscatto della posizione, sul valore, per annualità: [2° anno, 3° anno, …] in %,
+    /// come `CondizioniContratto.penali`. Prevalgono su quelle della scheda prodotto (`penale(anno:prodotto:)`).
+    var penali: [Double]?
+    /// Mesi dalla decorrenza in cui il riscatto non è consentito (come `CondizioniContratto.mesiBloccoRiscatto`).
+    var mesiBloccoRiscatto: Int?
+    /// Costo d'uscita fisso in % del valore riscattato, oltre alle penali per anno (dal KID).
+    var costoUscita: Double?
+    /// Incidenza annua dei costi dichiarata nel KID (RIY, % annuo al periodo raccomandato), da confrontare con quella calcolata.
+    var incidenzaCostiKID: Double?
+    /// Periodo di detenzione raccomandato dal KID, in anni.
+    var periodoRaccomandato: Int?
+    /// Gestione separata: rendimento minimo garantito annuo (%); 0 = solo capitale garantito.
+    var minimoGarantito: Double?
+    /// Gestione separata: true se il rendimento accreditato si consolida ogni anno (non si perde più);
+    /// false se la garanzia vale solo a scadenza o in caso di decesso.
+    var consolidamento: Bool?
+    /// Gestione separata: quota del rendimento lordo retrocessa al cliente (0–100), alternativa al
+    /// trattenuto fisso (`trattenuto`). Il lordo della gestione è `rendimentoAtteso`.
+    var retrocessione: Double?
+    /// Volatilità annua attesa (%, deviazione standard); se manca si ricava dall'SRI.
+    var volatilita: Double?
+    /// Quota investita in azioni (0–100), per le crisi storiche; se manca si ricava da tipologia e SRI.
+    var quotaAzionaria: Double?
+    /// Persona assicurata: id del cliente o di un suo `Familiare` (il testo `assicurato` resta per il prospetto).
+    var assicuratoId: String?
+    /// Protezione: capitale caso morte decrescente nel tempo (tipicamente legato al mutuo).
+    var capitaleDecrescente: Bool?
+    /// Previdenza: contributo annuo del datore di lavoro (€), conta nel limite di deducibilità.
+    var contributoDatore: Double?
+    /// Previdenza: TFR conferito ogni anno (€), non conta nel limite di deducibilità.
+    var tfrConferito: Double?
+    /// Debiti: tasso annuo nominale del finanziamento (%), per il piano di ammortamento alla francese.
+    var tassoDebito: Double?
+    /// Debiti: quota del debito a carico del cliente (0–100) se il finanziamento è cointestato; nil = tutto.
+    var quotaDebito: Double?
+
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }
 
@@ -257,19 +300,28 @@ struct Posizione: Identifiable, Codable, Hashable {
         return Self.ramoI(t) || t.contains("rivalutabil") || t.contains("gestione separata")
     }
 
+    /// Contratto di capitalizzazione (Ramo V): non assicura una vita, paga il bollo ed entra nell'asse ereditario.
+    var contrattoCapitalizzazione: Bool {
+        guard regime == .polizza else { return false }
+        let t = (nome + " " + tipologia).lowercased()
+        return t.contains("capitalizzazione") || t.range(of: #"\bramo v\b"#, options: .regularExpression) != nil
+    }
+
     /// "Ramo I" come parola intera: non «Ramo III» né «Ramo IV».
     private static func ramoI(_ t: String) -> Bool {
         t.range(of: #"\bramo i\b"#, options: .regularExpression) != nil
     }
 
     /// Parte del valore su cui si paga il bollo dello 0,20% (0–1): tutto per fondi e depositi, niente
-    /// per il Ramo I, la parte fuori dalla gestione separata per le multiramo.
+    /// per il Ramo I, la parte fuori dalla gestione separata per le multiramo. I contratti di
+    /// capitalizzazione (Ramo V) lo pagano anche se rivalutabili: sono esenti solo i rami vita I e IV
+    /// (D.P.R. 642/1972, tariffa art. 13, c. 2-ter, e D.M. 24 maggio 2012).
     var quotaBollo: Double {
         let fuoriGestione = 1 - min(max(quotaGestioneSeparata ?? 0, 0), 100) / 100
         if let conBollo { return conBollo ? (multiramo ? fuoriGestione : 1) : 0 }
         switch regime {
         case .fondo, .deposito: return 1
-        case .polizza: return gestioneSeparata ? 0 : (multiramo ? fuoriGestione : 1)
+        case .polizza: return gestioneSeparata && !contrattoCapitalizzazione ? 0 : (multiramo ? fuoriGestione : 1)
         case .previdenza, .esente: return 0
         }
     }
@@ -313,5 +365,55 @@ struct Posizione: Identifiable, Codable, Hashable {
     var scaduta: Bool {
         guard let scadenza, stato == .inEssere else { return false }
         return scadenza < Calendar.current.startOfDay(for: Date())
+    }
+
+    // MARK: - Letture dei dati per i motori (i nuovi campi con i loro ripieghi)
+
+    /// Penale di riscatto (%) chiesto all'inizio dell'anno di contratto `anno` (2 = dal 13° mese):
+    /// quella della posizione se indicata, altrimenti quella della scheda prodotto, altrimenti 0.
+    func penale(anno: Int, prodotto: Prodotto?) -> Double {
+        if let penali {
+            let i = anno - 2
+            return i >= 0 && i < penali.count ? penali[i] : 0
+        }
+        return prodotto?.condizioni?.penale(anno: anno) ?? 0
+    }
+
+    /// Mesi di blocco del riscatto: della posizione, della scheda prodotto o, se non si sa, nil.
+    func bloccoRiscatto(prodotto: Prodotto?) -> Int? {
+        mesiBloccoRiscatto ?? prodotto?.condizioni?.mesiBloccoRiscatto
+    }
+
+    /// Mesi interi che mancano alla scadenza (debiti: durata residua del finanziamento); nil senza scadenza,
+    /// 0 se già scaduta.
+    func mesiResidui(al data: Date = Date()) -> Int? {
+        guard let scadenza else { return nil }
+        let mesi = Calendar.current.dateComponents([.month], from: data, to: scadenza).month ?? 0
+        return max(0, mesi)
+    }
+}
+
+/// Un movimento reale di una posizione: versamento (importo positivo) o uscita (importo negativo:
+/// riscatto parziale, cedola, prestazione).
+struct Movimento: Codable, Hashable {
+    var data: Date
+    /// Euro: + versamento del cliente, − somma incassata dal cliente.
+    var importo: Double
+    var nota = ""
+}
+
+extension Movimento {
+    private enum CodingKeys: String, CodingKey { case data, importo, nota }
+
+    /// Lettura tollerante: un movimento malformato non deve far scartare l'archivio.
+    init(from decoder: Decoder) throws {
+        // Anche un elemento che non è un oggetto (un numero, un testo) diventa un movimento vuoto, ignorato dai calcoli
+        guard let c = try? decoder.container(keyedBy: CodingKeys.self) else {
+            self.init(data: Date(timeIntervalSinceReferenceDate: 0), importo: 0, nota: "")
+            return
+        }
+        self.init(data: (try? c.decode(Date.self, forKey: .data)) ?? Date(timeIntervalSinceReferenceDate: 0),
+                  importo: (try? c.decode(Double.self, forKey: .importo)) ?? 0,
+                  nota: (try? c.decode(String.self, forKey: .nota)) ?? "")
     }
 }

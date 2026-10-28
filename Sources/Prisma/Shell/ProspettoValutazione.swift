@@ -115,12 +115,32 @@ private struct PaginaDettaglio: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            SezioneProspetto(titolo: "Dettaglio anno per anno",
-                             testo: Text(verbatim: "Il 1° anno è bloccato. Per ogni scenario: valore del contratto e importo netto con riscatto richiesto all'inizio del " + t.anni.map { "\($0)°" }.joined(separator: ", ") + " anno."
-                                         + (t.fondo != nil ? " I costi del Fondo Interno sono già nel valore delle quote" : "")
-                                         + (t.gestione != nil ? "; il trattenuto della Gestione separata è già tolto dalla rivalutazione." : ".")))
+            SezioneProspetto(titolo: "Dettaglio anno per anno", testo: Text(verbatim: introduzione))
             ForEach(TipoScenario.allCases) { s in scenario(s) }
         }
+    }
+
+    private var introduzione: String {
+        let anni = t.anni.map { "\($0)°" }.joined(separator: ", ")
+        var s = "Il 1° anno è bloccato. Per ogni scenario: valore del contratto e importo netto con riscatto richiesto all'inizio del \(anni) anno."
+        var note: [String] = []
+        if t.fondo != nil { note.append("i costi del Fondo Interno sono già nel valore delle quote") }
+        if t.gestione != nil { note.append("il trattenuto della Gestione separata è già tolto dalla rivalutazione") }
+        if let prima = note.first {
+            let resto = note.dropFirst().map { "; " + $0 }.joined()
+            let maiuscola = prima.prefix(1).uppercased() + String(prima.dropFirst())
+            s += " \(maiuscola)\(resto)."
+        }
+        return s + recupero
+    }
+
+    /// Dal motore: il primo anno in cui, nello scenario intermedio, il riscatto restituisce almeno il premio.
+    private var recupero: String {
+        guard let i = t.intermedio else { return "" }
+        guard let a = i.primoRecuperoPremio else {
+            return " Nello scenario intermedio il riscatto non restituisce il premio entro il \(t.ultimoAnno)° anno."
+        }
+        return " Nello scenario intermedio il riscatto restituisce almeno il premio dal \(a.anno)° anno (\(a.mese)° mese)."
     }
 
     private func scenario(_ s: TipoScenario) -> some View {
@@ -132,7 +152,9 @@ private struct PaginaDettaglio: View {
                 + Text(verbatim: ", al netto dei suoi costi. ")
         }
         if let g = t.gestione {
-            descrizione = descrizione + Text(verbatim: "Gestione separata al \(CifreDoc.percento(sv.rendimento(g), decimali: 2)) lordo, rivalutazione netta \(CifreDoc.percento(sv.rendimento(g) - g.trattenuto, decimali: 2)).")
+            // Rivalutazione netta dal motore: trattenuto o retrocessione, con il minimo garantito se consolidato
+            let lordo = sv.rendimento(g)
+            descrizione = descrizione + Text(verbatim: "Gestione separata al \(CifreDoc.percento(lordo, decimali: 2)) lordo, rivalutazione netta \(CifreDoc.percento(MotoreGestioneSeparata.accreditato(g, lordo: lordo), decimali: 2)).")
         }
         return VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 5) {
@@ -177,11 +199,26 @@ private struct TabellaDettaglio: View {
         if t.c.componenti.contains(where: \.bollo) {
             riga("Imposta di bollo maturata", r.map { CifreDoc.togli($0?.bollo ?? 0) })
         }
-        riga("Importo netto incassato", r.map { CifreDoc.euro($0?.netto ?? 0) }, colore: colore, forte: true, sfondo: C.scenarioFondo(scenario))
+        // Nei mesi di blocco il riscatto non si può chiedere: al posto del netto, in grigio, «non riscattabile»
+        let netti: [CellaDoc] = r.map { x in
+            guard let a = x else { return CellaDoc("—", colore: C.tenue, font: T.pTabella) }
+            guard a.possibile else { return CellaDoc("non riscattabile", colore: C.tenue, font: T.pTabella) }
+            return CellaDoc(CifreDoc.euro(a.netto), colore: colore, font: T.pTabellaForte)
+        }
+        righe.append(RigaDoc(celle: [CellaDoc("Importo netto incassato", colore: colore, font: T.pTabellaForte)] + netti,
+                             altezza: h, sfondo: C.scenarioFondo(scenario), filetto: nil, spessore: 0.5))
         riga("Guadagno o perdita netta sui \(CifreDoc.euro(t.v.premio))", r.map { CifreDoc.euroSegno($0?.guadagno ?? 0) })
         riga("Variazione sul premio versato", r.map { CifreDoc.variazione($0?.variazione ?? 0) })
-        riga("Rendimento netto medio annuo", r.map { CifreDoc.variazione($0?.rendimentoMedio ?? 0, decimali: 2) }, colore: C.tenue,
-             filetto: C.filettoForte, spessore: 0.8)
+        // Incidenza annua dei costi come nel KID (RIY): rendimento senza costi meno rendimento con costi e penale
+        let incidenze = r.map { $0?.incidenzaCosti }
+        if incidenze.contains(where: { $0 != nil }) {
+            riga("Rendimento netto medio annuo", r.map { CifreDoc.variazione($0?.rendimentoMedio ?? 0, decimali: 2) }, colore: C.tenue)
+            riga("Incidenza annua dei costi (RIY, come nel KID)", incidenze.map { i in i.map { CifreDoc.percento($0, decimali: 2) } ?? "—" },
+                 colore: C.tenue, filetto: C.filettoForte, spessore: 0.8)
+        } else {
+            riga("Rendimento netto medio annuo", r.map { CifreDoc.variazione($0?.rendimentoMedio ?? 0, decimali: 2) }, colore: C.tenue,
+                 filetto: C.filettoForte, spessore: 0.8)
+        }
         return TabellaDoc(larghezza: larghezza, colonne: colonne, righe: righe, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota,
                           altezzaTesta: 18, margine: 4)
     }
@@ -284,9 +321,15 @@ private struct PaginaBasi: View {
                 TabellaKID(t: t, larghezza: larghezza, riga: 14, font: T.pTabella, fontTesta: T.pTabellaTesta, fontNota: T.pTabellaNota)
                 Text(verbatim: t.commentoKID).font(T.pTabellaNota).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
             }
+            if let frase = t.fraseIncidenzaCosti {
+                Text(verbatim: frase).font(T.pTabellaNota).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+            }
             SezioneProspetto(titolo: "Garanzie e fiscalità")
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(Array((t.c.garantito + t.c.nonGarantito).enumerated()), id: \.offset) { _, g in puntoElenco(Text(verbatim: g)) }
+                if let frase = t.fraseGaranziaGestione {
+                    puntoElenco(Text(verbatim: "Gestione separata: ").bold() + Text(verbatim: frase))
+                }
                 puntoElenco(Text(verbatim: "Imposta sostitutiva: ").bold() + Text(verbatim: t.testoImposta))
                 if t.c.componenti.contains(where: \.bollo) {
                     puntoElenco(Text(verbatim: "Imposta di bollo: ").bold() + Text(verbatim: "\(CifreDoc.percento(t.c.bollo, decimali: 2)) " + t.testoBollo))
@@ -374,7 +417,8 @@ private struct PaginaBasi: View {
             var celle = [CellaDoc("■ \(s.nome)", colore: C.scenario(s), font: T.pTabellaForte)]
             if let f = t.fondo { celle.append(CellaDoc("\(CifreDoc.variazione(sv.rendimento(f))) ogni anno", font: T.pTabella)) }
             if let g = t.gestione {
-                celle.append(CellaDoc("\(CifreDoc.percento(sv.rendimento(g), decimali: 2)) → \(CifreDoc.percento(sv.rendimento(g) - g.trattenuto, decimali: 2))", font: T.pTabella))
+                let lordo = sv.rendimento(g)
+                celle.append(CellaDoc("\(CifreDoc.percento(lordo, decimali: 2)) → \(CifreDoc.percento(MotoreGestioneSeparata.accreditato(g, lordo: lordo), decimali: 2))", font: T.pTabella))
             }
             var perche = CellaDoc(sv.perche, font: T.pTabellaNota)
             perche.righe = 3

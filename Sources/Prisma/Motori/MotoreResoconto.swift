@@ -10,7 +10,8 @@ struct VoceResoconto: Identifiable {
     /// Valore meno versato, in euro e in percentuale del versato.
     let risultato: Double?
     let risultatoPercento: Double?
-    /// Rendimento medio annuo dei versamenti (tasso interno), se la posizione ha almeno un anno.
+    /// Rendimento medio annuo dei versamenti (tasso interno sui flussi alle loro date, XIRR), se la posizione
+    /// ha almeno un anno.
     let rendimentoAnnuo: Double?
     /// Variazione degli ultimi 12 mesi al netto dei versamenti, in euro e in percentuale.
     let variazione12: Double?
@@ -23,6 +24,8 @@ struct VoceResoconto: Identifiable {
     let fisco: EsitoFiscale
     /// Rendimento medio annuo dei versamenti calcolato sul netto incassabile oggi.
     let rendimentoNettoAnnuo: Double?
+    /// I flussi alle loro date su cui si calcola il rendimento (nil se la posizione ha meno di un anno o mancano i dati).
+    var flussiDatati: MotoreResoconto.FlussiDatati? = nil
 
     var finanziaria: Bool { posizione.area.proiettabile }
 }
@@ -174,12 +177,12 @@ enum MotoreResoconto {
             scadenze: scadenze, proposte: proposte,
             versato: finanziarie.reduce(0) { $0 + ($1.versato ?? 0) },
             valoreFinanziario: finanziarie.reduce(0) { $0 + $1.valore },
-            rendimentoAnnuo: tir(finanziarie.compactMap { flussi($0.posizione, data: data) }),
+            rendimentoAnnuo: rendimento(finanziarie.compactMap(\.flussiDatati)),
             variazione12: conDelta ? delta : nil,
             variazione12Percento: conDelta && base > 0 ? delta / base * 100 : nil,
             costoAnnuo: costo,
             incidenzaCosti: valoreConCosto > 0 ? costo / valoreConCosto * 100 : nil,
-            rendimentoNettoAnnuo: tir(finanziarie.compactMap { v in flussi(v.posizione, data: data).map { Flussi(versamenti: $0.versamenti, valore: v.fisco.netto) } }))
+            rendimentoNettoAnnuo: rendimento(finanziarie.compactMap { v in v.flussiDatati.map { $0.conValore(v.fisco.netto) } }))
     }
 
     static func voce(_ p: Posizione, prodotto: Prodotto? = nil, data: Date = Date()) -> VoceResoconto {
@@ -190,16 +193,18 @@ enum MotoreResoconto {
         let v = finanziaria ? variazione(p) : nil
         let anni = p.decorrenza.map { max(0, (p.dataValore ?? data).timeIntervalSince($0) / (365.25 * 86_400)) }
         let fisco = MotoreFiscale.calcola(p, prodotto: prodotto, data: data)
-        let flussiNetti = finanziaria ? flussi(p, data: data).map { Flussi(versamenti: $0.versamenti, valore: fisco.netto) } : nil
+        let datati = finanziaria ? flussiDatati(p, data: data) : nil
+        let flussiNetti = datati.map { $0.conValore(fisco.netto) }
         return VoceResoconto(
             posizione: p, versato: versato, valore: valore, risultato: risultato,
             risultatoPercento: versato.flatMap { $0 > 0 ? (risultato ?? 0) / $0 * 100 : nil },
-            rendimentoAnnuo: finanziaria ? flussi(p, data: data).flatMap { tir([$0]) } : nil,
+            rendimentoAnnuo: datati.flatMap { rendimento([$0]) },
             variazione12: v?.delta,
             variazione12Percento: v.flatMap { $0.base > 0 ? $0.delta / $0.base * 100 : nil },
             costoAnnuo: fisco.costoTotale > 0 ? fisco.costoTotale : nil,
             anni: anni, fisco: fisco,
-            rendimentoNettoAnnuo: flussiNetti.flatMap { tir([$0]) })
+            rendimentoNettoAnnuo: flussiNetti.flatMap { rendimento([$0]) },
+            flussiDatati: datati)
     }
 
     // MARK: - Ultimi 12 mesi
@@ -238,24 +243,139 @@ enum MotoreResoconto {
         var valore: Double
     }
 
-    /// Il versamento iniziale alla decorrenza e il resto del versato distribuito mese per mese fino alla
-    /// data del valore. Nessun flusso se la posizione ha meno di un anno o mancano i dati.
-    static func flussi(_ p: Posizione, data: Date = Date()) -> Flussi? {
-        guard p.area.proiettabile, let inizio = p.decorrenza, let valore = p.controvalore, valore > 0 else { return nil }
-        let fine = p.dataValore ?? data
-        let mesi = Double(Calendar.current.dateComponents([.month], from: inizio, to: fine).month ?? 0)
-        guard mesi >= 12 else { return nil }
-        let versato = p.totaleVersato ?? p.versamentoIniziale
-        guard versato > 0 else { return nil }
-        var elenco: [(mesi: Double, importo: Double)] = []
-        let iniziale = min(p.versamentoIniziale, versato)
-        if iniziale > 0 { elenco.append((mesi, iniziale)) }
-        let resto = versato - iniziale
-        if resto > 0.5 {
-            let n = Int(mesi)
-            for i in 0..<n { elenco.append((mesi - Double(i), resto / Double(n))) }
+    /// I flussi datati di una posizione fino alla data del valore: versamenti (+) e incassi (−) del cliente,
+    /// il valore finale e la sua data.
+    struct FlussiDatati {
+        var flussi: [(data: Date, importo: Double)]
+        var valore: Double
+        var fine: Date
+        /// true se vengono dai movimenti reali indicati nella posizione, false se ricostruiti.
+        var reali: Bool
+
+        /// Gli stessi flussi con un altro valore finale (per esempio il netto incassabile oggi).
+        func conValore(_ v: Double) -> FlussiDatati {
+            var x = self
+            x.valore = max(0, v)
+            return x
         }
-        return Flussi(versamenti: elenco, valore: valore)
+    }
+
+    /// I flussi alle loro date. Con i movimenti reali (se c'è almeno un versamento sono l'elenco completo)
+    /// si usano quelli. Altrimenti si ricostruiscono: il versamento iniziale alla decorrenza, i premi alle date
+    /// della frequenza a partire dalla decorrenza, il versato in più rispetto ai premi alla decorrenza (o a metà
+    /// del periodo tra due rilevazioni), il versato che scende tra due rilevazioni come riscatto parziale (stimato
+    /// sul valore della rilevazione precedente, come nell'andamento); i soli incassi indicati nei movimenti si
+    /// aggiungono. Nessun flusso se la posizione ha meno di un anno o mancano i dati.
+    static func flussiDatati(_ p: Posizione, data: Date = Date()) -> FlussiDatati? {
+        guard p.area.proiettabile, let valore = p.controvalore, valore > 0 else { return nil }
+        let fine = p.dataValore ?? data
+        let movimenti = (p.movimenti ?? []).filter { $0.importo.isFinite && $0.importo != 0 && $0.data <= fine }
+            .sorted { $0.data < $1.data }
+        guard let inizio = p.decorrenza ?? movimenti.first?.data else { return nil }
+        let mesi = Calendar.current.dateComponents([.month], from: inizio, to: fine).month ?? 0
+        guard mesi >= 12 else { return nil }
+        if movimenti.contains(where: { $0.importo > 0 }) {
+            return FlussiDatati(flussi: movimenti.map { (data: $0.data, importo: $0.importo) }, valore: valore, fine: fine, reali: true)
+        }
+        var elenco = versamentiRicostruiti(p, inizio: inizio, fine: fine, conRiscatti: movimenti.isEmpty)
+        elenco += movimenti.map { (data: $0.data, importo: $0.importo) }
+        guard elenco.contains(where: { $0.importo > 0 }) else { return nil }
+        return FlussiDatati(flussi: elenco.sorted { $0.data < $1.data }, valore: valore, fine: fine, reali: false)
+    }
+
+    /// Versamenti ricostruiti periodo per periodo tra i valori noti del versato: la decorrenza (versamento
+    /// iniziale), le rilevazioni con il versato e la data del valore (totale versato o, se manca, il
+    /// versamento iniziale più i premi del calendario).
+    static func versamentiRicostruiti(_ p: Posizione, inizio: Date, fine: Date, conRiscatti: Bool = true) -> [(data: Date, importo: Double)] {
+        let cal = Calendar.current
+        let iniziale = max(0, p.versamentoIniziale)
+        // Calendario dei premi: dalla decorrenza, ogni 12 / volte all'anno mesi, prima della data del valore
+        var calendario: [Date] = []
+        let volte = p.frequenza.volteAllAnno
+        if volte > 0, p.premio > 0 {
+            let passo = 12 / volte
+            var k = 0
+            // Un premio che cade proprio alla data del valore non è ancora nel valore
+            while k < 1_200, let d = cal.date(byAdding: .month, value: k * passo, to: inizio), d < fine {
+                calendario.append(d)
+                k += 1
+            }
+        }
+        // Senza premi periodici il versato in più si distribuisce mese per mese (date sconosciute):
+        // il calendario mensile si prepara solo se serve
+        var mensile: [Date]? = nil
+        func dateVersamenti() -> [Date] {
+            if !calendario.isEmpty { return calendario }
+            if let pronto = mensile { return pronto }
+            var elenco: [Date] = []
+            var k = 0
+            while k < 1_200, let d = cal.date(byAdding: .month, value: k, to: inizio), d < fine {
+                elenco.append(d)
+                k += 1
+            }
+            mensile = elenco
+            return elenco
+        }
+        let premio = calendario.isEmpty ? 0 : p.premio
+        let versatoFinale = p.totaleVersato ?? (iniziale + Double(calendario.count) * p.premio)
+
+        // I valori noti del versato: (data, versato, valore a quella data)
+        var punti: [(data: Date, versato: Double, valore: Double)] = [(data: inizio, versato: iniziale, valore: iniziale)]
+        for r in (p.rilevazioni ?? []).sorted(by: { $0.data < $1.data }) {
+            guard let v = r.versato, r.data > inizio, r.data < fine, let ultimo = punti.last, r.data > ultimo.data else { continue }
+            punti.append((data: r.data, versato: v, valore: r.controvalore))
+        }
+        punti.append((data: fine, versato: versatoFinale, valore: p.controvalore ?? versatoFinale))
+
+        var elenco: [(data: Date, importo: Double)] = []
+        if iniziale > 0 { elenco.append((data: inizio, importo: iniziale)) }
+        for j in 1..<punti.count {
+            let da = punti[j - 1], a = punti[j]
+            let delta = a.versato - da.versato
+            let centro = da.data.addingTimeInterval(a.data.timeIntervalSince(da.data) / 2)
+            if delta > 0.5 {
+                // Le date dei premi nel periodo: il primo periodo comprende la decorrenza
+                let nel = dateVersamenti().filter { (j == 1 ? $0 >= da.data : $0 > da.data) && $0 <= a.data }
+                if nel.isEmpty {
+                    elenco.append((data: centro, importo: delta))
+                } else if premio > 0 && delta >= Double(nel.count) * premio - 0.5 {
+                    // Premi pieni; il versato in più (per esempio un trasferimento) alla decorrenza o a metà periodo
+                    for d in nel { elenco.append((data: d, importo: premio)) }
+                    let eccesso = delta - Double(nel.count) * premio
+                    if eccesso > 0.5 { elenco.append((data: j == 1 ? inizio : centro, importo: eccesso)) }
+                } else {
+                    // Versato più basso dei premi del calendario: ripartito in parti uguali sulle date dei premi
+                    for d in nel { elenco.append((data: d, importo: delta / Double(nel.count))) }
+                }
+            } else if delta < -0.5 && conRiscatti && da.versato > 0 {
+                // Il versato scende: riscatto parziale della stessa quota del valore
+                let uscita = -delta / da.versato * da.valore
+                elenco.append((data: centro, importo: -uscita))
+            }
+        }
+        return elenco
+    }
+
+    /// I flussi in mesi prima della data del valore (per `tir`), ricavati dai flussi datati.
+    static func flussi(_ p: Posizione, data: Date = Date()) -> Flussi? {
+        guard let f = flussiDatati(p, data: data) else { return nil }
+        let elenco = f.flussi.map { x -> (mesi: Double, importo: Double) in
+            (mesi: max(0, Rendimenti.giorni(da: x.data, a: f.fine)) / Rendimenti.giorniAnno * 12, importo: x.importo)
+        }
+        return Flussi(versamenti: elenco, valore: f.valore)
+    }
+
+    /// Il rendimento annuo (%) di una o più posizioni insieme sui flussi alle loro date (XIRR): i valori finali
+    /// contano come incassi alla data di ciascun valore. Più posizioni danno il rendimento del patrimonio
+    /// finanziario nel suo complesso.
+    static func rendimento(_ elenco: [FlussiDatati]) -> Double? {
+        guard let fine = elenco.map(\.fine).max() else { return nil }
+        if elenco.count == 1, let x = elenco.first {
+            return Rendimenti.xirr(x.flussi, valoreFinale: x.valore, al: x.fine)
+        }
+        var tutti: [(data: Date, importo: Double)] = elenco.flatMap { $0.flussi }
+        for x in elenco where x.valore > 0 { tutti.append((data: x.fine, importo: -x.valore)) }
+        return Rendimenti.xirr(tutti, valoreFinale: 0, al: fine)
     }
 
     /// Il tasso annuo che porta i versamenti al valore finale (bisezione). Più posizioni insieme danno

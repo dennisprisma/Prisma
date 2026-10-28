@@ -11,6 +11,12 @@ struct AppImpostazioni: View {
     @State var confermaClientiCompleti = false
     @State var confermaTogliProva = false
     @State var modificaNome = false
+    // Password dei backup
+    @State var passwordRipristino = ""
+    @State var nuovaPassword = ""
+    @State var confermaPassword = ""
+    @State var erroreNuovaPassword: String?
+    @State var confermaTogliPassword = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -70,6 +76,29 @@ struct AppImpostazioni: View {
         } message: {
             Text("Clienti, agenda e attività tornano ai 5 clienti di prova. Prima Prisma salva un backup dello stato attuale.")
         }
+        // Backup protetto da ripristinare: la richiesta si chiude solo dai pulsanti, che leggono il file prima di chiuderla
+        .alert("Backup protetto da password", isPresented: Binding(get: { stato.ripristinoDaSbloccare != nil }, set: { _ in })) {
+            SecureField("Password", text: $passwordRipristino)
+            Button("Annulla", role: .cancel) {
+                passwordRipristino = ""
+                stato.ripristinoDaSbloccare = nil
+            }
+            Button("Ripristina") {
+                let password = passwordRipristino
+                let url = stato.ripristinoDaSbloccare?.url
+                passwordRipristino = ""
+                stato.ripristinoDaSbloccare = nil
+                if let url, !password.isEmpty { stato.ripristina(url, password: password) }
+            }
+        } message: {
+            Text(stato.ripristinoDaSbloccare?.messaggio ?? "")
+        }
+        .alert("Togliere la password dai backup?", isPresented: $confermaTogliPassword) {
+            Button("Annulla", role: .cancel) {}
+            Button("Togli la password", role: .destructive) { stato.togliPasswordBackup() }
+        } message: {
+            Text("I prossimi backup non saranno protetti. Quelli già protetti restano protetti e si aprono solo con la loro password.")
+        }
     }
 
     /// I pulsanti di vetro nelle righe (come «Crea backup»).
@@ -79,10 +108,104 @@ struct AppImpostazioni: View {
 
     private var esperienza: some View {
         VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
+            gruppoAspetto
             gruppoProfilo
+            gruppoPromemoria
             gruppoEve
             gruppoVoce
             gruppoPDF
+        }
+    }
+
+    /// Aspetto chiaro, scuro o come il Mac; lo sfondo d'acqua animato o fermo e quanta pioggia cade.
+    /// Si salvano con le altre impostazioni e valgono subito.
+    private var gruppoAspetto: some View {
+        GruppoImpostazioni(titolo: "Aspetto") {
+            RigaImpostazione(titolo: "Aspetto", sottotitolo: "Automatico segue il Mac, di giorno e di sera") {
+                ControlloSegmenti(opzioni: AspettoInterfaccia.allCases.map { ($0, $0.nome) },
+                                  selezione: $stato.dati.impostazioni.aspetto)
+                    .fixedSize()
+            }
+            RigaImpostazione(titolo: "Sfondo", sottotitolo: "L'acqua della scrivania con le gocce al rallentatore; si ferma da sola quando non si vede") {
+                ControlloSegmenti(opzioni: [(true, "Animato"), (false, "Fermo")],
+                                  selezione: $stato.dati.impostazioni.sfondoAnimato)
+                    .fixedSize()
+            }
+            RigaImpostazione(titolo: "Pioggia", sottotitolo: stato.dati.impostazioni.sfondoAnimato
+                                ? "Quante gocce cadono sull'acqua"
+                                : "Con lo sfondo fermo non piove", ultima: true) {
+                ControlloSegmenti(opzioni: IntensitaPioggia.allCases.map { ($0, $0.nome) },
+                                  selezione: $stato.dati.impostazioni.pioggia)
+                    .fixedSize()
+                    .disabled(!stato.dati.impostazioni.sfondoAnimato)
+                    .opacity(stato.dati.impostazioni.sfondoAnimato ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
+            }
+        }
+    }
+
+    /// Promemoria nel Centro notifiche del Mac: spenti di partenza, il permesso di macOS si chiede
+    /// solo accendendoli. Nei testi niente cifre: il nome del cliente (se scelto) e cosa fare.
+    private var gruppoPromemoria: some View {
+        let scelte = stato.dati.impostazioni.promemoria
+        let negati = stato.permessoPromemoria == .negati
+        let ora = "alle \(MotoreNotifiche.oraPromemoria):00"
+        return GruppoImpostazioni(titolo: "Promemoria del Mac") {
+            RigaImpostazione(titolo: "Promemoria nel Centro notifiche",
+                             sottotitolo: scelte.attivi
+                                ? "Attivi: arrivano anche a Prisma chiusa. Nei testi niente cifre dei clienti"
+                                : "Appuntamenti, attività, scadenze delle polizze e compleanni, anche a Prisma chiusa",
+                             avvertenza: negati
+                                ? "Non consentiti da macOS: attivali in Impostazioni di Sistema › Notifiche › Prisma" : nil) {
+                HStack(spacing: 8) {
+                    if negati {
+                        Button("Apri Impostazioni di Sistema") { PromemoriaMac.apriImpostazioniDiSistema() }
+                            .buttonStyle(StileVetro(margine: margineVetro))
+                    }
+                    Toggle("", isOn: Binding(get: { stato.dati.impostazioni.promemoria.attivi },
+                                             set: { stato.attivaPromemoria($0) }))
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+            }
+            Group {
+                RigaImpostazione(titolo: "Appuntamenti", sottotitolo: "Prima dell'inizio, con il luogo") {
+                    HStack(spacing: 8) {
+                        MenuTendina(selezione: $stato.dati.impostazioni.promemoria.anticipoMinuti,
+                                    opzioni: ImpostazioniPromemoria.anticipi.map { ($0, ImpostazioniPromemoria.nomeAnticipo($0) + " prima") },
+                                    larghezza: 150)
+                        Toggle("", isOn: $stato.dati.impostazioni.promemoria.appuntamenti)
+                            .toggleStyle(StileInterruttore())
+                            .labelsHidden()
+                    }
+                }
+                RigaImpostazione(titolo: "Attività", sottotitolo: "La mattina del giorno di scadenza, \(ora)") {
+                    Toggle("", isOn: $stato.dati.impostazioni.promemoria.attivita)
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+                RigaImpostazione(titolo: "Scadenze delle polizze", sottotitolo: "Posizioni in essere: 30 e 7 giorni prima e il giorno stesso, \(ora)") {
+                    Toggle("", isOn: $stato.dati.impostazioni.promemoria.scadenze)
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+                RigaImpostazione(titolo: "Compleanni dei clienti", sottotitolo: "Il giorno stesso, \(ora)") {
+                    Toggle("", isOn: $stato.dati.impostazioni.promemoria.compleanni)
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+                RigaImpostazione(titolo: "Nomi dei clienti", sottotitolo: "Spento: il promemoria dice solo l'ora e cosa fare. In modalità cliente i banner non compaiono") {
+                    Toggle("", isOn: $stato.dati.impostazioni.promemoria.nomiClienti)
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+                RigaImpostazione(titolo: "Prova", sottotitolo: "Manda subito un promemoria per vedere come arriva", ultima: true) {
+                    Button("Prova") { stato.provaPromemoria() }
+                        .buttonStyle(StileVetro(margine: margineVetro))
+                        .disabled(negati)
+                }
+            }
+            .disabled(!scelte.attivi)
+            .opacity(scelte.attivi ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
         }
     }
 
@@ -256,6 +379,22 @@ struct AppImpostazioni: View {
                 ) {
                     ValoreRiga(testo: "Scegli") { scegliCartella() }
                 }
+                RigaImpostazione(titolo: "Proteggi i backup con una password",
+                                 sottotitolo: testoProtezione,
+                                 avvertenza: "Se dimentichi la password, i backup protetti non si possono più aprire") {
+                    HStack(spacing: Tema.Misura.Componenti.spazioTendina) {
+                        if stato.dati.impostazioni.backup.cifrato {
+                            ValoreRiga(testo: "Cambia") { stato.chiediPasswordBackup = true }
+                        }
+                        Toggle("", isOn: Binding(get: { stato.dati.impostazioni.backup.cifrato },
+                                                 set: { acceso in
+                                                     if acceso { stato.chiediPasswordBackup = true } else { confermaTogliPassword = true }
+                                                 }))
+                            .toggleStyle(StileInterruttore())
+                            .labelsHidden()
+                    }
+                    .popover(isPresented: $stato.chiediPasswordBackup, arrowEdge: .leading) { moduloPassword }
+                }
                 RigaImpostazione(titolo: "Archivio di Prisma", sottotitolo: Archivio.percorsoBreve(Archivio.cartella), ultima: true) {
                     ValoreRiga(testo: "Mostra nel Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting([Archivio.file])
@@ -269,11 +408,11 @@ struct AppImpostazioni: View {
                 }
                 ForEach(stato.elencoBackup) { voce in
                     RigaImpostazione(titolo: Formati.dataOra.string(from: voce.data),
-                                     sottotitolo: "\(voce.nome) · \(Formati.dimensione(voce.dimensione))") {
+                                     sottotitolo: descrizione(voce)) {
                         ValoreRiga(testo: "Ripristina") { daRipristinare = voce }
                     }
                 }
-                RigaImpostazione(titolo: "Ripristina da un file…", sottotitolo: "Un backup di Prisma salvato altrove (.zip)", ultima: true) {
+                RigaImpostazione(titolo: "Ripristina da un file…", sottotitolo: "Un backup di Prisma salvato altrove (.zip o, se protetto, .zip.cifrato)", ultima: true) {
                     ValoreRiga(testo: "Scegli il file") { scegliFile() }
                 }
             }
@@ -281,7 +420,6 @@ struct AppImpostazioni: View {
             Text("I dati restano su questo Mac. Non c'è nessuna sincronizzazione cloud: i backup vanno solo nella cartella che scegli tu.")
                 .font(Tipo.informazioniTesto)
                 .foregroundColor(Colori.Impostazioni.nota)
-                .incisione(Colori.Impostazioni.notaIncisione)
                 .padding(.horizontal, 4)
 
             HStack(spacing: 28) {
@@ -330,6 +468,68 @@ struct AppImpostazioni: View {
         }
     }
 
+    private var testoProtezione: String {
+        stato.dati.impostazioni.backup.cifrato
+            ? "Attiva: i nuovi backup si aprono solo con la password (cifratura AES-256); la password è nel Portachiavi del Mac"
+            : "Facoltativa: i file dei backup si aprono solo con la password, anche su iCloud Drive o su un disco esterno"
+    }
+
+    /// Nome e dimensione di un backup dell'elenco, con «protetto» se ha la password.
+    private func descrizione(_ voce: VoceBackup) -> String {
+        let base = "\(voce.nome) · \(Formati.dimensione(voce.dimensione))"
+        return voce.cifrato ? base + " · protetto" : base
+    }
+
+    /// Imposta o cambia la password dei backup: due campi, la conferma e l'avvertenza.
+    private var moduloPassword: some View {
+        let protetti = stato.dati.impostazioni.backup.cifrato
+        return VStack(alignment: .leading, spacing: Tema.Misura.Componenti.spazioTendina) {
+            Text(protetti ? "Nuova password dei backup" : "Password dei backup")
+                .font(Tema.Testo.titolo)
+                .foregroundColor(Tema.Colore.inchiostro)
+            SecureField("Password (almeno \(ImpostazioniBackup.lunghezzaMinimaPassword) caratteri)", text: $nuovaPassword)
+                .campoTesto()
+            SecureField("Ripeti la password", text: $confermaPassword)
+                .campoTesto()
+                .onSubmit { salvaPassword() }
+            Text(erroreNuovaPassword ?? "Se dimentichi la password, i backup protetti non si possono più aprire: conservala in un posto sicuro. Vale dai prossimi backup; quelli già fatti si aprono con la password di allora.")
+                .font(Tema.Testo.secondario)
+                .foregroundColor(erroreNuovaPassword == nil ? Tema.Colore.inchiostroSecondario : Tema.Colore.scadenzaOra)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: Tema.Misura.Componenti.spazioTendina) {
+                Spacer(minLength: 0)
+                Button("Annulla") { stato.chiediPasswordBackup = false }
+                    .buttonStyle(StileVetro(margine: margineVetro))
+                Button("Salva") { salvaPassword() }
+                    .buttonStyle(StileBlu())
+            }
+        }
+        .padding(Tema.Misura.Componenti.margineRiga)
+        .frame(width: Tema.Misura.popoverLarghezza)
+        .onDisappear {
+            nuovaPassword = ""
+            confermaPassword = ""
+            erroreNuovaPassword = nil
+        }
+    }
+
+    private func salvaPassword() {
+        let minimo = ImpostazioniBackup.lunghezzaMinimaPassword
+        guard nuovaPassword.count >= minimo else {
+            erroreNuovaPassword = "Servono almeno \(minimo) caratteri."
+            return
+        }
+        guard nuovaPassword == confermaPassword else {
+            erroreNuovaPassword = "Le due password non coincidono."
+            return
+        }
+        if stato.impostaPasswordBackup(nuovaPassword) {
+            stato.chiediPasswordBackup = false
+        } else {
+            erroreNuovaPassword = "Il Portachiavi del Mac non ha salvato la password: riprova."
+        }
+    }
+
     /// Backup non riusciti o fermi da più di 8 giorni: resta scritto finché il problema c'è.
     private var avvertenzaBackup: String? {
         let b = stato.dati.impostazioni.backup
@@ -354,7 +554,6 @@ struct AppImpostazioni: View {
             Text("\(n)").font(Tipo.numero).foregroundColor(Colori.Impostazioni.numero)
             Text(etichetta).font(Tipo.numeroEtichetta).foregroundColor(Colori.Impostazioni.numeroEtichetta)
         }
-        .incisione(.white)
     }
 
     private func scegliCartella() {
@@ -375,7 +574,10 @@ struct AppImpostazioni: View {
         pannello.canChooseDirectories = false
         pannello.canChooseFiles = true
         pannello.allowsMultipleSelection = false
-        pannello.allowedContentTypes = [.zip]
+        // Anche i backup protetti («… .zip.cifrato»): il ripristino li riconosce dal contenuto
+        var tipi: [UTType] = [.zip]
+        if let protetto = UTType(filenameExtension: GestoreBackup.estensioneCifrata) { tipi.append(protetto) }
+        pannello.allowedContentTypes = tipi
         pannello.prompt = "Ripristina"
         pannello.message = "Scegli un backup di Prisma."
         if pannello.runModal() == .OK, let url = pannello.url {
@@ -403,13 +605,8 @@ struct AppImpostazioni: View {
 
     private var informazioni: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ImmagineNitida(percorso: "Icone/Prisma.png", lato: Misure.Impostazioni.iconaInformazioni)
+            LogoPrismaConNome(colore: Tema.Colore.logo, altezza: Tema.Misura.Shell.logoImpostazioni)
                 .padding(.bottom, 20)
-            Text("CLASSIC EDITION")
-                .font(Tipo.informazioniOcchiello)
-                .tracking(1.8)
-                .foregroundColor(Colori.Impostazioni.informazioniOcchiello)
-                .padding(.bottom, 8)
             Text("Il tuo spazio.\nTutto a portata di mano.")
                 .font(Tipo.informazioniTitolo)
                 .foregroundColor(Colori.Impostazioni.informazioniTitolo)
@@ -425,10 +622,9 @@ struct AppImpostazioni: View {
                 .foregroundColor(Colori.Impostazioni.nota)
                 .lineSpacing(3)
         }
-        .incisione(.white)
         .padding(Misure.Impostazioni.informazioniMargine)
         .overlay(alignment: .leading) {
-            Rectangle().fill(Colori.Impostazioni.informazioniFilo).frame(width: 1)
+            Rectangle().fill(Colori.Impostazioni.informazioniFilo).frame(width: Tema.Misura.filo)
         }
     }
 }

@@ -67,12 +67,13 @@ struct DocumentoStampabile {
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del costo degli investimenti.
-    init(_ t: TestiCosti, report: Bool, commento: String? = nil) {
+    /// `prodotti`: le schede del catalogo, per periodo raccomandato, penali e RIY dichiarato dell'incidenza come nel KID.
+    init(_ t: TestiCosti, report: Bool, commento: String? = nil, prodotti: [Prodotto] = []) {
         titolo = TestiCosti.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportCosti.pagine(t, commento: commento) : ProspettoCosti.pagine(t)
+        pagine = report ? ReportCosti.pagine(t, commento: commento, prodotti: prodotti) : ProspettoCosti.pagine(t, prodotti: prodotti)
         tipo = report ? .report : .prospetto
     }
 
@@ -148,7 +149,7 @@ struct DocumentoStampabile {
 }
 
 /// Dalle viste al PDF: ogni pagina è disegnata in un contesto PDF (testo vettoriale, selezionabile
-/// e ricercabile). Tutto sul Mac.
+/// e ricercabile). Tutto sul Mac. Sempre in chiaro, anche con l'app in scuro: carta bianca, colori fissi.
 enum StampaCarta {
     @MainActor
     static func pdf(_ d: DocumentoStampabile) -> Data? {
@@ -163,10 +164,18 @@ enum StampaCarta {
         ]
         guard let contesto = CGContext(consumer: consumatore, mediaBox: &riquadro, info as CFDictionary) else { return nil }
         for pagina in d.pagine {
-            let renderer = ImageRenderer(content: pagina.frame(width: d.formato.width, height: d.formato.height))
+            // Sempre chiaro, con le etichette dei canali da stampa: la carta non va mai in scuro
+            let renderer = ImageRenderer(content: pagina.frame(width: d.formato.width, height: d.formato.height)
+                .environment(\.etichetteStampa, true)
+                .environment(\.colorScheme, .light))
             renderer.proposedSize = ProposedViewSize(d.formato)
             contesto.beginPDFPage(nil)
-            renderer.render { _, disegna in disegna(contesto) }
+            // Anche i colori di AppKit si risolvono in chiaro, qualunque sia l'aspetto dell'app
+            if let chiaro = NSAppearance(named: .aqua) {
+                chiaro.performAsCurrentDrawingAppearance { renderer.render { _, disegna in disegna(contesto) } }
+            } else {
+                renderer.render { _, disegna in disegna(contesto) }
+            }
             contesto.endPDFPage()
         }
         contesto.closePDF()

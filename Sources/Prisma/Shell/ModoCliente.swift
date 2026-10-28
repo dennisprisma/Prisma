@@ -44,22 +44,37 @@ extension StatoShell {
     }
 }
 
-/// Il contrassegno nella barra superiore: chi stai mostrando e come uscire.
+/// Il contrassegno nella barra superiore: chi stai mostrando e come uscire. Una capsula piena
+/// dell'accento (come il pulsante principale del tema), alta quanto i pulsanti della barra.
 struct ContrassegnoModoCliente: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
+        let m = Tema.Misura.PannelliShell.self
         Button { stato.esciModoCliente() } label: {
-            HStack(spacing: 6) {
-                Text("MODALITÀ CLIENTE").font(Tipo.barraTasto).tracking(0.6)
-                Text(stato.clienteAttivo?.nome ?? "").font(Tipo.barraApp)
-                Text("Esci  ⌥⌘M").font(Tipo.barraTasto).opacity(0.8)
+            HStack(spacing: m.modoClienteSpazio) {
+                Text("MODALITÀ CLIENTE")
+                    .font(Tema.Testo.PannelliShell.occhielloModoCliente)
+                    .tracking(Tema.Testo.PannelliShell.spaziaturaModoCliente)
+                Text(stato.clienteAttivo?.nome ?? "")
+                    .font(Tema.Testo.PannelliShell.nomeModoCliente)
+                Text("Esci  ⌥⌘M")
+                    .font(Tema.Testo.PannelliShell.tastoModoCliente)
+                    .opacity(0.8)
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(Colori.Barra.modoCliente))
-            .overlay(Capsule().strokeBorder(Colori.Barra.modoClienteBordo, lineWidth: 1))
+            .lineLimit(1)
+            .foregroundColor(Tema.Colore.Componenti.testoSuColore)
+            .padding(.horizontal, m.modoClienteMargine)
+            .frame(height: Tema.Misura.pulsanteBarra)
+            .background {
+                FormaVetro.capsula
+                    .fill(Colori.Barra.modoCliente)
+                    .overlay {
+                        FiloInterno(forma: .capsula)
+                            .fill(Tema.Colore.Componenti.luceSuColore, style: FillStyle(eoFill: true))
+                            .clipShape(FormaVetro.capsula)
+                    }
+            }
         }
         .buttonStyle(StileSemplice())
         .help("Esci dalla modalità cliente e torna a vedere tutti i clienti")

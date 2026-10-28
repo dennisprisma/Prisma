@@ -181,7 +181,7 @@ struct TestiResoconto {
     static let metodo: [(String, String)] = [
         ("Valore", "controvalore dichiarato nella posizione alla data indicata; se manca, il totale versato."),
         ("Risultato", "valore meno totale versato, già al netto dei costi del prodotto; prima delle imposte sul guadagno."),
-        ("Rendimento medio annuo", "tasso che porta i versamenti, alle loro date, al valore di oggi: il versamento iniziale alla decorrenza e gli altri distribuiti mese per mese. Solo per le posizioni con almeno un anno."),
+        ("Rendimento medio annuo", "tasso che porta i versamenti, alle loro date, al valore di oggi (XIRR, giorni su 365): i movimenti indicati o, se mancano, il versamento iniziale alla decorrenza e i premi alle date della frequenza; il versato in più alla decorrenza o a metà del periodo tra due valori, il versato che scende come riscatto parziale. Misura l'esperienza dei tuoi versamenti; l'andamento misura il prodotto. Solo per le posizioni con almeno un anno."),
         ("Ultimi 12 mesi", "variazione rispetto al valore rilevato circa un anno fa, tolti i versamenti del periodo e misurata sul valore di partenza più metà dei versamenti."),
         ("Andamento e atteso", "rendimento tra un valore rilevato e il successivo, tolti i versamenti del periodo (se manca il versato, stimati dai premi periodici), concatenato su tutto lo storico e reso annuo da circa un anno; confrontato con il rendimento atteso della posizione meno i costi annui: in linea entro un punto all'anno."),
         ("Costi stimati", "costo annuo di gestione, trattenuto sul rendimento della gestione separata e imposta di bollo (0,20% del valore; 34,20 € per i conti correnti), sul valore attuale."),

@@ -1,0 +1,2354 @@
+<!doctype html>
+<!--
+  Prisma · Liquid Glass — template grafico
+  Stessa struttura di Prisma OS (barra superiore, scrivania con i 6 widget, dock con le 16 app,
+  finestre interne), ridisegnata con il materiale "vetro liquido" di Apple.
+  File autonomo: nessuna risorsa esterna, nessuna libreria. Dati dimostrativi (i 5 clienti del template).
+  Rifrazione dei bordi: attiva solo nei browser Chromium; in Safari resta il vetro sfocato.
+-->
+<html lang="it" data-scheme="light" data-glass="clear" data-wall="acqua" data-icons="color" data-labels="0">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prisma · Liquid Glass</title>
+<script>
+/* Applica subito l'aspetto salvato, prima del primo disegno. */
+(function () {
+  var s = {};
+  try { s = JSON.parse(localStorage.getItem('prisma-lg:settings') || '{}') || {}; } catch (e) {}
+  var d = document.documentElement, scheme = s.scheme || 'auto';
+  var dark = scheme === 'dark' || (scheme === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  d.setAttribute('data-scheme', dark ? 'dark' : 'light');
+  d.setAttribute('data-glass', s.glass || 'clear');
+  var walls = ['acqua', 'laguna', 'ardesia', 'gocce', 'prisma'];
+  d.setAttribute('data-wall', walls.indexOf(s.wall) >= 0 ? s.wall : 'acqua');
+  d.setAttribute('data-icons', s.icons || 'color');
+  d.setAttribute('data-labels', s.labels ? '1' : '0');
+})();
+</script>
+<style>
+/* =========================================================
+   1. Gettoni: misure, caratteri, colori per aspetto e vetro
+   ========================================================= */
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Helvetica Neue", Inter, "Segoe UI", system-ui, sans-serif;
+  --font-d: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "Helvetica Neue", "Inter Display", Inter, system-ui, sans-serif;
+  --font-r: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Inter Display", Inter, system-ui, sans-serif;
+  --bar-h: 34px;
+  --gut: clamp(16px, 3vw, 44px);
+  --dock-ic: 50px;
+  --dock-space: 96px;
+  --r-w: 26px;
+  --r-win: 24px;
+  --spring: cubic-bezier(.34, 1.45, .64, 1);
+  --out: cubic-bezier(.22, 1, .36, 1);
+  --red: #FF3B30; --orange: #FF9500; --green: #34C759;
+}
+html[data-labels="1"] { --dock-space: 112px; }
+
+html[data-scheme="light"] {
+  color-scheme: light;
+  --accent: #007AFF; --link: #0064D6;
+  --ch-a: #2563EB; --ch-i: #B06E12;
+  --wall-ink: rgba(8, 26, 38, .88); --wall-ink-2: rgba(8, 26, 38, .6); --wall-glow: 0 1px 0 rgba(255, 255, 255, .5);
+  --bar-shade: rgba(255, 255, 255, .3);
+  --ink: rgba(0, 0, 0, .86); --ink-2: rgba(0, 0, 0, .56); --ink-3: rgba(0, 0, 0, .36);
+  --sep: rgba(0, 0, 0, .09);
+  --g-fill: rgba(255, 255, 255, .32); --g-thin: rgba(255, 255, 255, .22); --g-panel: rgba(255, 255, 255, .64);
+  --g-blur: 14px; --g-sat: 1.35; --g-bright: 1.05;
+  --g-hi: rgba(255, 255, 255, .95); --g-lo: rgba(255, 255, 255, .4); --g-edge: rgba(255, 255, 255, .55); --g-inner: rgba(255, 255, 255, .22);
+  --g-sheen: rgba(255, 255, 255, .5);
+  --g-shadow: 0 22px 44px -24px rgba(8, 40, 60, .36), 0 3px 10px -4px rgba(8, 40, 60, .14);
+  --rim-a: #fff; --rim-b: rgba(255, 255, 255, .6);
+  --fringe: 1; --rim-c: rgba(255, 255, 255, .6);
+  --chip: rgba(255, 255, 255, .46); --chip-h: rgba(255, 255, 255, .74); --chip-edge: rgba(255, 255, 255, .75);
+  --well: rgba(0, 0, 0, .055); --well-2: rgba(0, 0, 0, .13);
+  --card: rgba(255, 255, 255, .74); --card-edge: rgba(0, 0, 0, .06);
+  --row-h: rgba(0, 0, 0, .035);
+  --win-fill: rgba(247, 247, 251, .84); --win-solid: rgba(247, 247, 251, .96);
+  --side-fill: rgba(255, 255, 255, .55);
+  --thumb: rgba(255, 255, 255, .97);
+  --dt-bg: rgba(255, 255, 255, .82);
+  --scrim: rgba(8, 30, 45, .12);
+  --tip-bg: rgba(255, 255, 255, .78);
+  --lk-ink: rgba(10, 34, 52, .88);
+  /* sfondo Prisma, chiaro */
+  --wp1: #EDF1F5; --wp2: #E3EAF1; --wp3: #EEF0F0;
+  --wph1: rgba(170, 195, 220, .5); --wph2: rgba(150, 200, 215, .45); --wph3: rgba(210, 200, 190, .4);
+  --wpbeam: #FFFFFF; --wpfan-blend: multiply; --wpfan-o: .22;
+  --f1: #E7D9C9; --f2: #DCE6D8; --f3: #C9E2E6; --f4: #B4D4E6; --f5: #A3C2E0; --f6: #B6B9D9;
+  --wpp1: rgba(255, 255, 255, .8); --wpp2: rgba(190, 210, 230, .28); --wpedge: rgba(255, 255, 255, .95); --wpshadow: rgba(30, 60, 90, .22);
+  --lg1: #9CC9CF; --lg2: #A9BFDB; --lg3: #BFDCD4; --lg4: #EEF6F9; --lg5: #EDF4F7; --lg6: #C6DCE6; --lg-line: rgba(255, 255, 255, .35);
+  --sl1: #EEF1F4; --sl2: #C9D1D9; --sl3: rgba(255, 255, 255, .8); --sl4: rgba(150, 170, 190, .35);
+  --aq1: #E7F0F4; --aq2: #BCD5E0; --aq3: #7FA5BA; --aqh1: rgba(255, 255, 255, .75); --aqh2: rgba(100, 155, 182, .42); --aqc: .6; --aqs: rgba(255, 255, 255, .55);
+  --gc1: #B4DDF6; --gc2: #5E9BD0;
+}
+html[data-scheme="light"][data-glass="tinted"] {
+  --g-fill: rgba(255, 255, 255, .7); --g-thin: rgba(255, 255, 255, .58); --g-panel: rgba(255, 255, 255, .84);
+  --g-blur: 30px; --g-sat: 1.2; --g-bright: 1.03;
+  --chip: rgba(255, 255, 255, .62);
+  --win-fill: rgba(247, 247, 251, .94);
+  --side-fill: rgba(255, 255, 255, .66);
+}
+html[data-scheme="dark"] {
+  color-scheme: dark;
+  --accent: #0A84FF; --link: #8CC4FF;
+  --ch-a: #5B8CFF; --ch-i: #BF8430;
+  --wall-ink: #fff; --wall-ink-2: rgba(255, 255, 255, .68); --wall-glow: 0 1px 12px rgba(0, 0, 0, .35);
+  --bar-shade: rgba(0, 0, 0, .3);
+  --ink: rgba(255, 255, 255, .94); --ink-2: rgba(255, 255, 255, .64); --ink-3: rgba(255, 255, 255, .42);
+  --sep: rgba(255, 255, 255, .1);
+  --g-fill: rgba(12, 26, 36, .42); --g-thin: rgba(16, 32, 44, .3); --g-panel: rgba(14, 28, 38, .7);
+  --g-blur: 14px; --g-sat: 1.25; --g-bright: .9;
+  --g-hi: rgba(255, 255, 255, .42); --g-lo: rgba(255, 255, 255, .1); --g-edge: rgba(255, 255, 255, .18); --g-inner: rgba(255, 255, 255, .05);
+  --g-sheen: rgba(255, 255, 255, .13);
+  --g-shadow: 0 26px 52px -24px rgba(0, 0, 0, .7), 0 4px 14px -4px rgba(0, 0, 0, .35);
+  --rim-a: rgba(255, 255, 255, .72); --rim-b: rgba(255, 255, 255, .3);
+  --fringe: 1; --rim-c: rgba(150, 205, 230, .32);
+  --chip: rgba(255, 255, 255, .1); --chip-h: rgba(255, 255, 255, .18); --chip-edge: rgba(255, 255, 255, .14);
+  --well: rgba(255, 255, 255, .07); --well-2: rgba(255, 255, 255, .18);
+  --card: rgba(255, 255, 255, .06); --card-edge: rgba(255, 255, 255, .08);
+  --row-h: rgba(255, 255, 255, .05);
+  --win-fill: rgba(18, 29, 38, .88); --win-solid: rgba(18, 29, 38, .97);
+  --side-fill: rgba(255, 255, 255, .07);
+  --thumb: rgba(255, 255, 255, .26);
+  --dt-bg: rgba(255, 255, 255, .12);
+  --scrim: rgba(0, 10, 18, .34);
+  --tip-bg: rgba(22, 38, 50, .76);
+  --lk-ink: #fff;
+  /* sfondo Prisma, scuro */
+  --wp1: #0C1A24; --wp2: #10222F; --wp3: #081219;
+  --wph1: rgba(50, 100, 140, .45); --wph2: rgba(20, 80, 110, .4); --wph3: rgba(60, 70, 90, .3);
+  --wpbeam: #FFFFFF; --wpfan-blend: screen; --wpfan-o: .26;
+  --f1: #7C6A5A; --f2: #5E7A66; --f3: #4E8090; --f4: #3E7398; --f5: #3A6496; --f6: #555A8C;
+  --wpp1: rgba(255, 255, 255, .24); --wpp2: rgba(150, 190, 220, .05); --wpedge: rgba(255, 255, 255, .62); --wpshadow: rgba(80, 140, 190, .3);
+  --lg1: #1D5960; --lg2: #233F66; --lg3: #1B4A44; --lg4: #1E3F58; --lg5: #071C27; --lg6: #04121A; --lg-line: rgba(255, 255, 255, .05);
+  --sl1: #1C2228; --sl2: #0D1115; --sl3: rgba(120, 140, 160, .16); --sl4: rgba(40, 60, 80, .3);
+  --aq1: #0E2533; --aq2: #123648; --aq3: #081A25; --aqh1: rgba(110, 170, 205, .28); --aqh2: rgba(20, 90, 120, .35); --aqc: .13; --aqs: rgba(160, 215, 240, .18);
+  --gc1: #15385A; --gc2: #06121F;
+}
+html[data-scheme="dark"][data-glass="tinted"] {
+  --g-fill: rgba(14, 26, 34, .76); --g-thin: rgba(16, 30, 40, .64); --g-panel: rgba(14, 28, 36, .88);
+  --g-blur: 30px; --g-sat: 1.15; --g-bright: .86;
+  --chip: rgba(255, 255, 255, .08);
+  --win-fill: rgba(18, 28, 36, .95);
+  --side-fill: rgba(255, 255, 255, .06);
+}
+@media (prefers-reduced-transparency: reduce) {
+  html[data-scheme="light"][data-glass] { --g-fill: rgba(246, 246, 250, .95); --g-thin: rgba(246, 246, 250, .92); --g-panel: rgba(246, 246, 250, .97); --win-fill: rgba(246, 246, 250, .99); }
+  html[data-scheme="dark"][data-glass] { --g-fill: rgba(28, 29, 40, .96); --g-thin: rgba(28, 29, 40, .94); --g-panel: rgba(28, 29, 40, .98); --win-fill: rgba(28, 29, 40, .99); }
+}
+
+/* =========================================================
+   2. Base
+   ========================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 13px/1.4 var(--font); color: var(--ink); background: var(--wp1);
+  overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none; user-select: none;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
+/* colore del testo dichiarato sui contenitori principali: resta corretto anche cambiando aspetto al volo */
+.desk, .win, .win-grid, .main, .side, .pad, .widget, .dock, .tip, .spot, .nc, .cc, .pop, .switcher, .toast, .chat, .msg, .bub, .group, .card { color: var(--ink); }
+button { font: inherit; color: inherit; cursor: default; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3, p { margin: 0; }
+kbd { font: 500 11px/1 var(--font); color: var(--ink-2); padding: 3px 6px; border-radius: 6px; background: var(--well); }
+svg { display: block; }
+.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+* { scrollbar-width: thin; scrollbar-color: var(--well-2) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--well-2); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* =========================================================
+   3. Sfondi
+   ========================================================= */
+.wall { position: fixed; inset: 0; z-index: 0; overflow: hidden; transform: translateZ(0); background: var(--wp1); }
+.wp { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+html[data-wall="prisma"] .wp-prisma, html[data-wall="laguna"] .wp-laguna, html[data-wall="acqua"] .wp-acqua,
+html[data-wall="ardesia"] .wp-ardesia, html[data-wall="gocce"] .wp-gocce { display: block; }
+.wp-acqua .a1 { stop-color: var(--aq1); } .wp-acqua .a2 { stop-color: var(--aq2); } .wp-acqua .a3 { stop-color: var(--aq3); }
+.wp-acqua .ah1 { fill: var(--aqh1); } .wp-acqua .ah2 { fill: var(--aqh2); }
+.wp-acqua .ac { fill: #fff; opacity: var(--aqc); }
+.wp-acqua .as { stop-color: var(--aqs); }
+.wp-prisma .s1 { stop-color: var(--wp1); } .wp-prisma .s2 { stop-color: var(--wp2); } .wp-prisma .s3 { stop-color: var(--wp3); }
+.wp-prisma .hz1 { fill: var(--wph1); } .wp-prisma .hz2 { fill: var(--wph2); } .wp-prisma .hz3 { fill: var(--wph3); }
+.wp-prisma .bm { stop-color: var(--wpbeam); }
+.wp-prisma .fan { mix-blend-mode: var(--wpfan-blend); opacity: var(--wpfan-o); }
+.wp-prisma .f1 { fill: var(--f1); } .wp-prisma .f2 { fill: var(--f2); } .wp-prisma .f3 { fill: var(--f3); }
+.wp-prisma .f4 { fill: var(--f4); } .wp-prisma .f5 { fill: var(--f5); } .wp-prisma .f6 { fill: var(--f6); }
+.wp-prisma .p1 { stop-color: var(--wpp1); } .wp-prisma .p2 { stop-color: var(--wpp2); }
+.wp-prisma .pr-edge { fill: none; stroke: var(--wpedge); stroke-width: 2.4; stroke-linejoin: round; }
+.wp-prisma .pr-ridge { stroke: var(--wpedge); stroke-opacity: .45; stroke-width: 1.4; }
+.wp-prisma .pr-path { stroke: var(--wpbeam); stroke-opacity: .5; stroke-width: 3; }
+.wp-prisma .sh { flood-color: var(--wpshadow); }
+.bg-laguna {
+  background:
+    repeating-radial-gradient(circle at 30% 125%, transparent 0 26px, var(--lg-line) 27px 28px, transparent 29px 58px),
+    radial-gradient(60% 55% at 15% 75%, var(--lg1) 0%, transparent 62%),
+    radial-gradient(55% 50% at 85% 25%, var(--lg2) 0%, transparent 60%),
+    radial-gradient(45% 40% at 60% 95%, var(--lg3) 0%, transparent 60%),
+    radial-gradient(40% 35% at 40% 12%, var(--lg4) 0%, transparent 60%),
+    linear-gradient(170deg, var(--lg5), var(--lg6));
+}
+.bg-ardesia {
+  background:
+    radial-gradient(70% 55% at 22% 18%, var(--sl3) 0%, transparent 65%),
+    radial-gradient(60% 50% at 85% 90%, var(--sl4) 0%, transparent 65%),
+    linear-gradient(165deg, var(--sl1), var(--sl2));
+}
+.bg-acqua { background: linear-gradient(160deg, var(--aq1), var(--aq2) 55%, var(--aq3)); }
+.bg-gocce { background: linear-gradient(165deg, var(--gc1), var(--gc2)); }
+.bg-gocce svg { width: 100%; height: 100%; }
+
+/* =========================================================
+   4. Il materiale: vetro liquido
+   ========================================================= */
+.glass {
+  position: relative; isolation: isolate;
+  border-radius: var(--r, 22px);
+  background:
+    radial-gradient(130% 90% at var(--mx, 25%) var(--my, -20%), var(--g-sheen), transparent 52%),
+    linear-gradient(var(--g-tint, transparent), var(--g-tint, transparent)),
+    var(--g-fill);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)) brightness(var(--g-bright));
+  backdrop-filter: var(--g-filter, blur(var(--g-blur)) saturate(var(--g-sat)) brightness(var(--g-bright)));
+  box-shadow:
+    var(--g-shadow),
+    inset 0 0 0 .5px var(--g-edge),
+    inset 0 1px 0 var(--g-hi),
+    inset 0 -1px 0 var(--g-lo),
+    inset 0 0 24px var(--g-inner);
+}
+.glass.thin {
+  --g-fill: var(--g-thin);
+  -webkit-backdrop-filter: blur(calc(var(--g-blur) * .5)) saturate(var(--g-sat)) brightness(var(--g-bright));
+  backdrop-filter: var(--g-filter, blur(calc(var(--g-blur) * .5)) saturate(var(--g-sat)) brightness(var(--g-bright)));
+}
+.glass.panel { --g-fill: var(--g-panel); }
+/* filo di luce sul bordo */
+.glass::before, .glass::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.glass::before {
+  padding: 1px;
+  background: linear-gradient(135deg, var(--rim-a) 0%, rgba(255, 255, 255, .2) 22%, rgba(255, 255, 255, 0) 45%,
+              rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, .16) 80%, var(--rim-b) 100%);
+}
+/* la luce che rientra dal bordo inferiore, come nel vetro vero */
+.glass::after {
+  padding: 1px;
+  background: linear-gradient(180deg, transparent 0%, transparent 58%, var(--rim-c) 100%);
+  opacity: var(--fringe);
+}
+
+/* =========================================================
+   5. Componenti comuni
+   ========================================================= */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 14px; border: 0; border-radius: 999px;
+  font: 500 13px/1 var(--font); color: var(--ink); background: var(--chip); white-space: nowrap;
+  box-shadow: inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi), 0 1px 2px rgba(0, 0, 0, .08);
+  transition: transform .35s var(--spring), background .15s;
+}
+.btn:hover { background: var(--chip-h); }
+.btn:active { transform: scale(.96); }
+.btn.sm { height: 28px; padding: 0 12px; font-size: 12.5px; }
+.btn.primary { background: var(--accent); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 3px 10px -3px color-mix(in srgb, var(--accent) 70%, transparent); }
+.btn.primary:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
+.gbtn {
+  --r: 999px; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 15px; border: 0;
+  color: var(--ink); font-size: 13px; font-weight: 500; white-space: nowrap; transition: transform .35s var(--spring);
+}
+.gbtn > * { position: relative; z-index: 4; }
+.gbtn:hover { --g-tint: rgba(255, 255, 255, .14); }
+.gbtn:active { transform: scale(.96); }
+.gbtn svg { width: 15px; height: 15px; }
+.gbtn.sm { height: 30px; padding: 0 13px; font-size: 12.5px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border-radius: 999px; flex: none;
+  font-size: 11.5px; font-weight: 600; color: var(--ink); white-space: nowrap;
+  background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi);
+}
+.chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .4); }
+.chip.ch-a { --c: var(--ch-a); background: color-mix(in srgb, var(--ch-a) 17%, var(--chip)); }
+.chip.ch-i { --c: var(--ch-i); background: color-mix(in srgb, var(--ch-i) 19%, var(--chip)); }
+.chip.sm { height: 20px; font-size: 11px; padding: 0 8px 0 7px; }
+
+.av {
+  --sz: 32px; width: var(--sz); height: var(--sz); flex: none; border-radius: 50%; display: grid; place-items: center;
+  font: 600 calc(var(--sz) * .37)/1 var(--font-r); color: #fff; letter-spacing: .01em;
+  background: radial-gradient(120% 120% at 30% 18%, var(--t1), var(--t2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -1px 2px rgba(0, 0, 0, .15), 0 2px 6px -2px rgba(0, 0, 0, .35);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .2);
+}
+.orb {
+  --sz: 36px; position: relative; flex: none; width: var(--sz); height: var(--sz); border-radius: 50%; overflow: hidden;
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .55), 0 0 calc(var(--sz) * .45) calc(var(--sz) * -.14) rgba(40, 140, 200, .55);
+}
+.orb::before {
+  content: ""; position: absolute; inset: -25%;
+  background: conic-gradient(from 0deg, #1E5B8C, #3FA3D6, #A9E2F5, #2C7FB8, #5CC2E0, #1E5B8C);
+  filter: blur(calc(var(--sz) * .12));
+}
+.orb::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 34% 27%, rgba(255, 255, 255, .9) 0 7%, rgba(255, 255, 255, 0) 32%),
+              radial-gradient(circle at 50% 125%, rgba(0, 30, 50, .45), transparent 62%);
+}
+.w-eve:hover .orb::before, .eve-ctx .orb::before { animation: spin 6s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+
+.dt {
+  width: 40px; height: 44px; flex: none; border-radius: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  background: var(--dt-bg); box-shadow: inset 0 0 0 .5px var(--chip-edge), 0 1px 3px rgba(0, 0, 0, .08);
+}
+.dt small { font-size: 9.5px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: .04em; line-height: 1; }
+.dt span { font: 600 17px/1 var(--font-r); color: var(--ink); }
+
+.segc {
+  position: relative; display: inline-flex; flex: none; padding: 2px; border-radius: 999px;
+  background: var(--well); box-shadow: inset 0 0 0 .5px var(--sep);
+}
+.segc button { position: relative; z-index: 1; border: 0; background: none; font: 500 12.5px/1 var(--font); color: var(--ink); padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
+.segc button[aria-checked="true"] { font-weight: 600; }
+.segc .thumb {
+  position: absolute; top: 2px; bottom: 2px; left: var(--x, 2px); width: var(--w, 0px); border-radius: 999px; background: var(--thumb);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18), inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi);
+}
+.segc.ready .thumb { transition: left .38s var(--spring), width .38s var(--spring); }
+
+.tg {
+  position: relative; width: 44px; height: 26px; flex: none; border: 0; padding: 0; border-radius: 999px;
+  background: var(--well-2); transition: background .25s;
+}
+.tg::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 999px; background: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .22), 0 0 0 .5px rgba(0, 0, 0, .05);
+  transition: transform .35s var(--spring), width .2s var(--out);
+}
+.tg[aria-checked="true"] { background: var(--green); }
+.tg[aria-checked="true"]::after { transform: translateX(18px); }
+.tg:active::after { width: 28px; }
+.tg[aria-checked="true"]:active::after { transform: translateX(12px); }
+
+.field {
+  display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 999px;
+  background: var(--well); box-shadow: inset 0 0 0 .5px var(--sep), inset 0 1px 2px rgba(0, 0, 0, .05);
+}
+.field input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; color: var(--ink); outline: none; }
+.field input::placeholder { color: var(--ink-3); }
+.field svg { width: 14px; height: 14px; color: var(--ink-3); flex: none; }
+.field.big { height: 44px; padding: 0 16px; margin-bottom: 14px; }
+.field.big input { font-size: 16px; }
+.field.big svg { width: 18px; height: 18px; }
+.field.sm { height: 30px; width: 180px; }
+.pill { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: color-mix(in srgb, var(--green) 18%, transparent); color: color-mix(in srgb, var(--green) 62%, var(--ink)); }
+.pill.prop { background: color-mix(in srgb, var(--orange) 20%, transparent); color: color-mix(in srgb, var(--orange) 60%, var(--ink)); }
+.pill.mute { background: var(--well); color: var(--ink-2); }
+.due-soon { color: color-mix(in srgb, var(--orange) 72%, var(--ink)); font-weight: 600; }
+.due-now { color: color-mix(in srgb, var(--red) 80%, var(--ink)); font-weight: 600; }
+.chev { width: 7px; height: 12px; color: var(--ink-3); flex: none; }
+.chev-d { width: 11px; height: 8px; flex: none; }
+
+/* =========================================================
+   6. Barra superiore
+   ========================================================= */
+.bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 80; height: var(--bar-h);
+  display: flex; align-items: center; gap: 4px; padding: 0 8px 0 10px; color: var(--wall-ink); font-size: 13px;
+}
+.bar::before { content: ""; position: absolute; inset: 0 0 -12px 0; z-index: -1; background: linear-gradient(var(--bar-shade), transparent); pointer-events: none; }
+.bar-brand, .bar-app {
+  display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border: 0; background: none; border-radius: 999px;
+  color: inherit; text-shadow: var(--wall-glow); white-space: nowrap;
+}
+.bar-brand { font-weight: 700; letter-spacing: -.01em; padding-left: 6px; }
+.bar-brand svg { width: 19px; height: 19px; }
+.bar-app { font-weight: 500; }
+.bar-brand:hover, .bar-app:hover { background: var(--chip); }
+.bar-clock {
+  position: absolute; left: 50%; translate: -50% 0; display: flex; gap: 9px; font-weight: 500;
+  font-variant-numeric: tabular-nums; text-shadow: var(--wall-glow); white-space: nowrap; pointer-events: none;
+}
+.bar-tools { --r: 999px; margin-left: auto; display: flex; align-items: center; gap: 1px; padding: 2px; height: 30px; }
+.bar-tools button {
+  position: relative; z-index: 4; height: 26px; min-width: 28px; padding: 0 8px; border: 0; border-radius: 999px; background: none;
+  color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; font-weight: 500;
+}
+.bar-tools button:hover { background: var(--chip); }
+.bar-tools svg { width: 16px; height: 16px; }
+.bar-tools kbd { padding: 2px 5px; font-size: 10.5px; }
+.badge {
+  position: absolute; top: 0; right: 0; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px;
+  background: var(--red); color: #fff; font: 700 9.5px/15px var(--font); text-align: center; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .75);
+}
+.badge:empty { display: none; }
+.me {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font: 700 10px/1 var(--font-r); color: #fff; background: radial-gradient(circle at 30% 25%, #8FB3CF, #36607F);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 1px 3px rgba(0, 0, 0, .25);
+}
+.me.big { width: 44px; height: 44px; font-size: 16px; }
+
+/* =========================================================
+   7. Scrivania e widget
+   ========================================================= */
+.desk { position: fixed; z-index: 10; inset: var(--bar-h) 0 0 0; overflow: auto; padding: 8px var(--gut) var(--dock-space); outline: none; }
+.desk-in { max-width: 1480px; min-height: 100%; margin: 0 auto; display: flex; flex-direction: column; }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 14px 2px 0; }
+.hero h1 { font: 700 34px/1.08 var(--font-d); letter-spacing: -.024em; color: var(--wall-ink); text-shadow: var(--wall-glow); }
+.hero p { margin-top: 5px; font-size: 15px; color: var(--wall-ink-2); text-shadow: var(--wall-glow); }
+.quick { display: flex; flex-wrap: wrap; gap: 8px; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 2px 10px; }
+.sec-head h2 { font: 700 19px/1.2 var(--font-d); letter-spacing: -.012em; color: var(--wall-ink); text-shadow: var(--wall-glow); }
+.board {
+  flex: 1 1 auto; min-height: 520px; display: grid; gap: 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) 64px minmax(0, 1.04fr);
+  grid-template-areas: "ag ag ag cl cl cl" "ag ag ag ev ev ev" "td td sc sc pf pf";
+}
+.foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 4px 4px; font-size: 12px; color: var(--wall-ink-2); text-shadow: var(--wall-glow); }
+
+.widget { --r: var(--r-w); min-width: 0; min-height: 0; padding: 14px; display: flex; flex-direction: column; container: w / size; }
+.widget > * { position: relative; z-index: 1; }
+html[data-scheme="dark"][data-glass="clear"] .widget { text-shadow: 0 1px 2px rgba(0, 0, 0, .28); }
+.w-head { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-bottom: 8px; flex: none; }
+.w-head h2 { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-head h2 .ic { --sz: 20px; }
+.w-link {
+  margin-left: auto; flex: none; height: 26px; padding: 0 11px; border: 0; border-radius: 999px; background: var(--chip);
+  box-shadow: inset 0 0 0 .5px var(--chip-edge); color: var(--link); font-size: 12px; font-weight: 600; text-shadow: none;
+}
+.w-link:hover { background: var(--chip-h); }
+.w-scroll {
+  flex: 1; min-height: 0; overflow: auto; margin: 0 -6px; padding: 0 6px 6px;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent);
+}
+.w-empty { font-size: 12.5px; color: var(--ink-2); padding: 10px 8px; }
+.row {
+  display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px; border: 0; border-radius: 14px;
+  background: none; text-align: left; color: var(--ink); text-shadow: inherit;
+}
+button.row:hover, .row-open:hover { background: var(--chip); }
+.meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.meta b { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta > span { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-r { flex: none; text-align: right; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.side-r b { display: block; color: var(--ink); font-weight: 600; }
+
+/* Agenda */
+.w-agenda { grid-area: ag; flex-direction: row; gap: 14px; }
+.wa-day { width: 148px; flex: none; display: flex; flex-direction: column; padding: 4px 12px 6px 4px; border-right: .5px solid var(--sep); }
+.wa-wd { color: var(--red); font-weight: 600; font-size: 14px; text-transform: capitalize; text-shadow: none; }
+.wa-num { font: 300 70px/1 var(--font-d); letter-spacing: -.045em; margin: 6px 0 2px -2px; }
+.wa-mon { font-size: 14px; color: var(--ink-2); }
+.wa-sum { margin-top: auto; font-size: 12px; color: var(--ink-2); }
+.wa-sum b { display: block; color: var(--ink); font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.wa-list { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ev-tag { width: 4px; align-self: stretch; border-radius: 4px; background: var(--c); flex: none; margin: 2px 0; }
+@container w (max-width: 430px) { .wa-day { width: 96px; padding-right: 8px; } .wa-num { font-size: 50px; } }
+
+/* Cliente in primo piano */
+.w-cliente { grid-area: cl; overflow: hidden; }
+.w-cliente > .wc-wash {
+  position: absolute; z-index: 0; inset: 0 0 auto 0; height: 120px; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--t2) 10%, transparent), transparent);
+}
+.wc-head { display: flex; align-items: center; gap: 12px; flex: none; }
+.wc-id { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.wc-kicker { font-size: 11.5px; color: var(--ink-2); font-weight: 500; }
+.wc-name {
+  display: inline-flex; align-items: center; gap: 7px; max-width: 100%; border: 0; background: none; padding: 1px 8px 1px 0; border-radius: 8px;
+  font: 700 18px/1.25 var(--font-d); letter-spacing: -.015em; color: var(--ink); text-shadow: inherit;
+}
+.wc-name:hover { background: var(--chip); padding-left: 6px; margin-left: -6px; }
+.wc-tema { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wc-ch { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
+.kpis {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; margin-top: 12px; padding: 11px 14px; flex: none;
+  border-radius: 16px; background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi);
+}
+.kpi span { display: block; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi b { display: block; margin-top: 2px; font: 600 16px/1.2 var(--font-d); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wc-note { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: none; }
+.wc-actions { margin-top: auto; padding-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; text-shadow: none; }
+.eve-btn .orb { --sz: 16px; }
+@container w (max-height: 256px) { .wc-note { display: none; } }
+@container w (max-height: 200px) { .kpis .k2 { display: none; } }
+@container w (max-height: 150px) { .wc-actions { display: none; } }
+
+/* Eve */
+.w-eve { grid-area: ev; --r: 22px; flex-direction: row; align-items: center; gap: 12px; padding: 0 16px 0 12px; border: 0; text-align: left; color: var(--ink); }
+.w-eve .orb { --sz: 38px; }
+.we-t { flex: 1; min-width: 0; }
+.we-t b { display: block; font-size: 14px; font-weight: 600; }
+.we-t span { display: block; font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Da fare */
+.w-todo { grid-area: td; }
+.todo { display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 8px; border-radius: 14px; }
+.row-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px 6px; border: 0; border-radius: 12px; background: none; text-align: left; color: var(--ink); text-shadow: inherit; }
+.ck {
+  width: 22px; height: 22px; border-radius: 50%; flex: none; border: 0; padding: 0; display: grid; place-items: center;
+  background: var(--chip); box-shadow: inset 0 0 0 1.5px var(--well-2);
+  transition: background .2s, box-shadow .2s, transform .3s var(--spring);
+}
+.ck svg { width: 12px; height: 12px; color: #fff; opacity: 0; transform: scale(.5); transition: .28s var(--spring); }
+.ck[aria-checked="true"] { background: var(--green); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 2px 6px -2px rgba(52, 199, 89, .6); }
+.ck[aria-checked="true"] svg { opacity: 1; transform: none; }
+.ck:active { transform: scale(.88); }
+.todo.done .meta b { text-decoration: line-through; color: var(--ink-3); }
+.todo.sel { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.flag { width: 12px; height: 12px; color: var(--orange); flex: none; }
+.flag svg { width: 12px; height: 12px; }
+
+/* Scadenze */
+.w-scad { grid-area: sc; }
+
+/* Portafoglio */
+.w-port { grid-area: pf; }
+.pf-total { font: 700 30px/1.05 var(--font-d); letter-spacing: -.025em; margin-top: 2px; flex: none; }
+.pf-cap { font-size: 12px; color: var(--ink-2); margin-top: 4px; flex: none; }
+.split { display: flex; gap: 2px; height: 10px; margin: 14px 0 10px; flex: none; }
+.split span { border-radius: 4px; min-width: 6px; background: var(--c); }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; flex: none; }
+.legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 38px; align-items: center; gap: 8px; font-size: 12.5px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.legend b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.legend em { font-style: normal; color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.pf-prop { margin-top: auto; padding-top: 10px; display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; border-top: .5px solid var(--sep); flex: none; }
+.pf-prop span { color: var(--ink-2); }
+.pf-prop b { font-weight: 600; }
+@container w (max-height: 192px) { .pf-prop { display: none; } }
+@container w (max-height: 150px) { .legend { display: none; } }
+
+/* =========================================================
+   8. Dock e icone
+   ========================================================= */
+.dock {
+  position: fixed; z-index: 70; left: 50%; bottom: 10px; translate: -50% 0; --r: 26px;
+  display: flex; align-items: flex-end; gap: var(--dock-gap, 6px); padding: var(--dock-pad, 7px) calc(var(--dock-pad, 7px) + 2px); max-width: calc(100vw - 12px); overflow: visible;
+}
+html[data-labels="1"] .dock { padding-bottom: calc(var(--dock-pad, 7px) + 14px); }
+.dock-item {
+  position: relative; z-index: 4; flex: none; width: calc(var(--dock-ic) * var(--s, 1)); height: var(--dock-ic);
+  border: 0; padding: 0; background: none; border-radius: 12px; transition: width .2s var(--out);
+}
+.dock-item > .ic { --sz: var(--dock-ic); position: absolute; left: 50%; bottom: 0; transform: translateX(-50%) scale(var(--s, 1)); transform-origin: 50% 100%; transition: transform .2s var(--out); }
+.dock.magnifying .dock-item, .dock.magnifying .dock-item > .ic { transition: none; }
+.dock-item:focus-visible { outline-offset: 4px; }
+.dock-item:active > .ic { filter: brightness(.82); }
+.dock-dot { position: absolute; left: 50%; bottom: -6px; width: 4px; height: 4px; translate: -50% 0; border-radius: 50%; background: var(--wall-ink); opacity: 0; transition: opacity .2s; }
+.dock-item.running .dock-dot { opacity: .8; }
+html[data-labels="1"] .dock-dot { bottom: -18px; }
+.dock-label { display: none; position: absolute; top: calc(100% + 4px); left: 50%; translate: -50% 0; font-size: 10px; font-weight: 500; white-space: nowrap; color: var(--ink-2); }
+html[data-labels="1"] .dock-label { display: block; }
+.dock-sep { width: 1px; align-self: stretch; flex: none; margin: 6px var(--dock-sepm, 3px); background: linear-gradient(transparent, var(--well-2), transparent); position: relative; z-index: 4; }
+.dock-item.bounce > .ic { animation: hop .8s var(--out); }
+@keyframes hop { 0%, 100% { translate: 0 0; } 25% { translate: 0 -18px; } 50% { translate: 0 0; } 70% { translate: 0 -7px; } }
+.tip {
+  position: fixed; z-index: 90; left: 0; top: 0; translate: -50% -100%; --r: 999px; padding: 5px 11px; pointer-events: none;
+  font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; display: flex; align-items: center; gap: 7px;
+  opacity: 0; transform: translateY(4px) scale(.95); transition: opacity .12s, transform .2s var(--out);
+}
+.tip.on { opacity: 1; transform: none; }
+.tip kbd { padding: 2px 5px; font-size: 10.5px; position: relative; z-index: 4; }
+
+.ic {
+  --sz: 50px; position: relative; display: inline-block; flex: none; width: var(--sz); height: var(--sz); border-radius: 23.5%;
+  background: linear-gradient(165deg, var(--c1), var(--c2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 0 0 .5px rgba(255, 255, 255, .22), inset 0 -1px 1px rgba(0, 0, 0, .14),
+              0 calc(var(--sz) * .05) calc(var(--sz) * .14) calc(var(--sz) * -.03) rgba(0, 0, 0, .32);
+}
+.ic::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(170deg, rgba(255, 255, 255, .36) 0%, rgba(255, 255, 255, .07) 42%, rgba(255, 255, 255, 0) 62%);
+}
+.ic svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 calc(var(--sz) * .015) calc(var(--sz) * .02) rgba(0, 0, 0, .22)); }
+.ic .g1 { fill: url(#lgGlass); }
+.ic .g2 { fill: #fff; fill-opacity: .5; }
+.ic .gs { stroke: #fff; }
+.ic .g3 { fill: var(--acc, #FF3B30); }
+.ic .gk { fill: #1C1C1E; }
+.ic .gl { stroke: rgba(0, 0, 0, .2); fill: none; }
+.ic .gt { fill: #fff; font: 800 13px/1 var(--font-r); letter-spacing: -.4px; }
+.ic .gtk { fill: #1C1C1E; font: 600 7.5px/1 var(--font-r); }
+.ic .gt-mon { font: 700 10.5px/1 var(--font); letter-spacing: .08em; }
+.ic .gt-day { font: 300 30px/1 var(--font-d); letter-spacing: -1px; }
+.ic .gw { fill: #fff; }
+.ic .gws { stroke: #fff; }
+.ic-light .gs { stroke: rgba(0, 0, 0, .24); }
+html[data-icons="dark"] .ic { background: linear-gradient(165deg, #3B3C43, #141418); }
+html[data-icons="dark"] .ic::after { background: linear-gradient(170deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, 0) 50%); }
+html[data-icons="dark"] .ic .g1 { fill: var(--hue); }
+html[data-icons="dark"] .ic .g2 { fill: var(--hue); fill-opacity: .42; }
+html[data-icons="dark"] .ic .gs, html[data-icons="dark"] .ic-light .gs { stroke: var(--hue); }
+html[data-icons="dark"] .ic .gk, html[data-icons="dark"] .ic .gtk { fill: #fff; }
+html[data-icons="dark"] .ic .gl { stroke: rgba(255, 255, 255, .28); }
+html[data-icons="dark"] .ic .gt { fill: var(--hue); }
+html[data-icons="clear"] .ic {
+  background: linear-gradient(165deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .14));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 0 0 1px rgba(255, 255, 255, .35), inset 0 -1px 2px rgba(0, 0, 0, .08),
+              0 calc(var(--sz) * .05) calc(var(--sz) * .14) calc(var(--sz) * -.04) rgba(0, 0, 0, .25);
+}
+html[data-icons="clear"] .ic .g1, html[data-icons="clear"] .ic .gk, html[data-icons="clear"] .ic .gtk, html[data-icons="clear"] .ic .gt { fill: var(--clear-ink); }
+html[data-icons="clear"] .ic .g2 { fill: var(--clear-ink); fill-opacity: .4; }
+html[data-icons="clear"] .ic .g3 { fill: var(--clear-ink); fill-opacity: .72; }
+html[data-icons="clear"] .ic .gs, html[data-icons="clear"] .ic-light .gs { stroke: var(--clear-ink); }
+html[data-icons="clear"] .ic .gl { stroke: var(--clear-line); }
+html[data-scheme="light"] { --clear-ink: rgba(20, 22, 48, .8); --clear-line: rgba(255, 255, 255, .7); }
+html[data-scheme="dark"] { --clear-ink: rgba(255, 255, 255, .95); --clear-line: rgba(0, 0, 0, .3); }
+html[data-scheme="dark"][data-icons="clear"] .ic { background: linear-gradient(165deg, rgba(255, 255, 255, .26), rgba(255, 255, 255, .06)); }
+
+/* =========================================================
+   9. Finestre interne
+   ========================================================= */
+.wins { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
+.win {
+  position: absolute; pointer-events: auto; display: flex; flex-direction: column; min-width: 380px; min-height: 260px;
+  border-radius: var(--r-win); background: var(--win-fill); outline: none; overflow: hidden;
+  -webkit-backdrop-filter: blur(28px) saturate(1.7); backdrop-filter: blur(28px) saturate(1.7);
+  box-shadow: 0 34px 80px -24px rgba(0, 0, 0, .5), 0 10px 30px -12px rgba(0, 0, 0, .25), 0 0 0 .5px rgba(0, 0, 0, .2),
+              inset 0 0 0 .5px var(--g-edge), inset 0 1px 0 var(--g-hi);
+}
+.win.inactive { box-shadow: 0 22px 50px -24px rgba(0, 0, 0, .42), 0 0 0 .5px rgba(0, 0, 0, .16), inset 0 0 0 .5px var(--g-edge); }
+.win.tween { transition: left .32s var(--out), top .32s var(--out), width .32s var(--out), height .32s var(--out); }
+.win.max { border-radius: 18px; }
+.lights { position: absolute; z-index: 6; top: 19px; left: 21px; display: flex; gap: 8px; }
+.light { width: 13px; height: 13px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .2); }
+.l-close { background: #FF5F57; } .l-min { background: #FEBC2E; } .l-zoom { background: #28C840; }
+.light svg { width: 7px; height: 7px; color: rgba(0, 0, 0, .6); opacity: 0; }
+.lights:hover .light svg, .light:focus-visible svg { opacity: 1; }
+.win.inactive .light { background: var(--well-2); box-shadow: none; }
+.win-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 232px minmax(0, 1fr); }
+.win-grid.no-side { grid-template-columns: minmax(0, 1fr); }
+.side {
+  margin: 8px 0 8px 8px; border-radius: 18px; background: var(--side-fill); padding: 0 8px 10px; overflow: auto;
+  display: flex; flex-direction: column; gap: 1px;
+  box-shadow: inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi), 0 8px 24px -14px rgba(0, 0, 0, .35);
+}
+.side-top { height: 40px; flex: none; }
+.main { position: relative; min-width: 0; overflow: auto; display: flex; flex-direction: column; }
+.tbar {
+  position: sticky; top: 0; z-index: 4; flex: none; display: flex; align-items: center; gap: 12px; min-height: 52px;
+  padding: 8px 14px 8px 18px; background: linear-gradient(var(--win-solid) 58%, transparent);
+}
+.no-side .tbar { padding-left: 96px; }
+.win-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; min-width: 0; white-space: nowrap; }
+.win-title .ic { --sz: 20px; }
+.tb-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.pad { padding: 2px 24px 26px; flex: 1 0 auto; }
+.win-resize { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 7; }
+
+.side-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 11px; flex: none;
+  background: none; text-align: left; color: var(--ink);
+}
+.side-item:hover { background: var(--chip); }
+.side-item[aria-current="true"] { background: color-mix(in srgb, var(--accent) 17%, transparent); }
+.side-item.compact { padding: 5px 8px; }
+.side-item.static:hover { background: none; }
+.side-item .ic { --sz: 24px; }
+.si-t { min-width: 0; flex: 1; }
+.si-t b { display: block; font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-t small { display: block; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-sec { font-size: 11.5px; font-weight: 600; color: var(--ink-3); padding: 12px 8px 4px; flex: none; }
+.side .field { margin: 0 0 4px; flex: none; }
+.side-empty { font-size: 12px; color: var(--ink-2); padding: 8px; }
+.sw { width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+.sw.all { background: linear-gradient(90deg, var(--ch-a) 50%, var(--ch-i) 50%); }
+
+.app-h { margin: 2px 0 18px; }
+.app-h small { font-size: 12px; color: var(--ink-2); font-weight: 500; }
+.app-h h1 { font: 700 26px/1.15 var(--font-d); letter-spacing: -.02em; margin: 2px 0 3px; }
+.app-h p { color: var(--ink-2); font-size: 13px; }
+.dos-head { display: flex; align-items: center; gap: 16px; margin: 4px 0 18px; }
+.dos-head h1 { font: 700 26px/1.15 var(--font-d); letter-spacing: -.02em; }
+.dos-head p { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(122px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.tile { padding: 12px 14px; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge); min-width: 0; }
+.tile span { display: block; font-size: 12px; color: var(--ink-2); }
+.tile b { display: block; margin-top: 3px; font: 600 18px/1.25 var(--font-d); letter-spacing: -.012em; overflow-wrap: anywhere; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.card { padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge); min-width: 0; }
+.pad > .card, .pad > section.card { margin-bottom: 12px; }
+.card h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.card-p { color: var(--ink-2); font-size: 13px; margin-top: 8px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 14px; margin: 0; font-size: 13px; }
+.kv dt { color: var(--ink-2); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.fam { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fam b { display: block; font-weight: 600; }
+.fam span { font-size: 12px; color: var(--ink-2); }
+.mini-task { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 2px; }
+.mini-task em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--ink-2); }
+.mini-task svg { width: 7px; height: 7px; color: var(--orange); }
+.note-card p { font-size: 13.5px; line-height: 1.5; }
+
+.tbl-card { padding: 6px 6px 4px; overflow-x: auto; }
+.tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.tbl th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--ink-2); padding: 9px 10px; border-bottom: .5px solid var(--sep); white-space: nowrap; }
+.tbl td { padding: 9px 10px; border-bottom: .5px solid var(--sep); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl small { display: block; font-size: 11.5px; color: var(--ink-2); }
+.tbl tbody tr:hover td { background: var(--row-h); }
+.tbl tbody tr.sel td { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.cell-t { font-weight: 600; }
+.tbl .cell-pos { min-width: 210px; }
+.tbl .nowrap { white-space: nowrap; }
+.tbl { min-width: 760px; }
+.cell-cl { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.empty-td { text-align: center; color: var(--ink-2); padding: 24px !important; }
+.split-card .split { margin-top: 2px; }
+
+.ag-day { margin-bottom: 18px; }
+.ag-day h3 { font-size: 15px; font-weight: 700; margin: 0 2px 8px; display: flex; gap: 8px; align-items: baseline; }
+.ag-day h3 span { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+.ag-card {
+  display: flex; gap: 14px; align-items: flex-start; padding: 12px 14px 12px 12px; margin-bottom: 8px;
+  border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge);
+}
+.ag-card::before { content: ""; width: 4px; align-self: stretch; border-radius: 4px; background: var(--c); flex: none; }
+.ag-card.past { opacity: .62; }
+.ag-card.sel { box-shadow: 0 0 0 2px var(--accent), inset 0 0 0 .5px var(--card-edge); }
+.ag-time { width: 50px; flex: none; font-variant-numeric: tabular-nums; }
+.ag-time b { display: block; font-weight: 600; }
+.ag-time span { font-size: 12px; color: var(--ink-2); }
+.ag-body { flex: 1; min-width: 0; }
+.ag-body > b { display: block; font-weight: 600; font-size: 14px; }
+.ag-who { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); margin-top: 3px; flex-wrap: wrap; }
+.ag-body p { margin-top: 6px; font-size: 13px; color: var(--ink-2); }
+.mc { padding: 2px 2px 8px; flex: none; }
+.mc-h { font-weight: 700; font-size: 13px; padding: 0 6px 8px; text-transform: capitalize; }
+.mc-w, .mc-g { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+.mc-w span { font-size: 10.5px; font-weight: 600; color: var(--ink-3); padding-bottom: 4px; }
+.mc-d { position: relative; aspect-ratio: 1; border: 0; background: none; border-radius: 50%; font-size: 12px; color: var(--ink); padding: 0; font-variant-numeric: tabular-nums; }
+.mc-d:hover { background: var(--chip); }
+.mc-d.today { color: var(--red); font-weight: 700; }
+.mc-d.sel { background: var(--red); color: #fff; font-weight: 700; }
+.mc-d.ev::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 4px; height: 4px; border-radius: 50%; background: var(--ink-3); translate: -50% 0; }
+.mc-d.sel.ev::after { background: #fff; }
+
+.eve-pad { display: flex; flex-direction: column; min-height: calc(100% - 52px); }
+.eve-ctx { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 0 6px 12px; }
+.eve-ctx b { font-size: 15px; font-weight: 700; }
+.eve-ctx span { font-size: 12px; color: var(--ink-2); }
+.engine { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; font-size: 12.5px; }
+.engine b { display: block; font-weight: 600; }
+.engine small { color: var(--ink-2); }
+.engine i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); margin-top: 5px; flex: none; }
+.chat { flex: 1; display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 760px; margin: 0 auto; padding: 6px 0 8px; }
+.msg { display: flex; gap: 10px; align-items: flex-end; }
+.msg.mine { justify-content: flex-end; }
+.msg .orb { --sz: 26px; }
+.bub { max-width: min(560px, 82%); padding: 10px 14px; border-radius: 20px; font-size: 13.5px; line-height: 1.45; -webkit-user-select: text; user-select: text; }
+.msg.eve .bub { background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge); border-bottom-left-radius: 6px; }
+.msg.mine .bub { background: var(--accent); color: #fff; border-bottom-right-radius: 6px; }
+.bub p + p, .bub p + ul, .bub ul + p { margin-top: 8px; }
+.bub ul { margin: 6px 0 0; padding-left: 18px; }
+.bub li + li { margin-top: 4px; }
+.bub em { font-style: normal; color: var(--ink-2); }
+.bub .src { font-size: 11.5px; color: var(--ink-3); }
+.chips-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 760px; margin: 12px auto 10px; }
+.sugg { height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge); font-size: 12.5px; color: var(--ink); }
+.sugg:hover { background: var(--chip-h); }
+.composer {
+  position: sticky; bottom: 12px; display: flex; align-items: center; gap: 8px; width: 100%; max-width: 760px; margin: 0 auto;
+  padding: 6px 6px 6px 16px; border-radius: 999px; background: var(--win-solid);
+  box-shadow: inset 0 0 0 .5px var(--card-edge), 0 10px 30px -12px rgba(0, 0, 0, .35);
+}
+.composer input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font: inherit; font-size: 14px; color: var(--ink); height: 34px; }
+.composer input::placeholder { color: var(--ink-3); }
+.ico-btn { width: 34px; height: 34px; flex: none; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--chip); color: var(--ink-2); }
+.ico-btn svg { width: 17px; height: 17px; }
+.ico-btn.send { background: var(--accent); color: #fff; }
+
+.set-h { font: 700 22px/1.2 var(--font-d); letter-spacing: -.015em; margin: 4px 0 16px; }
+.g-title { font-size: 12px; font-weight: 600; color: var(--ink-2); margin: 0 6px 6px; }
+.group { border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge); margin-bottom: 20px; }
+.group.pad-in { padding: 14px; }
+.g-row { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 9px 14px; flex-wrap: wrap; }
+.g-row + .g-row, .icon-prev + .g-row, .g-row + .icon-prev { border-top: .5px solid var(--sep); }
+.lbl { flex: 1; min-width: 180px; }
+.lbl b { display: block; font-weight: 500; }
+.lbl small { display: block; font-size: 12px; color: var(--ink-2); margin-top: 1px; }
+.g-val { color: var(--ink-2); font-size: 13px; text-align: right; }
+.g-note { font-size: 12px; color: var(--ink-2); margin: -10px 6px 20px; }
+.icon-prev { display: flex; gap: 12px; padding: 14px; flex-wrap: wrap; }
+.walls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.wall-th { display: flex; flex-direction: column; gap: 5px; align-items: stretch; border: 0; padding: 0; background: none; color: var(--ink); font-size: 11.5px; font-weight: 500; }
+.wall-th .sw-img { aspect-ratio: 16 / 10; border-radius: 10px; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .15); position: relative; overflow: hidden; }
+.wall-th[aria-pressed="true"] .sw-img { box-shadow: 0 0 0 2px var(--accent), inset 0 0 0 .5px rgba(0, 0, 0, .15); }
+.th-prisma .sw-img {
+  background: conic-gradient(from 96deg at 42% 50%, transparent 0deg, color-mix(in srgb, var(--f5) 45%, transparent) 10deg, color-mix(in srgb, var(--f3) 40%, transparent) 24deg, transparent 40deg),
+              linear-gradient(160deg, var(--wp1), var(--wp2) 55%, var(--wp3));
+}
+.th-gocce .sw-img { background: radial-gradient(circle at 30% 35%, rgba(255, 255, 255, .5) 0 7%, transparent 8%), radial-gradient(circle at 68% 62%, rgba(255, 255, 255, .45) 0 10%, transparent 11%), radial-gradient(circle at 80% 25%, rgba(255, 255, 255, .4) 0 5%, transparent 6%), linear-gradient(165deg, var(--gc1), var(--gc2)); }
+
+.soon {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 40px 24px; margin: 10px auto;
+  max-width: 620px; border-radius: 22px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge);
+}
+.soon h2 { font: 700 19px/1.25 var(--font-d); }
+.soon p { color: var(--ink-2); max-width: 46ch; }
+.soon-a { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+.soon.small { padding: 26px 20px; }
+.doc-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; }
+.doc-row + .doc-row { border-top: .5px solid var(--sep); }
+.doc-ic {
+  width: 34px; height: 42px; flex: none; border-radius: 7px; display: grid; place-items: end center; padding-bottom: 5px;
+  background: var(--chip-h); box-shadow: inset 0 0 0 .5px var(--card-edge), 0 1px 3px rgba(0, 0, 0, .1); font-size: 8.5px; font-weight: 800; color: var(--ink-2);
+}
+.note-v h1 { font: 700 24px/1.2 var(--font-d); letter-spacing: -.015em; }
+.note-v .meta-l { display: flex; gap: 8px; align-items: center; color: var(--ink-2); font-size: 12.5px; margin: 6px 0 16px; }
+.note-v p { font-size: 15px; line-height: 1.6; max-width: 62ch; -webkit-user-select: text; user-select: text; }
+.list-card { padding: 10px 10px 6px; }
+.list-card h3 { padding: 2px 6px 4px; }
+
+/* =========================================================
+   10. Pannelli: ricerca, notifiche, centro di controllo, popover
+   ========================================================= */
+.scrim { position: fixed; inset: 0; z-index: 85; background: var(--scrim); }
+.spot { position: fixed; z-index: 90; top: 15vh; left: 50%; translate: -50% 0; width: min(660px, calc(100vw - 32px)); --r: 26px; padding: 8px; display: flex; flex-direction: column; max-height: 70vh; }
+.spot > * { position: relative; z-index: 4; }
+.spot-in { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 14px; flex: none; }
+.spot-in svg { width: 21px; height: 21px; color: var(--ink-2); }
+.spot-in input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font: 400 21px/1.2 var(--font-d); color: var(--ink); letter-spacing: -.01em; }
+.spot-in input::placeholder { color: var(--ink-3); }
+.spot-res, .rc-res { overflow: auto; padding: 4px; }
+.spot-res { border-top: .5px solid var(--sep); }
+.sr-g { font-size: 11.5px; font-weight: 600; color: var(--ink-2); padding: 10px 10px 4px; }
+.sr-i { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 12px; background: none; text-align: left; color: var(--ink); }
+.sr-i .ic { --sz: 28px; }
+.sr-i.sel, .sr-i:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.sr-i .si-t b { font-weight: 600; }
+.sr-none { padding: 22px 12px; text-align: center; color: var(--ink-2); }
+.spot-foot { display: flex; gap: 14px; padding: 8px 14px 4px; font-size: 11.5px; color: var(--ink-3); border-top: .5px solid var(--sep); flex: none; }
+
+.nc { position: fixed; z-index: 88; top: calc(var(--bar-h) + 6px); right: 10px; width: 356px; max-width: calc(100vw - 20px); max-height: calc(100vh - var(--bar-h) - 20px); --r: 26px; padding: 14px 12px 12px; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+.nc > * { position: relative; z-index: 4; }
+.nc-h { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 2px; }
+.nc-h h2 { font: 700 17px/1.2 var(--font-d); }
+.nc-h span { font-size: 12px; color: var(--ink-2); }
+.nt {
+  display: flex; align-items: flex-start; gap: 11px; width: 100%; padding: 11px 12px; border: 0; border-radius: 18px; text-align: left; color: var(--ink);
+  background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi);
+}
+.nt:hover { background: var(--chip-h); }
+.nt .ic { --sz: 30px; }
+.nt-t { flex: 1; min-width: 0; }
+.nt-t b { display: block; font-weight: 600; }
+.nt-t span { display: block; color: var(--ink-2); font-size: 12.5px; }
+.nt-t small { display: block; color: var(--ink-3); font-size: 11.5px; margin-top: 2px; }
+.nt.unread .nt-t b::after { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: 6px; vertical-align: middle; }
+
+.cc { position: fixed; z-index: 88; top: calc(var(--bar-h) + 6px); right: 10px; width: 340px; max-width: calc(100vw - 20px); --r: 28px; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cc > * { position: relative; z-index: 4; }
+.cc-tile {
+  border-radius: 20px; padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi);
+}
+.cc-tile.wide { grid-column: span 2; }
+.cc-tile h3 { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.cc-tile .segc { align-self: stretch; }
+.cc-tile .segc button { flex: 1; }
+.cc-round { flex-direction: row; align-items: center; gap: 10px; border: 0; color: var(--ink); text-align: left; }
+.cc-round:disabled { opacity: .55; }
+.cc-round i { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--well-2); flex: none; transition: background .2s; }
+.cc-round i svg { width: 17px; height: 17px; }
+.cc-round[aria-pressed="true"] i { background: var(--accent); color: #fff; }
+.cc-round b { font-size: 12.5px; font-weight: 600; display: block; }
+.cc-round small { font-size: 11px; color: var(--ink-2); }
+
+.pop { position: fixed; z-index: 88; --r: 22px; padding: 8px; width: 300px; max-width: calc(100vw - 20px); display: flex; flex-direction: column; gap: 1px; }
+.pop > * { position: relative; z-index: 4; }
+.pop h3 { font-size: 12px; font-weight: 600; color: var(--ink-2); padding: 6px 8px 4px; }
+.pop-i { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 14px; background: none; text-align: left; color: var(--ink); }
+.pop-i:hover { background: var(--chip); }
+.pop-i[aria-checked="true"] { background: color-mix(in srgb, var(--accent) 17%, transparent); }
+.pop-i > svg { width: 22px; height: 22px; padding: 3px; color: var(--ink-2); flex: none; }
+.pop-sep { height: .5px; background: var(--sep); margin: 4px 8px; }
+.ws-ics { display: flex; flex: none; }
+.ws-ics .ic { --sz: 24px; margin-left: -7px; box-shadow: 0 0 0 1.5px var(--win-solid); }
+.ws-ics .ic:first-child { margin-left: 0; }
+
+.switcher { position: fixed; z-index: 90; top: 50%; left: 50%; translate: -50% -50%; width: min(760px, calc(100vw - 32px)); --r: 28px; padding: 20px; }
+.switcher > * { position: relative; z-index: 4; }
+.sw-h { font: 700 19px/1.2 var(--font-d); }
+.sw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.sw-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 10px 14px; border-radius: 20px; border: 0; background: var(--chip); color: var(--ink); box-shadow: inset 0 0 0 .5px var(--chip-edge); }
+.sw-card:hover { background: var(--chip-h); }
+.sw-card b { font-weight: 600; }
+.sw-card small { font-size: 11.5px; color: var(--ink-2); }
+.sw-empty { color: var(--ink-2); margin-top: 6px; }
+.sw-foot { display: flex; gap: 8px; margin-top: 16px; }
+
+.toast { position: fixed; z-index: 95; left: 50%; bottom: calc(var(--dock-space) + 4px); translate: -50% 0; --r: 999px; padding: 10px 18px; font-weight: 500; pointer-events: none; opacity: 0; transform: translateY(8px) scale(.97); transition: opacity .2s, transform .35s var(--spring); max-width: calc(100vw - 32px); }
+.toast.on { opacity: 1; transform: none; }
+.dtip {
+  position: fixed; z-index: 96; left: 0; top: 0; padding: 6px 10px; border-radius: 10px; font-size: 12px; font-weight: 500; color: var(--ink);
+  background: var(--tip-bg); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); pointer-events: none; opacity: 0; transition: opacity .12s;
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, .35), inset 0 0 0 .5px var(--chip-edge); white-space: nowrap;
+}
+.dtip.on { opacity: 1; }
+
+/* =========================================================
+   11. Schermata di benvenuto (blocco)
+   ========================================================= */
+.lock { position: fixed; inset: 0; z-index: 200; display: none; flex-direction: column; align-items: center; padding: 8vh 24px 5vh; color: var(--lk-ink); text-align: center; }
+html.locked .lock { display: flex; }
+html.locked .desk, html.locked .dock, html.locked .bar, html.locked .wins, html.locked .tip { visibility: hidden; }
+.lk-date { font: 600 22px/1.2 var(--font-d); text-shadow: 0 1px 14px rgba(0, 0, 0, .18); }
+.lk-time {
+  font: 700 clamp(96px, 16vw, 188px)/.95 var(--font-r); letter-spacing: -.035em; font-variant-numeric: tabular-nums; margin-top: 4px;
+  color: transparent; -webkit-background-clip: text; background-clip: text;
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--lk-ink) 96%, transparent), color-mix(in srgb, var(--lk-ink) 52%, transparent));
+  filter: drop-shadow(0 2px 18px rgba(30, 20, 90, .22));
+}
+.lk-brand { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: auto; }
+.lk-brand b { font: 700 20px/1.1 var(--font-d); letter-spacing: -.01em; }
+.lk-brand span { font-size: 13px; opacity: .75; }
+.lk-slide { --r: 999px; position: relative; width: min(340px, 86vw); height: 60px; margin-top: 28px; display: flex; align-items: center; padding: 5px; }
+.lk-hint {
+  position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding-left: 40px; font-size: 15px; font-weight: 500; pointer-events: none;
+  color: transparent; -webkit-background-clip: text; background-clip: text;
+  background-image: linear-gradient(100deg, var(--ink-2) 40%, var(--ink) 50%, var(--ink-2) 60%); background-size: 300% 100%;
+  animation: shimmer 3.2s linear infinite; opacity: calc(1 - var(--p, 0) * 1.6);
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.lk-knob {
+  position: relative; z-index: 5; width: 50px; height: 50px; border-radius: 50%; border: 0; display: grid; place-items: center; touch-action: none;
+  background: var(--thumb); color: var(--ink); box-shadow: 0 4px 14px -2px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 0 0 .5px var(--chip-edge);
+  transition: transform .45s var(--spring), width .2s;
+}
+.lk-knob.drag { transition: width .2s; width: 58px; }
+.lk-knob svg { width: 16px; height: 16px; }
+.lk-alt { margin-top: 14px; border: 0; background: none; color: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; opacity: .85; }
+.lk-note { margin-top: 6px; font-size: 11.5px; opacity: .7; }
+
+/* =========================================================
+   12. Schermi stretti, movimento ridotto
+   ========================================================= */
+@media (max-width: 1100px) {
+  .board { flex: none; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 300px 64px 300px 270px; grid-template-areas: "ag cl" "ag ev" "td sc" "pf pf"; }
+}
+@media (max-width: 760px) {
+  :root { --dock-ic: 40px; --dock-space: 78px; --bar-h: 38px; }
+  html[data-labels="1"] { --dock-space: 92px; }
+  .board { grid-template-columns: minmax(0, 1fr); grid-template-rows: 330px 310px 64px 300px 280px 250px; grid-template-areas: "ag" "cl" "ev" "td" "sc" "pf"; }
+  .hero h1 { font-size: 28px; }
+  .bar-clock, .bt-search span, .bt-search kbd, .bar-app { display: none; }
+  .win-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .side { margin: 8px 8px 0; max-height: 34vh; }
+  .no-side .tbar, .tbar { padding-left: 96px; }
+  .win-grid:not(.no-side) .tbar { padding-left: 18px; }
+  .pad { padding: 2px 14px 20px; }
+}
+/* Movimento organico degli sfondi: lento, continuo e mai invasivo. */
+.wp-acqua > ellipse, .wp-acqua .aq-drop {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+.wp-acqua > ellipse:nth-of-type(1) { animation: aqua-haze-a 28s ease-in-out infinite alternate; }
+.wp-acqua > ellipse:nth-of-type(2) { animation: aqua-haze-b 34s ease-in-out infinite alternate; }
+.wp-acqua .aq-drop-one { animation: aqua-drop-a 31s ease-in-out infinite alternate; }
+.wp-acqua .aq-drop-two { animation: aqua-drop-b 37s ease-in-out -12s infinite alternate; }
+.wp-acqua .aq-drop-three { animation: aqua-drop-c 42s ease-in-out -23s infinite alternate; }
+.wp-acqua .aq-rays { transform-origin: 50% 0; animation: aqua-rays 24s ease-in-out infinite alternate; }
+.wp-acqua .ac { animation: aqua-caustics 13s ease-in-out infinite alternate; }
+@keyframes aqua-haze-a {
+  0% { transform: translate(-45px, 5px) scale(.96, 1.03); }
+  48% { transform: translate(55px, 72px) scale(1.07, .93); }
+  100% { transform: translate(-15px, 125px) scale(1.02, 1.1); }
+}
+@keyframes aqua-haze-b {
+  0% { transform: translate(-80px, 30px) scale(1.06, .94); }
+  52% { transform: translate(70px, -85px) scale(.94, 1.08); }
+  100% { transform: translate(165px, -35px) scale(1.08, 1.02); }
+}
+@keyframes aqua-drop-a {
+  0% { transform: translate(-70px, -35px) scale(.88, 1.08); opacity: .18; }
+  50% { transform: translate(85px, 90px) scale(1.12, .93); opacity: .3; }
+  100% { transform: translate(175px, 15px) scale(.96, 1.13); opacity: .2; }
+}
+@keyframes aqua-drop-b {
+  0% { transform: translate(80px, 60px) scale(1.08, .9); opacity: .14; }
+  50% { transform: translate(-85px, -75px) scale(.9, 1.1); opacity: .27; }
+  100% { transform: translate(-165px, 45px) scale(1.1, 1.02); opacity: .18; }
+}
+@keyframes aqua-drop-c {
+  0% { transform: translate(-40px, 80px) scale(.93, 1.05); opacity: .1; }
+  55% { transform: translate(100px, -60px) scale(1.13, .92); opacity: .22; }
+  100% { transform: translate(15px, -140px) scale(1, 1.12); opacity: .13; }
+}
+@keyframes aqua-rays {
+  from { transform: translateX(-35px) skewX(-2deg); opacity: .65; }
+  to { transform: translateX(55px) skewX(3deg); opacity: 1; }
+}
+@keyframes aqua-caustics { from { opacity: calc(var(--aqc) * .65); } to { opacity: var(--aqc); } }
+.wp-laguna { background-size: 130% 130%; animation: laguna-drift 32s ease-in-out infinite alternate; }
+@keyframes laguna-drift { from { background-position: 0% 0%; } to { background-position: 65% 45%; } }
+#wp-drops > g { animation: goccia-deriva 18s ease-in-out infinite alternate; will-change: translate; }
+#wp-drops > g:nth-child(3n) { animation-duration: 23s; animation-delay: -8s; }
+#wp-drops > g:nth-child(4n) { animation-duration: 28s; animation-delay: -15s; animation-direction: alternate-reverse; }
+#wp-drops > g:nth-child(5n) { animation-duration: 34s; animation-delay: -21s; }
+@keyframes goccia-deriva { from { translate: -7px -13px; } to { translate: 13px 21px; } }
+/* Gocce liquide in primo piano sul wallpaper: movimento ampio e percepibile. */
+.liquid-drops { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+html:not([data-wall="acqua"]) .liquid-drops { display: none; }
+.liquid-drop {
+  position: absolute; display: block; width: 34vw; height: 29vw; min-width: 360px; min-height: 310px;
+  border-radius: 43% 57% 62% 38% / 48% 42% 58% 52%;
+  filter: blur(34px); opacity: .58; will-change: transform, border-radius;
+}
+.liquid-drop-a {
+  left: -8%; top: -15%;
+  background: radial-gradient(ellipse at 58% 58%, rgba(220,248,255,.96) 0%, rgba(132,205,242,.7) 35%, rgba(116,151,235,.28) 62%, transparent 75%);
+  animation: liquid-a 19s ease-in-out infinite alternate;
+}
+.liquid-drop-b {
+  right: -9%; top: 5%; width: 38vw; height: 33vw;
+  background: radial-gradient(ellipse at 42% 45%, rgba(255,244,252,.94) 0%, rgba(226,174,230,.62) 36%, rgba(140,169,237,.3) 61%, transparent 74%);
+  animation: liquid-b 23s ease-in-out -8s infinite alternate;
+}
+.liquid-drop-c {
+  left: 31%; bottom: -29%; width: 42vw; height: 31vw;
+  background: radial-gradient(ellipse at 50% 38%, rgba(217,251,255,.85) 0%, rgba(111,197,229,.62) 37%, rgba(100,132,217,.3) 62%, transparent 75%);
+  animation: liquid-c 27s ease-in-out -14s infinite alternate;
+}
+.liquid-drop-d {
+  left: 18%; top: 29%; width: 24vw; height: 25vw; opacity: .35;
+  background: radial-gradient(ellipse, rgba(255,255,255,.85), rgba(160,211,245,.42) 43%, transparent 70%);
+  animation: liquid-d 21s ease-in-out -5s infinite alternate;
+}
+@keyframes liquid-a {
+  0% { transform: translate(-5vw,-3vh) rotate(-8deg) scale(.94); border-radius: 43% 57% 62% 38% / 48% 42% 58% 52%; }
+  48% { transform: translate(22vw,16vh) rotate(12deg) scale(1.12,.92); border-radius: 58% 42% 45% 55% / 38% 56% 44% 62%; }
+  100% { transform: translate(48vw,5vh) rotate(25deg) scale(1.02,1.13); border-radius: 37% 63% 54% 46% / 57% 39% 61% 43%; }
+}
+@keyframes liquid-b {
+  0% { transform: translate(4vw,-8vh) rotate(8deg) scale(1.04); border-radius: 55% 45% 38% 62% / 43% 60% 40% 57%; }
+  50% { transform: translate(-23vw,21vh) rotate(-15deg) scale(.91,1.12); border-radius: 39% 61% 57% 43% / 59% 38% 62% 41%; }
+  100% { transform: translate(-46vw,7vh) rotate(-24deg) scale(1.1,.96); border-radius: 61% 39% 46% 54% / 36% 54% 46% 64%; }
+}
+@keyframes liquid-c {
+  0% { transform: translate(-18vw,4vh) rotate(-8deg) scale(1.05,.94); }
+  50% { transform: translate(8vw,-29vh) rotate(13deg) scale(.93,1.13); }
+  100% { transform: translate(30vw,-12vh) rotate(24deg) scale(1.13,1.02); }
+}
+@keyframes liquid-d {
+  from { transform: translate(-12vw,12vh) rotate(-15deg) scale(.85); }
+  to { transform: translate(35vw,-20vh) rotate(22deg) scale(1.18); }
+}
+.orb::before { background: conic-gradient(from 0deg,#564BA9,#8B72E8,#D6B5FF,#7472DE,#A68CF2,#564BA9); }
+.orb::after { z-index: 1; }
+.orb > svg { position: absolute; z-index: 2; inset: 22%; width: 56%; height: 56%; color: #fff; fill: currentColor; filter: drop-shadow(0 1px 3px rgba(44,27,107,.25)); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<svg class="defs" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="lgGlass" x1="0" y1="0" x2=".45" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="lgBeam" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <radialGradient id="lgOrb" cx=".38" cy=".32" r=".78"><stop offset="0" stop-color="#D8F3FC"/><stop offset=".38" stop-color="#6EC1E4"/><stop offset=".75" stop-color="#2A73AE"/><stop offset="1" stop-color="#123E66"/></radialGradient>
+    <radialGradient id="lgEveOrb" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#F3D7FF"/><stop offset=".35" stop-color="#B28DF4"/><stop offset=".72" stop-color="#6964D8"/><stop offset="1" stop-color="#3C3D92"/></radialGradient>
+  </defs>
+</svg>
+<svg id="rf-defs" class="defs" aria-hidden="true" focusable="false"></svg>
+
+<!-- Sfondi -->
+<div class="wall" aria-hidden="true">
+  <svg class="wp wp-acqua" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" focusable="false">
+    <defs>
+      <linearGradient id="aqBg" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" class="a1"/><stop offset=".55" class="a2"/><stop offset="1" class="a3"/></linearGradient>
+      <linearGradient id="aqShaft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="as"/><stop offset="1" class="as" stop-opacity="0"/></linearGradient>
+      <filter id="aqB80" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="80"/></filter>
+      <filter id="aqB24" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="24"/></filter>
+      <filter id="aqCaustic" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency=".0042 .0085" numOctaves="2" seed="7"/>
+        <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1 0 0 0 0"/>
+        <feComponentTransfer><feFuncA type="table" tableValues="0 0 0 0 .9 0 0 .7 0 0 0 0"/></feComponentTransfer>
+        <feGaussianBlur stdDeviation="1.1"/>
+      </filter>
+      <linearGradient id="aqFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".75" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <mask id="aqMask"><rect width="1600" height="1000" fill="url(#aqFade)"/></mask>
+    </defs>
+    <rect width="1600" height="1000" fill="url(#aqBg)"/>
+    <ellipse class="ah1" cx="1100" cy="40" rx="780" ry="280" filter="url(#aqB80)"/>
+    <ellipse class="ah2" cx="220" cy="980" rx="680" ry="280" filter="url(#aqB80)"/>
+    <g filter="url(#aqB80)">
+      <ellipse class="ah1 aq-drop aq-drop-one" cx="240" cy="170" rx="330" ry="220"/>
+      <ellipse class="ah2 aq-drop aq-drop-two" cx="1370" cy="680" rx="360" ry="250"/>
+      <ellipse class="ah1 aq-drop aq-drop-three" cx="720" cy="880" rx="290" ry="190"/>
+    </g>
+    <g class="aq-rays" filter="url(#aqB24)">
+      <polygon points="880,-40 1010,-40 760,1000 560,1000" fill="url(#aqShaft)"/>
+      <polygon points="1120,-40 1190,-40 1040,1000 930,1000" fill="url(#aqShaft)" opacity=".7"/>
+      <polygon points="1330,-40 1440,-40 1380,1000 1220,1000" fill="url(#aqShaft)" opacity=".55"/>
+    </g>
+    <rect class="ac" width="1600" height="1000" filter="url(#aqCaustic)" mask="url(#aqMask)"/>
+  </svg>
+  <svg class="wp wp-prisma" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" focusable="false">
+    <defs>
+      <linearGradient id="wpBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s1"/><stop offset=".55" class="s2"/><stop offset="1" class="s3"/></linearGradient>
+      <linearGradient id="wpBeam" x1="0" x2="1"><stop offset="0" class="bm" stop-opacity="0"/><stop offset="1" class="bm"/></linearGradient>
+      <linearGradient id="wpPrism" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="p1"/><stop offset="1" class="p2"/></linearGradient>
+      <filter id="wpB60" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="60"/></filter>
+      <filter id="wpB18" x="-10%" y="-20%" width="120%" height="140%"><feGaussianBlur stdDeviation="18"/></filter>
+      <filter id="wpB4"><feGaussianBlur stdDeviation="4"/></filter>
+      <filter id="wpSh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow class="sh" dx="0" dy="18" stdDeviation="22"/></filter>
+    </defs>
+    <rect width="1600" height="1000" fill="url(#wpBg)"/>
+    <ellipse class="hz1" cx="1260" cy="170" rx="560" ry="330" filter="url(#wpB60)"/>
+    <ellipse class="hz2" cx="170" cy="900" rx="520" ry="300" filter="url(#wpB60)"/>
+    <ellipse class="hz3" cx="1380" cy="920" rx="430" ry="260" filter="url(#wpB60)"/>
+    <polygon points="-60,520 452,436 452,470 -60,600" fill="url(#wpBeam)" filter="url(#wpB18)" opacity=".85"/>
+    <polygon points="-60,552 452,449 452,457 -60,568" fill="url(#wpBeam)" filter="url(#wpB4)"/>
+    <g class="fan">
+      <g filter="url(#wpB18)">
+        <polygon class="f1" points="684,472 1720,250 1720,390"/>
+        <polygon class="f2" points="684,472 1720,390 1720,525"/>
+        <polygon class="f3" points="684,472 1720,525 1720,660"/>
+        <polygon class="f4" points="684,472 1720,660 1720,800"/>
+        <polygon class="f5" points="684,472 1720,800 1720,940"/>
+        <polygon class="f6" points="684,472 1720,940 1720,1080"/>
+      </g>
+    </g>
+    <g filter="url(#wpSh)">
+      <path d="M560 250 760 620H360z" fill="url(#wpPrism)"/>
+    </g>
+    <path class="pr-path" d="M452 453 682 472"/>
+    <path class="pr-ridge" d="M560 250 598 620"/>
+    <path class="pr-edge" d="M560 250 760 620H360z"/>
+  </svg>
+  <div class="wp wp-laguna bg-laguna"></div>
+  <div class="wp wp-ardesia bg-ardesia"></div>
+  <div class="wp wp-gocce bg-gocce"><svg id="wp-drops" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" focusable="false"></svg></div>
+  <div class="liquid-drops"><i class="liquid-drop liquid-drop-a"></i><i class="liquid-drop liquid-drop-b"></i><i class="liquid-drop liquid-drop-c"></i><i class="liquid-drop liquid-drop-d"></i></div>
+</div>
+
+<!-- Barra superiore -->
+<header class="bar" id="bar">
+  <button class="bar-brand" data-act="desk" aria-label="Prisma, mostra la scrivania">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M13.4 10.4 19.2 8.4" stroke-opacity=".75"/><path d="M13.8 11.2 19.2 11.3" stroke-opacity=".5"/><path d="M14.2 12 19.2 14.2" stroke-opacity=".3"/></g><path d="M9.6 3.2 15.8 15.6H3.4z" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    <span>Prisma</span>
+  </button>
+  <button class="bar-app" id="bar-app" data-act="spaces" data-ovt aria-haspopup="dialog" title="Spazi di lavoro">Scrivania</button>
+  <div class="bar-clock"><span id="bar-date"></span><span id="bar-time"></span></div>
+  <div class="bar-tools glass thin" id="bar-tools">
+    <button class="bt-search" data-act="spot" data-ovt aria-label="Cerca in Prisma"><span class="i-search"></span><span>Cerca</span><kbd>⌘K</kbd></button>
+    <button data-act="cc" data-ovt aria-label="Centro di controllo" aria-haspopup="dialog"><span class="i-cc"></span></button>
+    <button data-act="nc" data-ovt aria-label="Centro notifiche" aria-haspopup="dialog"><span class="i-bell"></span><span class="badge" id="nc-badge"></span></button>
+    <button data-act="lock" aria-label="Blocca: schermata di benvenuto"><span class="i-lock"></span></button>
+    <button data-act="open" data-app="impostazioni" data-page="profilo" aria-label="Profilo e impostazioni"><span class="me">DV</span></button>
+  </div>
+</header>
+
+<!-- Scrivania -->
+<main class="desk" id="desk" tabindex="-1">
+  <div class="desk-in">
+    <section class="hero">
+      <div><h1 id="hello">Buongiorno.</h1><p>Tutto il tuo lavoro, a portata di mano.</p></div>
+      <div class="quick">
+        <button class="gbtn glass thin" data-act="spaces" data-ovt><span class="i-spaces"></span><span>Spazi di lavoro</span></button>
+        <button class="gbtn glass thin" data-act="spot" data-ovt><span class="i-search"></span><span>Cerca ovunque</span><kbd>⌘K</kbd></button>
+        <button class="gbtn glass thin" data-act="full"><span class="i-expand"></span><span id="full-l">Schermo intero</span></button>
+      </div>
+    </section>
+    <div class="sec-head"><h2>La tua giornata</h2><button class="gbtn glass thin sm" id="open-count" data-act="switcher" data-ovt></button></div>
+    <div class="board" id="board">
+      <section class="widget glass w-agenda" id="w-ag" aria-label="Agenda"></section>
+      <section class="widget glass w-cliente" id="w-cl" aria-label="Cliente in primo piano"></section>
+      <button class="widget glass w-eve" id="w-ev" data-act="open" data-app="eve"></button>
+      <section class="widget glass w-todo" id="w-td" aria-label="Da fare"></section>
+      <section class="widget glass w-scad" id="w-sc" aria-label="Scadenze"></section>
+      <section class="widget glass w-port" id="w-pf" aria-label="Portafoglio clienti"></section>
+    </div>
+    <footer class="foot"><span>Un clic per entrare. Il dock per cambiare app.</span><span id="foot-b"></span></footer>
+  </div>
+</main>
+
+<div class="wins" id="wins"></div>
+<nav class="dock glass thin" id="dock" aria-label="Dock delle app"></nav>
+<div class="tip glass thin" id="dock-tip" role="tooltip"></div>
+
+<div class="scrim" id="scrim" data-act="close-ov" hidden></div>
+<section class="spot glass panel ov" id="spot" role="dialog" aria-label="Cerca in Prisma" hidden>
+  <label class="spot-in"><span class="i-search"></span><input id="spot-q" placeholder="Un cliente, una posizione, un’app…" autocomplete="off" spellcheck="false" aria-label="Cerca in Prisma" aria-controls="spot-res"></label>
+  <div class="spot-res" id="spot-res" role="listbox"></div>
+  <div class="spot-foot"><span>↑ ↓ per scegliere</span><span>Invio per aprire</span><span>Esc per chiudere</span></div>
+</section>
+<aside class="nc glass panel ov" id="nc" aria-label="Centro notifiche" hidden></aside>
+<section class="cc glass panel ov" id="cc" aria-label="Centro di controllo" hidden></section>
+<div class="pop glass panel ov" id="pop" role="dialog" hidden></div>
+<section class="switcher glass panel ov" id="switcher" role="dialog" aria-label="App aperte" hidden></section>
+<div class="toast glass thin" id="toast" role="status" aria-live="polite"></div>
+<div class="dtip" id="dtip" role="tooltip"></div>
+
+<!-- Schermata di benvenuto -->
+<section class="lock" id="lock" aria-label="Schermata di benvenuto">
+  <p class="lk-date" id="lk-date"></p>
+  <p class="lk-time" id="lk-time"></p>
+  <div class="lk-brand" id="lk-brand"></div>
+  <div class="lk-slide glass thin" id="lk-slide">
+    <span class="lk-hint">scorri per entrare</span>
+    <button class="lk-knob" id="lk-knob" aria-label="Entra in Prisma (Invio)"><span class="i-chev"></span></button>
+  </div>
+  <button class="lk-alt" data-act="unlock">Oppure entra con un clic</button>
+  <p class="lk-note">Schermata di cortesia: non protegge i dati.</p>
+</section>
+
+<script>
+(() => {
+'use strict';
+const doc = document, root = doc.documentElement;
+const $ = (s, el) => (el || doc).querySelector(s);
+const $$ = (s, el) => Array.from((el || doc).querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const norm = s => String(s || '').toLocaleLowerCase('it').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const mqDark = matchMedia('(prefers-color-scheme: dark)');
+const mqCalm = matchMedia('(prefers-reduced-motion: reduce)');
+const calm = () => mqCalm.matches;
+
+/* ---------- Preferenze del template (solo in questo browser) ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('prisma-lg:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('prisma-lg:' + k, JSON.stringify(v)); } catch (e) { /* archivio non disponibile */ } }
+};
+const S = Object.assign({ scheme: 'auto', glass: 'clear', wall: 'acqua', icons: 'color', labels: false, refract: true, magnify: true, weekly: true, name: 'Denis', focus: 'giulia' }, store.get('settings', {}));
+const saveS = () => store.set('settings', S);
+const TASKSTATE = store.get('tasks', {});
+
+/* ---------- Date e formati ---------- */
+const NOW = new Date();
+const DAY = 864e5;
+const sod = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const at = (days, h, m) => { const x = new Date(NOW); x.setDate(x.getDate() + days); x.setHours(h || 0, m || 0, 0, 0); return x; };
+const inDays = n => { const x = new Date(NOW); x.setDate(x.getDate() + n); return x; };
+const inYears = n => { const x = new Date(NOW); x.setFullYear(x.getFullYear() + n); return x; };
+const diffDays = d => Math.round((sod(d) - sod(NOW)) / DAY);
+const dtf = o => new Intl.DateTimeFormat('it-IT', o);
+const fWd = dtf({ weekday: 'long' }), fDay = dtf({ day: 'numeric' }), fMon = dtf({ month: 'long' }), fMonS = dtf({ month: 'short' });
+const fTime = dtf({ hour: '2-digit', minute: '2-digit' }), fBar = dtf({ weekday: 'short', day: 'numeric', month: 'short' });
+const fFull = dtf({ weekday: 'long', day: 'numeric', month: 'long' }), fDate = dtf({ day: 'numeric', month: 'short', year: 'numeric' });
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const monS = d => fMonS.format(d).replace('.', '');
+const nf = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0 });
+const euro = v => { const n = Math.round(v); return (n < 0 ? '−' : '') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €'; };
+const pct = v => Math.round(v * 100) + '%';
+function dayLabel(d) { const n = diffDays(d); if (n === 0) return 'Oggi'; if (n === 1) return 'Domani'; if (n === -1) return 'Ieri'; if (n > 1 && n < 7) return cap(fWd.format(d)); return fDay.format(d) + ' ' + monS(d); }
+function dayPhrase(d) { const n = diffDays(d); if (n === 0) return 'oggi'; if (n === 1) return 'domani'; if (n > 1 && n < 7) return fWd.format(d); return 'il ' + fDay.format(d) + ' ' + fMon.format(d); }
+function relDays(d) { const n = diffDays(d); if (n < 0) return 'scaduta'; if (n === 0) return 'scade oggi'; if (n === 1) return 'scade domani'; return 'scade tra ' + n + ' giorni'; }
+function when(d) { const n = diffDays(d), t = fTime.format(d); if (n === 0) return 'oggi alle ' + t; if (n === -1) return 'ieri alle ' + t; if (n < -1 && n > -7) return fWd.format(d) + ' alle ' + t; return fDay.format(d) + ' ' + monS(d); }
+const greeting = () => { const h = new Date().getHours(); return h < 13 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera'; };
+
+/* ---------- Dati dimostrativi: i 5 clienti del template ---------- */
+const TINT = { rosa: ['#E4AEB9', '#B0687A'], blu: ['#A3BEDF', '#4C72A8'], viola: ['#BCB0D8', '#6E62A0'], verde: ['#A5CDB5', '#4B8566'], oro: ['#E2CC98', '#A9853C'] };
+const CLIENTS = [
+  { id: 'giulia', nome: 'Giulia Rossi', ini: 'GR', tinta: 'rosa', tema: 'Una casa, un nuovo inizio.', prof: 'Architetta', nascita: '14 marzo 1989', civile: 'Convivente',
+    indirizzo: 'Via dei Mille 12, Bologna', tel: '+39 333 000 1001', email: 'giulia.rossi@example.com', canali: ['alleanza', 'indipendente'],
+    famiglia: [{ nome: 'Luca Ferri', rel: 'Convivente', anno: 1987 }], propensione: 'Moderata', orizzonte: '10 anni', esperienza: 'Base',
+    obiettivi: 'Anticipo per la nuova casa entro il 2029 e un margine di serenità.',
+    nota: 'Il progetto casa è la priorità. Verificare tempi, disponibilità e domande rimaste aperte.' },
+  { id: 'marco', nome: 'Marco Bianchi', ini: 'MB', tinta: 'blu', tema: 'Il futuro della sua famiglia.', prof: 'Ingegnere', nascita: '5 novembre 1978', civile: 'Coniugato',
+    indirizzo: 'Corso Vittorio Emanuele 88, Torino', tel: '+39 333 000 1002', email: 'marco.bianchi@example.com', canali: ['alleanza'],
+    famiglia: [{ nome: 'Elena Bianchi', rel: 'Coniuge', anno: 1980 }, { nome: 'Anna Bianchi', rel: 'Figlia', anno: 2012, carico: true }, { nome: 'Pietro Bianchi', rel: 'Figlio', anno: 2016, carico: true }],
+    propensione: 'Moderata', orizzonte: '15 anni', esperienza: 'Media', obiettivi: 'Il percorso di studi di Anna e la protezione della famiglia.',
+    nota: 'Dedicare un momento ai progetti di famiglia. Preparare un riepilogo semplice e comprensibile.' },
+  { id: 'laura', nome: 'Laura Moretti', ini: 'LM', tinta: 'viola', tema: 'Più spazio alle possibilità.', prof: 'Consulente di comunicazione', nascita: '30 giugno 1985', civile: 'Nubile',
+    indirizzo: 'Via Garibaldi 4, Verona', tel: '+39 333 000 1003', email: 'laura.moretti@example.com', canali: ['indipendente'], famiglia: [],
+    propensione: 'Dinamica', orizzonte: '8 anni', esperienza: 'Media', obiettivi: 'Avviare un progetto indipendente e costruire la previdenza integrativa.',
+    nota: 'Ripartire dagli obiettivi professionali e personali. La flessibilità è un tema importante.' },
+  { id: 'andrea', nome: 'Andrea Conti', ini: 'AC', tinta: 'verde', tema: 'Un percorso da costruire.', prof: 'Infermiere', nascita: '18 gennaio 1996', civile: 'Celibe',
+    indirizzo: 'Via Roma 210, Padova', tel: '+39 333 000 1004', email: 'andrea.conti@example.com', canali: ['alleanza'], famiglia: [],
+    propensione: 'Prudente', orizzonte: 'Da definire', esperienza: 'Nessuna', obiettivi: 'Da definire al primo incontro.',
+    nota: 'Primo incontro: ascolto, priorità e informazioni da raccogliere.' },
+  { id: 'sofia', nome: 'Sofia Romano', ini: 'SR', tinta: 'oro', tema: 'Le cose che contano, nel tempo.', prof: 'Dirigente scolastica', nascita: '9 ottobre 1968', civile: 'Vedova',
+    indirizzo: 'Piazza Duomo 3, Trento', tel: '+39 333 000 1005', email: 'sofia.romano@example.com', canali: ['alleanza', 'indipendente'],
+    famiglia: [{ nome: 'Marta Romano', rel: 'Figlia', anno: 1999 }], propensione: 'Prudente', orizzonte: '12 anni', esperienza: 'Elevata',
+    obiettivi: 'Un viaggio da ricordare e una pensione serena.', nota: 'Verificare se sono cambiati i progetti personali prima del prossimo incontro.' }
+];
+const CL = Object.fromEntries(CLIENTS.map(c => [c.id, c]));
+const AREA = { risparmio: 'Risparmio', investimento: 'Investimento', previdenza: 'Previdenza', protezione: 'Protezione', liquidita: 'Liquidità', immobili: 'Immobili', debiti: 'Debiti' };
+const AREA_ORD = Object.keys(AREA);
+const TIPO = { primo: 'Primo incontro', analisi: 'Analisi delle posizioni', proposta: 'Proposta', revisione: 'Revisione', telefonata: 'Telefonata' };
+
+const EVENTS = [
+  { id: 'ev-giulia-analisi', cl: 'giulia', titolo: 'Analisi delle posizioni in essere', at: at(-6, 17, 0), dur: 60, luogo: 'In studio', tipo: 'analisi', stato: 'concluso', note: 'Raccolti estratti conto, polizze e piano del mutuo.' },
+  { id: 'ev-giulia', cl: 'giulia', titolo: 'Il punto sul progetto casa', at: at(0, 9, 30), dur: 45, luogo: 'In studio', tipo: 'revisione', note: 'Riprendere gli obiettivi, la situazione attuale e concordare il prossimo passo.' },
+  { id: 'ev-marco', cl: 'marco', titolo: 'Nuovi progetti di famiglia', at: at(0, 11, 0), dur: 60, luogo: 'Videochiamata', tipo: 'analisi', canale: 'alleanza', note: 'Preparare una presentazione con il riepilogo degli obiettivi.' },
+  { id: 'ev-laura', cl: 'laura', titolo: 'Un progetto tutto suo', at: at(1, 10, 0), dur: 45, luogo: 'In studio', tipo: 'proposta', canale: 'indipendente', note: 'Raccogliere le nuove priorità professionali.' },
+  { id: 'ev-andrea', cl: 'andrea', titolo: 'Il nostro primo incontro', at: at(2, 15, 0), dur: 60, luogo: 'In studio', tipo: 'primo', note: 'Partire dalle domande e dalla storia personale.' },
+  { id: 'ev-sofia', cl: 'sofia', titolo: 'Uno sguardo ai prossimi mesi', at: at(3, 11, 30), dur: 30, luogo: 'Telefonata', tipo: 'telefonata', note: 'Aggiornare insieme le priorità.' },
+  { id: 'ev-giulia-prev', cl: 'giulia', titolo: 'Proposta di previdenza integrativa', at: at(7, 18, 0), dur: 45, luogo: 'In studio', tipo: 'proposta', canale: 'alleanza', note: 'Confrontare il piano proposto con il TFR lasciato in azienda.' },
+  { id: 'ev-marco-inf', cl: 'marco', titolo: 'Rinnovo della copertura infortuni', at: at(9, 16, 30), dur: 30, luogo: 'Telefonata', tipo: 'revisione', canale: 'alleanza', note: 'Verificare se i capitali sono ancora adeguati al nucleo familiare.' }
+];
+const TASKS = [
+  { id: 'task-casa', cl: 'giulia', titolo: 'Preparare il riepilogo per l’incontro', due: at(0, 18), prio: 'alta' },
+  { id: 'task-marco', cl: 'marco', titolo: 'Rivedere la presentazione degli obiettivi', due: at(0, 18), prio: 'alta' },
+  { id: 'task-dati', cl: 'giulia', titolo: 'Verificare i dati delle spese mensili', due: at(1, 18), prio: 'normale' },
+  { id: 'task-laura', cl: 'laura', titolo: 'Raccogliere le domande sul progetto', due: at(1, 18), prio: 'normale' },
+  { id: 'task-andrea', cl: 'andrea', titolo: 'Preparare la scheda del primo incontro', due: at(2, 18), prio: 'bassa' },
+  { id: 'task-done', cl: 'giulia', titolo: 'Aggiornare le note dell’ultimo colloquio', due: at(-3, 18), prio: 'normale', done: true }
+];
+const isDone = t => (t.id in TASKSTATE ? TASKSTATE[t.id] : !!t.done);
+const POS = [
+  { id: 'p1', cl: 'giulia', canale: 'alleanza', stato: 'essere', area: 'risparmio', nome: 'Piano di risparmio rivalutabile', tip: 'Ramo I · premi ricorrenti', premio: 150, freq: 'm', valore: 7650, scad: inYears(11) },
+  { id: 'p2', cl: 'giulia', canale: 'alleanza', stato: 'essere', area: 'protezione', nome: 'Temporanea caso morte', tip: 'Capitale costante', premio: 22, freq: 'm', capitale: 150000, scad: inYears(20) },
+  { id: 'p3', cl: 'giulia', canale: 'indipendente', stato: 'essere', area: 'investimento', nome: 'ETF azionario globale', tip: 'Piano di accumulo', premio: 300, freq: 'm', valore: 36400 },
+  { id: 'p4', cl: 'giulia', canale: 'indipendente', stato: 'essere', area: 'investimento', nome: 'Fondo obbligazionario euro', tip: 'Versamento unico', valore: 21000 },
+  { id: 'p5', cl: 'giulia', canale: 'indipendente', stato: 'essere', area: 'liquidita', nome: 'Conto corrente e conto deposito', tip: 'Banca', valore: 24000 },
+  { id: 'p6', cl: 'giulia', canale: 'indipendente', stato: 'essere', area: 'immobili', nome: 'Casa di abitazione', valore: 210000 },
+  { id: 'p7', cl: 'giulia', canale: 'indipendente', stato: 'essere', area: 'debiti', nome: 'Mutuo casa', tip: 'Tasso fisso', premio: 610, freq: 'm', valore: 95000, scad: inYears(18) },
+  { id: 'p8', cl: 'giulia', canale: 'alleanza', stato: 'proposta', area: 'previdenza', nome: 'Piano previdenziale integrativo', tip: 'Da rivedere dopo l’acquisto della casa', premio: 200, freq: 'm', esito: 'Presentata', scad: inYears(30) },
+  { id: 'p9', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'risparmio', nome: 'Polizza rivalutabile a premio unico', tip: 'Ramo I', valore: 54300, scad: inYears(6) },
+  { id: 'p10', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'investimento', nome: 'Polizza multiramo', tip: 'AL-2021-118842', valore: 62000 },
+  { id: 'p11', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'protezione', nome: 'Temporanea caso morte', tip: 'Capitale costante', premio: 45, freq: 'm', capitale: 300000, scad: inYears(15) },
+  { id: 'p12', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'protezione', nome: 'Infortuni famiglia', tip: 'Rinnovo annuale', premio: 380, freq: 'a', capitale: 200000, scad: inDays(45), nota: 'Verificare se i capitali sono ancora adeguati al nucleo familiare.' },
+  { id: 'p13', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'previdenza', nome: 'Piano individuale pensionistico', tip: 'PIP', premio: 250, freq: 'm', valore: 38000, scad: inYears(20) },
+  { id: 'p14', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'liquidita', nome: 'Liquidità', valore: 35000 },
+  { id: 'p15', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'immobili', nome: 'Casa di abitazione', valore: 280000 },
+  { id: 'p16', cl: 'marco', canale: 'alleanza', stato: 'essere', area: 'debiti', nome: 'Mutuo casa', tip: 'Tasso variabile', premio: 890, freq: 'm', valore: 130000, scad: inYears(16) },
+  { id: 'p17', cl: 'marco', canale: 'alleanza', stato: 'proposta', area: 'risparmio', nome: 'Piano per gli studi di Anna', tip: 'Università, forse fuori sede', premio: 200, freq: 'm', esito: 'Bozza', scad: inYears(6) },
+  { id: 'p18', cl: 'laura', canale: 'indipendente', stato: 'essere', area: 'previdenza', nome: 'Fondo pensione aperto', tip: 'Previdenza complementare', premio: 150, freq: 'm', valore: 18000, scad: inYears(26) },
+  { id: 'p19', cl: 'laura', canale: 'indipendente', stato: 'essere', area: 'investimento', nome: 'ETF azionario globale', tip: 'Versamento unico', valore: 27000 },
+  { id: 'p20', cl: 'laura', canale: 'indipendente', stato: 'essere', area: 'liquidita', nome: 'Liquidità', valore: 19000 },
+  { id: 'p21', cl: 'laura', canale: 'indipendente', stato: 'essere', area: 'debiti', nome: 'Prestito personale', premio: 260, freq: 'm', valore: 6000, scad: inYears(2) },
+  { id: 'p22', cl: 'laura', canale: 'indipendente', stato: 'proposta', area: 'protezione', nome: 'Infortuni e invalidità professionale', premio: 420, freq: 'a', capitale: 150000, esito: 'Bozza' },
+  { id: 'p23', cl: 'andrea', canale: 'alleanza', stato: 'essere', area: 'liquidita', nome: 'Liquidità', valore: 12000 },
+  { id: 'p24', cl: 'andrea', canale: 'alleanza', stato: 'proposta', area: 'risparmio', nome: 'Piano di risparmio rivalutabile', premio: 100, freq: 'm', esito: 'Bozza', scad: inYears(15) },
+  { id: 'p25', cl: 'andrea', canale: 'alleanza', stato: 'proposta', area: 'protezione', nome: 'Temporanea caso morte', premio: 12, freq: 'm', capitale: 100000, esito: 'Bozza', scad: inYears(25) },
+  { id: 'p26', cl: 'sofia', canale: 'alleanza', stato: 'essere', area: 'risparmio', nome: 'Polizza rivalutabile', tip: 'Ramo I · AL-2016-009311', valore: 41000, scad: inDays(70), nota: 'In scadenza: valutare il reinvestimento.' },
+  { id: 'p27', cl: 'sofia', canale: 'alleanza', stato: 'essere', area: 'protezione', nome: 'Non autosufficienza', tip: 'LTC', premio: 600, freq: 'a', capitale: 30000 },
+  { id: 'p28', cl: 'sofia', canale: 'indipendente', stato: 'essere', area: 'investimento', nome: 'Portafoglio di fondi', tip: 'Versamento unico', valore: 32000 },
+  { id: 'p29', cl: 'sofia', canale: 'indipendente', stato: 'essere', area: 'liquidita', nome: 'Liquidità', valore: 27000 },
+  { id: 'p30', cl: 'sofia', canale: 'indipendente', stato: 'essere', area: 'immobili', nome: 'Casa di abitazione', valore: 180000 },
+  { id: 'p31', cl: 'sofia', canale: 'indipendente', stato: 'essere', area: 'debiti', nome: 'Mutuo', premio: 480, freq: 'm', valore: 40000, scad: inYears(8) },
+  { id: 'p32', cl: 'sofia', canale: 'indipendente', stato: 'proposta', area: 'investimento', nome: 'Obbligazionario a scadenza 2030', tip: 'Reinvestimento della polizza in scadenza', versamento: 40000, esito: 'Presentata', scad: inYears(4) }
+];
+const DOCS = [
+  { id: 'd1', cl: 'giulia', t: 'Estratto conto · Piano di risparmio rivalutabile', k: 'EC', at: at(-1, 10, 15), st: 'Dati da confermare' },
+  { id: 'd2', cl: 'giulia', t: 'KID · Fondo pensione aperto Orizzonte', k: 'KID', at: at(-2, 16, 40), st: 'Letto da Eve', ok: true },
+  { id: 'd3', cl: 'marco', t: 'Polizza Infortuni famiglia', k: 'POL', at: at(-12, 11, 5), st: 'Verificato', ok: true }
+];
+const NOTES = [
+  { id: 'n1', cl: 'giulia', t: 'Progetto casa', at: at(-6, 18, 20), body: 'Trilocale in città, anticipo del 20%, entro il 2029. Restano aperte le domande su durata del mutuo e tempi del rogito: portarle al prossimo incontro con un riepilogo semplice.' },
+  { id: 'n2', cl: 'marco', t: 'Gli studi di Anna', at: at(-3, 12, 0), body: 'Università forse fuori sede. Valutare un piano dedicato e verificare che le coperture restino adeguate alla famiglia.' },
+  { id: 'n3', cl: 'laura', t: 'Un progetto indipendente', at: at(-1, 9, 40), body: 'La flessibilità prima di tutto: una riserva di liquidità per l’avvio e una previdenza integrativa da costruire passo dopo passo.' }
+];
+const NOTIF = [
+  { app: 'posizioni', t: 'Infortuni famiglia in scadenza', s: 'Scade tra 45 giorni', cl: 'marco', rec: 'p12', at: at(0, 8, 0), unread: true },
+  { app: 'documenti', t: 'Estratto conto importato', s: 'Piano di risparmio rivalutabile', cl: 'giulia', at: at(-1, 10, 15), unread: true },
+  { app: 'impostazioni', t: 'Backup settimanale completato', s: '8 copie conservate, archivio locale', at: at(-1, 21, 0), unread: true, page: 'archivio' },
+  { app: 'documenti', t: 'KID letto da Eve', s: 'Fondo pensione aperto Orizzonte', cl: 'giulia', at: at(-2, 16, 40) },
+  { app: 'agenda', t: 'Incontro concluso', s: 'Analisi delle posizioni in essere', cl: 'giulia', rec: 'ev-giulia-analisi', at: at(-6, 18, 0) }
+];
+const LAST_BACKUP = at(-1, 21, 0);
+
+/* ---------- Le 16 app, nell'ordine del dock ---------- */
+const POS_SOON = 'Fa parte del modulo Posizioni, il cuore di Prisma, con il canale Alleanza / indipendente sempre in vista.';
+const APPS = [
+  { id: 'clienti', t: 'Clienti', sub: 'Le persone, prima di tutto', occ: 'Rubrica Prisma', c1: '#C9A584', c2: '#8C6849', hue: '#D9B48E' },
+  { id: 'posizioni', t: 'Posizioni', sub: 'In essere e in proposta', occ: 'Il cuore della consulenza', c1: '#5F8FC9', c2: '#2C5389', hue: '#7FA8DC' },
+  { id: 'analisi360', t: 'Analisi 360', sub: 'Previdenza, protezione, investimenti, risparmio', occ: 'Il centro della consulenza', c1: '#4E6479', c2: '#22323F', hue: '#93AFC6', soon: POS_SOON },
+  { id: 'incontri', t: 'Incontri', sub: 'Dall’ascolto ai prossimi passi', occ: 'Il tempo della relazione', c1: '#6FAE98', c2: '#3A7563', hue: '#8CC6B0', soon: 'Preparazione, ascolto, appunti e decisioni, prossimi passi.' },
+  { id: 'obiettivi', t: 'Obiettivi', sub: 'Un nome al futuro', occ: 'Il quaderno dei progetti', c1: '#9C8269', c2: '#5E4A39', hue: '#C4A688', soon: POS_SOON },
+  { id: 'confronti', t: 'Confronti', sub: 'Le ipotesi una accanto all’altra', occ: 'Ipotesi trasparenti', c1: '#8A86AE', c2: '#4F4B73', hue: '#ABA7CF', soon: POS_SOON },
+  { id: 'prodotti', t: 'Prodotti', sub: 'Condizioni, costi e fonti', occ: 'Schede e fonti verificabili', c1: '#D8C6A6', c2: '#A38A62', hue: '#DCC59C', soon: POS_SOON },
+  { id: 'simulazioni', t: 'Simulazioni', sub: 'Il tempo e le possibilità', occ: 'Il laboratorio delle ipotesi', c1: '#8D96A0', c2: '#4A525C', hue: '#B9C2CC', soon: POS_SOON },
+  { id: 'agenda', t: 'Agenda', sub: 'Spazio alle relazioni', occ: 'Prisma · Agenda personale', c1: '#FFFFFF', c2: '#E7EAF0', hue: '#FF453A', light: true },
+  { id: 'attivita', t: 'Attività', sub: 'Un passo alla volta', occ: 'Prisma · Promemoria', c1: '#FFFFFF', c2: '#E4E8EE', hue: '#34C759', light: true },
+  { id: 'note', t: 'Note', sub: 'Le parole da ricordare', occ: 'Taccuino personale', c1: '#E8D69A', c2: '#C2A456', hue: '#E3CB7E' },
+  { id: 'documenti', t: 'Documenti', sub: 'Tutto al proprio posto', occ: 'Archivio Prisma', c1: '#73A9CF', c2: '#376E99', hue: '#8DC0E2' },
+  { id: 'presentazioni', t: 'Prospetti e report', dock: 'Prospetti', sub: 'Il dettaglio per te, l’essenziale per il cliente', occ: 'Una prospettiva condivisa', c1: '#C99282', c2: '#91584A', hue: '#D9A595', soon: 'Prospetti dettagliati per il consulente e report essenziali per il cliente, in PDF.' },
+  { id: 'eve', t: 'Eve', sub: 'Un filo tra le tue app', occ: 'Assistente personale', c1: '#B9A3F2', c2: '#6862C9', hue: '#C7B5FF' },
+  { id: 'ricerca', t: 'Ricerca', sub: 'Ritrova ciò che conta', occ: 'Ritrova il filo', c1: '#6E879E', c2: '#354B5F', hue: '#9DB5CB' },
+  { id: 'impostazioni', t: 'Impostazioni', sub: 'Il tuo modo di lavorare', occ: 'Il tuo sistema', c1: '#A3ABB4', c2: '#5D6570', hue: '#C6CDD5' }
+];
+const APP = Object.fromEntries(APPS.map(a => [a.id, a]));
+const HOME = { id: 'home', t: 'Scrivania', c1: '#2F4C63', c2: '#0E1D29', hue: '#9CCBE6' };
+const ACC = { obiettivi: '#C8473F', prodotti: '#A64B46', simulazioni: '#C98A3A', agenda: '#E0443A', attivita: '#3E9A68', note: '#B98A2E', presentazioni: '#A65A4A' };
+const WS = [
+  { id: 'incontro', t: 'Prepara un incontro', s: 'Clienti, Posizioni ed Eve affiancati', apps: ['clienti', 'posizioni', 'eve'] },
+  { id: 'portafoglio', t: 'Analizza il portafoglio', s: 'Posizioni e Confronti fianco a fianco', apps: ['posizioni', 'confronti'] },
+  { id: 'giornata', t: 'Organizza la giornata', s: 'Agenda, Attività e Note', apps: ['agenda', 'attivita', 'note'] }
+];
+const WALLS = [['acqua', 'Acqua'], ['laguna', 'Laguna'], ['ardesia', 'Ardesia'], ['gocce', 'Gocce'], ['prisma', 'Prisma']];
+if (!WALLS.some(w => w[0] === S.wall)) S.wall = 'acqua';
+
+/* ---------- Pittogrammi dell'interfaccia ---------- */
+const SVG = {
+  search: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8.6" cy="8.6" r="5.6"/><path d="m12.8 12.8 4.2 4.2"/></svg>',
+  bell: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M5 14h10l-1.3-2.4V8.4a3.7 3.7 0 0 0-7.4 0v3.2z"/><path d="M8.3 16.4a1.9 1.9 0 0 0 3.4 0" stroke-linecap="round"/></svg>',
+  lock: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="2.2"/><path d="M7 9V6.6a3 3 0 0 1 6 0V9"/></svg>',
+  cc: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.8" y="4" width="14.4" height="5" rx="2.5"/><circle cx="14.7" cy="6.5" r="1.4" fill="currentColor" stroke="none"/><rect x="2.8" y="11" width="14.4" height="5" rx="2.5"/><circle cx="5.3" cy="13.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1.5 1.5 5 5.5-5 5.5"/></svg>',
+  chevDown: '<svg class="chev-d" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1.5 1.8 4.5 4.4 4.5-4.4"/></svg>',
+  check: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2.5 6.3 2.3 2.3 4.7-5"/></svg>',
+  flag: '<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M2.5 1.2v10h1.3V7.4h5.8L8.1 4.5l1.5-2.9H3.8v-.4z"/></svg>',
+  x: '<svg viewBox="0 0 8 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="m1.8 1.8 4.4 4.4m0-4.4L1.8 6.2"/></svg>',
+  minus: '<svg viewBox="0 0 8 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M1.4 4h5.2"/></svg>',
+  plus: '<svg viewBox="0 0 8 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M1.4 4h5.2M4 1.4v5.2"/></svg>',
+  spaces: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.6"/><path d="M10 4v12"/></svg>',
+  expand: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5h4.5V8M8 16.5H3.5V12M16.5 3.5l-5 5M3.5 16.5l5-5"/></svg>',
+  grid: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.6"/><rect x="11" y="3" width="6" height="6" rx="1.6"/><rect x="3" y="11" width="6" height="6" rx="1.6"/><rect x="11" y="11" width="6" height="6" rx="1.6"/></svg>',
+  mic: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="7.3" y="2.8" width="5.4" height="9.4" rx="2.7"/><path d="M4.6 9.6a5.4 5.4 0 0 0 10.8 0M10 15v2.4"/></svg>',
+  send: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15.5v-11M5.5 9 10 4.5 14.5 9"/></svg>',
+  label: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.8"/><rect x="11" y="3" width="6" height="6" rx="1.8"/><path d="M3.5 13.2h5M11.5 13.2h5M3.5 16.4h3.4M11.5 16.4h3.4"/></svg>',
+  lens: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 3.4 14.2 15H3z"/><path d="M12.3 10.4 17.6 8.8M12.7 11.4l4.9 1" stroke-linecap="round"/></svg>',
+  dot: '<svg viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="3.2" fill="currentColor"/></svg>',
+  chevRight: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>'
+};
+function fillGlyphs(scope) {
+  const map = { 'i-search': 'search', 'i-cc': 'cc', 'i-bell': 'bell', 'i-lock': 'lock', 'i-spaces': 'spaces', 'i-expand': 'expand', 'i-chev': 'chevRight' };
+  Object.keys(map).forEach(k => $$('.' + k, scope).forEach(el => { el.outerHTML = SVG[map[k]]; }));
+}
+
+/* ---------- Icone delle app, in vetro ---------- */
+function gearPath(cx, cy, R, r, n, h) {
+  const p = (a, rad) => (cx + Math.cos(a) * rad).toFixed(2) + ' ' + (cy + Math.sin(a) * rad).toFixed(2);
+  const st = Math.PI * 2 / n, tw = st * .24, bw = st * .34;
+  let d = '';
+  for (let i = 0; i < n; i++) {
+    const c = i * st - Math.PI / 2;
+    d += (i ? 'L' : 'M') + p(c - bw, r) + 'L' + p(c - tw, R) + 'L' + p(c + tw, R) + 'L' + p(c + bw, r);
+    d += 'A' + r + ' ' + r + ' 0 0 1 ' + p((i + 1) * st - Math.PI / 2 - bw, r);
+  }
+  return d + 'Z M' + (cx + h) + ' ' + cy + 'a' + h + ' ' + h + ' 0 1 0 ' + (-2 * h) + ' 0a' + h + ' ' + h + ' 0 1 0 ' + (2 * h) + ' 0z';
+}
+const GEAR = gearPath(32, 32, 21, 16, 10, 6.4);
+const GLYPH = {
+  home: () => '<path d="M3 34.5 22.5 30.6" stroke="url(#lgBeam)" stroke-width="2.6" stroke-linecap="round"/>' +
+    '<g stroke-width="2.4" stroke-linecap="round"><path d="M42.6 32.3 61 25" stroke="#EAF8FF"/><path d="M42.6 32.9 61 30" stroke="#C4EAFA"/><path d="M42.6 33.5 61 35" stroke="#97D5F0"/><path d="M42.6 34.1 61 40" stroke="#6CBCE2"/><path d="M42.6 34.7 61 45" stroke="#4A9FCF" stroke-opacity=".85"/><path d="M42.6 35.3 61 50" stroke="#3A82B5" stroke-opacity=".7"/></g>' +
+    '<path class="g2" d="M32 11.5 50.5 47.5h-37z"/><path class="g1" d="M32 11.5 35.5 47.5h-22z" opacity=".5"/>' +
+    '<path d="M22.5 30.6 42.6 33.6" stroke="#fff" stroke-opacity=".6" stroke-width="1.4"/><path class="gs" d="M32 11.5 50.5 47.5h-37z" fill="none" stroke-width="2" stroke-linejoin="round"/>',
+  clienti: () => '<circle class="g2" cx="42.5" cy="22.5" r="7.5"/><path class="g2" d="M30.5 47c1.6-8.6 6.4-13 12-13s10.4 4.4 12 13z"/>' +
+    '<circle class="g1" cx="27" cy="24" r="9.5"/><path class="g1" d="M10.5 51c1.9-11 8.4-16.5 16.5-16.5S41.6 40 43.5 51z"/>',
+  posizioni: () => '<rect class="g2" x="12" y="38" width="7" height="13" rx="2.2"/><rect class="g2" x="22" y="31" width="7" height="20" rx="2.2"/><rect class="g2" x="32" y="35" width="7" height="16" rx="2.2"/><rect class="g2" x="42" y="25" width="7" height="26" rx="2.2"/>' +
+    '<path class="gs" d="M11 32.5 22.5 24.5l10 4.5L50 14.5" fill="none" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle class="g1" cx="50" cy="14.5" r="4.2"/>',
+  analisi360: () => '<circle class="g2" cx="32" cy="32" r="16.5" opacity=".35"/><path class="gs" d="M46.55 19.79A19 19 0 1 1 28.7 13.29" fill="none" stroke-width="3.6" stroke-linecap="round"/>' +
+    '<path class="g1" d="M34.1 12.3 27.9 8.9l1.6 8.8z"/><text class="gt" x="32" y="36.8" text-anchor="middle">360</text>',
+  incontri: () => '<ellipse class="g2" cx="41.5" cy="37" rx="13.5" ry="10.5"/><path class="g2" d="M46.5 45.5 54 52.5l-12.2-5z"/>' +
+    '<ellipse class="g1" cx="27" cy="27" rx="17.5" ry="13.5"/><path class="g1" d="M17.5 36.5 12.5 46l12-7z"/>',
+  obiettivi: () => '<circle class="g2" cx="32" cy="32" r="20" opacity=".3"/><circle class="gs" cx="32" cy="32" r="20" fill="none" stroke-width="2.6"/>' +
+    '<path class="gs" d="M32 9.5v4.5M32 50v4.5M9.5 32H14M50 32h4.5" stroke-width="2.4" stroke-linecap="round"/>' +
+    '<g transform="rotate(38 32 32)"><path class="g3" d="M32 15.5 36.2 32h-8.4z"/><path class="g1" d="M32 48.5 36.2 32h-8.4z"/></g><circle class="gk" cx="32" cy="32" r="2.4"/>',
+  confronti: () => '<path class="gs" d="M32 14v32" stroke-width="3.2" stroke-linecap="round"/><path class="gs" d="M13.5 22.5 50.5 18" stroke-width="3" stroke-linecap="round"/><circle class="g1" cx="32" cy="13" r="3.2"/>' +
+    '<path class="gs" d="M15 22.3 9.5 37M15 22.3 20.5 37M49 18.2 43.5 33.5M49 18.2 54.5 33.5" stroke-width="1.5" stroke-opacity=".8"/>' +
+    '<path class="g1" d="M7.5 37h15a7.5 4.8 0 0 1-15 0z"/><path class="g1" d="M41.5 33.5h15a7.5 4.8 0 0 1-15 0z"/><path class="g1" d="M22 51.5h20c0-2.4-1.9-4-4.3-4H26.3c-2.4 0-4.3 1.6-4.3 4z"/>',
+  prodotti: () => '<path class="g1" d="M31 18.5C25 14.6 17.6 13.3 10.5 14.3v31.4c7.1-1 14.5.3 20.5 4.2z"/><path class="g2" d="M33 18.5c6-3.9 13.4-5.2 20.5-4.2v31.4c-7.1-1-14.5.3-20.5 4.2z"/>' +
+    '<path class="gl" d="M15 22c4.4-.4 8.6.3 12 2M15 28c4.4-.4 8.6.3 12 2M15 34c4.4-.4 8.6.3 12 2" stroke-width="1.6" stroke-linecap="round"/><path class="g3" d="M43 14.4v13l3-2.6 3 2.6V13.6z"/>',
+  simulazioni: () => '<rect class="g2" x="15.5" y="9.5" width="33" height="45" rx="7"/><rect class="g1" x="20" y="14" width="24" height="10.5" rx="3"/><text class="gtk" x="41" y="22.2" text-anchor="end">12,5</text>' +
+    [29, 36.5, 44].map((y, ri) => [20, 29, 38].map((x, ci) => '<rect class="' + (ri === 2 && ci === 2 ? 'g3' : 'g1') + '" x="' + x + '" y="' + y + '" width="6" height="5.2" rx="1.6"/>').join('')).join(''),
+  agenda: () => '<text class="g3 gt-mon" x="32" y="20.5" text-anchor="middle">' + monS(NOW).toUpperCase() + '</text><text class="gk gt-day" x="32" y="49.5" text-anchor="middle">' + NOW.getDate() + '</text>',
+  attivita: () => [19, 32].map((y, i) => '<circle class="g3" cx="18" cy="' + y + '" r="5.2"/><path d="m15.6 ' + y + ' 1.7 1.7 3.2-3.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect class="gk" x="27" y="' + (y - 1.7) + '" width="' + (i ? 18 : 22) + '" height="3.4" rx="1.7" opacity=".28"/>').join('') +
+    '<circle class="gs" cx="18" cy="45" r="4.4" fill="none" stroke-width="1.6"/><rect class="gk" x="27" y="43.3" width="20" height="3.4" rx="1.7" opacity=".28"/>',
+  note: () => '<rect class="g1" x="14.5" y="12" width="35" height="41" rx="5.5"/><path class="g3" d="M14.5 17.5a5.5 5.5 0 0 1 5.5-5.5h24a5.5 5.5 0 0 1 5.5 5.5v4h-35z"/>' +
+    '<path class="gl" d="M20 29.5h24M20 36h24M20 42.5h15" stroke-width="1.6" stroke-linecap="round"/>',
+  documenti: () => '<path class="g2" d="M19 13.5h18l7 7V34H19z"/><path class="g1" d="M11.5 25a3.5 3.5 0 0 1 3.5-3.5h10.4l4.2 4h19.4a3.5 3.5 0 0 1 3.5 3.5v18.5a3.5 3.5 0 0 1-3.5 3.5H15a3.5 3.5 0 0 1-3.5-3.5z"/>' +
+    '<rect class="gk" x="25" y="37" width="14" height="4" rx="2" opacity=".2"/>',
+  presentazioni: () => '<rect class="g1" x="10" y="12" width="44" height="29" rx="4.5"/><rect class="g3" x="17" y="28" width="6" height="8" rx="1.5"/><rect class="g3" x="26" y="23" width="6" height="13" rx="1.5" opacity=".85"/><rect class="g3" x="35" y="18.5" width="6" height="17.5" rx="1.5" opacity=".7"/>' +
+    '<path class="gs" d="M32 41.5v8.5M23.5 53.5l8.5-3.5 8.5 3.5" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  eve: () => '<circle cx="32" cy="32" r="20" fill="url(#lgEveOrb)"/><circle cx="32" cy="32" r="20" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="1"/><circle cx="27" cy="25" r="10" fill="#fff" opacity=".13"/>' +
+    '<path d="m32 17 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z" fill="#fff" fill-opacity=".94"/><path d="m46 36 1.5 4.5L52 42l-4.5 1.5L46 48l-1.5-4.5L40 42l4.5-1.5Z" fill="#EEDCFF"/>',
+  ricerca: () => '<path class="g2" d="M15 11.5h19.5l7.5 7.5v29.5a3.5 3.5 0 0 1-3.5 3.5H15a3.5 3.5 0 0 1-3.5-3.5v-33.5A3.5 3.5 0 0 1 15 11.5z"/><circle class="g1" cx="36" cy="34" r="10.5" opacity=".5"/>' +
+    '<circle class="gs" cx="36" cy="34" r="10.5" fill="none" stroke-width="3.4"/><path class="gs" d="M43.6 41.6 51 49" stroke-width="5.2" stroke-linecap="round"/>',
+  impostazioni: () => '<path class="g1" fill-rule="evenodd" d="' + GEAR + '"/><circle class="gs" cx="32" cy="32" r="11.2" fill="none" stroke-width="1.4" stroke-opacity=".5"/>'
+};
+function icon(id, sz) {
+  const a = id === 'home' ? HOME : APP[id];
+  const st = (sz ? '--sz:' + sz + 'px;' : '') + '--c1:' + a.c1 + ';--c2:' + a.c2 + ';--hue:' + a.hue + ';' + (ACC[id] ? '--acc:' + ACC[id] + ';' : '');
+  return '<span class="ic' + (a.light ? ' ic-light' : '') + '" style="' + st + '" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false">' + GLYPH[id]() + '</svg></span>';
+}
+
+/* ---------- Calcoli (come RiepilogoPosizioni nell'app) ---------- */
+const premioAnnuo = p => p.premio ? (p.freq === 'm' ? p.premio * 12 : p.premio) : 0;
+function riepilogo(list) {
+  const r = { att: 0, deb: 0, premi: 0, capitale: 0, nProp: 0, valProp: 0, perCanale: { alleanza: 0, indipendente: 0 }, inScad: [] };
+  for (const p of list) {
+    if (p.stato === 'essere') {
+      if (p.area === 'debiti') r.deb += p.valore || 0;
+      else { r.att += p.valore || 0; r.perCanale[p.canale] += p.valore || 0; r.premi += premioAnnuo(p); }
+      if (p.area === 'protezione') r.capitale += p.capitale || 0;
+      if (p.scad && diffDays(p.scad) <= 90) r.inScad.push(p);
+    } else { r.nProp++; r.valProp += (p.versamento || 0) + premioAnnuo(p); }
+  }
+  r.netto = r.att - r.deb;
+  r.inScad.sort((a, b) => a.scad - b.scad);
+  return r;
+}
+const nextEventOf = id => EVENTS.filter(e => e.cl === id && e.stato !== 'concluso' && e.at > NOW).sort((a, b) => a.at - b.at)[0];
+
+/* ---------- Componenti ---------- */
+const avatar = (c, sz) => '<span class="av" style="--sz:' + (sz || 32) + 'px;--t1:' + TINT[c.tinta][0] + ';--t2:' + TINT[c.tinta][1] + '" aria-hidden="true">' + esc(c.ini) + '</span>';
+const chip = (ch, sm) => { const a = ch === 'alleanza'; return '<span class="chip ' + (a ? 'ch-a' : 'ch-i') + (sm ? ' sm' : '') + '" title="' + (a ? 'Alleanza Assicurazioni' : 'Denis Vicenzoni · Consulenza finanziaria') + '"><i></i>' + (a ? 'Alleanza' : 'Indipendente') + '</span>'; };
+const orb = sz => '<span class="orb" style="--sz:' + sz + 'px" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2.5 2.1 6.1 6.1 2.1-6.1 2.1-2.1 6.1-2.1-6.1-6.1-2.1 6.1-2.1Zm7 12 .9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9Z"/></svg></span>';
+const dateTile = d => '<span class="dt" aria-hidden="true"><small>' + monS(d) + '</small><span>' + d.getDate() + '</span></span>';
+const kpi = (l, v, cls) => '<div class="kpi' + (cls ? ' ' + cls : '') + '"><span>' + l + '</span><b title="' + esc(v) + '">' + esc(v) + '</b></div>';
+const tile = (l, v) => '<div class="tile"><span>' + l + '</span><b>' + esc(v) + '</b></div>';
+const empty = t => '<p class="w-empty">' + t + '</p>';
+const segc = (key, val, opts, act) => '<div class="segc" data-k="' + key + '" role="radiogroup">' + opts.map(([k, l]) => '<button type="button" role="radio" aria-checked="' + (String(k) === String(val)) + '" data-act="' + (act || 'view') + '" data-key="' + key + '" data-val="' + k + '">' + l + '</button>').join('') + '<i class="thumb" aria-hidden="true"></i></div>';
+const toggle = (key, label) => '<button type="button" class="tg" role="switch" aria-checked="' + !!S[key] + '" data-act="toggle" data-key="' + key + '" aria-label="' + esc(label) + '"></button>';
+const wallPicker = () => '<div class="walls">' + WALLS.map(([k, l]) => '<button type="button" class="wall-th th-' + k + '" data-act="set" data-key="wall" data-val="' + k + '" aria-pressed="' + (S.wall === k) + '"><span class="sw-img bg-' + k + '"></span>' + l + '</button>').join('') + '</div>';
+function split(a, i) {
+  const tot = a + i || 1;
+  return '<div class="split" role="img" aria-label="Alleanza ' + pct(a / tot) + ', indipendente ' + pct(i / tot) + '">' +
+    (a > 0 ? '<span style="--c:var(--ch-a);flex:' + a + '" data-tip="Alleanza · ' + euro(a) + ' · ' + pct(a / tot) + '"></span>' : '') +
+    (i > 0 ? '<span style="--c:var(--ch-i);flex:' + i + '" data-tip="Indipendente · ' + euro(i) + ' · ' + pct(i / tot) + '"></span>' : '') + '</div>' +
+    '<ul class="legend"><li><i style="--c:var(--ch-a)"></i><span>Alleanza</span><b>' + euro(a) + '</b><em>' + pct(a / tot) + '</em></li>' +
+    '<li><i style="--c:var(--ch-i)"></i><span>Indipendente</span><b>' + euro(i) + '</b><em>' + pct(i / tot) + '</em></li></ul>';
+}
+
+/* ---------- Widget della scrivania ---------- */
+function wAgenda() {
+  const today = EVENTS.filter(e => diffDays(e.at) === 0);
+  const next = EVENTS.filter(e => e.stato !== 'concluso' && e.at > NOW).sort((a, b) => a.at - b.at);
+  const up = next[0];
+  return '<div class="wa-day"><span class="wa-wd">' + fWd.format(NOW) + '</span><span class="wa-num">' + NOW.getDate() + '</span><span class="wa-mon">' + fMon.format(NOW) + '</span>' +
+    '<div class="wa-sum"><b>' + (today.length ? today.length + (today.length === 1 ? ' incontro oggi' : ' incontri oggi') : 'Nessun incontro oggi') + '</b>' +
+    (up ? 'Il prossimo: ' + dayPhrase(up.at) + ' alle ' + fTime.format(up.at) : 'Agenda libera') + '</div></div>' +
+    '<div class="wa-list"><header class="w-head"><h2>Prossimi incontri</h2><button class="w-link" data-act="open" data-app="agenda">Apri Agenda</button></header>' +
+    '<div class="w-scroll">' + (next.slice(0, 7).map(evRow).join('') || empty('Nessun appuntamento in programma.')) + '</div></div>';
+}
+function evRow(e) {
+  const c = CL[e.cl];
+  return '<button class="row" data-act="open" data-app="agenda" data-rec="' + e.id + '"><span class="ev-tag" style="--c:' + TINT[c.tinta][1] + '"></span>' +
+    '<span class="meta"><b>' + esc(c.nome) + '</b><span>' + esc(e.titolo) + '</span></span>' +
+    '<span class="side-r"><b>' + dayLabel(e.at) + '</b>' + fTime.format(e.at) + ' · ' + esc(e.luogo) + '</span></button>';
+}
+function wCliente() {
+  const c = CL[S.focus] || CLIENTS[0];
+  const r = riepilogo(POS.filter(p => p.cl === c.id));
+  const nx = nextEventOf(c.id);
+  const open = TASKS.filter(t => t.cl === c.id && !isDone(t)).length;
+  return '<div class="wc-wash" style="--t2:' + TINT[c.tinta][1] + '"></div>' +
+    '<div class="wc-head">' + avatar(c, 46) + '<div class="wc-id"><span class="wc-kicker">Cliente in primo piano</span>' +
+    '<button class="wc-name" data-act="pick" data-ovt aria-haspopup="dialog" aria-label="Cliente in primo piano: ' + esc(c.nome) + '. Cambia cliente">' + esc(c.nome) + SVG.chevDown + '</button>' +
+    '<span class="wc-tema">' + esc(c.tema) + '</span></div><div class="wc-ch">' + c.canali.map(x => chip(x)).join('') + '</div></div>' +
+    '<div class="kpis">' + kpi('Patrimonio netto', euro(r.netto)) + kpi('Prossimo incontro', nx ? dayLabel(nx.at) + ', ' + fTime.format(nx.at) : '—') +
+    kpi('Da fare', open ? open + ' attività' : 'Niente') + kpi('Capitale assicurato', r.capitale ? euro(r.capitale) : '—', 'k2') +
+    kpi('Premi annui', r.premi ? euro(r.premi) : '—', 'k2') + kpi('Proposte aperte', r.nProp ? r.nProp + ' · ' + euro(r.valProp) : 'Nessuna', 'k2') + '</div>' +
+    '<p class="wc-note">' + esc(c.nota) + '</p>' +
+    '<div class="wc-actions"><button class="btn" data-act="open" data-app="clienti" data-client="' + c.id + '">Apri la scheda</button>' +
+    '<button class="btn" data-act="open" data-app="posizioni" data-client="' + c.id + '">Posizioni</button>' +
+    '<button class="btn eve-btn" data-act="open" data-app="eve" data-client="' + c.id + '">' + orb(16) + 'Chiedi a Eve</button></div>';
+}
+const wEve = () => orb(38) + '<span class="we-t"><b>Ritrova il filo con Eve.</b><span>Incontri, sintesi e prossimi passi</span></span>' + SVG.chev;
+function taskRow(t, inWin, sel) {
+  const c = CL[t.cl], done = isDone(t), n = diffDays(t.due);
+  const due = '<span class="' + (!done && n <= 0 ? 'due-now' : '') + '">' + (n < 0 && !done ? 'Scaduta' : dayLabel(t.due)) + '</span>';
+  const inner = '<span class="meta"><b>' + esc(t.titolo) + '</b><span>' + esc(c.nome) + ' · ' + due + '</span></span>' + (t.prio === 'alta' ? '<span class="flag" title="Priorità alta">' + SVG.flag + '</span>' : '');
+  return '<div class="todo' + (done ? ' done' : '') + (sel ? ' sel' : '') + '"><button class="ck" role="checkbox" aria-checked="' + done + '" data-act="task" data-rec="' + t.id + '" aria-label="Completa: ' + esc(t.titolo) + '">' + SVG.check + '</button>' +
+    (inWin ? '<div class="row-open">' + inner + '</div>' : '<button class="row-open" data-act="open" data-app="attivita" data-rec="' + t.id + '">' + inner + '</button>') + '</div>';
+}
+function wTodo() {
+  const open = TASKS.filter(t => !isDone(t)).sort((a, b) => a.due - b.due);
+  return '<header class="w-head"><h2>' + icon('attivita', 20) + (open.length ? open.length + (open.length === 1 ? ' attività aperta' : ' attività aperte') : 'Da fare') + '</h2>' +
+    '<button class="w-link" data-act="open" data-app="attivita">Apri Attività</button></header>' +
+    '<div class="w-scroll">' + (open.map(t => taskRow(t)).join('') || empty('Tutto fatto. La lista è libera.')) + '</div>';
+}
+function wScad() {
+  const r = riepilogo(POS);
+  return '<header class="w-head"><h2>' + icon('posizioni', 20) + 'In scadenza entro 90 giorni</h2><button class="w-link" data-act="open" data-app="posizioni" data-scope="all">Apri Posizioni</button></header>' +
+    '<div class="w-scroll">' + (r.inScad.map(p => {
+      const n = diffDays(p.scad);
+      return '<button class="row" data-act="open" data-app="posizioni" data-client="' + p.cl + '" data-rec="' + p.id + '">' + dateTile(p.scad) +
+        '<span class="meta"><span>' + esc(CL[p.cl].nome) + '</span><b>' + esc(p.nome) + '</b><span>' + AREA[p.area] + ' · <span class="' + (n <= 30 ? 'due-now' : 'due-soon') + '">' + relDays(p.scad) + '</span></span></span>' + chip(p.canale, true) + '</button>';
+    }).join('') || empty('Nessuna scadenza nei prossimi 90 giorni.')) + '</div>';
+}
+function wPort() {
+  const r = riepilogo(POS);
+  return '<header class="w-head"><h2>' + icon('posizioni', 20) + 'Portafoglio clienti</h2><button class="w-link" data-act="open" data-app="posizioni" data-scope="all">Apri</button></header>' +
+    '<div class="pf-total">' + euro(r.att) + '</div><div class="pf-cap">In essere, ' + CLIENTS.length + ' clienti seguiti</div>' +
+    split(r.perCanale.alleanza, r.perCanale.indipendente) +
+    '<div class="pf-prop"><span>Proposte aperte</span><b>' + r.nProp + ' · ' + euro(r.valProp) + '</b></div>';
+}
+function renderDesk() {
+  $('#hello').textContent = greeting() + ', ' + S.name + '.';
+  $('#w-ag').innerHTML = wAgenda();
+  $('#w-cl').innerHTML = wCliente();
+  $('#w-ev').innerHTML = wEve();
+  $('#w-td').innerHTML = wTodo();
+  $('#w-sc').innerHTML = wScad();
+  $('#w-pf').innerHTML = wPort();
+  $('#foot-b').textContent = 'Ultimo backup: ' + when(LAST_BACKUP) + ' · archivio locale';
+}
+
+/* ---------- Dock ---------- */
+const dock = $('#dock'), tipEl = $('#dock-tip');
+function buildDock() {
+  const items = [HOME, 'sep'].concat(APPS);
+  let n = 0;
+  dock.innerHTML = items.map(a => {
+    if (a === 'sep') return '<i class="dock-sep" aria-hidden="true"></i>';
+    const k = a.id === 'home' ? '0' : (++n <= 9 ? String(n) : '');
+    return '<button class="dock-item" data-act="' + (a.id === 'home' ? 'desk' : 'open') + '" data-app="' + a.id + '" data-tipt="' + esc(a.t) + '" data-k="' + k + '" aria-label="' + esc(a.t) + '">' +
+      icon(a.id) + '<span class="dock-label">' + esc(a.dock || a.t) + '</span><i class="dock-dot"></i></button>';
+  }).join('');
+}
+let tipItem = null;
+function showTip(it) { tipItem = it; tipEl.innerHTML = '<span>' + esc(it.dataset.tipt) + '</span>' + (it.dataset.k ? '<kbd>⌥' + it.dataset.k + '</kbd>' : ''); tipEl.classList.add('on'); placeTip(); }
+function hideTip() { tipItem = null; tipEl.classList.remove('on'); }
+function placeTip() { if (!tipItem) return; const r = $('.ic', tipItem).getBoundingClientRect(); tipEl.style.left = (r.left + r.width / 2) + 'px'; tipEl.style.top = (r.top - 8) + 'px'; }
+/* Il dock si adatta sempre alla larghezza della pagina: tutte le app restano visibili, senza scorrere. */
+let dockMax = 1.55;
+function fitDock() {
+  const narrow = innerWidth < 760, base = narrow ? 40 : 50;
+  const n = APPS.length + 1, avail = innerWidth - 12;
+  /* larghezza = n icone + (n-1) spazi + divisore + margini interni, con spazi e margini proporzionali all'icona */
+  const per = s => n * s + (n - 1) * s * .12 + (2 + s * .12) + 2 * (s * .14 + 2);
+  let ic = base;
+  while (ic > 14 && per(ic) > avail) ic -= .5;
+  ic = Math.floor(ic * 2) / 2;
+  const st = root.style;
+  st.setProperty('--dock-ic', ic + 'px');
+  st.setProperty('--dock-gap', (ic * .12).toFixed(1) + 'px');
+  st.setProperty('--dock-pad', (ic * .14).toFixed(1) + 'px');
+  st.setProperty('--dock-sepm', Math.max(2, ic * .06).toFixed(1) + 'px');
+  const labels = S.labels ? 14 : 0;
+  st.setProperty('--dock-space', Math.round(ic + ic * .28 + 20 + labels + 18) + 'px');
+  /* l'ingrandimento non deve mai far uscire il dock dalla pagina */
+  const room = avail - per(ic);
+  dockMax = Math.max(1, Math.min(1.55, 1 + room / (ic * 2.4)));
+  baseCenters = null;
+}
+let dockX = null, dockRAF = 0, baseCenters = null;
+function magnify() {
+  dockRAF = 0;
+  if (dockX == null || !S.magnify || calm() || innerWidth < 760 || dockMax <= 1.02) return;
+  const items = $$('.dock-item', dock);
+  if (!baseCenters) baseCenters = items.map(it => { const r = it.getBoundingClientRect(); return r.left + r.width / 2; });
+  const base = $('.dock-item', dock).offsetHeight || 50, range = base * 2.7, max = dockMax;
+  dock.classList.add('magnifying');
+  items.forEach((it, i) => { const d = Math.abs(dockX - baseCenters[i]); const s = d < range ? 1 + (max - 1) * Math.pow(Math.cos(d / range * Math.PI / 2), 2) : 1; it.style.setProperty('--s', s.toFixed(3)); });
+  placeTip();
+}
+dock.addEventListener('pointermove', e => { dockX = e.clientX; if (!dockRAF) dockRAF = requestAnimationFrame(magnify); });
+dock.addEventListener('pointerleave', () => { dockX = null; baseCenters = null; dock.classList.remove('magnifying'); $$('.dock-item', dock).forEach(it => it.style.removeProperty('--s')); hideTip(); });
+dock.addEventListener('pointerover', e => { const it = e.target.closest('.dock-item'); if (it && it !== tipItem) showTip(it); });
+dock.addEventListener('focusin', e => { const it = e.target.closest('.dock-item'); if (it) showTip(it); });
+dock.addEventListener('focusout', hideTip);
+function bounce(id) { const it = $('.dock-item[data-app="' + id + '"]', dock); if (!it || calm()) return; it.classList.remove('bounce'); void it.offsetWidth; it.classList.add('bounce'); setTimeout(() => it.classList.remove('bounce'), 850); }
+
+/* ---------- Finestre ---------- */
+const WINS = new Map();
+let ACTIVE = null, zTop = 30, cascade = 0;
+const SIZES = { clienti: [1000, 660], posizioni: [1120, 690], agenda: [940, 660], eve: [900, 680], attivita: [720, 600], impostazioni: [880, 640], documenti: [820, 560], note: [880, 580], ricerca: [760, 580] };
+const cssPx = name => parseFloat(getComputedStyle(root).getPropertyValue(name)) || 0;
+function deskRect() { const bh = cssPx('--bar-h') || 34, ds = cssPx('--dock-space') || 96; return { x: 8, y: bh + 6, w: innerWidth - 16, h: Math.max(240, innerHeight - bh - 6 - ds + 6) }; }
+function defaultView(id) {
+  switch (id) {
+    case 'clienti': return { client: S.focus, q: '' };
+    case 'posizioni': return { scope: 'client', client: S.focus, stato: 'tutte', canale: 'tutti' };
+    case 'agenda': return { day: sod(NOW).toISOString() };
+    case 'attivita': return { filter: 'aperte' };
+    case 'eve': return { client: S.focus };
+    case 'impostazioni': return { page: 'aspetto' };
+    case 'note': return { note: NOTES[0].id };
+    case 'ricerca': return { q: '' };
+    default: return {};
+  }
+}
+function openApp(id, o) {
+  if (id === 'home') return showDesk();
+  const app = APP[id]; if (!app) return;
+  closeOverlays();
+  const opts = {};
+  Object.keys(o || {}).forEach(k => { if (o[k] != null && o[k] !== '') opts[k] = o[k]; });
+  if (id === 'posizioni' && opts.client && !opts.scope) opts.scope = 'client';
+  if (id === 'agenda' && opts.rec) { const e = EVENTS.find(x => x.id === opts.rec); if (e) opts.day = sod(e.at < sod(NOW) ? e.at : NOW).toISOString(); }
+  if (id === 'eve' && opts.client && WINS.has('eve') && WINS.get('eve').view.client !== opts.client) WINS.get('eve').view.msgs = null;
+  let w = WINS.get(id);
+  if (!w) {
+    const r = deskRect(), size = SIZES[id] || [780, 560], narrow = innerWidth < 760;
+    const ww = narrow ? r.w : Math.min(size[0], r.w - 24), hh = narrow ? r.h : Math.min(size[1], r.h - 8);
+    const off = (cascade++ % 5) * 26;
+    w = { id, view: Object.assign(defaultView(id), opts), w: ww, h: hh, min: false, max: false,
+      x: narrow ? r.x : Math.round(r.x + (r.w - ww) / 2 - 52 + off), y: narrow ? r.y : Math.round(r.y + Math.max(0, (r.h - hh) / 2 - 14) + off * .6) };
+    const el = doc.createElement('section');
+    el.className = 'win'; el.dataset.win = id; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', app.t); el.tabIndex = -1;
+    w.el = el; WINS.set(id, w);
+    $('#wins').appendChild(el);
+    clampWin(w); place(w); renderWin(id); focusWin(id);
+    if (!calm()) el.animate([{ opacity: 0, transform: 'translateY(12px) scale(.965)' }, { opacity: 1, transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.22,1,.36,1)' });
+    bounce(id);
+  } else {
+    Object.assign(w.view, opts);
+    if (w.min) restoreWin(w);
+    renderWin(id); focusWin(id);
+  }
+  paintChrome();
+}
+function place(w) { const s = w.el.style; s.left = w.x + 'px'; s.top = w.y + 'px'; s.width = w.w + 'px'; s.height = w.h + 'px'; }
+function clampWin(w) { const bh = cssPx('--bar-h') || 34; w.x = Math.min(Math.max(w.x, 120 - w.w), innerWidth - 120); w.y = Math.min(Math.max(w.y, bh + 2), innerHeight - 60); }
+function topWin() { let best = null, z = -1; WINS.forEach((w, k) => { const zi = +w.el.style.zIndex || 0; if (!w.min && zi > z) { z = zi; best = k; } }); return best; }
+function focusWin(id) {
+  const w = WINS.get(id); if (!w || w.min) return;
+  if (ACTIVE !== id) { zTop++; w.el.style.zIndex = zTop; }
+  ACTIVE = id;
+  WINS.forEach((x, k) => x.el.classList.toggle('inactive', k !== id));
+  paintChrome();
+}
+function closeWin(id) {
+  const w = WINS.get(id); if (!w) return;
+  WINS.delete(id);
+  const done = () => w.el.remove();
+  if (calm()) done(); else w.el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.965)' }], { duration: 170, easing: 'ease-in' }).finished.then(done, done);
+  if (ACTIVE === id) { ACTIVE = null; const t = topWin(); if (t) focusWin(t); }
+  paintChrome();
+}
+function dockIconRect(id) { const it = $('.dock-item[data-app="' + id + '"] .ic', dock); return it ? it.getBoundingClientRect() : null; }
+function genie(el, to, reverse) {
+  const r = el.getBoundingClientRect();
+  const dx = to.left + to.width / 2 - (r.left + r.width / 2), dy = to.top + to.height / 2 - (r.top + r.height / 2);
+  const kf = [{ transform: 'none', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + Math.max(.04, to.width / r.width) + ')', opacity: .25 }];
+  return el.animate(reverse ? kf.reverse() : kf, { duration: 420, easing: 'cubic-bezier(.6,0,.2,1)' }).finished;
+}
+function minimizeWin(id) {
+  const w = WINS.get(id); if (!w || w.min) return;
+  w.min = true;
+  const to = dockIconRect(id), finish = () => { if (w.min) w.el.hidden = true; };
+  if (calm() || !to) finish(); else genie(w.el, to).then(finish, finish);
+  if (ACTIVE === id) { ACTIVE = null; const t = topWin(); if (t) focusWin(t); }
+  paintChrome();
+}
+function restoreWin(w) { w.min = false; w.el.hidden = false; const to = dockIconRect(w.id); if (!calm() && to) genie(w.el, to, true); }
+function zoomWin(id) {
+  const w = WINS.get(id); if (!w) return;
+  if (!w.max) { w.prev = { x: w.x, y: w.y, w: w.w, h: w.h }; const r = deskRect(); Object.assign(w, { x: r.x, y: r.y, w: r.w, h: r.h, max: true }); }
+  else Object.assign(w, w.prev || {}, { max: false });
+  w.el.classList.toggle('max', w.max); w.el.classList.add('tween'); place(w); setTimeout(() => w.el.classList.remove('tween'), 340);
+}
+function showDesk() {
+  closeOverlays();
+  [...WINS.values()].filter(w => !w.min).forEach((w, i) => setTimeout(() => minimizeWin(w.id), i * 50));
+  ACTIVE = null; paintChrome();
+  $('#desk').focus({ preventScroll: true });
+}
+function applyWS(id) {
+  const ws = WS.find(x => x.id === id); if (!ws) return;
+  closeOverlays();
+  WINS.forEach((w, k) => { if (ws.apps.indexOf(k) < 0 && !w.min) minimizeWin(k); });
+  const r = deskRect(), g = 8;
+  const boxes = ws.apps.length === 2 ? [[0, 0, .5, 1], [.5, 0, .5, 1]] : [[0, 0, .5, 1], [.5, 0, .5, .5], [.5, .5, .5, .5]];
+  ws.apps.forEach((aid, i) => {
+    openApp(aid, ['clienti', 'posizioni', 'eve'].indexOf(aid) >= 0 ? { client: S.focus, scope: aid === 'posizioni' ? 'client' : null } : null);
+    const w = WINS.get(aid), b = boxes[i];
+    Object.assign(w, { max: false, x: Math.round(r.x + b[0] * r.w + (b[0] ? g / 2 : 0)), y: Math.round(r.y + b[1] * r.h + (b[1] ? g / 2 : 0)),
+      w: Math.round(b[2] * r.w - (b[2] < 1 ? g / 2 : 0)), h: Math.round(b[3] * r.h - (b[3] < 1 ? g / 2 : 0)) });
+    w.el.classList.add('tween'); place(w); setTimeout(() => w.el.classList.remove('tween'), 360);
+  });
+  toast('Spazio di lavoro: ' + ws.t);
+}
+function frame(app, p) {
+  const side = p.side != null;
+  return '<div class="lights">' +
+    '<button class="light l-close" data-act="win-close" aria-label="Chiudi ' + esc(app.t) + '">' + SVG.x + '</button>' +
+    '<button class="light l-min" data-act="win-min" aria-label="Riduci ' + esc(app.t) + ' nel dock">' + SVG.minus + '</button>' +
+    '<button class="light l-zoom" data-act="win-zoom" aria-label="Ingrandisci ' + esc(app.t) + '">' + SVG.plus + '</button></div>' +
+    '<div class="win-grid' + (side ? '' : ' no-side') + '">' + (side ? '<aside class="side"><div class="side-top" data-drag></div>' + p.side + '</aside>' : '') +
+    '<div class="main"><div class="tbar" data-drag><div class="win-title">' + icon(app.id, 20) + '<span>' + esc(app.t) + '</span></div><div class="tb-tools">' + (p.tools || '') + '</div></div>' +
+    '<div class="pad' + (p.padCls ? ' ' + p.padCls : '') + '">' + p.body + '</div></div></div><div class="win-resize" data-resize aria-hidden="true"></div>';
+}
+function syncSegs(scope, prev) {
+  $$('.segc', scope).forEach(s => {
+    const b = $('[aria-checked="true"]', s); if (!b || !b.offsetWidth) return;
+    const p = prev && prev[s.dataset.k];
+    const set = () => { s.style.setProperty('--x', b.offsetLeft + 'px'); s.style.setProperty('--w', b.offsetWidth + 'px'); };
+    if (p && p[0]) { s.classList.remove('ready'); s.style.setProperty('--x', p[0]); s.style.setProperty('--w', p[1]); void s.offsetWidth; s.classList.add('ready'); set(); }
+    else if (!s.classList.contains('ready')) { set(); void s.offsetWidth; s.classList.add('ready'); }
+    else set();
+  });
+}
+function renderWin(id) {
+  const w = WINS.get(id); if (!w) return;
+  const el = w.el, app = APP[id];
+  const m = $('.main', el), sd = $('.side', el), st = m ? m.scrollTop : 0, sst = sd ? sd.scrollTop : 0;
+  const act = doc.activeElement, fk = act && el.contains(act) && act.dataset && act.dataset.input ? act.dataset.input : null, caret = fk ? act.selectionStart : 0;
+  const prev = {}; $$('.segc', el).forEach(s => { prev[s.dataset.k] = [s.style.getPropertyValue('--x'), s.style.getPropertyValue('--w')]; });
+  el.innerHTML = frame(app, (RENDER[id] || RENDER.generic)(w));
+  const m2 = $('.main', el), s2 = $('.side', el);
+  if (m2) m2.scrollTop = st; if (s2) s2.scrollTop = sst;
+  if (fk) { const inp = $('[data-input="' + fk + '"]', el); if (inp) { inp.focus(); try { inp.setSelectionRange(caret, caret); } catch (e) { /* campo senza selezione */ } } }
+  syncSegs(el, prev);
+  if (w.view.rec) { const t = $('.sel', el); if (t) t.scrollIntoView({ block: 'center' }); w.view.rec = null; }
+  if (w.view.scrollEnd && m2) { m2.scrollTop = m2.scrollHeight; w.view.scrollEnd = false; }
+}
+function paintChrome() {
+  $('#bar-app').textContent = ACTIVE ? APP[ACTIVE].t : 'Scrivania';
+  $$('.dock-item', dock).forEach(b => {
+    const id = b.dataset.app, w = WINS.get(id);
+    b.classList.toggle('running', !!w);
+    b.setAttribute('aria-label', b.dataset.tipt + (w ? (w.min ? ', ridotta nel dock' : ', aperta') : ''));
+  });
+  const n = WINS.size;
+  $('#open-count').innerHTML = '<span>' + (n ? n + (n === 1 ? ' app aperta' : ' app aperte') : 'Nessuna app aperta') + '</span>' + SVG.grid;
+}
+
+/* ---------- Contenuto delle app ---------- */
+function posRow(p, all, sel) {
+  const c = CL[p.cl], n = p.scad ? diffDays(p.scad) : null;
+  const val = p.area === 'protezione' ? (p.capitale ? euro(p.capitale) + '<small>assicurati</small>' : '—')
+    : p.area === 'debiti' ? '−' + euro(p.valore) + '<small>residuo</small>'
+    : p.stato === 'proposta' ? (p.versamento ? euro(p.versamento) + '<small>versamento</small>' : '—') : euro(p.valore);
+  const prem = p.premio ? euro(p.premio) + '<small>' + (p.area === 'debiti' ? 'rata ' : '') + (p.freq === 'm' ? 'al mese' : 'all’anno') + '</small>' : '—';
+  const scad = p.scad ? (n <= 90 ? '<span class="' + (n <= 30 ? 'due-now' : 'due-soon') + '">' + relDays(p.scad) + '</span>' : fDate.format(p.scad)) : '—';
+  const stato = p.stato === 'essere' ? '<span class="pill ok">In essere</span>' : '<span class="pill prop">' + esc(p.esito || 'Proposta') + '</span>';
+  return '<tr' + (p.id === sel ? ' class="sel"' : '') + '>' + (all ? '<td><span class="cell-cl">' + avatar(c, 22) + esc(c.nome) + '</span></td>' : '') +
+    '<td class="cell-pos"><b class="cell-t">' + esc(p.nome) + '</b>' + (p.tip ? '<small>' + esc(p.tip) + '</small>' : '') + '</td><td>' + AREA[p.area] + '</td><td>' + chip(p.canale, true) + '</td><td>' + stato + '</td>' +
+    '<td class="num">' + val + '</td><td class="num">' + prem + '</td><td class="nowrap">' + scad + '</td></tr>';
+}
+function miniCal(sel) {
+  const y = sel.getFullYear(), m = sel.getMonth(), first = new Date(y, m, 1), start = (first.getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+  const hasEv = new Set(EVENTS.map(e => sod(e.at).getTime()));
+  let cells = '';
+  for (let i = 0; i < start; i++) cells += '<span></span>';
+  for (let d = 1; d <= days; d++) {
+    const dt = new Date(y, m, d), k = dt.getTime();
+    cells += '<button class="mc-d' + (diffDays(dt) === 0 ? ' today' : '') + (sod(sel).getTime() === k ? ' sel' : '') + (hasEv.has(k) ? ' ev' : '') + '" data-act="view" data-key="day" data-val="' + dt.toISOString() + '" aria-label="' + fFull.format(dt) + '">' + d + '</button>';
+  }
+  return '<div class="mc"><div class="mc-h">' + fMon.format(first) + ' ' + y + '</div><div class="mc-w">' + ['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(x => '<span>' + x + '</span>').join('') + '</div><div class="mc-g">' + cells + '</div></div>';
+}
+function agCard(e, sel) {
+  const c = CL[e.cl], end = new Date(+e.at + e.dur * 6e4);
+  return '<article class="ag-card' + (e.at < NOW ? ' past' : '') + (sel ? ' sel' : '') + '" style="--c:' + TINT[c.tinta][1] + '"><div class="ag-time"><b>' + fTime.format(e.at) + '</b><span>' + fTime.format(end) + '</span></div>' +
+    '<div class="ag-body"><b>' + esc(e.titolo) + '</b><span class="ag-who">' + avatar(c, 20) + esc(c.nome) + ' · ' + esc(e.luogo) + ' · ' + TIPO[e.tipo] + '</span>' + (e.note ? '<p>' + esc(e.note) + '</p>' : '') + '</div>' +
+    (e.stato === 'concluso' ? '<span class="pill mute">Concluso</span>' : e.canale ? chip(e.canale, true) : '') + '</article>';
+}
+function eveIntro(c) {
+  const r = riepilogo(POS.filter(p => p.cl === c.id)), nx = nextEventOf(c.id), first = c.nome.split(' ')[0];
+  const items = [];
+  TASKS.filter(t => t.cl === c.id && !isDone(t)).forEach(t => items.push(esc(t.titolo) + ' <em>(' + dayLabel(t.due).toLowerCase() + ')</em>'));
+  POS.filter(p => p.cl === c.id && p.stato === 'proposta').forEach(p => items.push('La proposta «' + esc(p.nome) + '»: ' + (p.versamento ? euro(p.versamento) + ' di versamento' : euro(p.premio) + (p.freq === 'm' ? ' al mese' : ' all’anno')) + ', ' + (p.esito ? p.esito.toLowerCase() : 'da presentare') + '.'));
+  r.inScad.forEach(p => items.push('«' + esc(p.nome) + '» ' + relDays(p.scad) + (p.nota ? ': ' + esc(p.nota) : '.')));
+  return [
+    { who: 'eve', html: '<p>' + greeting() + ', ' + esc(S.name) + '. Ho davanti il quadro di <b>' + esc(c.nome) + '</b>: patrimonio netto di ' + euro(r.netto) + (r.capitale ? ', capitale assicurato di ' + euro(r.capitale) : '') + '. ' +
+      (nx ? 'Il prossimo incontro è ' + dayPhrase(nx.at) + ' alle ' + fTime.format(nx.at) + '.' : 'Non ci sono incontri in programma.') + '</p>' },
+    { who: 'me', text: 'Cosa devo preparare per ' + first + '?' },
+    { who: 'eve', html: items.length ? '<p>Ecco cosa resta aperto:</p><ul>' + items.map(i => '<li>' + i + '</li>').join('') + '</ul><p class="src">Cifre calcolate da Prisma sulle posizioni in archivio.</p>'
+      : '<p>Per ' + esc(first) + ' non c’è nulla di aperto. Posso preparare un riepilogo delle posizioni in essere.</p>' }
+  ];
+}
+const msgHTML = m => m.who === 'eve' ? '<div class="msg eve">' + orb(26) + '<div class="bub">' + m.html + '</div></div>' : '<div class="msg mine"><div class="bub">' + esc(m.text) + '</div></div>';
+function eveSend(text) {
+  text = String(text || '').trim(); const w = WINS.get('eve'); if (!text || !w) return;
+  const c = CL[w.view.client] || CL[S.focus];
+  w.view.msgs.push({ who: 'me', text: text });
+  w.view.msgs.push({ who: 'eve', html: '<p>In questo template non sono collegata al motore locale. Nell’app risponderò da qui con Qwen sul Mac: i dati di ' + esc(c.nome.split(' ')[0]) + ' non escono mai dal computer.</p>' });
+  w.view.scrollEnd = true; renderWin('eve');
+  const inp = $('.composer input', w.el); if (inp) inp.focus();
+}
+function resultsHTML(q) {
+  const k = norm(q.trim()), groups = [];
+  const add = (g, item) => { let x = groups.find(y => y.g === g); if (!x) groups.push(x = { g: g, items: [] }); x.items.push(item); };
+  if (k) {
+    CLIENTS.forEach(c => { if (norm([c.nome, c.tema, c.prof, c.indirizzo].join(' ')).includes(k)) add('Clienti', { t: c.nome, s: c.tema, lead: avatar(c, 28), a: 'clienti', c: c.id }); });
+    POS.forEach(p => { if (norm([p.nome, p.tip, CL[p.cl].nome, AREA[p.area]].join(' ')).includes(k)) add('Posizioni', { t: p.nome, s: CL[p.cl].nome + ' · ' + AREA[p.area] + ' · ' + (p.canale === 'alleanza' ? 'Alleanza' : 'Indipendente'), lead: icon('posizioni', 28), a: 'posizioni', c: p.cl, r: p.id }); });
+    EVENTS.forEach(e => { if (norm([e.titolo, CL[e.cl].nome, e.luogo].join(' ')).includes(k)) add('Agenda', { t: e.titolo, s: CL[e.cl].nome + ' · ' + dayLabel(e.at) + ', ' + fTime.format(e.at), lead: icon('agenda', 28), a: 'agenda', r: e.id }); });
+    TASKS.forEach(t => { if (norm([t.titolo, CL[t.cl].nome].join(' ')).includes(k)) add('Attività', { t: t.titolo, s: CL[t.cl].nome + ' · ' + dayLabel(t.due), lead: icon('attivita', 28), a: 'attivita', r: t.id }); });
+    DOCS.forEach(d => { if (norm([d.t, CL[d.cl].nome].join(' ')).includes(k)) add('Documenti', { t: d.t, s: CL[d.cl].nome, lead: icon('documenti', 28), a: 'documenti' }); });
+    NOTES.forEach(n => { if (norm([n.t, n.body, CL[n.cl].nome].join(' ')).includes(k)) add('Note', { t: n.t, s: CL[n.cl].nome, lead: icon('note', 28), a: 'note', n: n.id }); });
+  } else {
+    CLIENTS.forEach(c => add('Clienti', { t: c.nome, s: c.tema, lead: avatar(c, 28), a: 'clienti', c: c.id }));
+  }
+  APPS.forEach(a => { if (!k || norm(a.t + ' ' + a.sub).includes(k)) add('App', { t: a.t, s: a.sub, lead: icon(a.id, 28), a: a.id }); });
+  if (!groups.length) return '<p class="sr-none">Nessun risultato per «' + esc(q) + '». Prova con un nome, una polizza o un’app.</p>';
+  return groups.map(g => '<div class="sr-g">' + g.g + '</div>' + g.items.map(x => '<button class="sr-i" role="option" data-act="open" data-app="' + x.a + '"' + (x.c ? ' data-client="' + x.c + '"' : '') + (x.r ? ' data-rec="' + x.r + '"' : '') + (x.n ? ' data-note="' + x.n + '"' : '') + '>' +
+    x.lead + '<span class="si-t"><b>' + esc(x.t) + '</b><small>' + esc(x.s) + '</small></span></button>').join('')).join('');
+}
+
+const RENDER = {
+  clienti(w) {
+    const q = norm(w.view.q), list = CLIENTS.filter(x => !q || norm(x.nome + ' ' + x.tema + ' ' + x.prof).includes(q));
+    const c = CL[w.view.client] || CLIENTS[0], r = riepilogo(POS.filter(p => p.cl === c.id)), nx = nextEventOf(c.id);
+    const tasks = TASKS.filter(t => t.cl === c.id && !isDone(t));
+    return {
+      side: '<label class="field">' + SVG.search + '<input data-input="q" placeholder="Cerca clienti" value="' + esc(w.view.q) + '" aria-label="Cerca clienti"></label>' +
+        '<div class="side-sec">' + CLIENTS.length + ' clienti</div>' +
+        (list.map(x => '<button class="side-item" data-act="view" data-key="client" data-val="' + x.id + '" aria-current="' + (x.id === c.id) + '">' + avatar(x, 30) + '<span class="si-t"><b>' + esc(x.nome) + '</b><small>' + esc(x.tema) + '</small></span></button>').join('') || '<p class="side-empty">Nessun cliente trovato.</p>'),
+      tools: '<button class="btn sm" data-act="focus" data-client="' + c.id + '"' + (c.id === S.focus ? ' disabled' : '') + '>' + (c.id === S.focus ? 'In primo piano' : 'Metti in primo piano') + '</button>' +
+        '<button class="btn sm" data-act="open" data-app="posizioni" data-client="' + c.id + '">Posizioni</button><button class="btn sm eve-btn" data-act="open" data-app="eve" data-client="' + c.id + '">' + orb(16) + 'Chiedi a Eve</button>',
+      body: '<header class="dos-head">' + avatar(c, 64) + '<div><h1>' + esc(c.nome) + '</h1><p>' + esc(c.tema) + '</p><div class="chips">' + c.canali.map(x => chip(x)).join('') + '</div></div></header>' +
+        '<div class="tiles">' + tile('Patrimonio netto', euro(r.netto)) + tile('Capitale assicurato', r.capitale ? euro(r.capitale) : '—') + tile('Premi annui', r.premi ? euro(r.premi) : '—') + tile('Proposte aperte', r.nProp ? r.nProp + ' · ' + euro(r.valProp) : 'Nessuna') + '</div>' +
+        '<div class="cols"><section class="card"><h3>Anagrafica</h3><dl class="kv"><dt>Professione</dt><dd>' + esc(c.prof) + '</dd><dt>Nascita</dt><dd>' + esc(c.nascita) + '</dd><dt>Stato civile</dt><dd>' + esc(c.civile) + '</dd><dt>Indirizzo</dt><dd>' + esc(c.indirizzo) + '</dd><dt>Telefono</dt><dd>' + esc(c.tel) + '</dd><dt>Email</dt><dd>' + esc(c.email) + '</dd></dl></section>' +
+        '<section class="card"><h3>Profilo</h3><dl class="kv"><dt>Propensione</dt><dd>' + c.propensione + '</dd><dt>Orizzonte</dt><dd>' + c.orizzonte + '</dd><dt>Esperienza</dt><dd>' + c.esperienza + '</dd></dl><p class="card-p">' + esc(c.obiettivi) + '</p></section>' +
+        '<section class="card"><h3>Famiglia</h3>' + (c.famiglia.length ? '<ul class="fam">' + c.famiglia.map(f => '<li><b>' + esc(f.nome) + '</b><span>' + f.rel + ', ' + f.anno + (f.carico ? ', a carico' : '') + '</span></li>').join('') + '</ul>' : '<p class="card-p">Nessun familiare registrato.</p>') + '</section>' +
+        '<section class="card"><h3>Prossimi passi</h3>' + (nx ? '<button class="row" data-act="open" data-app="agenda" data-rec="' + nx.id + '">' + dateTile(nx.at) + '<span class="meta"><b>' + esc(nx.titolo) + '</b><span>' + dayLabel(nx.at) + ', ' + fTime.format(nx.at) + ' · ' + esc(nx.luogo) + '</span></span></button>' : '<p class="card-p">Nessun incontro in programma.</p>') +
+        tasks.map(t => '<div class="mini-task">' + SVG.dot + '<span>' + esc(t.titolo) + '</span><em>' + dayLabel(t.due) + '</em></div>').join('') + '</section></div>' +
+        '<section class="card note-card"><h3>Nota</h3><p>' + esc(c.nota) + '</p></section>'
+    };
+  },
+  posizioni(w) {
+    const v = w.view, all = v.scope === 'all', c = CL[v.client] || CL[S.focus];
+    const base = POS.filter(p => all || p.cl === c.id), r = riepilogo(base);
+    let list = base.filter(p => (v.canale === 'tutti' || p.canale === v.canale) && (v.stato === 'tutte' || p.stato === v.stato));
+    list.sort((a, b) => (all ? CLIENTS.indexOf(CL[a.cl]) - CLIENTS.indexOf(CL[b.cl]) : 0) || (a.stato === b.stato ? 0 : a.stato === 'essere' ? -1 : 1) || AREA_ORD.indexOf(a.area) - AREA_ORD.indexOf(b.area));
+    const chItem = (k, l, sw) => '<button class="side-item compact" data-act="view" data-key="canale" data-val="' + k + '" aria-current="' + (v.canale === k) + '">' + sw + '<span class="si-t"><b>' + l + '</b></span></button>';
+    return {
+      side: '<div class="side-sec">Vista</div>' +
+        '<button class="side-item" data-act="view" data-key="scope" data-val="client" aria-current="' + !all + '">' + avatar(c, 26) + '<span class="si-t"><b>' + esc(c.nome) + '</b><small>Cliente in analisi</small></span></button>' +
+        '<button class="side-item" data-act="view" data-key="scope" data-val="all" aria-current="' + all + '">' + icon('posizioni', 26) + '<span class="si-t"><b>Tutti i clienti</b><small>Portafoglio complessivo</small></span></button>' +
+        '<div class="side-sec">Clienti</div>' + CLIENTS.map(x => '<button class="side-item compact" data-act="view" data-key="client" data-val="' + x.id + '" data-also="scope:client" aria-current="' + (!all && x.id === c.id) + '">' + avatar(x, 22) + '<span class="si-t"><b>' + esc(x.nome) + '</b></span></button>').join('') +
+        '<div class="side-sec">Canale</div>' + chItem('tutti', 'Tutti i canali', '<i class="sw all"></i>') + chItem('alleanza', 'Alleanza', '<i class="sw" style="--c:var(--ch-a)"></i>') + chItem('indipendente', 'Indipendente', '<i class="sw" style="--c:var(--ch-i)"></i>'),
+      tools: segc('stato', v.stato, [['tutte', 'Tutte'], ['essere', 'In essere'], ['proposta', 'In proposta']]),
+      body: '<header class="app-h"><small>Il cuore della consulenza</small><h1>' + (all ? 'Portafoglio clienti' : 'Le posizioni di ' + esc(c.nome)) + '</h1><p>In essere e in proposta, con il canale sempre in vista.</p></header>' +
+        '<div class="tiles">' + tile('Attività in essere', euro(r.att)) + tile('Debiti', r.deb ? '−' + euro(r.deb) : '—') + tile('Patrimonio netto', euro(r.netto)) + tile('Capitale assicurato', r.capitale ? euro(r.capitale) : '—') + tile('Premi annui', r.premi ? euro(r.premi) : '—') + tile('Proposte aperte', r.nProp ? r.nProp + ' · ' + euro(r.valProp) : 'Nessuna') + '</div>' +
+        '<section class="card split-card"><h3>Attività in essere per canale</h3>' + split(r.perCanale.alleanza, r.perCanale.indipendente) + '</section>' +
+        '<section class="card tbl-card"><table class="tbl"><thead><tr>' + (all ? '<th>Cliente</th>' : '') + '<th>Posizione</th><th>Area</th><th>Canale</th><th>Stato</th><th class="num">Valore</th><th class="num">Premio</th><th>Scadenza</th></tr></thead><tbody>' +
+        (list.map(p => posRow(p, all, v.rec)).join('') || '<tr><td colspan="8" class="empty-td">Nessuna posizione con questi filtri.</td></tr>') + '</tbody></table></section>'
+    };
+  },
+  agenda(w) {
+    const v = w.view, day0 = sod(new Date(v.day));
+    const groups = [];
+    EVENTS.slice().sort((a, b) => a.at - b.at).filter(e => sod(e.at) >= day0).forEach(e => { const k = sod(e.at).getTime(); let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k: k, d: new Date(k), items: [] }); g.items.push(e); });
+    const head = d => { const n = diffDays(d); return n === 0 || n === 1 ? dayLabel(d) + ' <span>' + cap(fFull.format(d)) + '</span>' : cap(fFull.format(d)); };
+    return {
+      side: miniCal(day0) + '<div class="side-sec">Clienti</div>' + CLIENTS.map(c => '<div class="side-item compact static"><i class="sw" style="--c:' + TINT[c.tinta][1] + '"></i><span class="si-t"><b>' + esc(c.nome) + '</b></span></div>').join(''),
+      tools: '<button class="btn sm" data-act="view" data-key="day" data-val="' + sod(NOW).toISOString() + '">Oggi</button><button class="btn sm primary" data-act="toast" data-msg="Nel template i nuovi appuntamenti non vengono salvati.">Nuovo appuntamento</button>',
+      body: '<header class="app-h"><small>Prisma · Agenda personale</small><h1>' + cap(fFull.format(day0)) + '</h1><p>' + (groups.length ? 'Gli appuntamenti da questo giorno in avanti.' : 'Nessun appuntamento da questo giorno in avanti.') + '</p></header>' +
+        groups.map(g => '<section class="ag-day"><h3>' + head(g.d) + '</h3>' + g.items.map(e => agCard(e, e.id === v.rec)).join('') + '</section>').join('')
+    };
+  },
+  attivita(w) {
+    const f = w.view.filter;
+    const pick = TASKS.slice().sort((a, b) => a.due - b.due).filter(t => f === 'tutte' || (f === 'aperte' ? !isDone(t) : isDone(t)));
+    const groups = [['Scadute', t => !isDone(t) && diffDays(t.due) < 0], ['Oggi', t => !isDone(t) && diffDays(t.due) === 0], ['Domani', t => !isDone(t) && diffDays(t.due) === 1], ['Prossimi giorni', t => !isDone(t) && diffDays(t.due) > 1], ['Completate', isDone]];
+    const body = groups.map(([l, fn]) => { const it = pick.filter(fn); return it.length ? '<section class="card list-card"><h3>' + l + '</h3>' + it.map(t => taskRow(t, true, t.id === w.view.rec)).join('') + '</section>' : ''; }).join('');
+    return {
+      tools: segc('filter', f, [['aperte', 'Aperte'], ['completate', 'Completate'], ['tutte', 'Tutte']]),
+      body: '<header class="app-h"><small>Prisma · Promemoria</small><h1>Attività</h1><p>Un passo alla volta.</p></header>' +
+        (body || '<section class="soon small"><h2>Niente qui</h2><p>' + (f === 'completate' ? 'Le attività completate compariranno qui.' : 'Tutto fatto. La lista è libera.') + '</p></section>')
+    };
+  },
+  eve(w) {
+    const c = CL[w.view.client] || CL[S.focus];
+    if (!w.view.msgs) { w.view.msgs = eveIntro(c); w.view.scrollEnd = true; }
+    const today = EVENTS.filter(e => diffDays(e.at) === 0);
+    return {
+      side: '<div class="eve-ctx">' + orb(48) + '<b>Eve</b><span>Assistente personale</span></div><div class="side-sec">Contesto</div>' +
+        CLIENTS.map(x => '<button class="side-item compact" data-act="view" data-key="client" data-val="' + x.id + '" aria-current="' + (x.id === c.id) + '">' + avatar(x, 22) + '<span class="si-t"><b>' + esc(x.nome) + '</b></span></button>').join('') +
+        '<div class="side-sec">Oggi</div>' + (today.map(e => '<div class="side-item compact static"><i class="sw" style="--c:' + TINT[CL[e.cl].tinta][1] + '"></i><span class="si-t"><b>' + fTime.format(e.at) + ' · ' + esc(CL[e.cl].nome) + '</b><small>' + esc(e.titolo) + '</small></span></div>').join('') || '<p class="side-empty">Nessun incontro oggi.</p>') +
+        '<div class="side-sec">Motore</div><div class="engine"><i></i><span><b>Qwen sul Mac</b><small>Non collegato in questo template</small></span></div>',
+      tools: '<button class="btn sm" data-act="eve-new">Nuova conversazione</button>',
+      padCls: 'eve-pad',
+      body: '<div class="chat">' + w.view.msgs.map(msgHTML).join('') + '</div>' +
+        '<div class="chips-row">' + ['Riepiloga le scadenze dei prossimi 90 giorni', 'Prepara il punto per il prossimo incontro', 'Spiega il KID del fondo pensione'].map(s => '<button class="sugg" data-act="eve-ask" data-q="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div>' +
+        '<form class="composer" data-form="eve"><input placeholder="Chiedi a Eve di ' + esc(c.nome.split(' ')[0]) + '…" aria-label="Messaggio per Eve" autocomplete="off"><button type="button" class="ico-btn" data-act="toast" data-msg="La voce di Eve arriva con il suo modulo." aria-label="Detta">' + SVG.mic + '</button><button type="submit" class="ico-btn send" aria-label="Invia">' + SVG.send + '</button></form>'
+    };
+  },
+  impostazioni(w) {
+    const page = w.view.page;
+    const PAGES = [['aspetto', 'Aspetto', 'impostazioni'], ['dock', 'Dock e icone', 'home'], ['archivio', 'Archivio e backup', 'documenti'], ['eve', 'Eve', 'eve'], ['profilo', 'Profilo', 'clienti']];
+    const row = (l, s, right) => '<div class="g-row"><span class="lbl"><b>' + l + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</span>' + right + '</div>';
+    let body = '';
+    if (page === 'aspetto') body = '<h1 class="set-h">Aspetto</h1><div class="group">' +
+      row('Aspetto', 'Automatico segue l’aspetto del Mac', segc('scheme', S.scheme, [['auto', 'Automatico'], ['light', 'Chiaro'], ['dark', 'Scuro']], 'set')) +
+      row('Vetro', 'Trasparente lascia vedere lo sfondo; Colorato rende i testi più leggibili', segc('glass', S.glass, [['clear', 'Trasparente'], ['tinted', 'Colorato']], 'set')) +
+      row('Rifrazione dei bordi', Refract.ok ? 'Il vetro piega la luce lungo i bordi' : 'Funziona nei browser Chromium; in Safari il vetro resta sfocato', Refract.ok ? toggle('refract', 'Rifrazione dei bordi') : '<span class="pill mute">Non disponibile</span>') +
+      '</div><p class="g-title">Sfondo</p><div class="group pad-in">' + wallPicker() + '</div>';
+    if (page === 'dock') body = '<h1 class="set-h">Dock e icone</h1><div class="group">' +
+      row('Stile delle icone', 'A colori, scure o in vetro trasparente', segc('icons', S.icons, [['color', 'Colori'], ['dark', 'Scure'], ['clear', 'Trasparenti']], 'set')) +
+      '<div class="icon-prev">' + ['clienti', 'posizioni', 'agenda', 'note', 'eve', 'impostazioni'].map(i => icon(i, 44)).join('') + '</div>' +
+      row('Nomi sotto le icone', 'Come nella versione classica di Prisma', toggle('labels', 'Nomi sotto le icone')) +
+      row('Ingrandimento', 'Le icone crescono al passaggio del puntatore', toggle('magnify', 'Ingrandimento del dock')) +
+      '</div><p class="g-title">Scorciatoie</p><div class="group">' + row('Cerca ovunque', '', '<kbd>⌘ K</kbd>') + row('Torna alla scrivania', '', '<kbd>⌥ 0</kbd>') + row('Apri un’app del dock', '', '<kbd>⌥ 1 … 9</kbd>') + row('Chiudi un pannello', '', '<kbd>esc</kbd>') + '</div>';
+    if (page === 'archivio') body = '<h1 class="set-h">Archivio e backup</h1><div class="group">' +
+      row('Crea un backup ora', 'Clienti, agenda, posizioni, documenti e impostazioni di Eve', '<button class="btn sm primary" data-act="backup">Crea backup</button>') +
+      row('Backup automatico settimanale', 'Ultimo: ' + when(LAST_BACKUP), toggle('weekly', 'Backup automatico settimanale')) +
+      row('Copie conservate', '', '<span class="g-val">Le ultime 8</span>') + row('Cartella di destinazione', '', '<span class="g-val">iCloud Drive › Prisma Backup</span>') +
+      row('Ripristina da un backup', 'Sostituisce l’archivio di questo Mac', '<button class="btn sm" data-act="toast" data-msg="Nel template il ripristino non è attivo.">Scegli il file…</button>') +
+      '</div><p class="g-note">L’archivio resta sul Mac, in Libreria › Application Support › Prisma.</p>';
+    if (page === 'eve') body = '<h1 class="set-h">Eve</h1><div class="group">' +
+      row('Motore', 'Qwen tramite Ollama, sul Mac', '<span class="g-val">qwen3:4b</span>') + row('Indirizzo', '', '<span class="g-val">127.0.0.1:11434</span>') +
+      row('Stato', 'In questo template Eve non è collegata', '<span class="pill mute">Non collegata</span>') +
+      '</div><p class="g-note">Eve spiega e racconta; le cifre le calcola Prisma. I documenti dei clienti non lasciano mai il Mac.</p>';
+    if (page === 'profilo') body = '<h1 class="set-h">Profilo</h1><div class="group">' +
+      '<div class="g-row"><span class="me big">DV</span><span class="lbl"><b>Denis Vicenzoni</b><small>Consulente finanziario</small></span></div>' +
+      row('Come ti saluta la scrivania', '', '<label class="field sm"><input data-setting-input="name" value="' + esc(S.name) + '" aria-label="Nome nel saluto"></label>') +
+      '</div><p class="g-title">Canali</p><div class="group">' +
+      '<div class="g-row">' + chip('alleanza') + '<span class="lbl"><b>Alleanza Assicurazioni</b><small>Solo prodotti Alleanza</small></span></div>' +
+      '<div class="g-row">' + chip('indipendente') + '<span class="lbl"><b>Denis Vicenzoni · Consulenza finanziaria</b><small>Consulenza indipendente a 360°</small></span></div></div>';
+    return {
+      side: PAGES.map(([k, l, ic]) => '<button class="side-item" data-act="view" data-key="page" data-val="' + k + '" aria-current="' + (page === k) + '">' + icon(ic, 24) + '<span class="si-t"><b>' + l + '</b></span></button>').join(''),
+      body: body
+    };
+  },
+  documenti() {
+    return {
+      tools: '<button class="btn sm primary" data-act="toast" data-msg="Nell’app i documenti si importano dal Mac e li legge Eve.">Importa documento</button>',
+      body: '<header class="app-h"><small>Archivio Prisma</small><h1>Documenti</h1><p>KID, polizze ed estratti conto letti sul Mac, con i dati da confermare.</p></header>' +
+        '<section class="card">' + DOCS.map(d => '<div class="doc-row"><span class="doc-ic">' + esc(d.k) + '</span><span class="meta"><b>' + esc(d.t) + '</b><span>' + esc(CL[d.cl].nome) + ' · importato ' + esc(when(d.at)) + '</span></span><span class="pill ' + (d.ok ? 'ok' : 'prop') + '">' + esc(d.st) + '</span></div>').join('') + '</section>'
+    };
+  },
+  note(w) {
+    const n = NOTES.find(x => x.id === w.view.note) || NOTES[0], c = CL[n.cl];
+    return {
+      side: '<div class="side-sec">' + NOTES.length + ' note</div>' + NOTES.map(x => '<button class="side-item" data-act="view" data-key="note" data-val="' + x.id + '" aria-current="' + (x.id === n.id) + '"><span class="si-t"><b>' + esc(x.t) + '</b><small>' + cap(when(x.at)) + ' · ' + esc(CL[x.cl].nome) + '</small></span></button>').join(''),
+      tools: '<button class="btn sm" data-act="toast" data-msg="Nel template le note non vengono salvate.">Nuova nota</button>',
+      body: '<article class="note-v"><h1>' + esc(n.t) + '</h1><div class="meta-l">' + avatar(c, 20) + esc(c.nome) + ' · ' + cap(when(n.at)) + '</div><p>' + esc(n.body) + '</p></article>'
+    };
+  },
+  ricerca(w) {
+    return {
+      body: '<header class="app-h"><small>Ritrova il filo</small><h1>Ricerca</h1><p>Clienti, posizioni, documenti, agenda e attività in un’unica ricerca.</p></header>' +
+        '<label class="field big">' + SVG.search + '<input data-input="q" value="' + esc(w.view.q) + '" placeholder="Cerca qualcosa che conta…" aria-label="Ricerca globale"></label><div class="rc-res">' + resultsHTML(w.view.q || '') + '</div>'
+    };
+  },
+  generic(w) {
+    const a = APP[w.id];
+    return {
+      body: '<header class="app-h"><small>' + esc(a.occ) + '</small><h1>' + esc(a.t) + '</h1><p>' + esc(a.sub) + '</p></header>' +
+        '<section class="soon">' + icon(w.id, 72) + '<h2>' + esc(a.t) + ' è in preparazione</h2><p>' + esc(a.soon || '') + '</p><div class="soon-a">' +
+        '<button class="btn primary" data-act="open" data-app="posizioni">Apri Posizioni</button><button class="btn" data-act="desk">Torna alla scrivania</button></div></section>'
+    };
+  }
+};
+
+/* ---------- Pannelli ---------- */
+const OVS = ['spot', 'nc', 'cc', 'pop', 'switcher'];
+const anyOv = () => OVS.some(id => !$('#' + id).hidden);
+function closeOverlays(except) { OVS.forEach(id => { if (id !== except) $('#' + id).hidden = true; }); if (except !== 'spot' && except !== 'switcher') $('#scrim').hidden = true; }
+function showOv(id) { const el = $('#' + id); el.hidden = false; if (!calm()) el.animate([{ opacity: 0, transform: 'translateY(-6px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' }); }
+let spotSel = 0, spotItems = [];
+function openSpot() { closeOverlays('spot'); $('#scrim').hidden = false; if ($('#spot').hidden) showOv('spot'); const inp = $('#spot-q'); inp.value = ''; spotRender(''); setTimeout(() => inp.focus(), 10); }
+function spotRender(q) { const box = $('#spot-res'); box.innerHTML = resultsHTML(q); spotItems = $$('.sr-i', box); spotSel = 0; markSel(); }
+function markSel() { spotItems.forEach((b, i) => { b.classList.toggle('sel', i === spotSel); b.setAttribute('aria-selected', i === spotSel); }); const s = spotItems[spotSel]; if (s) s.scrollIntoView({ block: 'nearest' }); }
+function paintBadge() { const n = NOTIF.filter(x => x.unread).length; $('#nc-badge').textContent = n || ''; }
+function toggleNC() {
+  const el = $('#nc'); if (!el.hidden) return closeOverlays();
+  closeOverlays('nc');
+  const unread = NOTIF.filter(x => x.unread).length;
+  el.innerHTML = '<div class="nc-h"><h2>Notifiche</h2><span>' + (unread ? unread + (unread === 1 ? ' nuova' : ' nuove') : 'Tutte lette') + '</span></div>' +
+    NOTIF.map(n => '<button class="nt' + (n.unread ? ' unread' : '') + '" data-act="open" data-app="' + n.app + '"' + (n.cl ? ' data-client="' + n.cl + '"' : '') + (n.rec ? ' data-rec="' + n.rec + '"' : '') + (n.page ? ' data-page="' + n.page + '"' : '') + '>' + icon(n.app, 30) +
+      '<span class="nt-t"><b>' + esc(n.t) + '</b><span>' + esc(n.s) + (n.cl ? ' · ' + esc(CL[n.cl].nome) : '') + '</span><small>' + cap(when(n.at)) + '</small></span></button>').join('');
+  showOv('nc');
+  NOTIF.forEach(n => { n.unread = false; }); paintBadge();
+}
+function ccHTML() {
+  return '<div class="cc-tile wide"><h3>Aspetto</h3>' + segc('scheme', S.scheme, [['auto', 'Automatico'], ['light', 'Chiaro'], ['dark', 'Scuro']], 'set') + '</div>' +
+    '<div class="cc-tile wide"><h3>Vetro</h3>' + segc('glass', S.glass, [['clear', 'Trasparente'], ['tinted', 'Colorato']], 'set') + '</div>' +
+    '<div class="cc-tile wide"><h3>Sfondo</h3>' + wallPicker() + '</div>' +
+    '<div class="cc-tile wide"><h3>Icone</h3>' + segc('icons', S.icons, [['color', 'Colori'], ['dark', 'Scure'], ['clear', 'Trasparenti']], 'set') + '</div>' +
+    '<button class="cc-tile cc-round" data-act="toggle" data-key="labels" aria-pressed="' + !!S.labels + '"><i>' + SVG.label + '</i><span><b>Nomi nel dock</b><small>' + (S.labels ? 'Visibili' : 'Nascosti') + '</small></span></button>' +
+    '<button class="cc-tile cc-round" data-act="toggle" data-key="refract" aria-pressed="' + !!(S.refract && Refract.ok) + '"' + (Refract.ok ? '' : ' disabled') + '><i>' + SVG.lens + '</i><span><b>Rifrazione</b><small>' + (Refract.ok ? (S.refract ? 'Attiva' : 'Spenta') : 'Solo in Chrome') + '</small></span></button>' +
+    '<button class="cc-tile cc-round" data-act="full"><i>' + SVG.expand + '</i><span><b>Schermo intero</b><small>Tutto lo spazio</small></span></button>' +
+    '<button class="cc-tile cc-round" data-act="lock"><i>' + SVG.lock + '</i><span><b>Blocca</b><small>Benvenuto</small></span></button>';
+}
+function toggleCC() { const el = $('#cc'); if (!el.hidden) return closeOverlays(); closeOverlays('cc'); el.innerHTML = ccHTML(); showOv('cc'); syncSegs(el); }
+function placePop(pop, anchor) {
+  const r = anchor.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let x = r.left, y = r.bottom + 8;
+  if (x + pw > innerWidth - 10) x = innerWidth - 10 - pw; if (x < 10) x = 10;
+  if (y + ph > innerHeight - 10) y = Math.max(10, r.top - 8 - ph);
+  pop.style.left = x + 'px'; pop.style.top = y + 'px';
+}
+function togglePop(kind, anchor) {
+  const el = $('#pop');
+  if (!el.hidden && el.dataset.kind === kind) return closeOverlays();
+  closeOverlays('pop'); el.dataset.kind = kind;
+  if (kind === 'pick') {
+    el.setAttribute('aria-label', 'Scegli il cliente in primo piano');
+    el.innerHTML = '<h3>Cliente in primo piano</h3>' + CLIENTS.map(c => '<button class="pop-i" role="radio" aria-checked="' + (c.id === S.focus) + '" data-act="focus" data-client="' + c.id + '">' + avatar(c, 30) + '<span class="si-t"><b>' + esc(c.nome) + '</b><small>' + esc(c.tema) + '</small></span></button>').join('');
+  } else {
+    el.setAttribute('aria-label', 'Spazi di lavoro');
+    el.innerHTML = '<h3>Spazi di lavoro</h3>' + WS.map(ws => '<button class="pop-i" data-act="ws" data-ws="' + ws.id + '"><span class="ws-ics">' + ws.apps.map(a => icon(a, 24)).join('') + '</span><span class="si-t"><b>' + ws.t + '</b><small>' + ws.s + '</small></span></button>').join('') +
+      '<div class="pop-sep"></div><button class="pop-i" data-act="desk">' + SVG.grid + '<span class="si-t"><b>Mostra la scrivania</b><small>Riduce tutte le finestre nel dock</small></span></button>';
+  }
+  el.hidden = false; placePop(el, anchor); showOv('pop');
+  const first = $('[aria-checked="true"], button', el); if (first) first.focus({ preventScroll: true });
+}
+function openSwitcher() {
+  const el = $('#switcher'); if (!el.hidden) return closeOverlays();
+  closeOverlays('switcher'); $('#scrim').hidden = false;
+  const list = [...WINS.values()].sort((a, b) => (+b.el.style.zIndex || 0) - (+a.el.style.zIndex || 0));
+  el.innerHTML = '<h2 class="sw-h">' + (list.length ? 'App aperte' : 'Nessuna app aperta') + '</h2>' +
+    (list.length ? '<div class="sw-grid">' + list.map(w => '<button class="sw-card" data-act="open" data-app="' + w.id + '">' + icon(w.id, 52) + '<b>' + esc(APP[w.id].t) + '</b><small>' + (w.min ? 'Ridotta nel dock' : w.id === ACTIVE ? 'In primo piano' : 'Aperta') + '</small></button>').join('') + '</div>'
+      : '<p class="sw-empty">Apri un’app dal dock o dai widget per iniziare.</p>') +
+    '<div class="sw-foot"><button class="btn" data-act="desk">Mostra la scrivania</button>' + (list.length ? '<button class="btn" data-act="close-all">Chiudi tutte</button>' : '') + '</div>';
+  showOv('switcher');
+}
+let toastT = 0;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2600); }
+async function toggleFull() {
+  try { if (doc.fullscreenElement) await doc.exitFullscreen(); else await root.requestFullscreen(); }
+  catch (e) { toast('Lo schermo intero non è disponibile qui.'); }
+}
+
+/* ---------- Schermata di benvenuto ---------- */
+function paintLock() { const d = new Date(); $('#lk-time').textContent = fTime.format(d); $('#lk-date').textContent = cap(fFull.format(d)); }
+function lock() { closeOverlays(); hideTip(); root.classList.add('locked'); paintLock(); setTimeout(() => $('#lk-knob').focus(), 40); }
+function unlock() {
+  if (!root.classList.contains('locked')) return;
+  root.classList.remove('locked');
+  if (!calm()) $$('.widget').forEach((w, i) => w.animate([{ opacity: 0, transform: 'translateY(10px) scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: i * 40, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' }));
+}
+
+/* ---------- Impostazioni ---------- */
+function applySettings() {
+  const dark = S.scheme === 'dark' || (S.scheme === 'auto' && mqDark.matches);
+  root.dataset.scheme = dark ? 'dark' : 'light';
+  root.dataset.glass = S.glass; root.dataset.wall = S.wall; root.dataset.icons = S.icons; root.dataset.labels = S.labels ? '1' : '0';
+  if (S.wall === 'gocce') buildDrops();
+  if (Refract.ready) Refract.sync();
+}
+function syncControls(k) {
+  $$('[data-act="set"][data-key="' + k + '"]').forEach(b => { const on = b.dataset.val === String(S[k]); b.setAttribute(b.getAttribute('role') === 'radio' ? 'aria-checked' : 'aria-pressed', on); });
+  $$('[data-act="toggle"][data-key="' + k + '"]').forEach(b => b.setAttribute(b.getAttribute('role') === 'switch' ? 'aria-checked' : 'aria-pressed', !!S[k]));
+  syncSegs(doc);
+}
+function setSetting(k, v) { S[k] = v; saveS(); applySettings(); syncControls(k); fitDock(); }
+function toggleSetting(k) {
+  if (k === 'refract' && !Refract.ok) return;
+  S[k] = !S[k]; saveS(); applySettings(); syncControls(k); fitDock();
+  if (!$('#cc').hidden) { $('#cc').innerHTML = ccHTML(); syncSegs($('#cc')); }
+}
+mqDark.addEventListener('change', () => { if (S.scheme === 'auto') applySettings(); });
+function buildDrops() {
+  const svg = $('#wp-drops'); if (svg.dataset.done) return; svg.dataset.done = '1';
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  let out = '<defs><radialGradient id="dropG" cx=".36" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".38" stop-color="#fff" stop-opacity=".1"/><stop offset=".8" stop-color="#002040" stop-opacity=".1"/><stop offset="1" stop-color="#001830" stop-opacity=".4"/></radialGradient>' +
+    '<filter id="dropS" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.8"/></filter></defs>';
+  for (let i = 0; i < 95; i++) {
+    const r = 3 + Math.pow(rnd(), 2.3) * 28, x = rnd() * 1600, y = rnd() * 1000, f = v => v.toFixed(1);
+    out += '<g transform="translate(' + f(x) + ' ' + f(y) + ')"><ellipse cx="' + f(r * .14) + '" cy="' + f(r * .22) + '" rx="' + f(r) + '" ry="' + f(r * .95) + '" fill="#00122a" opacity=".22" filter="url(#dropS)"/>' +
+      '<circle r="' + f(r) + '" fill="url(#dropG)" stroke="#fff" stroke-opacity=".3" stroke-width=".6"/><ellipse cx="' + f(-r * .34) + '" cy="' + f(-r * .4) + '" rx="' + f(r * .24) + '" ry="' + f(r * .13) + '" fill="#fff" opacity=".78" transform="rotate(-32 ' + f(-r * .34) + ' ' + f(-r * .4) + ')"/></g>';
+  }
+  svg.innerHTML = out;
+}
+
+/* ---------- Rifrazione dei bordi (solo Chromium: backdrop-filter con filtro SVG) ---------- */
+const Refract = {
+  ok: false, ready: false, items: new Map(), n: 0, timer: {},
+  init() {
+    const ua = navigator.userAgent;
+    this.ok = /(Chrome|Chromium|Edg)\//.test(ua) && !/(Firefox|FxiOS|CriOS)\//.test(ua) && CSS.supports('backdrop-filter', 'url(#a)');
+    this.defs = $('#rf-defs'); this.ready = true;
+    if (!this.ok || !window.ResizeObserver) { this.ok = false; return; }
+    this.ro = new ResizeObserver(en => en.forEach(e => this.later(e.target)));
+  },
+  watch(el, opt) { if (!this.ok || this.items.has(el)) return; this.items.set(el, { id: 'rf' + (++this.n), opt: opt, w: 0, h: 0 }); this.ro.observe(el); },
+  later(el) { clearTimeout(this.timer[this.items.get(el).id]); this.timer[this.items.get(el).id] = setTimeout(() => this.update(el, true), 90); },
+  map(w, h, r, band) {
+    const c = doc.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const px = x + .5 - w / 2, py = y + .5 - h / 2, qx = Math.abs(px) - (w / 2 - r), qy = Math.abs(py) - (h / 2 - r);
+      const dist = r - Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - Math.min(Math.max(qx, qy), 0);
+      let nx = 0, ny = 0;
+      if (dist >= 0 && dist < band) {
+        if (qx > 0 && qy > 0) { const l = Math.hypot(qx, qy) || 1; nx = Math.sign(px) * qx / l; ny = Math.sign(py) * qy / l; }
+        else if (qx > qy) nx = Math.sign(px); else ny = Math.sign(py);
+        const m = Math.pow(1 - dist / band, 2); nx *= m; ny *= m;
+      }
+      const i = (y * w + x) * 4; d[i] = 128 - nx * 127; d[i + 1] = 128 - ny * 127; d[i + 2] = 128; d[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0); return c.toDataURL();
+  },
+  update(el, force) {
+    const it = this.items.get(el); if (!it) return;
+    if (!S.refract) { el.style.removeProperty('--g-filter'); it.w = 0; return; }
+    const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight); if (!w || !h) return;
+    if (!force && w === it.w && h === it.h) return;
+    it.w = w; it.h = h;
+    const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 20, h / 2, w / 2);
+    let f = this.defs.querySelector('#' + it.id);
+    if (!f) { f = doc.createElementNS('http://www.w3.org/2000/svg', 'filter'); f.id = it.id; this.defs.appendChild(f); }
+    f.setAttribute('x', '0'); f.setAttribute('y', '0'); f.setAttribute('width', w); f.setAttribute('height', h);
+    f.setAttribute('filterUnits', 'userSpaceOnUse'); f.setAttribute('color-interpolation-filters', 'sRGB');
+    f.innerHTML = '<feImage href="' + this.map(w, h, r, it.opt.band) + '" x="0" y="0" width="' + w + '" height="' + h + '" preserveAspectRatio="none" result="m"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="m" scale="' + it.opt.scale + '" xChannelSelector="R" yChannelSelector="G"/>';
+    el.style.setProperty('--g-filter', 'url(#' + it.id + ') ' + (it.opt.thin ? 'blur(calc(var(--g-blur) * .5))' : 'blur(var(--g-blur))') + ' saturate(var(--g-sat)) brightness(var(--g-bright))');
+  },
+  sync() { this.items.forEach((it, el) => this.update(el, true)); }
+};
+
+/* ---------- Azioni ---------- */
+const winOf = el => { const w = el.closest('.win'); return w ? WINS.get(w.dataset.win) : null; };
+let taskT = 0;
+const ACTS = {
+  open: el => openApp(el.dataset.app, { client: el.dataset.client, rec: el.dataset.rec, scope: el.dataset.scope, page: el.dataset.page, note: el.dataset.note }),
+  desk: () => showDesk(),
+  spot: () => openSpot(),
+  nc: () => toggleNC(),
+  cc: () => toggleCC(),
+  spaces: el => togglePop('spaces', el),
+  pick: el => togglePop('pick', el),
+  switcher: () => openSwitcher(),
+  'close-ov': () => closeOverlays(),
+  'close-all': () => { closeOverlays(); [...WINS.keys()].forEach(closeWin); },
+  ws: el => applyWS(el.dataset.ws),
+  full: () => toggleFull(),
+  lock: () => lock(),
+  unlock: () => unlock(),
+  toast: el => toast(el.dataset.msg),
+  backup: () => toast('Backup creato. Le ultime 8 copie restano nella cartella scelta.'),
+  set: el => setSetting(el.dataset.key, el.dataset.val),
+  toggle: el => toggleSetting(el.dataset.key),
+  focus: el => { S.focus = el.dataset.client; saveS(); closeOverlays(); $('#w-cl').innerHTML = wCliente(); if (WINS.has('clienti')) renderWin('clienti'); },
+  task: el => {
+    const t = TASKS.find(x => x.id === el.dataset.rec); if (!t) return;
+    const v = !isDone(t); TASKSTATE[t.id] = v; store.set('tasks', TASKSTATE);
+    $$('[data-act="task"][data-rec="' + t.id + '"]').forEach(b => { b.setAttribute('aria-checked', v); const row = b.closest('.todo'); if (row) row.classList.toggle('done', v); });
+    clearTimeout(taskT);
+    taskT = setTimeout(() => { $('#w-td').innerHTML = wTodo(); $('#w-cl').innerHTML = wCliente(); ['attivita', 'clienti', 'eve'].forEach(id => { if (WINS.has(id)) { if (id === 'eve') WINS.get(id).view.msgs = null; renderWin(id); } }); }, v ? 900 : 0);
+  },
+  view: el => {
+    const w = winOf(el); if (!w) return;
+    w.view[el.dataset.key] = el.dataset.val;
+    if (el.dataset.also) el.dataset.also.split(',').forEach(p => { const kv = p.split(':'); w.view[kv[0]] = kv[1]; });
+    if (w.id === 'eve' && el.dataset.key === 'client') w.view.msgs = null;
+    renderWin(w.id);
+  },
+  'win-close': el => { const w = winOf(el); if (w) closeWin(w.id); },
+  'win-min': el => { const w = winOf(el); if (w) minimizeWin(w.id); },
+  'win-zoom': el => { const w = winOf(el); if (w) zoomWin(w.id); },
+  'eve-ask': el => eveSend(el.dataset.q),
+  'eve-new': el => { const w = winOf(el); if (w) { w.view.msgs = null; renderWin('eve'); } }
+};
+doc.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const fn = ACTS[el.dataset.act];
+  if (fn) fn(el, e);
+});
+doc.addEventListener('submit', e => {
+  const f = e.target;
+  if (f.dataset && f.dataset.form === 'eve') { e.preventDefault(); eveSend($('input', f).value); }
+});
+doc.addEventListener('input', e => {
+  const el = e.target;
+  if (el.id === 'spot-q') return spotRender(el.value);
+  if (el.dataset.settingInput === 'name') { S.name = el.value.trim() || 'Denis'; saveS(); $('#hello').textContent = greeting() + ', ' + S.name + '.'; return; }
+  const key = el.dataset.input, w = key && winOf(el); if (!w) return;
+  w.view[key] = el.value;
+  if (w.id === 'ricerca') { $('.rc-res', w.el).innerHTML = resultsHTML(el.value); return; }
+  renderWin(w.id);
+});
+
+/* finestre: fuoco, trascinamento, ridimensionamento; pannelli: chiusura cliccando fuori */
+doc.addEventListener('pointerdown', e => {
+  if (anyOv() && !e.target.closest('.ov, [data-ovt], .scrim')) closeOverlays();
+  const winEl = e.target.closest('.win'); if (!winEl) return;
+  const w = WINS.get(winEl.dataset.win); if (!w) return;
+  focusWin(w.id);
+  const handle = e.target.closest('[data-drag]'), rs = e.target.closest('[data-resize]');
+  if (e.button !== 0 || (!handle && !rs) || (handle && e.target.closest('button, input, label, a, [data-act]'))) return;
+  e.preventDefault();
+  const sx = e.clientX, sy = e.clientY, o = { x: w.x, y: w.y, w: w.w, h: w.h }, bh = cssPx('--bar-h') || 34;
+  const move = ev => {
+    if (rs) { w.w = Math.max(380, o.w + ev.clientX - sx); w.h = Math.max(260, o.h + ev.clientY - sy); }
+    else { w.x = o.x + ev.clientX - sx; w.y = Math.max(bh + 2, o.y + ev.clientY - sy); }
+    if (w.max) { w.max = false; w.el.classList.remove('max'); }
+    place(w);
+  };
+  const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); clampWin(w); place(w); };
+  addEventListener('pointermove', move); addEventListener('pointerup', up);
+});
+doc.addEventListener('dblclick', e => { const h = e.target.closest('.tbar'); if (h && !e.target.closest('button, input')) { const w = winOf(h); if (w) zoomWin(w.id); } });
+
+doc.addEventListener('keydown', e => {
+  if (root.classList.contains('locked')) return;
+  const k = e.key;
+  if ((e.metaKey || e.ctrlKey) && (k === 'k' || k === 'K')) { e.preventDefault(); if ($('#spot').hidden) openSpot(); else closeOverlays(); return; }
+  if (k === 'Escape') { if (anyOv()) { e.preventDefault(); closeOverlays(); } return; }
+  if (!$('#spot').hidden) {
+    if ((k === 'ArrowDown' || k === 'ArrowUp') && spotItems.length) { e.preventDefault(); spotSel = (spotSel + (k === 'ArrowDown' ? 1 : -1) + spotItems.length) % spotItems.length; markSel(); return; }
+    if (k === 'Enter' && e.target.id === 'spot-q') { e.preventDefault(); if (spotItems[spotSel]) spotItems[spotSel].click(); return; }
+  }
+  const typing = e.target.closest && e.target.closest('input, textarea, select');
+  if (e.altKey && !e.metaKey && !e.ctrlKey && !typing && /^Digit\d$/.test(e.code)) {
+    e.preventDefault(); const n = +e.code.slice(5);
+    if (n === 0) showDesk(); else if (APPS[n - 1]) openApp(APPS[n - 1].id);
+  }
+});
+
+/* luce che segue il puntatore sul vetro */
+let sheenEl = null, sheenRAF = 0, sheenEv = null;
+doc.addEventListener('pointermove', e => {
+  sheenEv = e;
+  if (!sheenRAF) sheenRAF = requestAnimationFrame(() => {
+    sheenRAF = 0; const ev = sheenEv;
+    const g = ev.target.closest ? ev.target.closest('.glass') : null;
+    if (g !== sheenEl) { if (sheenEl) { sheenEl.style.removeProperty('--mx'); sheenEl.style.removeProperty('--my'); } sheenEl = g; }
+    if (!g) return;
+    const r = g.getBoundingClientRect();
+    g.style.setProperty('--mx', ((ev.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+    g.style.setProperty('--my', ((ev.clientY - r.top) / r.height * 100 - 45).toFixed(1) + '%');
+  });
+}, { passive: true });
+
+/* suggerimenti sui grafici */
+const dtip = $('#dtip');
+doc.addEventListener('pointerover', e => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t) { dtip.textContent = t.dataset.tip; dtip.classList.add('on'); } });
+doc.addEventListener('pointerout', e => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t && !t.contains(e.relatedTarget)) dtip.classList.remove('on'); });
+doc.addEventListener('pointermove', e => { if (dtip.classList.contains('on')) { dtip.style.left = (e.clientX + 12) + 'px'; dtip.style.top = (e.clientY - 36) + 'px'; } }, { passive: true });
+
+/* cursore della schermata di benvenuto */
+(() => {
+  const knob = $('#lk-knob'), track = $('#lk-slide'); let sx = 0, dx = 0, max = 0, drag = false;
+  knob.addEventListener('pointerdown', e => { drag = true; sx = e.clientX; dx = 0; max = track.clientWidth - knob.offsetWidth - 10; knob.setPointerCapture(e.pointerId); knob.classList.add('drag'); });
+  knob.addEventListener('pointermove', e => { if (!drag) return; dx = Math.max(0, Math.min(max, e.clientX - sx)); knob.style.transform = 'translateX(' + dx + 'px)'; track.style.setProperty('--p', (dx / max).toFixed(3)); });
+  const end = () => { if (!drag) return; drag = false; knob.classList.remove('drag'); const go = dx > max * .8; knob.style.transform = ''; track.style.setProperty('--p', 0); if (go) unlock(); };
+  knob.addEventListener('pointerup', end); knob.addEventListener('pointercancel', end);
+  knob.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); unlock(); } });
+})();
+
+doc.addEventListener('fullscreenchange', () => { $('#full-l').textContent = doc.fullscreenElement ? 'Esci da schermo intero' : 'Schermo intero'; });
+addEventListener('resize', () => {
+  fitDock();
+  WINS.forEach(w => { if (w.max) { const r = deskRect(); Object.assign(w, { x: r.x, y: r.y, w: r.w, h: r.h }); } clampWin(w); place(w); });
+  if (!$('#pop').hidden) closeOverlays();
+});
+
+/* ---------- Avvio ---------- */
+function paintClock() {
+  const d = new Date();
+  $('#bar-date').textContent = fBar.format(d).replace(/\./g, '');
+  $('#bar-time').textContent = fTime.format(d);
+  const h = $('#hello'), t = greeting() + ', ' + S.name + '.'; if (h.textContent !== t) h.textContent = t;
+  if (root.classList.contains('locked')) paintLock();
+}
+function boot() {
+  fillGlyphs(doc);
+  $('#lk-brand').innerHTML = icon('home', 64) + '<b>Prisma</b><span>Financial Desk</span>';
+  applySettings();
+  buildDock();
+  fitDock();
+  renderDesk();
+  paintChrome(); paintBadge(); paintClock();
+  setInterval(paintClock, 15000);
+  Refract.init();
+  if (Refract.ok) {
+    Refract.watch(dock, { band: 14, scale: 26, thin: true });
+    Refract.watch($('#bar-tools'), { band: 9, scale: 14, thin: true });
+    $$('.gbtn').forEach(b => Refract.watch(b, { band: 10, scale: 16, thin: true }));
+    $$('.widget').forEach(b => Refract.watch(b, { band: 18, scale: 30 }));
+    Refract.watch($('#lk-slide'), { band: 14, scale: 24, thin: true });
+  }
+  if (!calm()) $$('.widget').forEach((w, i) => w.animate([{ opacity: 0, transform: 'translateY(14px) scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: 60 + i * 45, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' }));
+}
+boot();
+
+/* Aggancio per eventuali prove automatiche: nessun effetto sull'uso normale */
+window.PrismaLG = { openApp: openApp, openSpot: openSpot, toggleCC: toggleCC, toggleNC: toggleNC, lock: lock, unlock: unlock, set: setSetting, refract: Refract };
+})();
+</script>
+</body>
+</html>

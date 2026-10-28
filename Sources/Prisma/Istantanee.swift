@@ -390,8 +390,15 @@ enum Istantanee {
             s.blocca()
         }),
         ("64-app-aperte", { s in
+            // Ogni scheda con il suo contesto: Agenda filtrata su Marco, Note su Sofia, Posizioni sul
+            // portafoglio, Prodotti senza cliente, Clienti sul cliente attivo
+            s.filtroClienteAgenda = "marco"
+            s.filtroClienteNote = "sofia"
             s.apri(.agenda)
             s.apri(.note)
+            s.portafoglio = true
+            s.apri(.posizioni)
+            s.apri(.prodotti)
             s.apri(.clienti)
             s.riduci(.agenda)
             s.pannelloAppAperte = true
@@ -420,6 +427,121 @@ enum Istantanee {
             s.areaAnalisi = .protezione
             s.apri(.analisi360)
         }),
+        // Le impostazioni di aspetto (chiaro, scuro, sfondo, pioggia)
+        ("90-impostazioni-aspetto", { s in
+            s.apri(.impostazioni)
+            s.schedaImpostazioni = .esperienza
+        }),
+        // Le analisi nuove dei motori: Posizioni (dettaglio, crisi, coerenza) e le schermate degli altri temi
+        ("91-posizioni-rendimento-versamenti", { s in
+            // Giulia, ETF: il rendimento dei suoi versamenti accanto a quello del prodotto
+            s.clienteAttivoId = "giulia"
+            s.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-andamento"
+        }),
+        ("92-posizioni-gestione-separata", { s in
+            // Giulia, piano rivalutabile: gestione separata, costi come nel KID, quota azionaria
+            s.clienteAttivoId = "giulia"
+            s.posizioneInDettaglio = "pos-giulia-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+        }),
+        ("93-posizioni-riscatto-penali", { s in
+            // Andrea, proposta con penali e 12 mesi di blocco: il riscatto anno per anno
+            s.clienteAttivoId = "andrea"
+            s.posizioneInDettaglio = "pos-andrea-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-riscatto"
+        }),
+        ("94-posizioni-kid-proposta", { s in
+            // Sofia, proposta obbligazionaria: costi calcolati come nel KID contro il RIY dichiarato
+            s.clienteAttivoId = "sofia"
+            s.posizioneInDettaglio = "pos-sofia-obbligazionario-a-scadenza-2030"
+            s.apri(.posizioni)
+        }),
+        ("95-posizioni-crisi", { s in
+            // Giulia: le crisi del 2008, 2020 e 2022 nella prova di resistenza
+            s.clienteAttivoId = "giulia"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "resistenza"
+        }),
+        ("96-posizioni-coerenza", { s in
+            // Marco: tutto su Alleanza, la concentrazione nel pannello della coerenza con il profilo
+            s.clienteAttivoId = "marco"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "coerenza"
+        }),
+        ("97-posizioni-coerenza-giulia", { s in
+            // Giulia: le crisi vere oltre il profilo e le proposte aperte
+            s.clienteAttivoId = "giulia"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "coerenza"
+        }),
+        ("98-obiettivo-probabilita", { s in
+            // Marco, gli studi di Anna: la probabilità di arrivarci (scenari con le probabilità). Solo per la scena
+            // la polizza multiramo lavora per l'obiettivo: senza una posizione che oscilla non ci sono probabilità
+            s.clienteAttivoId = "marco"
+            if let i = s.dati.obiettivi.firstIndex(where: { $0.id == "obiettivo-marco-studi" }) {
+                s.dati.obiettivi[i].posizioniCollegate = ["pos-marco-polizza-multiramo"]
+            }
+            s.obiettivoSelezionato = "obiettivo-marco-studi"
+            s.apri(.obiettivi)
+        }),
+        ("99-analisi360-pensione", { s in
+            // Marco: la pensione pubblica stimata con il contributivo
+            s.clienteAttivoId = "marco"
+            s.areaAnalisi = .previdenza
+            s.apri(.analisi360)
+        }),
+        ("100-analisi360-protezione-persone", { s in
+            // Giulia e Luca: la protezione persona per persona
+            s.clienteAttivoId = "giulia"
+            s.areaAnalisi = .protezione
+            s.apri(.analisi360)
+        }),
+        ("101-resistenza-prospetto", { s in
+            // Giulia: il prospetto della prova di resistenza, seconda pagina (le crisi del passato), a tutta finestra
+            s.clienteAttivoId = "giulia"
+            if let d = s.documentoProspetto(.resistenza(report: false)) {
+                s.presenta(d)
+                s.paginaSeguente()
+            }
+        }),
+        ("102-costi-prospetto", { s in
+            // Giulia: il prospetto dei costi, seconda pagina (l'incidenza come nel KID), a tutta finestra
+            s.clienteAttivoId = "giulia"
+            if let d = s.documentoProspetto(.costi(report: false)) {
+                s.presenta(d)
+                s.paginaSeguente()
+            }
+        }),
+        // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
+        ("92-posizioni-gestione-separata-scuro", { s in
+            s.clienteAttivoId = "giulia"
+            s.posizioneInDettaglio = "pos-giulia-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+        }),
+        ("1-scrivania-scuro", { _ in }),
+        ("2-posizioni-scuro", { $0.apri(.posizioni) }),
+        ("4-finestra-non-ingrandita-scuro", { s in
+            s.apri(.clienti)
+            s.alternaIngrandimento(.clienti)
+        }),
+        ("5-clienti-panoramica-scuro", { $0.apri(.clienti) }),
+        ("63-benvenuto-scuro", { s in
+            s.apri(.clienti)
+            s.blocca()
+        }),
+        ("64-app-aperte-scuro", { s in
+            s.filtroClienteAgenda = "marco"
+            s.apri(.agenda)
+            s.apri(.clienti)
+            s.pannelloAppAperte = true
+        }),
+        ("90-impostazioni-aspetto-scuro", { s in
+            s.apri(.impostazioni)
+            s.schedaImpostazioni = .esperienza
+        }),
     ]
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:
@@ -428,6 +550,8 @@ enum Istantanee {
     /// - "renderer": ImageRenderer di SwiftUI (richiede Metal)
     static func genera(in cartella: URL, metodo: String, solo: Set<String>? = nil) -> Int32 {
         _ = NSApplication.shared
+        // I PNG non catturano i materiali di sistema né il vetro di macOS 26: vetro disegnato, più coprente
+        Vetro.semplificato = true
         do {
             try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
         } catch {
@@ -437,17 +561,22 @@ enum Istantanee {
         for scena in scene where solo?.contains(scena.nome) ?? true {
             let stato = StatoShell(persistente: false)
             let misura = scena.nome.hasSuffix("-schermo-basso") ? dimensioneBassa : dimensione
+            // Le scene "-scuro" in aspetto scuro: finestra, ambiente SwiftUI e impostazione
+            let scuro = scena.nome.hasSuffix("-scuro")
+            if scuro { stato.dati.impostazioni.aspetto = .scuro }
             scena.prepara(stato)
             stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
             let vista = ShellView()
                 .environmentObject(stato)
                 .environment(\.modoIstantanea, true)
+                .environment(\.colorScheme, scuro ? .dark : .light)
                 .frame(width: misura.width, height: misura.height)
+            let aspetto = NSAppearance(named: scuro ? .darkAqua : .aqua)
             let png: Data?
             switch metodo {
-            case "renderer": png = conRenderer(vista)
-            case "livello": png = conFinestra(vista, livello: true, misura: misura)
-            default: png = conFinestra(vista, livello: false, misura: misura)
+            case "renderer": png = conRenderer(vista, aspetto: aspetto)
+            case "livello": png = conFinestra(vista, livello: true, misura: misura, aspetto: aspetto)
+            default: png = conFinestra(vista, livello: false, misura: misura, aspetto: aspetto)
             }
             guard let png else {
                 print("ERRORE: istantanea \(scena.nome) non disegnata (metodo \(metodo))")
@@ -464,17 +593,30 @@ enum Istantanee {
         return 0
     }
 
-    private static func conRenderer<V: View>(_ vista: V) -> Data? {
+    /// Disegna con l'aspetto dato (chiaro o scuro): i colori dinamici del tema si risolvono così.
+    private static func conAspetto(_ aspetto: NSAppearance?, _ disegna: () -> Void) {
+        if let aspetto {
+            aspetto.performAsCurrentDrawingAppearance(disegna)
+        } else {
+            disegna()
+        }
+    }
+
+    private static func conRenderer<V: View>(_ vista: V, aspetto: NSAppearance?) -> Data? {
         let renderer = ImageRenderer(content: vista)
         renderer.scale = 2
-        guard let cg = renderer.cgImage else { return nil }
+        var immagine: CGImage?
+        conAspetto(aspetto) { immagine = renderer.cgImage }
+        guard let cg = immagine else { return nil }
         return pngVerificato(NSBitmapImageRep(cgImage: cg))
     }
 
-    private static func conFinestra<V: View>(_ vista: V, livello: Bool, misura: CGSize) -> Data? {
+    private static func conFinestra<V: View>(_ vista: V, livello: Bool, misura: CGSize, aspetto: NSAppearance?) -> Data? {
         let host = NSHostingView(rootView: vista)
         host.frame = NSRect(origin: .zero, size: misura)
+        host.appearance = aspetto
         let finestra = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        finestra.appearance = aspetto
         finestra.contentView = host
         finestra.setFrameOrigin(NSPoint(x: -20000, y: -20000))
         finestra.orderFront(nil)
@@ -492,17 +634,15 @@ enum Istantanee {
                   let contesto = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
             let cg = contesto.cgContext
             cg.scaleBy(x: scala, y: scala)
-            if !host.isFlipped {
-                strato.render(in: cg)
-            } else {
+            if host.isFlipped {
                 cg.translateBy(x: 0, y: misura.height)
                 cg.scaleBy(x: 1, y: -1)
-                strato.render(in: cg)
             }
+            conAspetto(aspetto) { strato.render(in: cg) }
             return pngVerificato(rep)
         }
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
-        host.cacheDisplay(in: host.bounds, to: rep)
+        conAspetto(aspetto) { host.cacheDisplay(in: host.bounds, to: rep) }
         return pngVerificato(rep)
     }
 

@@ -144,7 +144,7 @@ struct AppAnalisi360: View {
                         .font(Tipo.chip)
                         .foregroundColor(confermata ? Colori.Strumenti.rischioPresenteTesto : Colori.Strumenti.schedaNumero)
                 }
-                Text(area.nome).font(Tipo.schedaAreaTitolo).foregroundColor(Colori.Strumenti.schedaTitolo).incisione(.white)
+                Text(area.nome).font(Tipo.schedaAreaTitolo).foregroundColor(Colori.Strumenti.schedaTitolo)
                 Text(valore).font(Tipo.schedaAreaValore).foregroundColor(Colori.Strumenti.schedaValore)
                     .lineLimit(1).minimumScaleFactor(0.7)
                 Text(nota).font(Tipo.schedaAreaNota).foregroundColor(Colori.Strumenti.schedaNota).lineLimit(2)
@@ -163,19 +163,7 @@ struct AppAnalisi360: View {
             }
             .padding(EdgeInsets(top: 12, leading: 17, bottom: 10, trailing: 17))
             .frame(maxWidth: .infinity, minHeight: Misure.Strumenti.schedaArea, alignment: .topLeading)
-            .background(
-                ZStack {
-                    Gradienti.schedaArea
-                    Materiale.Trama(nome: "Grana")
-                }
-            )
-            .overlay(alignment: .leading) {
-                Rectangle().fill(Colori.Analisi.area(area.areaPosizioni)).frame(width: 3)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Colori.Strumenti.schedaBordo, lineWidth: 1))
-            .shadow(color: Colori.Strumenti.schedaOmbra1, radius: 0, x: 0, y: 1)
-            .shadow(color: Colori.Strumenti.schedaOmbra2, radius: 0, x: 0, y: 2)
+            .schedaColorata(Colori.Analisi.area(area.areaPosizioni))
         }
         .buttonStyle(StileSemplice())
     }
@@ -258,11 +246,9 @@ struct AppAnalisi360: View {
                 Text(stato.analisiSalvata(cliente) ? "Salvate nel dossier" : "Dalle posizioni").font(Tipo.chip)
             }
             .foregroundColor(Colori.Strumenti.ipotesiTesto)
-            .incisione(.white)
             .padding(.horizontal, 12)
             .frame(height: 36)
             .background(Gradienti.testaIpotesi)
-            .luceInterna(.white)
             .bordoBasso(Colori.Strumenti.ipotesiBordo)
             ScrollView {
                 VStack(spacing: 0) {
@@ -273,7 +259,7 @@ struct AppAnalisi360: View {
                         CampoIpotesi(etichetta: "Reddito desiderato", valore: a.previdenza.redditoDesiderato, unita: "€/mese",
                                      nota: "netto, in euro di oggi")
                         CampoIpotesi(etichetta: "Pensione pubblica", valore: a.previdenza.pensionePubblica, unita: "€/mese",
-                                     nota: "stima dall'estratto INPS")
+                                     nota: "netta: dall'estratto INPS o dalla stima contributiva")
                         CampoIpotesi(etichetta: "Montante dei piani", valore: a.previdenza.capitale, nota: "valore attuale")
                         CampoIpotesi(etichetta: "Versamento", valore: a.previdenza.versamentoMensile, unita: "€/mese")
                         CampoIpotesi(etichetta: "Rendimento netto reale", valore: a.previdenza.rendimentoReale, unita: "%",
@@ -373,6 +359,7 @@ struct AppAnalisi360: View {
                     Text(e.versamentoTeorico == nil ? "nessun anno di accumulo" : "per tutto il divario")
                 }
             }
+            pensioneStimata(i)
             GraficoProiezione(serie: [.init(id: "montante", punti: e.punti, colore: Colori.Analisi.area(.previdenza), principale: true)])
             VStack(spacing: 0) {
                 RigaDato("Capitale obiettivo", Formati.euro(e.capitaleObiettivo), larghezza: 230)
@@ -382,7 +369,22 @@ struct AppAnalisi360: View {
                     RigaDato("Con le proposte aperte (\(pr.conteggio))", "integrazione \(Formati.euro(ec.integrazione))/mese · divario residuo \(Formati.euro(ec.divarioResiduo))/mese", larghezza: 230)
                 }
             }
-            NotaMetodo(testo: "Prisma non calcola i requisiti INPS: la pensione pubblica è una stima da verificare sull'estratto conto contributivo. TFR e deducibilità dei versamenti non sono inclusi.")
+            PannelloFiscoPrevidenza(deducibilita: DeducibilitaPrevidenza(piani: posizioni),
+                                    reddito: stato.cliente(cliente)?.profilo.redditoLordoAnnuo)
+            NotaMetodo(testo: "Il divario usa la pensione pubblica inserita nelle ipotesi; la stima contributiva è un aiuto da verificare sull'estratto conto INPS. Contributi del datore e TFR conferito non entrano in questa proiezione semplificata: li considera il prospetto della previdenza.")
+        }
+    }
+
+    /// La pensione pubblica stimata con il contributivo, accanto a quella inserita nelle ipotesi.
+    private func pensioneStimata(_ i: IpotesiPrevidenza) -> some View {
+        let c = stato.cliente(cliente)
+        let stima = c.flatMap { MotorePensionePubblica.stima(cliente: $0, previdenza: i) }
+        let motivo = c.flatMap { MotorePensionePubblica.motivoAssente($0.profilo.lavoro, reddito: $0.profilo.redditoLordoAnnuo) }
+        return PannelloPensioneStimata(stima: stima, motivo: motivo, ipotesi: i) { netta in
+            var x = analisi.wrappedValue
+            x.previdenza.pensionePubblica = netta
+            analisi.wrappedValue = x
+            stato.mostraAvviso("Pensione pubblica dell'analisi: \(Formati.euro(netta)) al mese, dalla stima contributiva")
         }
     }
 
@@ -419,9 +421,21 @@ struct AppAnalisi360: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(RoundedRectangle(cornerRadius: 2).fill(coperto ? Colori.Strumenti.rischioPresenteFondo : Colori.Strumenti.rischioAssenteFondo))
-                            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(coperto ? Colori.Strumenti.rischioPresenteBordo : Colori.Strumenti.rischioAssenteBordo, lineWidth: 1))
+                            .background {
+                                FormaVetro.arrotondata(Tema.Raggio.Strumenti.casellaRischio)
+                                    .fill(coperto ? Colori.Strumenti.rischioPresenteFondo : Colori.Strumenti.rischioAssenteFondo)
+                            }
+                            .overlay {
+                                FormaVetro.arrotondata(Tema.Raggio.Strumenti.casellaRischio)
+                                    .strokeBorder(coperto ? Colori.Strumenti.rischioPresenteBordo : Colori.Strumenti.rischioAssenteBordo,
+                                                  lineWidth: Tema.Misura.filo)
+                            }
                     }
+                }
+            }
+            if let c = stato.cliente(cliente) {
+                PannelloProtezionePersone(persone: MotoreProtezioneFamiglia.perPersona(posizioni, cliente: c, analisi: i)) { p in
+                    stato.apriPosizione(p)
                 }
             }
             VStack(spacing: 0) {
@@ -430,6 +444,9 @@ struct AppAnalisi360: View {
                 RigaDato("Meno il capitale ai superstiti", "−\(Formati.euro(i.capitaleDisponibile))", larghezza: 230)
                 RigaDato("Premi annui delle coperture", Formati.euro(e.premiAnnui), larghezza: 230)
                 RigaDato("Riserva necessaria", "\(Formati.euro(e.riservaNecessaria)) (ne hai \(Formati.euro(i.riserva)))", larghezza: 230)
+            }
+            if let c = stato.cliente(cliente) {
+                PannelloFiscoCoperture(fisco: CacheMotoriAnalisi.fisco(cliente: c, posizioni: posizioni))
             }
             NotaMetodo(testo: "Le coperture registrate non sono una verifica di operatività: esclusioni, carenze, franchigie, massimali e beneficiari vanno letti nelle condizioni di polizza.")
         }
@@ -488,6 +505,14 @@ struct AppAnalisi360: View {
 
     // MARK: - Dettaglio (coperture, scenari, piani)
 
+    /// Il nome della persona assicurata da una copertura (il cliente o un familiare).
+    private func nomeAssicurato(_ p: Posizione) -> String {
+        guard let c = stato.cliente(cliente) else { return p.assicurato.isEmpty ? "—" : p.assicurato }
+        let id = MotoreProtezioneFamiglia.assicurato(p, cliente: c)
+        if id == c.id { return c.nome }
+        return c.famiglia.first { $0.id == id }?.nome ?? c.nome
+    }
+
     @ViewBuilder private func dettaglio(_ area: AreaAnalisi) -> some View {
         if area == .investimenti {
             let e = MotoreAnalisi.investimenti(analisi.wrappedValue.investimenti)
@@ -532,7 +557,7 @@ struct AppAnalisi360: View {
                         RigaStrumento(indice: i) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
-                                Text(area == .protezione ? (p.rischio?.nome ?? "Rischio non indicato") : p.tipologia)
+                                Text(area == .protezione ? "\(p.rischio?.nome ?? "Rischio non indicato") · assicurato: \(nomeAssicurato(p))" : p.tipologia)
                                     .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
                             }
                             .lineLimit(1)

@@ -5,8 +5,8 @@ private typealias D = Misure.Documento
 
 /// Il report di una valutazione d'investimento: A4 orizzontale, una pagina per messaggio, da lasciare
 /// al cliente. I contenuti seguono il report di Denis su Orizzonte Valore (ottobre 2026); la veste è
-/// quella di Prisma: carta avorio delle slide di Presentazioni, Georgia, testata ◈ PRISMA, capitoli
-/// numerati, copertina in cuoio come il dossier del cliente, etichetta del canale sempre in vista.
+/// quella di Prisma: carta avorio delle slide di Presentazioni, testi in SF, testata con il logo, capitoli
+/// numerati, copertina blu notte con il logo bianco, etichetta del canale sempre in vista.
 enum ReportValutazione {
     static func pagine(_ t: TestiValutazione) -> [AnyView] {
         var slide: [AnyView] = [AnyView(SlideProposta(t: t))]
@@ -278,6 +278,11 @@ struct TabellaIncassi: View {
             var celle = [cellaNome, CellaDoc(s == .intermedio ? "riscatto bloccato" : "", colore: C.tenue, font: fontNota)]
             for a in anni {
                 let r = t.e.scenario(s)?.riscatto(anno: a)
+                // Nei mesi di blocco del contratto il riscatto non si può chiedere: niente importo, in grigio
+                if let r, !r.possibile {
+                    celle.append(CellaDoc("non riscattabile", colore: C.tenue, font: fontNota))
+                    continue
+                }
                 var cella = CellaDoc(CifreDoc.euro(r?.netto ?? 0), sotto: CifreDoc.variazione(r?.variazione ?? 0), colore: colore, font: fontValore)
                 cella.fontSotto = fontNota
                 celle.append(cella)
@@ -480,6 +485,14 @@ private struct SlideCosti: View {
                                         "Scenario intermedio. I costi sono già compresi negli importi che hai visto: non vanno sottratti di nuovo."))
             TabellaCosti(t: t, larghezza: larghezzaUtile, riga: 26, font: T.corpo, fontForte: T.corpoForte, fontNota: T.minimo)
             Text(verbatim: t.notaCosti).font(T.piccolo).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+            if let frase = t.fraseIncidenzaReport {
+                (Text(verbatim: "Quanto pesano i costi sul rendimento. ").bold() + Text(verbatim: frase))
+                    .font(T.corpo).foregroundColor(C.titolo).lineSpacing(1.5)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .riquadroDoc(C.evidenza)
+            }
         }
     }
 }
@@ -547,7 +560,7 @@ private struct SlideGaranzie: View {
         VStack(alignment: .leading, spacing: 14) {
             TestaReport(occhiello: "Garanzie e fiscalità", titolo: "Garanzie e imposte: cosa sapere")
             HStack(alignment: .top, spacing: 14) {
-                elenco("Cosa è garantito", t.c.garantito, C.favorevole, C.favorevoleFondo)
+                elenco("Cosa è garantito", garantito, C.favorevole, C.favorevoleFondo)
                 elenco("Cosa non è garantito", t.c.nonGarantito, C.sfavorevole, C.sfavorevoleFondo)
             }
             OcchielloDoc(testo: "Le imposte").padding(.top, 4)
@@ -557,6 +570,13 @@ private struct SlideGaranzie: View {
                 imposta("netto", "Già nei nostri numeri", "tutti gli importi mostrati tengono conto di entrambe; la situazione fiscale personale può modificarli.")
             }
         }
+    }
+
+    /// Le garanzie del contratto e, se indicati, minimo garantito e consolidamento della Gestione separata.
+    private var garantito: [String] {
+        var punti = t.c.garantito
+        if let frase = t.fraseGaranziaGestione { punti.append("Gestione separata: " + frase) }
+        return punti
     }
 
     private func elenco(_ titolo: String, _ punti: [String], _ colore: Color, _ fondo: Color) -> some View {
@@ -715,9 +735,14 @@ private struct TabellaDettaglioBreve: View {
         for s in TipoScenario.allCases {
             let colore = C.scenario(s)
             let e = t.e.scenario(s)
-            let intestazione = "\(s.nome)  ·  " + [t.fondo.map { "fondo \(CifreDoc.variazione(t.v.scenario(s).rendimento($0))) l'anno" },
-                                                     t.gestione.map { "Gestione separata \(CifreDoc.percento(t.v.scenario(s).rendimento($0) - $0.trattenuto, decimali: 2)) netto" }]
-                .compactMap { $0 }.joined(separator: ", ")
+            let sv = t.v.scenario(s)
+            var parti: [String] = []
+            if let f = t.fondo { parti.append("fondo \(CifreDoc.variazione(sv.rendimento(f))) l'anno") }
+            // Rivalutazione netta dal motore della gestione separata (trattenuto o retrocessione, minimo garantito)
+            if let g = t.gestione {
+                parti.append("Gestione separata \(CifreDoc.percento(MotoreGestioneSeparata.accreditato(g, lordo: sv.rendimento(g)), decimali: 2)) netto")
+            }
+            let intestazione = "\(s.nome)  ·  " + parti.joined(separator: ", ")
             righe.append(RigaDoc(celle: [CellaDoc(intestazione, colore: colore, font: T.piccolo.weight(.bold))], altezza: 17,
                                  sfondo: C.scenarioFondo(s), filetto: .clear))
             func riga(_ nome: String, _ valori: [String], forte: Bool = false) {
@@ -729,10 +754,62 @@ private struct TabellaDettaglioBreve: View {
             riga("Valore del contratto", r.map { CifreDoc.euro($0?.valore ?? 0) })
             riga("Penale di riscatto", r.map { ($0?.penale ?? 0) > 0.5 ? CifreDoc.togli($0?.penale ?? 0) : "—" })
             riga("Imposta sostitutiva e bollo", r.map { CifreDoc.togli(($0?.imposta ?? 0) + ($0?.bollo ?? 0)) })
-            riga("Importo netto incassato", r.map { CifreDoc.euro($0?.netto ?? 0) }, forte: true)
+            riga("Importo netto incassato", r.map { x in x.map { $0.possibile ? CifreDoc.euro($0.netto) : "non riscattabile" } ?? "—" }, forte: true)
         }
         return TabellaDoc(larghezza: larghezza, colonne: colonne, righe: righe, fontTesta: T.piccolo.weight(.bold), fontTestaSotto: T.minimo,
                           altezzaTesta: 24, margine: 4)
             .overlay(Rectangle().fill(C.filettoForte).frame(height: 0.8), alignment: .bottom)
+    }
+}
+
+// MARK: - Incidenza dei costi e garanzie della gestione separata (prospetto e report)
+
+extension TestiValutazione {
+    /// L'incidenza annua dei costi come nel KID (RIY) nella simulazione, scenario intermedio: con il primo riscatto
+    /// possibile e all'anno del confronto con il KID; accanto, il RIY dichiarato nel KID se c'è. Per il prospetto.
+    var fraseIncidenzaCosti: String? {
+        guard let i = intermedio else { return nil }
+        guard let primo = i.riscatti.first(where: { $0.possibile && $0.incidenzaCosti != nil }), let a = primo.incidenzaCosti else { return nil }
+        var s = "Incidenza annua dei costi come nel KID (RIY) nella simulazione, scenario intermedio: \(CifreDoc.percento(a, decimali: 2)) con riscatto all'inizio del \(primo.anno)° anno"
+        if let lungo = i.riscatto(anno: annoKID), lungo.anno != primo.anno, lungo.possibile, let b = lungo.incidenzaCosti {
+            s += ", \(CifreDoc.percento(b, decimali: 2)) all'inizio del \(lungo.anno)° anno"
+        }
+        s += " (rendimento senza costi meno rendimento con costi e penale, prima delle imposte)."
+        if let kid = prodotto.incidenzaCostiKID {
+            s += " RIY dichiarato nel KID: \(CifreDoc.percento(kid, decimali: 2)) l'anno al periodo raccomandato."
+        }
+        return s
+    }
+
+    /// La stessa incidenza in parole semplici, per il report.
+    var fraseIncidenzaReport: String? {
+        guard let i = intermedio else { return nil }
+        guard let primo = i.riscatti.first(where: { $0.possibile && $0.incidenzaCosti != nil }), let a = primo.incidenzaCosti else { return nil }
+        var s = f("Se riscattate all'inizio del \(primo.anno)° anno, i costi (penale compresa) tolgono circa \(CifreDoc.percento(a, decimali: 1)) di rendimento l'anno",
+                  "Se riscatti all'inizio del \(primo.anno)° anno, i costi (penale compresa) tolgono circa \(CifreDoc.percento(a, decimali: 1)) di rendimento l'anno")
+        if let lungo = i.riscatto(anno: annoKID), lungo.anno != primo.anno, lungo.possibile, let b = lungo.incidenzaCosti {
+            s += f("; se aspettate fino al \(lungo.anno)° anno, circa \(CifreDoc.percento(b, decimali: 1))",
+                   "; se aspetti fino al \(lungo.anno)° anno, circa \(CifreDoc.percento(b, decimali: 1))")
+        }
+        return s + ". È la stessa misura che il KID chiama «incidenza annua dei costi»: è una stima, nello scenario intermedio."
+    }
+
+    /// Minimo garantito, consolidamento e retrocessione della Gestione separata, se indicati nelle condizioni.
+    var fraseGaranziaGestione: String? {
+        guard let g = gestione, g.minimoGarantito != nil || g.consolidamento != nil || g.retrocessione != nil else { return nil }
+        var parti: [String] = []
+        if let r = g.retrocessione {
+            parti.append("retrocessione del \(CifreDoc.condizione(r)) del rendimento lordo"
+                         + (g.trattenuto > 0 ? ", con un trattenuto minimo del \(CifreDoc.percento(g.trattenuto, decimali: 2))" : ""))
+        }
+        if let m = g.minimoGarantito {
+            parti.append(m > 0 ? "minimo garantito del \(CifreDoc.percento(m, decimali: 2)) l'anno" : "garantito il capitale (minimo dello 0%)")
+        }
+        switch g.consolidamento {
+        case .some(true): parti.append("rendimenti consolidati ogni anno: la rivalutazione accreditata non si perde")
+        case .some(false): parti.append("senza consolidamento annuo: la garanzia vale a scadenza o al decesso, con un riscatto anticipato il valore può scendere")
+        case .none: break
+        }
+        return parti.joined(separator: "; ") + "."
     }
 }

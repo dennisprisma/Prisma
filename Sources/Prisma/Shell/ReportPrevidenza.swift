@@ -7,8 +7,10 @@ private typealias D = Misure.Documento
 /// come colmare il resto, il vantaggio fiscale, le tasse sulla pensione, la sintesi.
 enum ReportPrevidenza {
     static func pagine(_ t: TestiPrevidenza, commento: String? = nil) -> [AnyView] {
-        let slide: [AnyView] = [AnyView(SlideServira(t: t)), AnyView(SlideHaiGia(t: t)), AnyView(SlideColmare(t: t)),
-                                AnyView(SlideVantaggio(t: t)), AnyView(SlideTassePensione(t: t)), AnyView(SlideSintesiPrevidenza(t: t))]
+        var slide: [AnyView] = [AnyView(SlideServira(t: t))]
+        if let stima = t.e.stimaPensione { slide.append(AnyView(SlidePensioneStimata(t: t, s: stima))) }
+        slide += [AnyView(SlideHaiGia(t: t)), AnyView(SlideColmare(t: t)),
+                  AnyView(SlideVantaggio(t: t)), AnyView(SlideTassePensione(t: t)), AnyView(SlideSintesiPrevidenza(t: t))]
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiPrevidenza.titolo) · \(t.cliente)",
                                      lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
@@ -117,6 +119,58 @@ private struct SlideServira: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .riquadroDoc(C.evidenza)
         }
+    }
+}
+
+// MARK: - La pensione pubblica stimata
+
+private struct SlidePensioneStimata: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiPrevidenza
+    let s: StimaPensione
+
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        let e = t.e
+        return VStack(alignment: .leading, spacing: 14) {
+            TestaReport(occhiello: "La tua pensione pubblica", titolo: "Dai tuoi contributi, circa \(TestiPrevidenza.mese(s.nettaMensile)), netti",
+                        sottotitolo: "L'abbiamo stimata con il metodo contributivo: i contributi versati per te ogni anno, rivalutati, diventano pensione a \(s.etaPensione) anni. In euro di oggi, al netto delle imposte, su 13 mensilità. È una stima, da confrontare con il tuo estratto conto INPS.")
+            HStack(alignment: .top, spacing: M.spazioRiquadri) {
+                VStack(spacing: 8) {
+                    CifraPensione(etichetta: "Pensione netta stimata", valore: TestiPrevidenza.mese(s.nettaMensile),
+                                  nota: "\(TestiPrevidenza.mese(s.lordaMensile)) lordi", font: T.numeroGrande)
+                    CifraPensione(etichetta: "Rispetto al tuo ultimo stipendio", valore: s.tassoSostituzione.map { CifreDoc.percento($0, decimali: 0) } ?? "—",
+                                  nota: "pensione lorda sull'ultimo reddito lordo")
+                    CifraPensione(etichetta: "Da integrare con questa stima", valore: e.divarioStimato.map { TestiPrevidenza.mese($0) } ?? "—",
+                                  nota: "con la stima dell'analisi: \(TestiPrevidenza.mese(e.divario))",
+                                  colore: (e.divarioStimato ?? 0) > 0.5 ? C.negativo : C.positivo)
+                }
+                .frame(width: M.colonnaLateraleReport)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: "I tuoi contributi accumulati, anno per anno").font(T.titoloRiquadro).foregroundColor(C.titolo)
+                    GraficoLineeDoc(serie: [SerieDoc(nome: "Contributi", colore: C.intermedio, valori: s.punti)],
+                                    etichetteAsse: s.punti.indices.map { etichetta($0) }, fontAssi: T.minimo, fontValori: T.minimo)
+                        .frame(height: M.graficoMontanteReport)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Text(verbatim: nota).font(T.minimo).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var nota: String {
+        var testo = "Ipotesi: rivalutazione dei contributi pari alla crescita dell'economia (prudente), coefficienti di trasformazione \(RegolePensione.validitaCoefficienti), imposte di oggi."
+        if !s.requisitoRaggiunto { testo += " Attenzione: all'età indicata i requisiti per la pensione non sono ancora raggiunti." }
+        if s.sistemaMisto { testo += " Hai contributi prima del 1996: una parte si calcola con regole diverse, la stima è indicativa." }
+        return testo
+    }
+
+    private func etichetta(_ anno: Int) -> String {
+        let n = max(s.punti.count - 1, 1)
+        let passo = n <= 12 ? 2 : (n <= 30 ? 5 : 10)
+        if anno == 0 { return "oggi" }
+        return anno % passo == 0 || anno == n ? "\(s.eta + anno) anni" : ""
     }
 }
 

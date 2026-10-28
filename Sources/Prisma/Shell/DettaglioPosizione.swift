@@ -13,43 +13,65 @@ struct DettaglioPosizione: View {
     private var orizzonteCliente: Int? { stato.cliente(posizione.clienteId)?.profilo.orizzonteAnni }
 
     var body: some View {
+        let p = posizione
+        let prodotto = stato.prodotto(p.prodottoId)
+        let finanziariaInEssere = p.area.proiettabile && p.stato == .inEssere
+        // Calcoli del dettaglio: andamento, rendimento dei versamenti, gestione separata, riscatto
+        let andamentoPosizione: AndamentoPosizione? = finanziariaInEssere ? MotoreAndamento.calcola(p) : nil
+        let voce: VoceResoconto? = finanziariaInEssere ? MotoreResoconto.voce(p, prodotto: prodotto) : nil
+        let gestione: EsitoGestioneSeparata? = p.area.proiettabile ? MotoreGestioneSeparata.calcola(p) : nil
+        let riscatto: EsitoRiscatto? = MotoreRiscatto.calcola(p, prodotto: prodotto)
         VStack(spacing: 0) {
             barraNavigazione
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    intestazione
-                    HStack(alignment: .top, spacing: 28) {
-                        contratto.frame(maxWidth: .infinity, alignment: .leading)
-                        if posizione.area.proiettabile {
+            ScrollViewReader { lettore in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        intestazione
+                        HStack(alignment: .top, spacing: 28) {
                             VStack(alignment: .leading, spacing: 22) {
-                                costiERischio
-                                if posizione.stato == .inEssere {
-                                    fiscalita
-                                    storico
+                                contratto
+                                if let g = gestione {
+                                    PannelloGestioneSeparata(esito: g, posizione: p).id("dettaglio-gestione")
                                 }
                             }
-                            .frame(width: 320, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            if p.area.proiettabile {
+                                VStack(alignment: .leading, spacing: 22) {
+                                    costiERischio(prodotto)
+                                    if p.stato == .inEssere {
+                                        // Il rendimento dei versamenti va qui solo se manca il pannello dell'andamento
+                                        fiscalita(prodotto, voce: andamentoPosizione == nil ? voce : nil)
+                                        storico(voce)
+                                    }
+                                }
+                                .frame(width: 320, alignment: .leading)
+                            }
+                        }
+                        if let a = andamentoPosizione {
+                            andamento(a, voce: voce).id("dettaglio-andamento")
+                        }
+                        if let r = riscatto, !r.righe.isEmpty {
+                            PannelloRiscatto(esito: r).id("dettaglio-riscatto")
+                        }
+                        if p.area.proiettabile {
+                            proiezione
+                        } else if p.area == .protezione {
+                            protezione
+                        }
+                        HStack {
+                            Spacer()
+                            Button {
+                                confermaEliminazione = true
+                            } label: {
+                                Text("Elimina la posizione…").foregroundColor(Colori.Analisi.erroreTesto)
+                            }
+                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                         }
                     }
-                    if posizione.area.proiettabile, posizione.stato == .inEssere, let a = MotoreAndamento.calcola(posizione) {
-                        andamento(a)
-                    }
-                    if posizione.area.proiettabile {
-                        proiezione
-                    } else if posizione.area == .protezione {
-                        protezione
-                    }
-                    HStack {
-                        Spacer()
-                        Button {
-                            confermaEliminazione = true
-                        } label: {
-                            Text("Elimina la posizione…").foregroundColor(Colori.Analisi.erroreTesto)
-                        }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
-                    }
+                    .padding(EdgeInsets(top: 14, leading: 16, bottom: 18, trailing: 16))
                 }
-                .padding(EdgeInsets(top: 14, leading: 16, bottom: 18, trailing: 16))
+                .onAppear { scorri(lettore) }
+                .onChange(of: stato.ancoraPosizioni) { _ in scorri(lettore) }
             }
         }
         .alert("Eliminare \(posizione.nome)?", isPresented: $confermaEliminazione) {
@@ -63,6 +85,16 @@ struct DettaglioPosizione: View {
         }
         .sheet(isPresented: $moduloRilevazione) {
             ModuloRilevazione(posizione: posizione) { stato.aggiungiRilevazione($0, a: posizione.id) }
+        }
+    }
+
+    /// Porta in vista la parte del dettaglio chiesta (da un'istantanea o da un'altra schermata): solo le
+    /// ancore «dettaglio-…», le altre sono del dossier.
+    private func scorri(_ lettore: ScrollViewProxy) {
+        guard let ancora = stato.ancoraPosizioni, ancora.hasPrefix("dettaglio-") else { return }
+        DispatchQueue.main.async {
+            withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }
+            stato.ancoraPosizioni = nil
         }
     }
 
@@ -104,13 +136,12 @@ struct DettaglioPosizione: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 40)
-        .background(Gradienti.kpi)
-        .bordoBasso(Colori.Analisi.kpiBordo)
+        .bordoBasso(Colori.Analisi.tabellaRiga)
     }
 
     private var intestazione: some View {
         HStack(alignment: .center, spacing: 14) {
-            RoundedRectangle(cornerRadius: 6)
+            FormaVetro.capsula
                 .fill(Colori.Analisi.area(posizione.area))
                 .frame(width: 8, height: 46)
             VStack(alignment: .leading, spacing: 3) {
@@ -122,7 +153,6 @@ struct DettaglioPosizione: View {
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.Analisi.kpiNota)
             }
-            .incisione(.white)
             Spacer()
             EtichettaCanale(canale: posizione.canale)
             PillolaStato(posizione: posizione)
@@ -163,14 +193,41 @@ struct DettaglioPosizione: View {
         }
     }
 
-    private var costiERischio: some View {
+    private func costiERischio(_ prodotto: Prodotto?) -> some View {
         let p = posizione
+        let l = Tema.Misura.MotoriPosizioni.etichettaRiga
+        // Il RIY come nel KID: calcolato da Prisma e, se c'è, quello dichiarato (solo nelle schermate)
+        let incidenza: IncidenzaCostiKID? = p.stato == .chiusa ? nil : MotoreCosti.incidenzaKID(p, prodotto: prodotto)
+        let composizione: ComposizionePosizione? = p.area.proiettabile ? MotoreResistenza.composizione(p) : nil
+        let incoerenze = incoerenzeProposta
         return PannelloAnalisi(titolo: "Costi, ipotesi e rischio") { EmptyView() } contenuto: {
             VStack(spacing: 0) {
                 RigaDato("Rendimento atteso", p.rendimentoAtteso.map { Formati.percentuale($0) + " annuo" } ?? "", larghezza: 118)
                 RigaDato("Costo d'ingresso", p.costoIngresso.map { Formati.percentuale($0) + " dei versamenti" } ?? "", larghezza: 118)
                 RigaDato("Costo annuo", p.costoAnnuo.map { Formati.percentuale($0) + " all'anno" } ?? "", larghezza: 118)
+                if let u = p.costoUscita, u > 0 {
+                    RigaDato("Costo d'uscita", "\(CifreDoc.percento(u, decimali: 2)) del riscattato", larghezza: l)
+                }
+                if let k = incidenza, let c = k.calcolato {
+                    RigaDato("Costi come nel KID",
+                             "\(CifreDoc.percento(c, decimali: 2)) l'anno a \(k.periodoRaccomandato) \(k.periodoRaccomandato == 1 ? "anno" : "anni") (stima)",
+                             larghezza: l)
+                        .help(IncidenzaCostiKID.metodo)
+                    if let d = k.dichiarato {
+                        RigaDato("RIY del KID",
+                                 CifreDoc.percento(d, decimali: 2) + (k.scarto.map { " · Prisma \(Self.punti($0))" } ?? ""),
+                                 larghezza: l,
+                                 pillola: (k.scarto ?? 0) > MotoreCosti.scartoMinimo ? Pillola(testo: "più del KID", tono: .attenzione) : nil)
+                            .help("Il RIY dichiarato nel KID resta quello del documento: Prisma lo confronta con il suo calcolo, sugli stessi anni.")
+                    }
+                }
                 RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "", larghezza: 118)
+                if let c = composizione {
+                    RigaDato("Quota azionaria",
+                             CifreDoc.percento(c.azioni * 100, decimali: 0) + (c.stimata ? " (stimata dal tipo e dall'SRI)" : ""),
+                             larghezza: l)
+                        .help("La parte in azioni usata nella prova di resistenza e nelle crisi del passato.")
+                }
                 HStack(alignment: .center, spacing: 12) {
                     Text("Rischio (SRI)")
                         .font(Tipo.campoEtichetta)
@@ -182,13 +239,38 @@ struct DettaglioPosizione: View {
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .bordoBasso(Colori.Analisi.tabellaRiga)
+                // Le proposte oltre il profilo o l'orizzonte del cliente
+                ForEach(incoerenze) { i in
+                    HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.MotoriPosizioni.spazioPillola) {
+                        Pillola(testo: i.tipo == .orizzonte ? "Orizzonte più lungo" : "Oltre il profilo", tono: .attenzione)
+                        Text(i.dettaglio)
+                            .font(Tipo.kpiNota)
+                            .foregroundColor(Colori.Analisi.tabellaTesto)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.vertical, 7)
+                    .bordoBasso(Colori.Analisi.tabellaRiga)
+                }
             }
         }
     }
 
+    /// Le incoerenze con il profilo del cliente che nascono da questa proposta (SRI o periodo raccomandato).
+    private var incoerenzeProposta: [Incoerenza] {
+        guard posizione.stato == .proposta, let c = stato.cliente(posizione.clienteId) else { return [] }
+        let esito = CacheMotoriPosizioni.coerenza(cliente: c, posizioni: stato.posizioniCliente(c.id), prodotti: stato.dati.prodotti)
+        return esito.incoerenze.filter { $0.posizione?.id == posizione.id }
+    }
+
+    /// Una differenza in punti percentuali, con il segno: "+0,45 punti".
+    static func punti(_ v: Double) -> String {
+        "\(String(CifreDoc.variazione(v, decimali: 2).dropLast())) punti"
+    }
+
     /// Imposte e netto se si chiudesse oggi; per la previdenza l'aliquota per causa.
-    private var fiscalita: some View {
-        let f = MotoreFiscale.calcola(posizione, prodotto: stato.prodotto(posizione.prodottoId))
+    private func fiscalita(_ prodotto: Prodotto?, voce: VoceResoconto?) -> some View {
+        let f = MotoreFiscale.calcola(posizione, prodotto: prodotto)
         return PannelloAnalisi(titolo: "Se si chiudesse oggi") { EmptyView() } contenuto: {
             VStack(alignment: .leading, spacing: 0) {
                 RigaDato("Regime", f.regime.nome, larghezza: 118)
@@ -210,13 +292,27 @@ struct DettaglioPosizione: View {
                 if f.costoTotale > 0.005 {
                     RigaDato("Costi in un anno", Formati.euroDecimali(f.costoTotale), larghezza: 118)
                 }
+                if let v = voce, let x = v.rendimentoAnnuo {
+                    RigaDato("Rendimento dei versamenti",
+                             "\(CifreDoc.variazione(x)) l'anno" + (v.rendimentoNettoAnnuo.map { " · netto \(CifreDoc.variazione($0))" } ?? ""),
+                             larghezza: 118)
+                        .help(Self.notaVersamenti(v))
+                }
             }
         }
     }
 
+    /// Come leggere il rendimento dei versamenti (XIRR) accanto al rendimento del prodotto.
+    static func notaVersamenti(_ v: VoceResoconto) -> String {
+        "Rendimento dei tuoi versamenti: il tasso annuo che lega quanto e quando hai versato al valore di oggi (XIRR); "
+            + "il netto usa quanto incasseresti chiudendo oggi. Misura l'esperienza del cliente, non solo il prodotto"
+            + (v.flussiDatati?.reali == false ? ". Date ricostruite da premi e storico." : ".")
+    }
+
     /// I valori rilevati nel tempo: si arricchisce da solo a ogni aggiornamento del controvalore.
-    private var storico: some View {
+    private func storico(_ voceCalcolata: VoceResoconto?) -> some View {
         let punti = Array(posizione.storicoValori.reversed())
+        let voce = voceCalcolata ?? MotoreResoconto.voce(posizione)
         // In cima c'è il valore attuale: si cambia con «Modifica», non si toglie da qui
         // Il valore attuale è nello storico solo se ha una data (del valore, della decorrenza o di oggi)
         let attuale = posizione.controvalore != nil && (posizione.dataValore ?? posizione.decorrenza) != nil || (posizione.controvalore != nil && !(posizione.rilevazioni ?? []).isEmpty)
@@ -241,7 +337,6 @@ struct DettaglioPosizione: View {
                         }
                     }
                 }
-                let voce = MotoreResoconto.voce(posizione)
                 if let v = voce.variazione12, let q = voce.variazione12Percento {
                     RigaDato("Ultimi 12 mesi", "\(v.rounded() > 0 ? "+" : "")\(Formati.euro(v)) (\(CifreDoc.variazione(q))), tolti i versamenti", larghezza: 118)
                 }
@@ -257,8 +352,10 @@ struct DettaglioPosizione: View {
     // MARK: - Andamento
 
     /// Com'è andata davvero: il valore rilevato, il versato e dove sarebbe all'atteso netto.
-    private func andamento(_ a: AndamentoPosizione) -> some View {
+    private func andamento(_ a: AndamentoPosizione, voce: VoceResoconto?) -> some View {
         let annuo = a.rendimentoAnnuo != nil
+        // Il rendimento dei versamenti (XIRR) accanto a quello del prodotto, se la posizione ha un anno
+        let versamenti: (lordo: Double, netto: Double?)? = voce.flatMap { v in v.rendimentoAnnuo.map { (lordo: $0, netto: v.rendimentoNettoAnnuo) } }
         return PannelloAnalisi(
             titolo: "Andamento dal \(Formati.dataBreve.string(from: a.dal))",
             nota: "Rendimento al netto dei costi, tolti i versamenti: i periodi tra un valore e l'altro pesano allo stesso modo."
@@ -273,6 +370,12 @@ struct DettaglioPosizione: View {
                     legenda(Colori.Analisi.linea, "Valore rilevato")
                     if a.attesoAnnuo != nil { legenda(Colori.Analisi.lineaAtteso, "All'atteso netto") }
                     if a.punti.contains(where: { $0.versato != nil }) { legenda(Colori.Analisi.lineaTratteggiata, "Versato", tratteggio: true) }
+                    if versamenti != nil {
+                        Spacer(minLength: 0)
+                        Text("\(a.punti.count) valori rilevati in \(String(format: "%.1f", a.anni).replacingOccurrences(of: ".", with: ",")) anni")
+                            .font(Tipo.kpiNota)
+                            .foregroundColor(Colori.Analisi.kpiNota)
+                    }
                 }
                 FasciaKPI {
                     KPI(titolo: annuo ? "Rendimento annuo" : "Rendimento nel periodo",
@@ -285,9 +388,23 @@ struct DettaglioPosizione: View {
                     KPI(titolo: a.guadagno >= 0 ? "Guadagno" : "Perdita", valore: CifreDoc.euro(abs(a.guadagno))) {
                         Text("tolti \(Formati.euro(a.versamenti)) di versamenti")
                     }
-                    KPI(titolo: "Valori rilevati", valore: "\(a.punti.count)", ultimo: true) {
-                        Text(String(format: "%.1f anni", a.anni).replacingOccurrences(of: ".", with: ","))
+                    if let x = versamenti {
+                        KPI(titolo: "Rendimento dei tuoi versamenti", valore: CifreDoc.variazione(x.lordo), ultimo: true) {
+                            Text(x.netto.map { "netto se chiudi oggi \(CifreDoc.variazione($0))" } ?? "l'anno, alle date dei versamenti")
+                        }
+                        .help(voce.map(Self.notaVersamenti) ?? "")
+                    } else {
+                        KPI(titolo: "Valori rilevati", valore: "\(a.punti.count)", ultimo: true) {
+                            Text(String(format: "%.1f anni", a.anni).replacingOccurrences(of: ".", with: ","))
+                        }
                     }
+                }
+                if versamenti != nil {
+                    Text("«Rendimento annuo» giudica il prodotto: ogni periodo tra due valori pesa allo stesso modo. «Rendimento dei tuoi versamenti» racconta l'esperienza del cliente: conta quanto e quando ha versato"
+                         + (voce?.flussiDatati?.reali == false ? " (date ricostruite da premi e storico)." : "."))
+                        .font(Tipo.kpiNota)
+                        .foregroundColor(Colori.Analisi.kpiNota)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 periodiTabella(a)
                 Text(MotoreAndamento.sintesi(a, nome: posizione.nome))
@@ -308,7 +425,7 @@ struct DettaglioPosizione: View {
                 testa("Guadagno", 100)
                 testa("Rendimento", 90)
             }
-            .background(Gradienti.testaTabella)
+            .background(Colori.Analisi.tabellaTestaAlto)
             .bordoBasso(Colori.Analisi.tabellaTestaBordo)
             // Dal più recente, al massimo otto periodi
             ForEach(Array(a.periodi.reversed().prefix(8).enumerated()), id: \.offset) { i, q in
@@ -330,7 +447,7 @@ struct DettaglioPosizione: View {
                 .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 
     // MARK: - Proiezione
@@ -391,7 +508,7 @@ struct DettaglioPosizione: View {
                 testa("Guadagno netto", 130)
                 testa("In euro di oggi", 130)
             }
-            .background(Gradienti.testaTabella)
+            .background(Colori.Analisi.tabellaTestaAlto)
             .bordoBasso(Colori.Analisi.tabellaTestaBordo)
             ForEach(Array(scenari.enumerated()), id: \.offset) { i, s in
                 HStack(spacing: 0) {
@@ -408,7 +525,7 @@ struct DettaglioPosizione: View {
                 .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 
     private func metodo(_ p: ParametriProiezione) -> some View {
@@ -429,8 +546,7 @@ struct DettaglioPosizione: View {
             .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 4).fill(Gradienti.kpi))
-        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.kpi), riempimento: Colori.Analisi.kpiAlto)
     }
 
     // MARK: - Protezione
@@ -468,7 +584,6 @@ struct DettaglioPosizione: View {
         Text(t)
             .font(Tipo.tabellaTesta)
             .foregroundColor(Colori.Analisi.tabellaTesta)
-            .incisione(.white)
             .padding(Misure.Analisi.testaMargine)
             .frame(maxWidth: larghezza ?? .infinity, alignment: larghezza == nil ? .leading : .trailing)
             .frame(width: larghezza)
@@ -488,11 +603,17 @@ struct RigaDato: View {
     let etichetta: String
     let valore: String
     var larghezza: CGFloat = 150
+    /// Colore del valore (per esempio rosso se negativo); nil = quello solito.
+    var colore: Color? = nil
+    /// Pillola accanto al valore (per esempio «decide il minimo»).
+    var pillola: Pillola? = nil
 
-    init(_ etichetta: String, _ valore: String, larghezza: CGFloat = 150) {
+    init(_ etichetta: String, _ valore: String, larghezza: CGFloat = 150, colore: Color? = nil, pillola: Pillola? = nil) {
         self.etichetta = etichetta
         self.valore = valore
         self.larghezza = larghezza
+        self.colore = colore
+        self.pillola = pillola
     }
 
     var body: some View {
@@ -501,12 +622,15 @@ struct RigaDato: View {
                 .font(Tipo.campoEtichetta)
                 .foregroundColor(Colori.Analisi.kpiNota)
                 .frame(width: larghezza, alignment: .leading)
-            Text(valore.isEmpty ? "—" : valore)
-                .font(Tipo.tabellaCella)
-                .foregroundColor(valore.isEmpty ? Colori.Analisi.kpiNota : Colori.Analisi.tabellaTesto)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.MotoriPosizioni.spazioPillola) {
+                Text(valore.isEmpty ? "—" : valore)
+                    .font(Tipo.tabellaCella)
+                    .foregroundColor(valore.isEmpty ? Colori.Analisi.kpiNota : (colore ?? Colori.Analisi.tabellaTesto))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let pillola { pillola }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 7)
         .bordoBasso(Colori.Analisi.tabellaRiga)
@@ -518,19 +642,25 @@ struct ScalaRischio: View {
     let valore: Int?
 
     var body: some View {
-        HStack(spacing: 3) {
-            ForEach(1...7, id: \.self) { i in
-                Text("\(i)")
-                    .font(Tipo.chip)
-                    .foregroundColor(i == valore ? .white : Colori.Analisi.chipTesto)
-                    .frame(width: 19, height: 18)
-                    .background(RoundedRectangle(cornerRadius: 2)
-                        .fill(i == valore ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Colori.Analisi.chip)))
-                    .overlay(RoundedRectangle(cornerRadius: 2)
-                        .strokeBorder(i == valore ? Colori.Analisi.navBordoBasso : Colori.Analisi.chipBordo, lineWidth: 1))
+        let forma = FormaVetro.arrotondata(Tema.Raggio.Dossier.casellaRischio)
+        // «non indicato» sotto la scala: nelle colonne strette non va a capo lettera per lettera
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 3) {
+                ForEach(1...7, id: \.self) { i in
+                    Text("\(i)")
+                        .font(Tipo.chip)
+                        .foregroundColor(i == valore ? Tema.Colore.Componenti.testoSuColore : Colori.Analisi.chipTesto)
+                        .frame(width: 19, height: 18)
+                        .background { forma.fill(i == valore ? Colori.Analisi.navAlto : Colori.Analisi.chip) }
+                        .overlay {
+                            forma.strokeBorder(i == valore ? Colori.Analisi.navBordoBasso : Colori.Analisi.chipBordo, lineWidth: Tema.Misura.filo)
+                                .allowsHitTesting(false)
+                        }
+                }
             }
             if valore == nil {
-                Text("non indicato").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).padding(.leading, 4)
+                Text("non indicato").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
+                    .lineLimit(1).fixedSize()
             }
         }
     }

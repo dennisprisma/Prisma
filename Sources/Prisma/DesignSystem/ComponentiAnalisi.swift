@@ -1,46 +1,57 @@
 import SwiftUI
 
+// MARK: - Gettoni delle app di analisi
+
+extension Tema.Misura.Componenti {
+    /// Voce della barra laterale (.side-item): margini e altezza minima.
+    static let voceLaterale = EdgeInsets(top: 7, leading: 8, bottom: 7, trailing: 8)
+    static let voceLateraleMinima: CGFloat = 30
+    static let quadratinoVoce: CGFloat = 10
+    /// Intestazione di sezione della barra laterale (.side-sec).
+    static let sezioneLaterale = EdgeInsets(top: 12, leading: 8, bottom: 4, trailing: 8)
+    /// Tessere degli indicatori (.tiles): spazio tra le tessere e margini interni.
+    static let spazioTessere: CGFloat = 10
+    static let tessera = EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+    /// Chip neutro (pozzetto) e contatore delle voci.
+    static let chipNeutro: CGFloat = 18
+    static let margineChipNeutro: CGFloat = 7
+    static let margineContatore: CGFloat = 6
+    /// Barra divisa per canale (.split): altezza, stacco tra i due colori, larghezza minima di un tratto.
+    static let barraCanali: CGFloat = 10
+    static let spazioBarraCanali: CGFloat = 2
+    static let minimoBarraCanali: CGFloat = 6
+    /// Margine sinistro (etichette dei valori) e basso (anni o date) dei grafici.
+    static let graficoSinistra: CGFloat = 52
+    static let graficoBasso: CGFloat = 18
+    /// Punto finale della linea principale dei grafici.
+    static let puntoGrafico: CGFloat = 9
+    static let puntoGraficoPiccolo: CGFloat = 6
+}
+
+extension Tema.Testo.Componenti {
+    /// Titolo delle voci della barra laterale e delle righe delle impostazioni (13/500).
+    static let voce = Tema.Testo.sf(13, .medium)
+    /// Valore delle tessere degli indicatori (18/600) con la sua spaziatura.
+    static let spaziaturaValore = Tema.Testo.spaziatura(-0.01, 18)
+    /// Titolo dei pannelli di analisi.
+    static let titoloPannello = Tema.Testo.sf(15, .semibold)
+    /// Etichette degli assi dei grafici.
+    static let asse = Tema.Testo.sf(10.5).monospacedDigit()
+}
+
 // MARK: - Controlli dell'elenco laterale
 
-/// Controllo a segmenti ardesia delle app di analisi (.fx-seg).
+/// Controllo a segmenti delle app di analisi: voci di larghezza uguale.
 struct SegmentiAnalisi<Valore: Hashable>: View {
     let opzioni: [(Valore, String)]
     @Binding var selezione: Valore
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(opzioni.enumerated()), id: \.offset) { i, o in
-                let attivo = o.0 == selezione
-                Button { selezione = o.0 } label: {
-                    Text(o.1)
-                        .font(Tipo.segAnalisi)
-                        .foregroundColor(attivo ? .white : Colori.Analisi.segTesto)
-                        .incisione(attivo ? Colori.Analisi.segAttivoIncisione : .white, y: attivo ? -1 : 1)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(attivo ? AnyShapeStyle(Gradienti.segAnalisiAttivo) : AnyShapeStyle(Color.clear))
-                        .overlay(alignment: .top) {
-                            if attivo {
-                                LinearGradient(colors: [Colori.Analisi.segAttivoOmbra, .clear], startPoint: .top, endPoint: .bottom).frame(height: 3)
-                            }
-                        }
-                }
-                .buttonStyle(StileSemplice())
-                if i < opzioni.count - 1 {
-                    Rectangle().fill(Colori.Analisi.segBordo).frame(width: 1)
-                }
-            }
-        }
-        .frame(height: Misure.Analisi.segAltezza)
-        .background(Gradienti.controlloLion)
-        .clipShape(RoundedRectangle(cornerRadius: Misure.Analisi.raggio))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.segBordo, lineWidth: 1))
-        .shadow(color: .white, radius: 0, x: 0, y: 1)
+        ControlloSegmenti(opzioni: opzioni, selezione: $selezione, riempi: true)
     }
 }
 
-/// Voce dell'elenco laterale con selezione blu (.fx-nav).
+/// Voce della barra laterale (.side-item): fondo leggero al passaggio, accento al 17% se scelta.
 struct VoceNavigazione: View {
     let titolo: String
     var colore: Color? = nil
@@ -49,69 +60,67 @@ struct VoceNavigazione: View {
     let azione: () -> Void
 
     var body: some View {
+        let m = Tema.Misura.Componenti.self
         Button(action: azione) {
-            HStack(spacing: 9) {
+            HStack(spacing: 10) {
                 if let colore {
-                    RoundedRectangle(cornerRadius: 2).fill(colore).frame(width: 10, height: 10)
-                        .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Color.white.opacity(attiva ? 0.8 : 0), lineWidth: 1))
+                    RoundedRectangle(cornerRadius: Tema.Raggio.quadratinoCanale, style: .continuous)
+                        .fill(colore)
+                        .frame(width: m.quadratinoVoce, height: m.quadratinoVoce)
                 }
                 Text(titolo)
-                    .font(attiva ? Tipo.navAnalisiAttiva : Tipo.navAnalisi)
-                    .foregroundColor(attiva ? .white : Colori.Analisi.navTesto)
-                    .incisione(attiva ? Colori.Analisi.navIncisione : Colori.Analisi.navIncisioneSpento)
+                    .font(Tema.Testo.Componenti.voce)
+                    .foregroundColor(Tema.Colore.inchiostro)
+                    .lineLimit(1)
                 Spacer(minLength: 4)
                 if let conteggio, conteggio > 0 {
                     Text("\(conteggio)")
-                        .font(Tipo.chip)
-                        .foregroundColor(attiva ? Colori.Analisi.navIncisione : Colori.Analisi.navConteggioTesto)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(attiva ? Color.white.opacity(0.85) : Colori.Analisi.navConteggio))
+                        .font(Tema.Testo.chipPiccolo)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                        .padding(.horizontal, m.margineContatore)
+                        .frame(minHeight: m.chipNeutro)
+                        .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
                 }
             }
-            .padding(.horizontal, 9)
-            .frame(height: Misure.Analisi.navAltezza)
+            .padding(m.voceLaterale)
+            .frame(minHeight: m.voceLateraleMinima)
             .frame(maxWidth: .infinity)
-            .background(attiva ? AnyShapeStyle(Gradienti.navAnalisi) : AnyShapeStyle(Color.clear))
-            .luceInterna(attiva ? Colori.Analisi.navLuce : .clear)
-            .bordoAlto(attiva ? Colori.Analisi.navBordoAlto : .clear)
-            .bordoBasso(attiva ? Colori.Analisi.navBordoBasso : .clear)
+            .fondoPassaggio(.arrotondata(Tema.Raggio.voceLaterale), selezionata: attiva)
             .contentShape(Rectangle())
         }
         .buttonStyle(StileSemplice())
     }
 }
 
+/// Intestazione di sezione della barra laterale (.side-sec: 11,5/600, inchiostro terziario).
 struct EtichettaRail: View {
     let testo: String
 
     var body: some View {
-        Text(testo.uppercased())
-            .font(Tipo.railEtichetta)
-            .foregroundColor(Colori.Analisi.railEtichetta)
-            .incisione(.white)
-            .padding(EdgeInsets(top: 8, leading: 3, bottom: 1, trailing: 3))
+        Text(testo)
+            .font(Tema.Testo.occhiello)
+            .foregroundColor(Tema.Colore.inchiostroTerziario)
+            .padding(Tema.Misura.Componenti.sezioneLaterale)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 // MARK: - KPI, chip e pillole
 
-/// Fascia di indicatori (.fx-kpis).
+/// Fila di indicatori: tessere del tema (.tiles) affiancate, tutte alte uguali.
 struct FasciaKPI<Contenuto: View>: View {
     @ViewBuilder let contenuto: () -> Contenuto
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        HStack(alignment: .top, spacing: Tema.Misura.Componenti.spazioTessere) {
             contenuto()
         }
-        .background(Gradienti.kpi)
-        .luceInterna(.white)
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.kpiBordo, lineWidth: 1))
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
-/// Un indicatore: titolo maiuscolo, valore grande, nota sotto.
+/// Un indicatore in una tessera (.tile): etichetta, valore 18/600, nota sotto.
+/// `ultimo` resta per compatibilità: le tessere sono staccate e non hanno filetti.
 struct KPI<Nota: View>: View {
     let titolo: String
     let valore: String
@@ -119,77 +128,76 @@ struct KPI<Nota: View>: View {
     @ViewBuilder let nota: () -> Nota
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(titolo.uppercased())
-                .font(Tipo.kpiTitolo)
-                .tracking(0.3)
-                .foregroundColor(Colori.Analisi.kpiTitolo)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(titolo)
+                .font(Tema.Testo.secondario)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             Text(valore)
-                .font(Tipo.kpiValore)
-                .tracking(-0.5)
-                .foregroundColor(Colori.Analisi.kpiValore)
+                .font(Tema.Testo.valoreTessera)
+                .tracking(Tema.Testo.Componenti.spaziaturaValore)
+                .foregroundColor(Tema.Colore.inchiostro)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             HStack(spacing: 5) { nota() }
-                .font(Tipo.kpiNota)
-                .foregroundColor(Colori.Analisi.kpiNota)
+                .font(Tema.Testo.didascalia)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
                 .lineLimit(1)
         }
-        .incisione(.white)
-        .padding(Misure.Analisi.kpiMargine)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .trailing) {
-            if !ultimo { Rectangle().fill(Colori.Analisi.kpiBordo).frame(width: 1) }
-        }
+        .padding(Tema.Misura.Componenti.tessera)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.tessera))
     }
 }
 
+/// Chip neutro: capsula in pozzetto con testo secondario.
 struct Chip: View {
     let testo: String
 
     var body: some View {
+        let m = Tema.Misura.Componenti.self
         Text(testo)
-            .font(Tipo.chip)
-            .foregroundColor(Colori.Analisi.chipTesto)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(RoundedRectangle(cornerRadius: 3).fill(Colori.Analisi.chip))
-            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Analisi.chipBordo, lineWidth: 1))
+            .font(Tema.Testo.chipPiccolo)
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+            .lineLimit(1)
+            .padding(.horizontal, m.margineChipNeutro)
+            .frame(minHeight: m.chipNeutro)
+            .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
             .fixedSize()
     }
 }
 
-/// Pillola di stato (.fx-pill): regolare, in scadenza, scaduta, proposta…
+/// Pillola di stato (.pill): in essere (verde), proposta o in scadenza (arancio), errore (rosso), neutra.
 struct Pillola: View {
     enum Tono { case ok, attenzione, errore, neutro }
 
     let testo: String
     let tono: Tono
 
-    /// Fondo, bordo e testo del tono.
-    private var colori: (fondo: Color, bordo: Color, testo: Color) {
+    /// Fondo e testo del tono.
+    private var colori: (fondo: Color, testo: Color) {
         switch tono {
-        case .ok: return (Colori.Analisi.okFondo, Colori.Analisi.okBordo, Colori.Analisi.okTesto)
-        case .attenzione: return (Colori.Analisi.attenzioneFondo, Colori.Analisi.attenzioneBordo, Colori.Analisi.attenzioneTesto)
-        case .errore: return (Colori.Analisi.erroreFondo, Colori.Analisi.erroreBordo, Colori.Analisi.erroreTesto)
-        case .neutro: return (Colori.Analisi.neutroFondo, Colori.Analisi.neutroBordo, Colori.Analisi.neutroTesto)
+        case .ok: return (Tema.Colore.fondoInEssere, Tema.Colore.testoInEssere)
+        case .attenzione: return (Tema.Colore.fondoProposta, Tema.Colore.testoProposta)
+        case .errore: return (Tema.Colore.Componenti.fondoErrore, Tema.Colore.scadenzaOra)
+        case .neutro: return (Tema.Colore.pozzetto, Tema.Colore.inchiostroSecondario)
         }
     }
 
     var body: some View {
         Text(testo)
-            .font(Tipo.pill)
+            .font(Tema.Testo.pill)
             .foregroundColor(colori.testo)
-            .incisione(.white)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 3)
-            .background(RoundedRectangle(cornerRadius: 3).fill(colori.fondo))
-            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(colori.bordo, lineWidth: 1))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .frame(height: Tema.Misura.pill)
+            .background { FormaVetro.capsula.fill(colori.fondo) }
             .fixedSize()
     }
 }
 
-/// Riquadro con titolo e nota (pannelli dell'analisi).
+/// Riquadro con titolo e nota (pannelli dell'analisi), senza fondo proprio.
 struct PannelloAnalisi<Destra: View, Contenuto: View>: View {
     let titolo: String
     var nota: String? = nil
@@ -200,9 +208,9 @@ struct PannelloAnalisi<Destra: View, Contenuto: View>: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(titolo).font(Tipo.pannelloAnalisi).foregroundColor(Colori.Analisi.pannelloTitolo)
+                    Text(titolo).font(Tema.Testo.Componenti.titoloPannello).foregroundColor(Tema.Colore.inchiostro)
                     if let nota {
-                        Text(nota).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.pannelloNota)
+                        Text(nota).font(Tema.Testo.secondario).foregroundColor(Tema.Colore.inchiostroSecondario)
                     }
                 }
                 Spacer()
@@ -231,7 +239,7 @@ struct GraficoAnello: View {
         let totale = max(fette.reduce(0) { $0 + $1.valore }, 0.000_1)
         let inizi = fette.indices.map { i in fette[..<i].reduce(0) { $0 + $1.valore } / totale }
         ZStack {
-            Circle().stroke(Colori.Analisi.tracciaAnello, lineWidth: Misure.Analisi.spessoreAnello)
+            Circle().stroke(Tema.Colore.pozzetto, lineWidth: Misure.Analisi.spessoreAnello)
             ForEach(Array(fette.enumerated()), id: \.element.id) { i, f in
                 Circle()
                     .trim(from: inizi[i], to: inizi[i] + f.valore / totale)
@@ -239,8 +247,8 @@ struct GraficoAnello: View {
                     .rotationEffect(.degrees(-90))
             }
             VStack(spacing: 1) {
-                Text(etichettaCentro.uppercased()).font(Tipo.chip).tracking(0.5).foregroundColor(Colori.Analisi.kpiTitolo)
-                Text(valoreCentro).font(Tipo.pannelloAnalisi).foregroundColor(Colori.Analisi.kpiValore)
+                Text(etichettaCentro).font(Tema.Testo.didascalia).foregroundColor(Tema.Colore.inchiostroSecondario)
+                Text(valoreCentro).font(Tema.Testo.valoreKpi).foregroundColor(Tema.Colore.inchiostro)
             }
         }
         .padding(Misure.Analisi.spessoreAnello / 2)
@@ -261,8 +269,8 @@ struct GraficoProiezione: View {
 
     var body: some View {
         GeometryReader { geo in
-            let sinistra: CGFloat = 52
-            let basso: CGFloat = 18
+            let sinistra = Tema.Misura.Componenti.graficoSinistra
+            let basso = Tema.Misura.Componenti.graficoBasso
             let w = max(1, geo.size.width - sinistra - 6)
             let h = max(1, geo.size.height - basso - 6)
             let tutti = serie.flatMap(\.punti)
@@ -281,18 +289,18 @@ struct GraficoProiezione: View {
                         p.move(to: CGPoint(x: sinistra, y: y(v)))
                         p.addLine(to: CGPoint(x: sinistra + w, y: y(v)))
                     }
-                    .stroke(Colori.Analisi.griglia, lineWidth: 1)
+                    .stroke(Tema.Colore.separatore, lineWidth: 1)
                     Text(Formati.euroBreve(v))
-                        .font(Tipo.assi)
-                        .foregroundColor(Colori.Analisi.assi)
+                        .font(Tema.Testo.Componenti.asse)
+                        .foregroundColor(Tema.Colore.inchiostroTerziario)
                         .frame(width: sinistra - 6, alignment: .trailing)
                         .position(x: (sinistra - 6) / 2, y: y(v))
                 }
                 // Etichette degli anni
                 ForEach(etichetteAnni(anni), id: \.self) { a in
                     Text(a == 0 ? "Oggi" : "+\(a) a")
-                        .font(Tipo.assi)
-                        .foregroundColor(Colori.Analisi.assi)
+                        .font(Tema.Testo.Componenti.asse)
+                        .foregroundColor(Tema.Colore.inchiostroTerziario)
                         .position(x: x(a), y: geo.size.height - basso / 2)
                 }
                 if let principale = serie.first(where: \.principale) ?? serie.first {
@@ -325,9 +333,9 @@ struct GraficoProiezione: View {
                     .stroke(s.colore, style: StrokeStyle(lineWidth: s.principale ? 2.2 : 1.4, lineJoin: .round))
                     if let ultimo = s.punti.last, s.principale {
                         Circle()
-                            .fill(Color.white)
-                            .overlay(Circle().stroke(s.colore, lineWidth: 2))
-                            .frame(width: 9, height: 9)
+                            .fill(Tema.Colore.Componenti.puntoGrafico)
+                            .overlay { Circle().stroke(s.colore, lineWidth: 2) }
+                            .frame(width: Tema.Misura.Componenti.puntoGrafico, height: Tema.Misura.Componenti.puntoGrafico)
                             .position(x: x(ultimo.anno), y: y(ultimo.valore))
                     }
                 }
@@ -344,20 +352,29 @@ struct GraficoProiezione: View {
     }
 }
 
-/// Barra orizzontale della ripartizione tra i due canali.
+/// Barra divisa per canale (.split): blu Alleanza e cuoio indipendente, staccati e arrotondati.
 struct BarraCanali: View {
     let quotaAlleanza: Double
 
     var body: some View {
+        let m = Tema.Misura.Componenti.self
         GeometryReader { geo in
-            HStack(spacing: 0) {
-                Rectangle().fill(Colori.Analisi.canaleAlleanza)
-                    .frame(width: geo.size.width * CGFloat(min(max(quotaAlleanza, 0), 1)))
-                Rectangle().fill(Colori.Analisi.canaleIndipendente)
+            let q = min(max(quotaAlleanza, 0), 1)
+            let stacco: CGFloat = (q > 0 && q < 1) ? m.spazioBarraCanali : 0
+            let utile = max(0, geo.size.width - stacco)
+            let alleanza = q > 0 ? min(utile, max(m.minimoBarraCanali, utile * CGFloat(q))) : 0
+            HStack(spacing: stacco) {
+                if q > 0 {
+                    RoundedRectangle(cornerRadius: Tema.Raggio.barraCanali, style: .continuous)
+                        .fill(Tema.Colore.canaleAlleanza)
+                        .frame(width: alleanza)
+                }
+                if q < 1 {
+                    RoundedRectangle(cornerRadius: Tema.Raggio.barraCanali, style: .continuous)
+                        .fill(Tema.Colore.canaleIndipendente)
+                }
             }
         }
-        .frame(height: 10)
-        .clipShape(RoundedRectangle(cornerRadius: 3))
-        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Color.black.opacity(0.15), lineWidth: 1))
+        .frame(height: m.barraCanali)
     }
 }

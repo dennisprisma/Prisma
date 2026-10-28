@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// App Agenda (.os-app-agenda): fascia in cuoio, libro ad anelli con la settimana (o il mese),
+/// App Agenda (.os-app-agenda): la fascia in testa, la scheda con la settimana (o il mese),
 /// la pagina della giornata e il dettaglio dell'appuntamento. Nella giornata compaiono anche
 /// le posizioni in scadenza: ogni scadenza è l'occasione per rivedere la posizione del cliente.
 struct AppAgenda: View {
@@ -15,7 +15,7 @@ struct AppAgenda: View {
         VStack(spacing: 0) {
             fasciaCuoio
             libro
-                .padding(.top, -2)
+                .padding(.top, Tema.Misura.Dossier.spazioAgenda)
         }
         .sheet(item: $modulo) { a in
             ModuloAppuntamento(
@@ -64,7 +64,6 @@ struct AppAgenda: View {
                             .foregroundColor(Colori.Agenda.cuoioTesto)
                     }
                 }
-                .incisione(Colori.Agenda.cuoioIncisione)
                 TarghettaData(giorno: giorno)
             }
         }
@@ -73,7 +72,7 @@ struct AppAgenda: View {
     // MARK: - Libro
 
     private var libro: some View {
-        let forma = RettangoloAngoli(bassoDestra: Misure.Agenda.cuoioRaggio, bassoSinistra: Misure.Agenda.cuoioRaggio)
+        let forma = FormaVetro.arrotondata(Tema.Raggio.scheda)
         // Appuntamenti e scadenze dei giorni visibili, raggruppati una volta sola
         let settimane = CalendarioAgenda.settimane(meseDi: giorno)
         let indice = stato.giorniAgenda(stato.vistaAgenda == .settimana ? CalendarioAgenda.giorni(settimanaDi: giorno) : settimane.flatMap { $0 })
@@ -89,20 +88,9 @@ struct AppAgenda: View {
                 }
             }
         }
-        .background(
-            ZStack {
-                Gradienti.cartaAgenda
-                Materiale.Trama(nome: "Grana")
-            }
-        )
+        // Una scheda del tema, come la fascia: il contenuto si taglia alla forma prima del vetro
         .clipShape(forma)
-        .overlay(forma.stroke(Colori.Agenda.libroBordo, lineWidth: 1))
-        .shadow(color: Colori.Agenda.libroOmbra1, radius: 0, x: 0, y: 1)
-        .shadow(color: Colori.Agenda.libroOmbra2, radius: 0, x: 0, y: 2)
-        .ombraCSS(Colori.Agenda.libroOmbra3, y: 3, sfocatura: 4)
-        .overlay(alignment: .top) {
-            AnelliAgenda().offset(y: -Misure.Agenda.anello.height / 2 - 2)
-        }
+        .vetro(.sottile, forma: forma)
     }
 
     private func larghezzaDettaglio(_ totale: CGFloat) -> CGFloat {
@@ -134,7 +122,6 @@ struct AppAgenda: View {
                 .buttonStyle(StileBlu())
         }
         .padding(EdgeInsets(top: 12, leading: 12, bottom: 7, trailing: 12))
-        .background(Colori.Agenda.barraStrumenti)
     }
 
     private func sposta(_ verso: Int) {
@@ -164,10 +151,7 @@ struct AppAgenda: View {
             }
         }
         .padding(EdgeInsets(top: 0, leading: 12, bottom: 6, trailing: 12))
-        .background(Colori.Agenda.barraStrumenti)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Colori.Agenda.settimanaBordo).frame(height: 1)
-        }
+        .bordoBasso(Colori.Agenda.settimanaBordo)
     }
 
     private func mese(_ settimane: [[Date]], _ indice: GiorniAgenda) -> some View {
@@ -197,10 +181,7 @@ struct AppAgenda: View {
             }
         }
         .padding(EdgeInsets(top: 0, leading: 12, bottom: 6, trailing: 12))
-        .background(Colori.Agenda.barraStrumenti)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Colori.Agenda.settimanaBordo).frame(height: 1)
-        }
+        .bordoBasso(Colori.Agenda.settimanaBordo)
     }
 
     // MARK: - Pagina della giornata
@@ -223,7 +204,6 @@ struct AppAgenda: View {
                     .font(Tipo.paginaNota)
                     .foregroundColor(Colori.Agenda.paginaNota)
             }
-            .incisione(Color.white)
             .padding(EdgeInsets(top: 10, leading: 16, bottom: 9, trailing: 16))
 
             ScrollView {
@@ -251,9 +231,6 @@ struct AppAgenda: View {
                         vuoto
                     }
                 }
-            }
-            .background(alignment: .top) {
-                Rigatura(passo: Misure.Agenda.rigatura).fill(Colori.Agenda.rigatura)
             }
             .bordoAlto(Colori.Agenda.rigaBordo)
 
@@ -337,14 +314,9 @@ struct AppAgenda: View {
         }
         .padding(EdgeInsets(top: 10, leading: 15, bottom: 10, trailing: 15))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(
-            ZStack {
-                Gradienti.dettaglioAgenda
-                Materiale.Trama(nome: "Grana")
-            }
-        )
+        .background(Colori.Agenda.dettaglioFondo)
         .overlay(alignment: .leading) {
-            Rectangle().fill(Colori.Agenda.dettaglioBordo).frame(width: 1)
+            Rectangle().fill(Colori.Agenda.dettaglioBordo).frame(width: Tema.Misura.filo)
         }
     }
 
@@ -396,7 +368,7 @@ struct GiornoSettimanaAgenda: View {
                     .tracking(0.4)
                 Text(Formati.giorno.string(from: giorno))
                     .font(Tipo.giornoNumero)
-                    .foregroundColor(selezionato ? .white : (oggi ? Colori.Agenda.giornoOggiNumero : Colori.Agenda.giornoNumero))
+                    .foregroundColor(selezionato ? Colori.Agenda.selezioneTesto : (oggi ? Colori.Agenda.giornoOggiNumero : Colori.Agenda.giornoNumero))
                 Text(nota)
                     .font(Tipo.giornoNota)
                     .lineLimit(1)
@@ -405,7 +377,6 @@ struct GiornoSettimanaAgenda: View {
                     .padding(.top, 2)
             }
             .foregroundColor(selezionato ? Colori.Agenda.selezioneTesto : Colori.Agenda.giorno)
-            .incisione(selezionato ? Colori.Agenda.selezioneIncisione : Color.white.opacity(0.5), y: selezionato ? -1 : 1)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity)
             .background(sfondo)
@@ -415,16 +386,13 @@ struct GiornoSettimanaAgenda: View {
     }
 
     @ViewBuilder private var sfondo: some View {
+        let forma = FormaVetro.arrotondata(Tema.Raggio.Dossier.giornoSettimana)
         if selezionato {
-            RoundedRectangle(cornerRadius: 5)
-                .fill(Gradienti.giornoSelezionato)
-                .luceInterna(Colori.Agenda.selezioneLuce, raggio: 5)
-                .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Agenda.selezioneBordo, lineWidth: 1))
-                .shadow(color: Color.white.opacity(0.5), radius: 0, x: 0, y: 1)
+            forma.fill(Colori.Agenda.selezioneAlto)
         } else if oggi {
-            RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Agenda.giornoOggiBordo, lineWidth: 1)
+            forma.strokeBorder(Colori.Agenda.giornoOggiBordo, lineWidth: 1)
         } else if sopra {
-            RoundedRectangle(cornerRadius: 5).fill(Colori.Agenda.giornoPassaggio)
+            forma.fill(Colori.Agenda.giornoPassaggio)
         }
     }
 }
@@ -464,19 +432,16 @@ struct CellaMeseAgenda: View {
             VStack(spacing: 2) {
                 Text(Formati.giorno.string(from: giorno))
                     .font(Tipo.cellaMese)
-                    .foregroundColor(selezionato ? .white : (oggi ? Colori.Agenda.giornoOggiNumero : Colori.Agenda.giornoNumero))
+                    .foregroundColor(selezionato ? Colori.Agenda.selezioneTesto : (oggi ? Colori.Agenda.giornoOggiNumero : Colori.Agenda.giornoNumero))
                 PuntiniGiorno(incontri: incontri, scadenze: scadenze, selezionato: selezionato)
             }
-            .incisione(selezionato ? Colori.Agenda.selezioneIncisione : Color.white.opacity(0.5), y: selezionato ? -1 : 1)
             .frame(maxWidth: .infinity)
             .frame(height: Misure.Agenda.cellaMese)
             .background {
                 if selezionato {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Gradienti.giornoSelezionato)
-                        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Agenda.selezioneBordo, lineWidth: 1))
+                    FormaVetro.arrotondata(Tema.Raggio.Dossier.giornoMese).fill(Colori.Agenda.selezioneAlto)
                 } else if oggi {
-                    RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Agenda.giornoOggiBordo, lineWidth: 1)
+                    FormaVetro.arrotondata(Tema.Raggio.Dossier.giornoMese).strokeBorder(Colori.Agenda.giornoOggiBordo, lineWidth: 1)
                 }
             }
             .opacity(nelMese ? 1 : 0.4)
@@ -532,13 +497,12 @@ struct RigaEventoAgenda: View {
                 Text("›")
                     .font(Tipo.eventoFreccia)
                     .foregroundColor(Colori.Agenda.freccia)
-                    .incisione(.white)
             }
             .padding(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 15))
             .background(selezionato ? Colori.Agenda.rigaSelezione : Color.clear)
             .overlay(alignment: .leading) {
                 if selezionato {
-                    Rectangle().fill(Colori.Agenda.rigaSegno)
+                    FormaVetro.capsula.fill(Colori.Agenda.rigaSegno)
                         .frame(width: Misure.Agenda.segno)
                         .padding(.vertical, 10)
                 }
@@ -646,9 +610,7 @@ struct DettaglioAppuntamento: View {
                     }
                     .padding(EdgeInsets(top: 7, leading: 10, bottom: 7, trailing: 10))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 2).fill(Colori.Agenda.notaFondo))
-                    .luceInterna(Colori.Agenda.notaLuce, raggio: 2)
-                    .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Colori.Agenda.notaBordo, lineWidth: 1))
+                    .vetro(.chip, forma: .arrotondata(Tema.Raggio.Dossier.riquadro), riempimento: Colori.Agenda.notaFondo)
                     .padding(.vertical, 8)
 
                     if let p = posizione {
@@ -792,8 +754,7 @@ struct DettaglioAppuntamento: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.45)))
-        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Agenda.notaBordo, lineWidth: 1))
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.Dossier.riquadro))
         .padding(.bottom, 8)
     }
 }

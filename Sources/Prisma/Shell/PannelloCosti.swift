@@ -36,7 +36,7 @@ struct PannelloCosti: View {
                         .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.attenzioneTesto)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("Il costo pesa due volte: quello che paghi e il rendimento che quei soldi non producono più. Le alternative sono prodotti del catalogo con la stessa area e lo stesso indicatore di rischio, calcolate con lo stesso rendimento lordo e con penali, imposte d'uscita e costo d'ingresso.")
+                Text("Il costo pesa due volte: quello che paghi e il rendimento che quei soldi non producono più. «Come nel KID» è l'incidenza annua dei costi (RIY) che Prisma calcola sugli anni raccomandati, prima delle imposte, con sotto quella dichiarata nel KID quando c'è: una stima da confrontare con il documento. Le alternative sono prodotti del catalogo con la stessa area e lo stesso indicatore di rischio, calcolate con lo stesso rendimento lordo e con penali, imposte d'uscita e costo d'ingresso.")
                     .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -44,11 +44,14 @@ struct PannelloCosti: View {
     }
 
     private var tabella: some View {
-        VStack(spacing: 0) {
+        // L'incidenza dei costi come nel KID (RIY), calcolata una volta finché posizioni e catalogo non cambiano
+        let incidenze = CacheMotoriPosizioni.incidenze(analisi.voci.map(\.posizione), prodotti: stato.dati.prodotti)
+        return VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Text("Posizione").frame(maxWidth: .infinity, alignment: .leading)
                 Text("Canale").frame(width: Misure.Analisi.colonnaCanale, alignment: .leading)
                 Text("Costo annuo").frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
+                Text("Come nel KID").frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
                 Text("Quest'anno").frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
                 Text("In 20 anni").frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
                 Text("Alternativa a parità di rischio").frame(width: Misure.Analisi.colonnaAlternativa, alignment: .leading)
@@ -59,16 +62,16 @@ struct PannelloCosti: View {
             .background(LinearGradient(colors: [Colori.Analisi.tabellaTestaAlto, Colori.Analisi.tabellaTestaBasso], startPoint: .top, endPoint: .bottom))
             .bordoBasso(Colori.Analisi.tabellaTestaBordo)
             ForEach(Array(analisi.voci.enumerated()), id: \.element.id) { i, v in
-                Button { stato.posizioneInDettaglio = v.posizione.id } label: { riga(v) }
+                Button { stato.posizioneInDettaglio = v.posizione.id } label: { riga(v, incidenza: incidenze[v.posizione.id]) }
                     .buttonStyle(StileSemplice())
                     .background(i % 2 == 1 ? Colori.Analisi.tabellaAlternata : Colori.Analisi.principale)
                     .bordoBasso(Colori.Analisi.tabellaRiga)
             }
         }
-        .overlay(Rectangle().strokeBorder(Colori.Analisi.tabellaBordo, lineWidth: 1))
+        .contornoTabella()
     }
 
-    private func riga(_ v: CostiPosizione) -> some View {
+    private func riga(_ v: CostiPosizione, incidenza: IncidenzaCostiKID?) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(v.posizione.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
@@ -84,6 +87,8 @@ struct PannelloCosti: View {
                 Text(v.livello.nome).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota)
             }
             .frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
+            colonnaKID(incidenza)
+                .frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
             Text(Formati.euro(v.euroAnno)).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
                 .frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
             VStack(alignment: .trailing, spacing: 1) {
@@ -111,5 +116,27 @@ struct PannelloCosti: View {
         }
         .padding(Misure.Analisi.cellaMargine)
         .contentShape(Rectangle())
+    }
+
+    /// RIY calcolato al periodo raccomandato e, sotto, quello dichiarato nel KID (arancio se Prisma trova
+    /// costi più alti di quanto dice il documento).
+    @ViewBuilder private func colonnaKID(_ k: IncidenzaCostiKID?) -> some View {
+        if let k, let c = k.calcolato {
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(CifreDoc.percento(c, decimali: 2)).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
+                if let d = k.dichiarato {
+                    Text("KID \(CifreDoc.percento(d, decimali: 2))")
+                        .font(Tipo.chip)
+                        .foregroundColor((k.scarto ?? 0) > MotoreCosti.scartoMinimo ? Colori.Analisi.attenzioneTesto : Colori.Analisi.kpiNota)
+                        .lineLimit(1)
+                } else {
+                    Text("a \(k.periodoRaccomandato) \(k.periodoRaccomandato == 1 ? "anno" : "anni")")
+                        .font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                }
+            }
+            .help(IncidenzaCostiKID.metodo)
+        } else {
+            Text("—").font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.kpiNota)
+        }
     }
 }

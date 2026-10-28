@@ -68,10 +68,10 @@ struct BisogniCliente: View {
                             Text(a.nome).font(Tipo.bisognoTitolo).foregroundColor(Colori.Rubrica.testo)
                             Text(importanza.nome.uppercased())
                                 .font(Tipo.bisognoArea)
-                                .foregroundColor(.white)
+                                .foregroundColor(Tema.Colore.Componenti.testoSuColore)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1)
-                                .background(RoundedRectangle(cornerRadius: 2).fill(Colori.Bisogni.importanza(importanza)))
+                                .background { FormaVetro.capsula.fill(Colori.Bisogni.importanza(importanza)) }
                             if let o = v.orizzonte, v.importanza != .nessuna {
                                 Text(o.nome).font(Tipo.bisognoNota).foregroundColor(Colori.Rubrica.secondario)
                             }
@@ -135,9 +135,9 @@ struct BisogniCliente: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: b.area.simbolo)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Tema.Colore.Componenti.testoSuColore)
                 .frame(width: Misure.Bisogni.icona, height: Misure.Bisogni.icona)
-                .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Bisogni.area(b.area)))
+                .background { FormaVetro.arrotondata(Tema.Raggio.Dossier.iconaBisogno).fill(Colori.Bisogni.area(b.area)) }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(b.titolo).font(Tipo.bisognoTitolo).foregroundColor(Colori.Rubrica.testo)
@@ -167,9 +167,8 @@ struct BisogniCliente: View {
             }
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: Misure.Bisogni.raggioCarta)
-            .fill(confermato ? Colori.Bisogni.confermatoFondo : Colori.Bisogni.cartaFondo))
-        .overlay(RoundedRectangle(cornerRadius: Misure.Bisogni.raggioCarta).strokeBorder(Colori.Bisogni.cartaBordo, lineWidth: 1))
+        .vetro(.sottile, forma: .arrotondata(Misure.Bisogni.raggioCarta),
+               riempimento: confermato ? Colori.Bisogni.confermatoFondo : Colori.Bisogni.cartaFondo)
     }
 
     // MARK: - Eventi di vita
@@ -190,8 +189,7 @@ struct BisogniCliente: View {
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Capsule().fill(Colori.Bisogni.chipFondo))
-                            .overlay(Capsule().strokeBorder(Colori.Bisogni.chipBordo, lineWidth: 1))
+                            .vetro(.chip, forma: .capsula, riempimento: Colori.Bisogni.chipFondo)
                     }
                     .buttonStyle(StileSemplice())
                 }
@@ -212,7 +210,7 @@ struct BisogniCliente: View {
                             if let i = p.eventi.firstIndex(where: { $0.id == e.id }) { p.eventi[i].nota = nuova }
                         }
                     }))
-                    .textFieldStyle(.roundedBorder)
+                    .campoTesto()
                     Button("Togli") {
                         stato.aggiornaBisogni(cliente.id) { $0.eventi.removeAll { $0.id == e.id } }
                     }
@@ -244,9 +242,9 @@ struct CartaBisogno: View {
             HStack(spacing: 8) {
                 Image(systemName: area.simbolo)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Tema.Colore.Componenti.testoSuColore)
                     .frame(width: Misure.Bisogni.icona, height: Misure.Bisogni.icona)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Bisogni.area(area)))
+                    .background { FormaVetro.arrotondata(Tema.Raggio.Dossier.iconaBisogno).fill(Colori.Bisogni.area(area)) }
                 Text(area.nome).font(Tipo.bisognoTitolo).foregroundColor(Colori.Rubrica.testo).lineLimit(1)
             }
             Text(area.domanda)
@@ -272,13 +270,11 @@ struct CartaBisogno: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Misure.Bisogni.raggioCarta).fill(Colori.Bisogni.cartaFondo))
         .overlay(alignment: .top) {
             Rectangle().fill(Colori.Bisogni.importanza(valutazione.importanza)).frame(height: valutazione.importanza == .nessuna ? 0 : 3)
                 .clipShape(RettangoloAngoli(altoSinistra: Misure.Bisogni.raggioCarta, altoDestra: Misure.Bisogni.raggioCarta))
         }
-        .overlay(RoundedRectangle(cornerRadius: Misure.Bisogni.raggioCarta).strokeBorder(Colori.Bisogni.cartaBordo, lineWidth: 1))
-        .shadow(color: Colori.Bisogni.cartaOmbra, radius: 1, x: 0, y: 1)
+        .vetro(.sottile, forma: .arrotondata(Misure.Bisogni.raggioCarta), riempimento: Colori.Bisogni.cartaFondo)
     }
 }
 
@@ -298,7 +294,7 @@ struct RuotaBisogni: View {
             let ampiezza = 360.0 / Double(aree.count)
             ZStack {
                 Circle().fill(Colori.Bisogni.ruotaFondo)
-                Circle().strokeBorder(Colori.Bisogni.ruotaBordo, lineWidth: 1)
+                Circle().strokeBorder(Colori.Bisogni.ruotaBordo, lineWidth: Tema.Misura.filo)
                 ForEach(Array(aree.enumerated()), id: \.element) { i, a in
                     let p: Double = Double((punteggi[a] ?? .nessuna).rawValue) / 3
                     let raggio: CGFloat = interno + (esterno - interno) * CGFloat(0.25 + 0.75 * p)
@@ -316,12 +312,11 @@ struct RuotaBisogni: View {
                     let py: CGFloat = centro.y + CGFloat(sin(medio)) * distanza
                     Image(systemName: a.simbolo)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.25), radius: 0, x: 0, y: -1)
+                        .foregroundColor(Tema.Colore.Componenti.testoSuColore)
                         .position(x: px, y: py)
                 }
-                Circle().fill(Color.white).frame(width: interno * 2 - 4, height: interno * 2 - 4)
-                    .overlay(Circle().strokeBorder(Colori.Bisogni.ruotaBordo, lineWidth: 1))
+                Circle().fill(Tema.Colore.scheda).frame(width: interno * 2 - 4, height: interno * 2 - 4)
+                    .overlay(Circle().strokeBorder(Colori.Bisogni.ruotaBordo, lineWidth: Tema.Misura.filo))
                     .position(centro)
                 VStack(spacing: 1) {
                     Text("PRIMA").font(Tipo.ruotaCentro).foregroundColor(Colori.Rubrica.secondario)

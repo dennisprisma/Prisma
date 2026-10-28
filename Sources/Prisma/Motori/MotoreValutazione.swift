@@ -16,6 +16,12 @@ struct AnnoRiscatto: Hashable {
     let bollo: Double
     let netto: Double
     let premio: Double
+    /// false se il riscatto cade nei mesi di blocco del contratto (`CondizioniContratto.mesiBloccoRiscatto`):
+    /// le cifre restano come ipotesi, ma il riscatto non si può chiedere.
+    var possibile = true
+    /// Valore che il contratto avrebbe senza alcun costo (né ingresso, né gestione, né trattenuto, né penale),
+    /// per l'incidenza dei costi come nel KID; 0 se non calcolato.
+    var valoreSenzaCosti: Double = 0
 
     /// Primo mese dell'anno (13 per il 2° anno).
     var mese: Int { (anno - 1) * 12 + 1 }
@@ -27,6 +33,13 @@ struct AnnoRiscatto: Hashable {
     var rendimentoMedio: Double { MotoreValutazione.medioAnnuo(netto, premio, anni: anniTrascorsi) }
     /// Rendimento medio annuo al lordo delle imposte e del bollo, come nel KID (%).
     var rendimentoLordo: Double { MotoreValutazione.medioAnnuo(valore - penale, premio, anni: anniTrascorsi) }
+    /// Rendimento medio annuo senza costi (%), al lordo delle imposte.
+    var rendimentoSenzaCosti: Double { MotoreValutazione.medioAnnuo(valoreSenzaCosti, premio, anni: anniTrascorsi) }
+    /// Incidenza annua dei costi come nel KID (RIY, punti percentuali l'anno): rendimento senza costi meno
+    /// rendimento lordo con i costi e la penale; nil se il valore senza costi non è calcolato.
+    var incidenzaCosti: Double? { valoreSenzaCosti > 0 ? rendimentoSenzaCosti - rendimentoLordo : nil }
+    /// Il riscatto restituisce almeno il premio versato (si può chiedere e il netto è almeno il premio).
+    var recuperaPremio: Bool { possibile && netto >= premio - 0.005 }
 }
 
 /// Costi e trattenute di un anno di contratto.
@@ -55,6 +68,10 @@ struct EsitoScenarioValutazione: Hashable {
 
     var tipo: TipoScenario { scenario.tipo }
     func riscatto(anno: Int) -> AnnoRiscatto? { riscatti.first { $0.anno == anno } }
+    /// Il primo riscatto possibile (fuori dai mesi di blocco).
+    var primoPossibile: AnnoRiscatto? { riscatti.first { $0.possibile } }
+    /// Il primo riscatto possibile che restituisce almeno il premio versato, se c'è negli anni simulati.
+    var primoRecuperoPremio: AnnoRiscatto? { riscatti.first { $0.recuperaPremio } }
 }
 
 /// Una voce della cascata "dove va il denaro".
@@ -100,6 +117,9 @@ enum MotoreValutazione {
     private static func scenario(_ s: ScenarioValutazione, condizioni c: CondizioniContratto, premio: Double, ingresso: Double,
                                  iniziali: [String: Double], anni: Int) -> EsitoScenarioValutazione {
         var valori = iniziali
+        // Lo stesso contratto senza costi (premio intero, nessun trattenuto né commissione): per l'incidenza come nel KID
+        let sommaQuote = max(c.componenti.reduce(0) { $0 + $1.quota }, 0.000_1)
+        var liberi = Dictionary(uniqueKeysWithValues: c.componenti.map { ($0.id, premio * $0.quota / sommaQuote) })
         var bollo = 0.0
         var riscatti: [AnnoRiscatto] = []
         var costi: [CostiAnno] = []
@@ -109,15 +129,25 @@ enum MotoreValutazione {
             for p in c.componenti {
                 let inizio = prima[p.id] ?? 0
                 let r: Double
+                let lordo: Double
                 switch p.tipo {
                 case .gestioneSeparata:
-                    r = s.rendimento(p) - p.trattenuto
-                    trattenuto += inizio * p.trattenuto / 100
+                    // Lordo meno trattenuto (o retrocessione); con il consolidamento mai sotto il minimo garantito
+                    lordo = s.rendimento(p)
+                    r = MotoreGestioneSeparata.accreditato(p, lordo: lordo)
+                    let punti = p.retrocessione == nil && r == lordo - p.trattenuto ? p.trattenuto : max(0, lordo - r)
+                    trattenuto += inizio * punti / 100
                 case .fondoInterno:
                     r = s.rendimento(p)
+                    // Il rendimento del Fondo Interno è già netto delle commissioni: senza costi sarebbe più alto
+                    let costiFondo = min(max(p.commissione + p.costiSottostanti, 0), 99) / 100
+                    lordo = ((1 + r / 100) / (1 - costiFondo) - 1) * 100
                 }
                 let fine = inizio * (1 + r / 100)
                 valori[p.id] = fine
+                // Senza costi la gestione separata rende il lordo (con il consolidamento, almeno il minimo garantito)
+                let lordoLibero = p.tipo == .gestioneSeparata && p.consolidamento == true ? max(lordo, max(0, p.minimoGarantito ?? 0)) : lordo
+                liberi[p.id] = (liberi[p.id] ?? 0) * (1 + lordoLibero / 100)
                 if p.tipo == .fondoInterno {
                     let medio = (inizio + fine) / 2
                     commissione += medio * p.commissione / 100
@@ -138,7 +168,10 @@ enum MotoreValutazione {
             riscatti.append(AnnoRiscatto(anno: anno, parti: valori, valore: valore,
                                          crescita: valorePrima > 0 ? (valore / valorePrima - 1) * 100 : 0,
                                          penalePercento: penalePercento, penale: penale, imposta: imposta, bollo: bollo,
-                                         netto: netto, premio: premio))
+                                         netto: netto, premio: premio,
+                                         // Nei mesi di blocco il riscatto non si può chiedere
+                                         possibile: (anno - 1) * 12 >= c.mesiBloccoRiscatto,
+                                         valoreSenzaCosti: liberi.values.reduce(0, +)))
             costi.append(CostiAnno(anno: k, ingresso: k == 1 ? ingresso : 0, commissione: commissione, sottostanti: sottostanti,
                                    trattenuto: trattenuto, bollo: bolloAnno,
                                    valoreMedio: (valorePrima + valore) / 2))

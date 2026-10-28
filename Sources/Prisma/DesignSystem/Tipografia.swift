@@ -1,10 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// Caratteri del template.
-/// - "sistema": Lucida Grande, con ripiego su Helvetica Neue (stesso ordine del CSS)
-/// - "contenuto": Helvetica Neue
+/// Caratteri delle schermate nel tema «Liquid Glass»: il font di sistema (SF), come `--font` del tema.
+/// I nomi restano quelli del tema iOS 5; le dimensioni seguono il tema dove non rompono le impaginazioni.
+/// - "sistema" e "contenuto": SF (prima Lucida Grande e Helvetica Neue)
+/// - "serif": i titoli delle pagine, ora SF semibold (prima Georgia)
 enum Tipo {
+    /// Non serve più per scegliere il carattere (resta per compatibilità).
     static let lucidaDisponibile: Bool = NSFont(name: "LucidaGrande", size: 12) != nil
 
     /// Ingrandimento dei testi dell'interfaccia (Impostazioni → Dimensione del testo). Si fissa all'avvio,
@@ -12,65 +14,72 @@ enum Tipo {
     /// (Tipo.Documento, Tipo.Report, Tipo.Carta) e restano impaginati per la carta.
     nonisolated(unsafe) static var fattore: CGFloat = 1
 
+    /// SF alla dimensione data, moltiplicata per la Dimensione del testo.
     static func sistema(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
-        let nome = lucidaDisponibile ? "Lucida Grande" : "Helvetica Neue"
-        return Font.custom(nome, fixedSize: dimensione * fattore).weight(peso)
+        Font.system(size: dimensione * fattore, weight: peso)
     }
 
+    /// Come `sistema`: nel tema c'è un solo carattere.
     static func contenuto(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
-        Font.custom("Helvetica Neue", fixedSize: dimensione * fattore).weight(peso)
+        sistema(dimensione, peso)
+    }
+
+    /// SF arrotondato (`--font-r` del tema): numeri grandi, avatar, date.
+    static func arrotondato(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
+        let disegno: Font.Design = .rounded
+        return Font.system(size: dimensione * fattore, weight: peso, design: disegno)
     }
 
     // Barra superiore
     static let barraLogo = sistema(25, .bold)
-    static let barraMarchio = sistema(12, .bold)
-    static let barraOS = sistema(9)
-    static let barraApp = sistema(11, .bold)
-    static let barraOra = sistema(11)
-    static let barraTasto = sistema(10)
-    static let barraAvatar = sistema(9, .semibold)
-    static let badgePiccolo = sistema(8)
+    static let barraMarchio = sistema(13, .bold)
+    static let barraOS = sistema(10)
+    static let barraApp = sistema(13, .medium)
+    static let barraOra = sistema(13, .medium).monospacedDigit()
+    static let barraTasto = sistema(11, .medium)
+    static let barraAvatar = arrotondato(10, .bold)
+    static let badgePiccolo = sistema(9.5, .bold)
 
     // Scrivania
-    static let scrivaniaKicker = sistema(9)
-    static let scrivaniaTitolo = contenuto(26)
-    static let scrivaniaSottotitolo = sistema(11)
-    static let scrivaniaSezione = sistema(12)
-    static let scrivaniaPiede = contenuto(9)
-    static let pulsanteVetro = sistema(11)
-    static let lanciatoreNome = contenuto(12, .bold)
-    static let lanciatoreSottotitolo = contenuto(10)
+    static let scrivaniaKicker = sistema(11, .medium)
+    static let scrivaniaTitolo = sistema(30, .bold)
+    static let scrivaniaSottotitolo = sistema(13)
+    static let scrivaniaSezione = sistema(14, .bold)
+    static let scrivaniaPiede = sistema(11)
+    static let pulsanteVetro = sistema(12.5, .medium)
+    static let lanciatoreNome = contenuto(12, .semibold)
+    static let lanciatoreSottotitolo = contenuto(10.5)
     static let badgeGrande = contenuto(10, .bold)
 
     // Colonna del cliente
-    static let colonnaEtichetta = contenuto(9)
-    static let colonnaNome = contenuto(17, .bold)
-    static let colonnaTema = contenuto(11)
-    static let colonnaScheda = sistema(11)
-    static let colonnaIntestazione = sistema(9, .bold)
-    static let colonnaCollegamento = sistema(10)
-    static let rigaSecondario = contenuto(10)
-    static let rigaNome = contenuto(13, .medium)
+    static let colonnaEtichetta = contenuto(10.5, .medium)
+    static let colonnaNome = contenuto(18, .bold)
+    static let colonnaTema = contenuto(12)
+    static let colonnaScheda = sistema(11, .medium)
+    static let colonnaIntestazione = sistema(10.5, .semibold)
+    static let colonnaCollegamento = sistema(11, .semibold)
+    static let rigaSecondario = contenuto(11)
+    static let rigaNome = contenuto(13, .semibold)
     static let rigaFreccia = contenuto(17)
-    static let dataGiorno = contenuto(21)
-    static let dataMese = contenuto(8)
-    static let eveTitolo = contenuto(12, .bold)
-    static let eveTesto = contenuto(10)
-    static let avatar = contenuto(13, .medium)
+    static let dataGiorno = arrotondato(19, .semibold)
+    static let dataMese = contenuto(9.5, .bold)
+    static let eveTitolo = contenuto(13, .semibold)
+    static let eveTesto = contenuto(11)
+    static let avatar = arrotondato(13, .semibold)
 
     // Rubrica (Clienti)
-    static let indiceTitolo = contenuto(11, .heavy)
-    static let contatore = contenuto(11, .black)
+    static let indiceTitolo = contenuto(11.5, .semibold)
+    static let contatore = contenuto(11, .bold)
     static let rubricaNome = contenuto(14, .bold)
     static let rubricaTema = contenuto(11)
     static let rubricaFreccia = contenuto(20, .bold)
     static let rubricaPiede = contenuto(11)
-    static let profiloOcchiello = contenuto(9, .semibold)
-    static let profiloNome = contenuto(22, .medium)
+    static let profiloOcchiello = contenuto(10.5, .semibold)
+    static let profiloNome = contenuto(22, .bold)
     static let profiloTema = contenuto(12)
     static let stellaGrande = contenuto(26)
-    static let pulsanteCuoio = contenuto(11)
-    static let schedaRubrica = contenuto(12, .bold)
+    static let pulsanteCuoio = contenuto(11.5, .medium)
+    static let schedaRubrica = contenuto(12, .semibold)
     static let sezioneOcchiello = contenuto(11, .semibold)
     static let sezioneSottile = contenuto(11)
     static let metricaEtichetta = contenuto(11)
@@ -78,43 +87,43 @@ enum Tipo {
     static let campoEtichetta = contenuto(11)
     static let campoValore = contenuto(13)
     static let schedaAppTitolo = contenuto(13, .bold)
-    static let pulsanteAqua = contenuto(12)
-    static let moduloTitolo = sistema(15)
+    static let pulsanteAqua = contenuto(12.5, .medium)
+    static let moduloTitolo = sistema(15, .semibold)
 
     // Analisi (Posizioni)
     static let railTitolo = contenuto(14, .bold)
-    static let railEtichetta = contenuto(10, .bold)
-    static let segAnalisi = contenuto(11)
-    static let navAnalisi = contenuto(12)
-    static let navAnalisiAttiva = contenuto(12, .semibold)
-    static let kpiTitolo = contenuto(10)
-    static let kpiValore = contenuto(25, .semibold)
+    static let railEtichetta = contenuto(10.5, .semibold)
+    static let segAnalisi = contenuto(11.5, .medium)
+    static let navAnalisi = contenuto(12.5, .medium)
+    static let navAnalisiAttiva = contenuto(12.5, .semibold)
+    static let kpiTitolo = contenuto(11)
+    static let kpiValore = contenuto(20, .semibold)
     static let kpiNota = contenuto(11)
-    static let chip = contenuto(10)
-    static let pill = contenuto(10)
+    static let chip = contenuto(10.5, .medium)
+    static let pill = contenuto(10.5, .semibold)
     static let pannelloAnalisi = contenuto(14, .semibold)
-    static let tabellaTesta = contenuto(12)
+    static let tabellaTesta = contenuto(11.5, .semibold)
     static let tabellaCella = contenuto(12)
-    static let tabellaCellaForte = contenuto(13, .medium)
-    static let assi = Font.custom("Arial", fixedSize: 10)
+    static let tabellaCellaForte = contenuto(13, .semibold)
+    static let assi = sistema(10)
     static let numeroTabella = contenuto(12).monospacedDigit()
 
     // Widget
-    static let widgetTitolo = sistema(11, .bold)
+    static let widgetTitolo = sistema(13, .semibold)
     static let widgetGiorno = contenuto(30, .bold)
     static let widgetGiornoNome = contenuto(13, .medium)
     static let widgetTesto = contenuto(12)
     static let widgetNumero = contenuto(22, .medium)
     static let piastrellaGiorno = contenuto(42)
     static let piastrellaMese = contenuto(11)
-    static let kpiValoreWidget = contenuto(19)
-    static let kpiEtichettaWidget = contenuto(9)
-    static let portafoglioTotale = contenuto(26)
+    static let kpiValoreWidget = contenuto(16, .semibold)
+    static let kpiEtichettaWidget = contenuto(11)
+    static let portafoglioTotale = contenuto(26, .bold)
     static let widgetMetricaValore = contenuto(17)
     static let widgetMetricaEtichetta = contenuto(10)
     static let calendarioMese = contenuto(13, .bold)
     static let calendarioGiornoSettimana = contenuto(17, .medium)
-    static let calendarioNumero = Font.custom("HelveticaNeue-CondensedBold", fixedSize: 96)
+    static let calendarioNumero = sistema(70, .light)
     static let calendarioAnno = contenuto(12)
     static let calendarioOra = contenuto(13, .bold)
     static let clienteNome = contenuto(21, .bold)
@@ -122,35 +131,36 @@ enum Tipo {
     static let borsaTotale = contenuto(30, .light)
     static let borsaRiga = contenuto(13, .medium)
     static let borsaPillola = contenuto(12, .bold)
-    /// Scrittura a mano delle note (come l'app Note di iOS 5).
-    static let manoTitolo = Font.custom("Noteworthy-Bold", fixedSize: 19)
-    static let mano = Font.custom("Noteworthy-Light", fixedSize: 14)
-    static let manoPiccola = Font.custom("Noteworthy-Light", fixedSize: 12)
+    /// Ex scrittura a mano delle note: nel tema anche le note sono in SF.
+    static let manoTitolo = sistema(19, .bold)
+    static let mano = sistema(14)
+    static let manoPiccola = sistema(12)
     static let promemoriaTitolo = contenuto(18, .bold)
 
-    // Agenda e Attività (titoli delle pagine in Georgia, come nel template)
+    // Agenda e Attività: i titoli delle pagine (prima in Georgia) sono SF semibold
     static func serif(_ dimensione: CGFloat, corsivo: Bool = false) -> Font {
-        Font.custom(corsivo ? "Georgia-Italic" : "Georgia", fixedSize: dimensione * fattore)
+        let carattere = sistema(dimensione, .semibold)
+        return corsivo ? carattere.italic() : carattere
     }
-    static let agendaOcchiello = contenuto(9, .semibold)
+    static let agendaOcchiello = contenuto(10.5, .semibold)
     static let agendaTitolo = contenuto(21, .medium)
     static let agendaPeriodo = contenuto(12)
-    static let targhettaMese = contenuto(8, .heavy)
-    static let targhettaGiorno = contenuto(25, .light)
-    static let targhettaSettimana = contenuto(8)
+    static let targhettaMese = contenuto(9.5, .bold)
+    static let targhettaGiorno = arrotondato(24, .semibold)
+    static let targhettaSettimana = contenuto(9)
     static let giornoSettimana = contenuto(11)
     static let giornoNumero = contenuto(22)
     static let giornoNota = contenuto(10)
-    static let paginaOcchiello = contenuto(9, .semibold)
+    static let paginaOcchiello = contenuto(10.5, .semibold)
     static let paginaTitolo = serif(18)
     static let paginaNota = contenuto(11)
     static let eventoOra = contenuto(12, .semibold)
     static let eventoFine = contenuto(11)
-    static let eventoTitolo = contenuto(14, .bold)
+    static let eventoTitolo = contenuto(14, .semibold)
     static let eventoCliente = contenuto(12)
     static let eventoDettagli = contenuto(11)
-    static let eventoFreccia = contenuto(22, .bold)
-    static let etichettaStato = contenuto(8, .semibold)
+    static let eventoFreccia = contenuto(22, .medium)
+    static let etichettaStato = contenuto(9.5, .semibold)
     static let notaSettimana = contenuto(11)
     static let notaSettimanaForte = contenuto(11, .medium)
     static let dettaglioOcchiello = contenuto(10, .semibold)
@@ -172,7 +182,7 @@ enum Tipo {
     static let elencoTitolo = contenuto(11)
     static let attivitaTitolo = contenuto(14, .semibold)
     static let attivitaSotto = contenuto(11)
-    static let spunta = Font.custom("Arial", fixedSize: 12).weight(.bold)
+    static let spunta = Font.system(size: 12, weight: .bold)
 
     // Incontri
     static let incontroDomanda = serif(17)
@@ -180,25 +190,25 @@ enum Tipo {
     static let incontroTesto = contenuto(13)
     static let incontroNota = contenuto(11)
     static let incontroOcchiello = contenuto(10, .semibold)
-    static let incontroScrittura = Font.custom("Noteworthy-Light", fixedSize: 15)
+    static let incontroScrittura = sistema(15)
 
     // Profilo dei bisogni
     static let bisognoTitolo = contenuto(13, .bold)
     static let bisognoTesto = contenuto(12)
     static let bisognoNota = contenuto(10)
     static let bisognoArea = contenuto(10, .semibold)
-    static let ruotaCentro = contenuto(9, .semibold)
+    static let ruotaCentro = contenuto(10, .semibold)
     static let ruotaValore = contenuto(14, .bold)
     static let prioritaNumero = serif(22)
 
     // Eve
-    static let eveOcchiello = contenuto(9, .semibold)
+    static let eveOcchiello = contenuto(10.5, .semibold)
     static let eveSaluto = contenuto(21, .bold)
     static let eveSottotitolo = contenuto(12)
     static let eveAvviso = contenuto(11, .semibold)
     static let eveAvvisoNota = contenuto(11)
     static let eveIntestazione = contenuto(12, .semibold)
-    static let eveDisplay = contenuto(9, .bold)
+    static let eveDisplay = contenuto(10, .semibold)
     static let eveAutore = contenuto(10, .semibold)
     static let eveTitoloRisposta = contenuto(14, .bold)
     static let eveMessaggio = contenuto(13)
@@ -209,24 +219,25 @@ enum Tipo {
     static let eveGiornataData = contenuto(15, .bold)
     static let eveTappa = contenuto(12, .semibold)
     static let eveTappaNota = contenuto(10)
-    static let evePostit = Font.custom("Noteworthy-Light", fixedSize: 14)
+    static let evePostit = sistema(14)
     static let eveQuadroNumero = contenuto(20, .light)
 
     // Strumenti di analisi
     static let consoleTitolo = contenuto(12, .semibold)
     static let consoleEtichetta = contenuto(12)
-    static let lcd = Font.custom("Courier New", fixedSize: 15).weight(.bold)
+    /// Ex display a cristalli liquidi: cifre tabellari nel pozzetto.
+    static let lcd = Font.system(size: 15, weight: .semibold).monospacedDigit()
     static let lcdUnita = contenuto(10, .semibold)
     static let risultatoOcchiello = contenuto(10, .semibold)
-    static let risultatoGrande = contenuto(34, .light)
+    static let risultatoGrande = contenuto(32, .semibold)
     static let risultatoNota = contenuto(12)
     static let risultatoDettaglio = contenuto(15, .medium)
     static let strumentoOcchiello = contenuto(10)
-    static let strumentoTitolo = contenuto(22)
+    static let strumentoTitolo = contenuto(22, .bold)
     static let strumentoTesto = contenuto(13)
     static let schedaAreaNumero = contenuto(11)
     static let schedaAreaTitolo = contenuto(18, .semibold)
-    static let schedaAreaValore = contenuto(25)
+    static let schedaAreaValore = contenuto(22, .semibold)
     static let schedaAreaNota = contenuto(12)
     static let schedaRisultati = contenuto(12)
     static let ipotesiTitolo = contenuto(12, .semibold)
@@ -236,50 +247,54 @@ enum Tipo {
     static let verdetto = contenuto(14)
 
     // Dock
-    static let dockSuggerimento = sistema(11, .bold)
-    static let dockEtichetta = sistema(10, .semibold)
+    static let dockSuggerimento = sistema(12, .semibold)
+    static let dockEtichetta = sistema(10, .medium)
 
     // Finestre
-    static let finestraTitolo = sistema(12)
-    static let finestraContesto = sistema(10)
-    static let finestraAffianca = sistema(16)
-    static let semaforo = Font.custom("Arial", fixedSize: 11)
-    static let appTitolo = sistema(17)
-    static let appOcchiello = sistema(9)
+    static let finestraTitolo = sistema(13, .semibold)
+    static let finestraContesto = sistema(11)
+    static let finestraAffianca = sistema(15)
+    /// I simboli ×, −, + sui semafori (7 pt nel tema, su cerchi da 13).
+    static let semaforo = Font.system(size: 9, weight: .bold)
+    static let appTitolo = sistema(17, .bold)
+    static let appOcchiello = sistema(11, .medium)
     static let pannelloTitolo = contenuto(14, .semibold)
     static let pannelloTesto = contenuto(12)
 
     // Pulsanti ed etichette
-    static let pulsanteBlu = sistema(12, .bold)
-    static let etichettaCanale = contenuto(11, .bold)
-    static let etichettaCanalePiccola = contenuto(9, .bold)
+    static let pulsanteBlu = sistema(12.5, .semibold)
+    /// L'etichetta del canale va anche nei PDF: resta in Helvetica Neue alle misure di prima
+    /// (le impaginazioni dei documenti non cambiano).
+    static let etichettaCanale = Font.custom("Helvetica Neue", fixedSize: 11 * fattore).weight(.bold)
+    static let etichettaCanalePiccola = Font.custom("Helvetica Neue", fixedSize: 9 * fattore).weight(.bold)
 
     // Impostazioni
-    static let rigaTitolo = contenuto(13, .bold)
-    static let rigaSottotitolo = contenuto(10)
+    static let rigaTitolo = contenuto(13, .medium)
+    static let rigaSottotitolo = contenuto(11)
     static let rigaValore = contenuto(11)
-    static let schedaApp = sistema(12)
+    static let schedaApp = sistema(12, .medium)
     static let interruttore = contenuto(11, .bold)
-    static let informazioniOcchiello = contenuto(8, .semibold)
-    static let informazioniTitolo = contenuto(24)
+    static let informazioniOcchiello = contenuto(10, .semibold)
+    static let informazioniTitolo = contenuto(22, .bold)
     static let informazioniTesto = contenuto(11)
-    static let informazioniPiccolo = contenuto(9)
-    static let intestazioneGruppo = contenuto(10, .semibold)
-    static let numero = contenuto(26, .light)
+    static let informazioniPiccolo = contenuto(10)
+    static let intestazioneGruppo = contenuto(11, .semibold)
+    static let numero = arrotondato(24, .semibold)
     static let numeroEtichetta = contenuto(10)
 
     // Avvisi
-    static let avviso = sistema(10)
+    static let avviso = sistema(12.5, .medium)
 
-    // Icona Agenda (proporzioni ricavate dai tracciati dell'SVG originale)
+    // Icona Agenda (proporzioni del tema, vedi Design/Icone/LEGGIMI.txt): giorno SF leggero, mese SF bold
     static func agendaGiorno(_ lato: CGFloat) -> Font {
-        // Se il nome del font non si risolve, il numero non deve finire fuori posto con il font di sistema
-        NSFont(name: "HelveticaNeue-CondensedBold", size: lato * 0.64) != nil
-            ? Font.custom("HelveticaNeue-CondensedBold", fixedSize: lato * 0.64)
-            : Font.system(size: lato * 0.64, weight: .bold)
+        Font.system(size: lato * 0.4395, weight: .light)
     }
 
     static func agendaMese(_ lato: CGFloat) -> Font {
-        Font.custom("Helvetica Neue", fixedSize: lato * 0.13).weight(.medium)
+        Font.system(size: lato * 0.1538, weight: .bold)
     }
+
+    /// Spaziatura (tracking) del mese e del giorno sull'icona Agenda.
+    static func agendaMeseSpaziatura(_ lato: CGFloat) -> CGFloat { lato * 0.0123 }
+    static func agendaGiornoSpaziatura(_ lato: CGFloat) -> CGFloat { lato * -0.0146 }
 }

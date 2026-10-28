@@ -169,14 +169,14 @@ struct TestiValutazione {
     func rendimentoTitolo(_ t: TipoScenario) -> String {
         let s = v.scenario(t)
         if let f = fondo { return "\(CifreDoc.variazione(s.rendimento(f), decimali: 0)) l'anno" }
-        if let g = gestione { return "\(CifreDoc.percento(s.rendimento(g) - g.trattenuto, decimali: 2)) l'anno" }
+        if let g = gestione { return "\(CifreDoc.percento(MotoreGestioneSeparata.accreditato(g, lordo: s.rendimento(g)), decimali: 2)) l'anno" }
         return ""
     }
 
     func gestioneScenario(_ t: TipoScenario) -> String? {
         guard let g = gestione else { return nil }
         let r = v.scenario(t).rendimento(g)
-        return "\(CifreDoc.percento(r, decimali: 2)) lordo · \(CifreDoc.percento(r - g.trattenuto, decimali: 2)) netto"
+        return "\(CifreDoc.percento(r, decimali: 2)) lordo · \(CifreDoc.percento(MotoreGestioneSeparata.accreditato(g, lordo: r), decimali: 2)) netto"
     }
 
     // MARK: - Quanto si incassa

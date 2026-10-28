@@ -3,10 +3,13 @@ import SwiftUI
 private typealias T = Tipo.Documento
 
 /// Il prospetto della prova di resistenza: A4 verticale, per il consulente. Prima pagina i mercati
-/// e il confronto con il profilo, seconda inflazione, immobili, metodo e firme.
+/// e il confronto con il profilo, poi le crisi vere del passato, infine inflazione, immobili, metodo e firme.
 enum ProspettoResistenza {
     static func pagine(_ t: TestiResistenza) -> [AnyView] {
-        let pagine: [AnyView] = [AnyView(PaginaMercati(t: t)), AnyView(PaginaInflazione(t: t))]
+        var pagine: [AnyView] = [AnyView(PaginaMercati(t: t))]
+        // Le crisi vere del passato, se toccano almeno una posizione
+        if t.r.crisi.contains(where: { !$0.voci.isEmpty }) { pagine.append(AnyView(PaginaCrisi(t: t))) }
+        pagine.append(AnyView(PaginaInflazione(t: t)))
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiResistenza.avvertenza, numero: i + 1, totale: pagine.count) { p })
         }
@@ -129,7 +132,124 @@ struct BarraProfilo: View {
     }
 }
 
-// MARK: - Pagina 2: inflazione, immobili, metodo
+// MARK: - Pagina 2: le crisi del passato
+
+/// "− 13.468 €" per una perdita, "+ 1.200 €" per un guadagno (i titoli di Stato nel 2008), "—" se nulla.
+func cifraCrisiDoc(_ perdita: Double) -> String {
+    if abs(perdita) < 0.5 { return "—" }
+    return perdita > 0 ? CifreDoc.togli(perdita) : "+ " + CifreDoc.euro(-perdita)
+}
+
+/// La composizione di una posizione in poche parole: "azioni 35%, Stato 30%, societarie 15%, GS 20%".
+func composizioneDoc(_ c: ComposizionePosizione) -> String {
+    let parti: [(String, Double)] = [("azioni", c.azioni), ("Stato", c.governativi), ("societarie", c.societarie),
+                                     ("liquidità", c.liquidita), ("GS", c.gestioneSeparata), ("immobili", c.immobili)]
+    let testo = parti.filter { $0.1 >= 0.005 }.map { "\($0.0) \(CifreDoc.percento($0.1 * 100, decimali: 0))" }.joined(separator: ", ")
+    return testo + (c.stimata ? " · stimata" : "")
+}
+
+private struct PaginaCrisi: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiResistenza
+
+    private var r: ProvaResistenza { t.r }
+    private var crisi: [EsitoCrisi] { Array(r.crisi.prefix(Misure.Documento.Motori.crisiMassime)) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SezioneProspetto(titolo: "Le crisi del passato sul patrimonio di oggi",
+                             testo: Text(verbatim: "Le variazioni vere di tre anni difficili, classe per classe (azioni, titoli di Stato, obbligazioni societarie), applicate alla composizione di ogni posizione di oggi. Sono stime indicative, non previsioni: dicono quanto perderebbe oggi il patrimonio finanziario se tornasse un anno così. Gestioni separate e conti restano fermi."))
+            HStack(spacing: 6) {
+                ForEach(crisi) { k in
+                    CifraProspetto("\(k.crisi.anno) · \(k.crisi.titolo)", cifraCrisiDoc(k.perdita), notaCifra(k),
+                                   colore: k.perdita > 0.5 ? coloreGiudizio(k.giudizio, C) : C.positivo)
+                }
+            }
+            TabellaCanali(colonne: colonne, gruppi: gruppi)
+            Altre(numero: posizioni.count - Misure.Documento.righeTabellaFissa)
+            if crisi.contains(where: { abs($0.perditaImmobili) >= 0.5 }) {
+                Text(verbatim: immobili).font(T.pCorpo).foregroundColor(C.testo).fixedSize(horizontal: false, vertical: true)
+            }
+            if let k = r.crisiPeggiore, k.perdita > 0.5 {
+                RiquadroBarra(titolo: "La più dura per questo patrimonio: \(k.crisi.anno), \(k.crisi.titolo.lowercased())") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(verbatim: "Con le posizioni di oggi toglierebbe circa \(CifreDoc.euro(k.perdita)), il \(CifreDoc.percento(k.quota * 100)) del patrimonio finanziario"
+                             + giudizio(k) + " " + k.crisi.recupero)
+                            .font(T.pCorpo).foregroundColor(C.testo).fixedSize(horizontal: false, vertical: true)
+                        if let m = t.mercati, !m.voci.isEmpty {
+                            Text(verbatim: "Per confronto, lo scenario prudente dei mercati in forte calo (pagina 1) stima \(CifreDoc.togli(m.perdita)): il giudizio sul profilo resta quello.")
+                                .font(T.pTabellaNota).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            SezioneProspetto(titolo: "Come sono calcolate")
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(Array(MotoreResistenza.metodoCrisi.enumerated()), id: \.offset) { _, n in
+                    PuntoElenco(testo: Text(verbatim: n))
+                }
+            }
+        }
+    }
+
+    private func notaCifra(_ k: EsitoCrisi) -> String {
+        let quota = "il \(CifreDoc.percento(k.quota * 100)) del finanziario"
+        guard let g = k.giudizio else { return quota }
+        return quota + " · " + g.etichetta.lowercased()
+    }
+
+    private var immobili: String {
+        let elenco = crisi.map { k in "\(k.crisi.anno) \(cifraCrisiDoc(k.perditaImmobili))" }
+        return "Immobili, a parte (pesano sul patrimonio netto, non sui risparmi): " + elenco.joined(separator: " · ") + "."
+    }
+
+    private func giudizio(_ k: EsitoCrisi) -> String {
+        guard let g = k.giudizio, let s = r.sopportabile else { return "." }
+        return ": \(g.etichetta.lowercased()) (sopportabile il \(CifreDoc.condizione(s)))."
+    }
+
+    /// Le posizioni toccate da almeno una crisi, nell'ordine della crisi peggiore.
+    private var posizioni: [EsitoCrisi.Voce] {
+        var viste = Set<String>()
+        var elenco: [EsitoCrisi.Voce] = []
+        var ordinate: [EsitoCrisi] = []
+        if let peggiore = r.crisiPeggiore { ordinate.append(peggiore) }
+        ordinate += crisi
+        for k in ordinate {
+            for v in k.voci where !viste.contains(v.posizione.id) {
+                viste.insert(v.posizione.id)
+                elenco.append(v)
+            }
+        }
+        return elenco
+    }
+
+    private var colonne: [ColonnaDoc] {
+        var c = [ColonnaDoc(titolo: "Posizione", sottotitolo: "composizione", peso: 2.6, destra: false), ColonnaDoc(titolo: "Valore", peso: 0.9)]
+        c += crisi.map { ColonnaDoc(titolo: "\($0.crisi.anno)", sottotitolo: $0.crisi.titolo.lowercased(), peso: 0.95) }
+        return c
+    }
+
+    private var gruppi: [GruppoCanale] {
+        let mostrate = Array(posizioni.prefix(Misure.Documento.righeTabellaFissa))
+        return Canale.allCases.compactMap { c -> GruppoCanale? in
+            let mie = mostrate.filter { $0.posizione.canale == c }
+            guard !mie.isEmpty else { return nil }
+            let righe = mie.map { v -> RigaDoc in
+                var celle = [CellaDoc(v.posizione.nome, sotto: composizioneDoc(v.composizione), font: T.pTabellaForte),
+                             CellaDoc(CifreDoc.euro(v.posizione.valore), font: T.pTabella)]
+                for k in crisi {
+                    let perdita = k.voci.first(where: { $0.posizione.id == v.posizione.id })?.perdita ?? 0
+                    celle.append(CellaDoc(cifraCrisiDoc(perdita), colore: perdita > 0.5 ? C.negativo : (perdita < -0.5 ? C.positivo : C.tenue), font: T.pTabella))
+                }
+                return RigaDoc(celle: celle, altezza: Misure.Documento.Motori.rigaTabella)
+            }
+            return GruppoCanale(canale: c, righe: righe, nota: mie.count == 1 ? "1 posizione" : "\(mie.count) posizioni")
+        }
+    }
+}
+
+// MARK: - Pagina 3: inflazione, immobili, metodo
 
 private struct PaginaInflazione: View {
     @Environment(\.paletteDocumento) private var C
