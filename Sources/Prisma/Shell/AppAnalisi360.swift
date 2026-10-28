@@ -171,10 +171,10 @@ struct AppAnalisi360: View {
     // MARK: - Un'area
 
     private func vistaArea(_ area: AreaAnalisi) -> some View {
-        HStack(spacing: 0) {
+        // Ipotesi e risultati nello stesso contenitore dell'elenco laterale: testate e piedi alla stessa altezza
+        ColonneAffiancate(larghezza: Misure.ColonneStrumento.elenco) {
             pannelloIpotesi(area)
-                .frame(width: Misure.Strumenti.ipotesi)
-                .bordoDestro(Colori.Strumenti.ipotesiBordo)
+        } flessibile: {
             VStack(spacing: 0) {
                 SchedeRisultati(opzioni: schede(area), selezione: $scheda) {
                     if area == .investimenti || area == .risparmio {
@@ -201,13 +201,9 @@ struct AppAnalisi360: View {
                     Spacer()
                 }
                 .font(Tipo.chip)
-                .foregroundColor(Colori.Strumenti.piedeTesto)
-                .padding(.horizontal, 12)
-                .frame(height: Misure.Strumenti.piede)
-                .background(Colori.Strumenti.piede)
-                .bordoAlto(Colori.Strumenti.piedeBordo)
+                .foregroundColor(Colori.ColonneStrumento.piedeTesto)
+                .piedeColonna()
             }
-            .background(Colori.Strumenti.risultati)
         }
     }
 
@@ -245,11 +241,8 @@ struct AppAnalisi360: View {
                 Spacer()
                 Text(stato.analisiSalvata(cliente) ? "Salvate nel dossier" : "Dalle posizioni").font(Tipo.chip)
             }
-            .foregroundColor(Colori.Strumenti.ipotesiTesto)
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(Gradienti.testaIpotesi)
-            .bordoBasso(Colori.Strumenti.ipotesiBordo)
+            .foregroundColor(Colori.ColonneStrumento.testata)
+            .testataColonna()
             ScrollView {
                 VStack(spacing: 0) {
                     switch area {
@@ -314,13 +307,9 @@ struct AppAnalisi360: View {
                 .font(Tipo.ipotesiNota)
                 Spacer()
             }
-            .foregroundColor(Colori.Strumenti.ipotesiTesto)
-            .padding(.horizontal, 12)
-            .frame(height: Misure.Strumenti.piede)
-            .background(Gradienti.testaIpotesi)
-            .bordoAlto(Colori.Strumenti.ipotesiBordo)
+            .foregroundColor(Colori.ColonneStrumento.testata)
+            .piedeColonna()
         }
-        .background(Gradienti.railAnalisi)
     }
 
     // MARK: - Sintesi

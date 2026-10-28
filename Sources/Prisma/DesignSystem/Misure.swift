@@ -142,8 +142,6 @@ enum Misure {
         static let rigatura: CGFloat = 49
         static let segno: CGFloat = 3
         static let colonnaOra: CGFloat = 40
-        static let dettaglioMinimo: CGFloat = 300
-        static let quotaPagina: CGFloat = 0.55
         static let etichettaVoce: CGFloat = 58
         static let cellaMese: CGFloat = 34
         static let puntino: CGFloat = 4
@@ -151,7 +149,6 @@ enum Misure {
     }
 
     enum Incontri {
-        static let colonna: CGFloat = 300
         static let rigatura: CGFloat = 24
         static let margine: CGFloat = 34
         static let raggio: CGFloat = Tema.Raggio.miniatura
@@ -191,8 +188,6 @@ enum Misure {
         static let rigaMinima: CGFloat = 62
         static let spunta: CGFloat = 19
         static let colonnaScadenza: CGFloat = 96
-        static let dettaglioMinimo: CGFloat = 330
-        static let quotaElenco: CGFloat = 0.57
         static let progresso: CGFloat = 7
         static let modulo = CGSize(width: 580, height: 470)
     }

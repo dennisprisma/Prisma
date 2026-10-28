@@ -31,10 +31,9 @@ struct AppDocumenti: View {
         ) {
             rail
         } contenuto: {
-            HStack(spacing: 0) {
+            ColonneAffiancate(larghezza: Misure.ColonneStrumento.elenco) {
                 colonnaElenco
-                    .frame(width: Misure.Strumenti.ipotesi)
-                    .bordoDestro(Colori.Strumenti.ipotesiBordo)
+            } flessibile: {
                 if let d = scelto {
                     dettaglio(d)
                 } else {
@@ -112,9 +111,7 @@ struct AppDocumenti: View {
                 Text("DOCUMENTI DI \((stato.clienteAttivo?.nome ?? "").uppercased())").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
                 Spacer()
             }
-            .padding(10)
-            .background(Gradienti.testaIpotesi)
-            .bordoBasso(Colori.Strumenti.ipotesiBordo)
+            .testataColonna()
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(elenco) { d in
@@ -129,7 +126,6 @@ struct AppDocumenti: View {
                 .padding(.vertical, Tema.Misura.Strumenti.margineElenco)
             }
         }
-        .background(Gradienti.railAnalisi)
     }
 
     private func riga(_ d: Documento, attiva: Bool) -> some View {
@@ -222,7 +218,6 @@ struct AppDocumenti: View {
                 }
             }
             .padding(EdgeInsets(top: 12, leading: 16, bottom: 10, trailing: 16))
-            .background(Gradienti.kpi)
             .bordoBasso(Colori.Analisi.kpiBordo)
             SchedeRisultati(opzioni: [(Scheda.dati, "Dati trovati"), (.testo, "Testo letto")], selezione: $scheda) {
                 Button("Elimina…") { confermaEliminazione = true }

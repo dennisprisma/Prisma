@@ -30,11 +30,12 @@ enum Materiale {
     /// Sfondo della scrivania e del benvenuto: l'acqua con la pioggia (SfondoAcqua).
     /// I valori arrivano da chi la disegna (ShellView, dalle impostazioni), chiaro o scuro dall'aspetto:
     /// niente StatoShell osservato, così l'acqua non si riconfigura a ogni cambiamento dello stato.
-    /// `animato` dice se in questo punto lo sfondo può muoversi («Sfondo animato» acceso e scrivania visibile;
-    /// false = fermo); `intensita` è la forza della pioggia (gocce al secondo).
-    /// L'acqua va sempre allo stesso ritmo, anche con finestre aperte e durante le animazioni: niente stato
-    /// delle finestre osservato qui. Finestra nascosta, basso consumo, «Riduci movimento» e riposo del Mac
-    /// li gestisce già SfondoAcqua. Nelle istantanee SfondoAcqua mostra da sé il fermo-immagine.
+    /// `animato` dice se in questo punto lo sfondo può muoversi («Sfondo animato» acceso e sfondo non coperto
+    /// dalla sala della presentazione; false = fermo); `intensita` è la forza della pioggia (gocce al secondo).
+    /// Lo sfondo è sempre attivo: l'acqua va sempre allo stesso ritmo, anche con finestre aperte (ingrandite
+    /// comprese) e durante le animazioni; niente stato delle finestre osservato qui. Finestra del Mac nascosta,
+    /// «Riduci movimento» e riposo del Mac la fermano, il risparmio energetico ne abbassa solo il ritmo: li
+    /// gestisce già SfondoAcqua. Nelle istantanee SfondoAcqua mostra da sé il fermo-immagine.
     struct SfondoScrivania: View {
         var animato: Bool
         var intensita: Double

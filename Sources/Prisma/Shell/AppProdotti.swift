@@ -28,10 +28,10 @@ struct AppProdotti: View {
         ) {
             rail
         } contenuto: {
-            HStack(spacing: 0) {
+            // Elenco e scheda nello stesso contenitore dell'elenco laterale, divisi da un filo
+            ColonneAffiancate(larghezza: Misure.ColonneStrumento.elenco) {
                 colonnaElenco
-                    .frame(width: Misure.Strumenti.ipotesi)
-                    .bordoDestro(Colori.Strumenti.ipotesiBordo)
+            } flessibile: {
                 if let p = scelto {
                     dettaglio(p)
                 } else {
@@ -145,15 +145,13 @@ struct AppProdotti: View {
 
     private var colonnaElenco: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: Misure.ColonneStrumento.spazioTestata) {
                 CampoRicerca(testo: $ricerca, segnaposto: "Cerca prodotto o compagnia")
                 Button("＋") { nuova() }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
                     .help("Nuova scheda prodotto")
             }
-            .padding(10)
-            .background(Gradienti.testaIpotesi)
-            .bordoBasso(Colori.Strumenti.ipotesiBordo)
+            .testataColonna()
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(elenco) { p in
@@ -164,7 +162,6 @@ struct AppProdotti: View {
                 .padding(.vertical, Tema.Misura.Strumenti.margineElenco)
             }
         }
-        .background(Gradienti.railAnalisi)
     }
 
     private func rigaElenco(_ p: Prodotto, attiva: Bool) -> some View {
@@ -188,6 +185,55 @@ struct AppProdotti: View {
         }
         .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
         .voceElencoStrumento(attiva: attiva)
+    }
+
+    // MARK: - Condizioni e fonte
+
+    private func pannelloCondizioni(_ p: Prodotto) -> some View {
+        PannelloAnalisi(titolo: "Condizioni") { EmptyView() } contenuto: {
+            VStack(spacing: 0) {
+                RigaDato("Garanzie", p.garanzie)
+                RigaDato("Riscatto e liquidabilità", p.liquidabilita)
+                RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "")
+                if p.area.proiettabile {
+                    RigaDato("Costi come nel KID", testoKID(p))
+                }
+                HStack(alignment: .center, spacing: 12) {
+                    Text("Rischio (SRI)").font(Tipo.campoEtichetta).foregroundColor(Colori.Analisi.kpiNota)
+                        .frame(width: 150, alignment: .leading)
+                    ScalaRischio(valore: p.sri)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .bordoBasso(Colori.Analisi.tabellaRiga)
+                RigaDato("Note", p.note)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func pannelloFonte(_ p: Prodotto) -> some View {
+        PannelloAnalisi(titolo: "Fonte", nota: "Da dove vengono i dati") { EmptyView() } contenuto: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(p.fonte.isEmpty ? "Fonte non indicata" : p.fonte)
+                    .font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    Text(p.verificatoIl.map { "Verificata il \(Formati.dataEstesa.string(from: $0))" } ?? "Mai verificata")
+                        .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    if p.daVerificare { Pillola(testo: "Da rileggere sul KID", tono: .attenzione) }
+                }
+                Button("Segna verificata oggi") {
+                    var x = p
+                    x.verificatoIl = Calendar.current.startOfDay(for: Date())
+                    stato.salvaProdotto(x)
+                }
+                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            }
+        }
+        .frame(minWidth: Misure.SchedaProdotto.fonteMinima, idealWidth: Misure.SchedaProdotto.fonte,
+               maxWidth: Misure.SchedaProdotto.fonte, alignment: .leading)
     }
 
     // MARK: - Dettaglio
@@ -220,48 +266,17 @@ struct AppProdotti: View {
                         }
                     }
                 }
-                HStack(alignment: .top, spacing: 28) {
-                    PannelloAnalisi(titolo: "Condizioni") { EmptyView() } contenuto: {
-                        VStack(spacing: 0) {
-                            RigaDato("Garanzie", p.garanzie)
-                            RigaDato("Riscatto e liquidabilità", p.liquidabilita)
-                            RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "")
-                            if p.area.proiettabile {
-                                RigaDato("Costi come nel KID", testoKID(p))
-                            }
-                            HStack(alignment: .center, spacing: 12) {
-                                Text("Rischio (SRI)").font(Tipo.campoEtichetta).foregroundColor(Colori.Analisi.kpiNota)
-                                    .frame(width: 150, alignment: .leading)
-                                ScalaRischio(valore: p.sri)
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .bordoBasso(Colori.Analisi.tabellaRiga)
-                            RigaDato("Note", p.note)
-                        }
+                // Condizioni e fonte affiancate se c'è posto, altrimenti una sotto l'altra (finestra non ingrandita)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: Misure.SchedaProdotto.spazioAffiancate) {
+                        pannelloCondizioni(p)
+                        pannelloFonte(p)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    PannelloAnalisi(titolo: "Fonte", nota: "Da dove vengono i dati") { EmptyView() } contenuto: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(p.fonte.isEmpty ? "Fonte non indicata" : p.fonte)
-                                .font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
-                                .fixedSize(horizontal: false, vertical: true)
-                            HStack(spacing: 8) {
-                                Text(p.verificatoIl.map { "Verificata il \(Formati.dataEstesa.string(from: $0))" } ?? "Mai verificata")
-                                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
-                                if p.daVerificare { Pillola(testo: "Da rileggere sul KID", tono: .attenzione) }
-                            }
-                            Button("Segna verificata oggi") {
-                                var x = p
-                                x.verificatoIl = Calendar.current.startOfDay(for: Date())
-                                stato.salvaProdotto(x)
-                            }
-                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                        }
+                    .frame(idealWidth: Misure.SchedaProdotto.affiancate, maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: Misure.SchedaProdotto.spazioImpilate) {
+                        pannelloCondizioni(p)
+                        pannelloFonte(p)
                     }
-                    .frame(minWidth: Misure.SchedaProdotto.fonteMinima, idealWidth: Misure.SchedaProdotto.fonte,
-                           maxWidth: Misure.SchedaProdotto.fonte, alignment: .leading)
                 }
                 condizioni(p)
                 PannelloAnalisi(titolo: "Dove è usata", nota: usi.isEmpty ? "Nessuna posizione o proposta collegata" : nil) { EmptyView() } contenuto: {

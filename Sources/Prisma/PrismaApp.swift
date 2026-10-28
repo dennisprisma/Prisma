@@ -78,7 +78,8 @@ struct ComandiPrisma: Commands {
         CommandMenu("Vai") {
             // Con la schermata di benvenuto davanti, niente si apre dietro di lei
             Group {
-            Button("Cerca ovunque") { stato.cercaOvunque() }
+            // Il pannello di ricerca come Spotlight: ⌘K lo apre e lo chiude
+            Button("Cerca ovunque") { stato.alternaRicerca() }
                 .keyboardShortcut("k", modifiers: .command)
             Button(menu.inModoCliente ? "Esci dalla modalità cliente" : "Modalità cliente") { stato.alternaModoCliente() }
                 .keyboardShortcut("m", modifiers: [.command, .option])
@@ -92,12 +93,12 @@ struct ComandiPrisma: Commands {
                 .keyboardShortcut("0", modifiers: .option)
             Divider()
             ForEach(Array(AppPrisma.allCases.prefix(9).enumerated()), id: \.element) { indice, app in
-                Button(app.titolo) { stato.apri(app) }
+                Button(app.titolo) { stato.apriApp(app) }
                     .keyboardShortcut(KeyEquivalent(Character("\(indice + 1)")), modifiers: .option)
             }
             Divider()
             ForEach(Array(AppPrisma.allCases.dropFirst(9))) { app in
-                Button(app.titolo) { stato.apri(app) }
+                Button(app.titolo) { stato.apriApp(app) }
             }
             }
             // Durante la presentazione nulla si muove sotto il velo: resta solo la schermata di benvenuto

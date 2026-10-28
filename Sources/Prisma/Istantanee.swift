@@ -347,6 +347,9 @@ enum Istantanee {
             s.cercaOvunque()
         }),
         ("54-ricerca-documento", { s in
+            // Il pannello ⌘K sopra un'app aperta (non sulla scrivania vuota)
+            s.clienteAttivoId = "marco"
+            s.apri(.clienti)
             s.testoRicerca = "scopo investimento"
             s.cercaOvunque()
         }),
@@ -515,7 +518,32 @@ enum Istantanee {
                 s.paginaSeguente()
             }
         }),
+        ("103-ricerca-filtri", { s in
+            // Ricerca per criterio: filtri riconosciuti, totali per canale e anteprima della prima posizione
+            s.testoRicerca = "sri>3 canale:alleanza"
+            s.cercaOvunque()
+        }),
+        ("104-ricerca-salvate", { s in
+            // Pannello vuoto: le ricerche salvate e i filtri da provare
+            s.dati.impostazioni.ricercheSalvate = [RicercaSalvata(nome: "Proposte aperte", testo: "stato:proposta"),
+                                                   RicercaSalvata(nome: "Senza previdenza", testo: "senza:previdenza"),
+                                                   RicercaSalvata(nome: "Scadenze Alleanza 2027", testo: "scade:2027 canale:alleanza")]
+            s.testoRicerca = ""
+            s.cercaOvunque()
+        }),
+        ("105-incontri-preparazione", { s in
+            // La preparazione dell'incontro di oggi (le quattro schede, le priorità del cliente e «L'ultima volta»)
+            s.clienteAttivoId = "giulia"
+            s.incontroAperto = "incontro-giulia-casa"
+            s.schedaIncontro = .preparazione
+            s.apri(.incontri)
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
+        ("53-ricerca-scuro", { s in
+            s.apri(.posizioni)
+            s.testoRicerca = "marco"
+            s.cercaOvunque()
+        }),
         ("92-posizioni-gestione-separata-scuro", { s in
             s.clienteAttivoId = "giulia"
             s.posizioneInDettaglio = "pos-giulia-piano-di-risparmio-rivalutabile"

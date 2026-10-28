@@ -100,7 +100,6 @@ extension Gradienti {
 
 extension Misure {
     enum Note {
-        static let indice: CGFloat = 235
         static let raggio: CGFloat = Tema.Raggio.scheda
         static let etichetta = EdgeInsets(top: 14, leading: 16, bottom: 12, trailing: 16)
         static let barra = EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)

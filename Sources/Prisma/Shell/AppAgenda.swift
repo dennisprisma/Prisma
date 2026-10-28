@@ -12,10 +12,16 @@ struct AppAgenda: View {
     private var giorno: Date { stato.giornoAgenda }
 
     var body: some View {
-        VStack(spacing: 0) {
-            fasciaCuoio
-            libro
-                .padding(.top, Tema.Misura.Dossier.spazioAgenda)
+        GeometryReader { geo in
+            // Finestra stretta o bassa: la fascia diventa una riga sola e lascia spazio a calendario e dettaglio
+            let compatta = geo.size.width < Misure.AgendaImpaginazione.sogliaFasciaLarghezza
+                || geo.size.height < Misure.AgendaImpaginazione.sogliaFasciaAltezza
+            VStack(spacing: 0) {
+                fasciaCuoio(compatta: compatta)
+                libro
+                    .padding(.top, Tema.Misura.Dossier.spazioAgenda)
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
         }
         .sheet(item: $modulo) { a in
             ModuloAppuntamento(
@@ -46,7 +52,28 @@ struct AppAgenda: View {
         return "\(Formati.giornoMese.string(from: primo)) — \(Formati.dataEstesa.string(from: ultimo))"
     }
 
-    private var fasciaCuoio: some View {
+    @ViewBuilder private func fasciaCuoio(compatta: Bool) -> some View {
+        if compatta {
+            HStack(alignment: .firstTextBaseline, spacing: Misure.AgendaImpaginazione.spazioFascia) {
+                Text("Il tuo tempo, con cura.")
+                    .font(Tipo.agendaTitolo)
+                    .foregroundColor(Colori.Agenda.cuoioTitolo)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text(periodo)
+                    .font(Tipo.agendaPeriodo)
+                    .foregroundColor(Colori.Agenda.cuoioTesto)
+                    .lineLimit(1)
+            }
+            .padding(Misure.AgendaImpaginazione.fasciaCompatta)
+            .frame(maxWidth: .infinity)
+            .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
+        } else {
+            fasciaIntera
+        }
+    }
+
+    private var fasciaIntera: some View {
         CuoioAgenda {
             HStack(alignment: .center, spacing: 18) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -78,23 +105,24 @@ struct AppAgenda: View {
         let indice = stato.giorniAgenda(stato.vistaAgenda == .settimana ? CalendarioAgenda.giorni(settimanaDi: giorno) : settimane.flatMap { $0 })
         return VStack(spacing: 0) {
             barraStrumenti
-            if stato.vistaAgenda == .settimana { settimana(indice) } else { mese(settimane, indice) }
+            // A sinistra il calendario e la giornata, a destra il dettaglio a tutta altezza
+            // (come l'ispettore del Calendario): con il mese aperto il dettaglio non si schiaccia più
             GeometryReader { geo in
+                let larghezza = Misure.AgendaImpaginazione.dettaglio(geo.size.width)
                 HStack(spacing: 0) {
-                    paginaGiorno(indice)
-                        .frame(width: max(0, geo.size.width - larghezzaDettaglio(geo.size.width)))
+                    VStack(spacing: 0) {
+                        if stato.vistaAgenda == .settimana { settimana(indice) } else { mese(settimane, indice) }
+                        paginaGiorno(indice)
+                    }
+                    .frame(width: max(0, geo.size.width - larghezza))
                     dettaglio(indice)
-                        .frame(width: larghezzaDettaglio(geo.size.width))
+                        .frame(width: larghezza)
                 }
             }
         }
         // Una scheda del tema, come la fascia: il contenuto si taglia alla forma prima del vetro
         .clipShape(forma)
         .vetro(.sottile, forma: forma)
-    }
-
-    private func larghezzaDettaglio(_ totale: CGFloat) -> CGFloat {
-        min(max(Misure.Agenda.dettaglioMinimo, totale * (1 - Misure.Agenda.quotaPagina)), totale * 0.5)
     }
 
     private var barraStrumenti: some View {
@@ -122,6 +150,7 @@ struct AppAgenda: View {
                 .buttonStyle(StileBlu())
         }
         .padding(EdgeInsets(top: 12, leading: 12, bottom: 7, trailing: 12))
+        .bordoBasso(Colori.Agenda.settimanaBordo)
     }
 
     private func sposta(_ verso: Int) {
@@ -150,7 +179,7 @@ struct AppAgenda: View {
                 ) { seleziona(g) }
             }
         }
-        .padding(EdgeInsets(top: 0, leading: 12, bottom: 6, trailing: 12))
+        .padding(Misure.AgendaImpaginazione.calendario)
         .bordoBasso(Colori.Agenda.settimanaBordo)
     }
 
@@ -180,7 +209,7 @@ struct AppAgenda: View {
                 }
             }
         }
-        .padding(EdgeInsets(top: 0, leading: 12, bottom: 6, trailing: 12))
+        .padding(Misure.AgendaImpaginazione.calendario)
         .bordoBasso(Colori.Agenda.settimanaBordo)
     }
 
@@ -373,6 +402,7 @@ struct GiornoSettimanaAgenda: View {
                 Text(nota)
                     .font(Tipo.giornoNota)
                     .lineLimit(1)
+                    .minimumScaleFactor(Misure.AgendaImpaginazione.scalaNotaGiorno)
                     .opacity(0.85)
                 PuntiniGiorno(incontri: incontri, scadenze: scadenze, selezionato: selezionato)
                     .padding(.top, 2)
@@ -578,10 +608,21 @@ struct DettaglioAppuntamento: View {
                         .foregroundColor(Colori.Agenda.dettaglioTitolo)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.vertical, 5)
-                    Text(cliente?.nome ?? "Cliente")
-                        .font(Tipo.dettaglioCliente)
-                        .foregroundColor(Colori.Agenda.dettaglioCliente)
-                        .padding(.bottom, 7)
+                    HStack(alignment: .firstTextBaseline, spacing: Misure.AgendaImpaginazione.spazioCliente) {
+                        Text(cliente?.nome ?? "Cliente")
+                            .font(Tipo.dettaglioCliente)
+                            .foregroundColor(Colori.Agenda.dettaglioCliente)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        // La scheda del cliente a portata di clic, come «Apri dossier» nelle Note
+                        Button("Scheda cliente ↗") { stato.apriCliente(evento.clienteId) }
+                            .buttonStyle(StileSemplice())
+                            .font(Tipo.dettaglioCliente)
+                            .foregroundColor(Colori.Colonna.collegamento)
+                            .fixedSize()
+                            .help("Apri la scheda del cliente")
+                    }
+                    .padding(.bottom, 7)
 
                     VoceDettaglio(etichetta: "Quando") {
                         Text("\(Formati.dataLunga.string(from: evento.inizio))\n\(Formati.ora.string(from: evento.inizio)) – \(Formati.ora.string(from: evento.fine))")
@@ -643,36 +684,37 @@ struct DettaglioAppuntamento: View {
                 .padding(.trailing, 4)
             }
 
-            // Nelle finestre strette le azioni passano da tre a due colonne, senza troncare i titoli.
-            ViewThatFits(in: .horizontal) {
-                Grid(horizontalSpacing: 6, verticalSpacing: 6) {
-                    GridRow {
-                        azioneEve.gridCellColumns(2)
-                        azioneModifica
-                    }
-                    GridRow {
-                        azioneConcluso(concluso)
-                        azioneAttivita
-                        azioneScheda
-                    }
-                    GridRow { azioneFascicolo.gridCellColumns(3) }
-                    GridRow { azioneIncontro.gridCellColumns(3) }
+            // Le azioni in due gruppi: le principali in alto, le altre in una fila sola se c'è posto,
+            // altrimenti due per riga (o una sotto l'altra): i titoli non si troncano mai
+            let spazio = Misure.AgendaImpaginazione.spazioAzioni
+            VStack(spacing: spazio) {
+                HStack(spacing: spazio) {
+                    azioneEve
+                    azioneModifica
                 }
-                Grid(horizontalSpacing: 6, verticalSpacing: 6) {
-                    GridRow {
-                        azioneEve
-                        azioneModifica
-                    }
-                    GridRow {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: spazio) {
                         azioneConcluso(concluso)
                         azioneAttivita
+                        azioneIncontro
+                        azioneFascicolo
                     }
-                    GridRow {
-                        azioneScheda
-                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                    VStack(spacing: spazio) {
+                        HStack(spacing: spazio) {
+                            azioneConcluso(concluso)
+                            azioneAttivita
+                        }
+                        HStack(spacing: spazio) {
+                            azioneIncontro
+                            azioneFascicolo
+                        }
                     }
-                    GridRow { azioneFascicolo.gridCellColumns(2) }
-                    GridRow { azioneIncontro.gridCellColumns(2) }
+                    VStack(spacing: spazio) {
+                        azioneConcluso(concluso)
+                        azioneAttivita
+                        azioneIncontro
+                        azioneFascicolo
+                    }
                 }
             }
             .padding(.top, 7)
@@ -701,14 +743,9 @@ struct DettaglioAppuntamento: View {
         PulsanteAzione(titolo: "＋ Attività collegata", azione: nuovaAttivita)
     }
 
-    private var azioneScheda: some View {
-        PulsanteAzione(titolo: "Scheda cliente") { stato.apriCliente(evento.clienteId) }
-    }
-
     private var azioneFascicolo: some View {
         let archiviato = stato.fascicoloArchiviato(per: evento)
-        return PulsanteAzione(titolo: archiviato == nil ? "Prepara il fascicolo da consegnare"
-                                                        : "Fascicolo consegnato: aprilo in Documenti",
+        return PulsanteAzione(titolo: archiviato == nil ? "Prepara il fascicolo" : "Apri il fascicolo",
                               simbolo: "doc.text") {
             if let d = stato.fascicoloArchiviato(per: evento) {
                 stato.clienteAttivoId = evento.clienteId
@@ -718,14 +755,16 @@ struct DettaglioAppuntamento: View {
                 stato.preparaFascicolo(per: evento)
             }
         }
+        .help(archiviato == nil ? "Unisci in un PDF i report da consegnare al cliente"
+                                : "Il fascicolo consegnato è in Documenti: aprilo")
     }
 
     private var azioneIncontro: some View {
-        PulsanteAzione(titolo: stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
-                       ? "Apri l'incontro: appunti e decisioni" : "Prepara l'incontro: temi, ascolto, prossimi passi",
-                       simbolo: "clock") {
+        let aperto = stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
+        return PulsanteAzione(titolo: aperto ? "Apri l'incontro" : "Prepara l'incontro", simbolo: "clock") {
             stato.apriIncontro(per: evento)
         }
+        .help(aperto ? "Apri l'incontro: appunti e decisioni" : "Prepara l'incontro: temi, ascolto, prossimi passi")
     }
 
     private func valore(_ testo: String) -> some View {

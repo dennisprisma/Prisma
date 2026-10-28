@@ -3,9 +3,8 @@ import SwiftUI
 // MARK: - Gettoni degli strumenti di analisi
 
 extension Tema.Misura.Componenti {
-    /// Barra laterale staccata dentro la finestra (.side): margini interni e stacco dai bordi.
+    /// Elenco laterale dentro il contenitore degli strumenti: margini interni.
     static let margineLaterale = EdgeInsets(top: 10, leading: 8, bottom: 10, trailing: 8)
-    static let staccoLaterale = EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 0)
     /// Barra di stato in fondo: spia e margine laterale.
     static let spiaStato: CGFloat = 7
     static let margineBarraStato: CGFloat = 14
@@ -34,8 +33,11 @@ extension Tema.Testo.Componenti {
 
 // MARK: - Cornice degli strumenti di analisi
 
-/// Struttura comune di Posizioni, Simulazioni, Confronti e Analisi 360: barra laterale staccata in vetro,
-/// area di lavoro sul vetro della finestra, barra di stato in basso.
+/// Struttura comune di Analisi 360, Prodotti, Simulazioni, Confronti, Obiettivi, Documenti e Prospetti:
+/// un solo contenitore in vetro arrotondato, come la rubrica di Clienti e il dossier di Posizioni.
+/// Dentro, l'elenco laterale, le colonne dell'app e la barra di stato si toccano con un filo sottile:
+/// niente colonne squadrate staccate dal menù, bordi e altezze allineati, piedi dentro gli angoli tondi.
+/// Per affiancare due colonne nel contenuto: `ColonneAffiancate` (PannelliAffiancati.swift).
 struct CorniceStrumento<Rail: View, Contenuto: View>: View {
     let notaStato: String
     var notaDestra = ""
@@ -44,6 +46,7 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
 
     var body: some View {
         let m = Tema.Misura.Componenti.self
+        let forma = FormaVetro.arrotondata(Misure.ColonneStrumento.raggio)
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -55,10 +58,8 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
                     ArchivioLocaleRail()
                 }
                 .padding(m.margineLaterale)
-                .frame(width: Misure.Analisi.rail)
-                .frame(maxHeight: .infinity, alignment: .top)
-                .vetro(.laterale, forma: .arrotondata(Tema.Raggio.laterale))
-                .padding(m.staccoLaterale)
+                .colonnaFissa(Misure.ColonneStrumento.rail)
+                DivisoreColonne()
                 contenuto()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -72,10 +73,11 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
             .foregroundColor(Tema.Colore.inchiostroSecondario)
             .padding(.horizontal, m.margineBarraStato)
             .frame(height: Misure.Analisi.barraStato)
-            .overlay(alignment: .top) {
-                Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
-            }
+            .bordoAlto(Colori.ColonneStrumento.divisore)
         }
+        // Il contenuto si taglia sugli angoli tondi prima del vetro (come Clienti): i piedi restano dentro
+        .clipShape(forma)
+        .vetro(.sottile, forma: forma)
     }
 }
 

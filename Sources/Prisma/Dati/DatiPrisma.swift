@@ -135,12 +135,14 @@ struct Impostazioni: Codable, Equatable {
     var pioggia = IntensitaPioggia.leggera
     /// Promemoria nel Centro notifiche del Mac (spenti finché non li accendi).
     var promemoria = ImpostazioniPromemoria()
+    /// Le ricerche salvate dal pannello ⌘K (le più recenti prima).
+    var ricercheSalvate: [RicercaSalvata] = []
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
-        case promemoria
+        case promemoria, ricercheSalvate
     }
 
     init(from decoder: Decoder) throws {
@@ -160,6 +162,8 @@ struct Impostazioni: Codable, Equatable {
         pioggia = (try? c.decodeIfPresent(IntensitaPioggia.self, forKey: .pioggia)) ?? .leggera
         // Promemoria del Mac: gli archivi di prima non li hanno
         promemoria = (try? c.decodeIfPresent(ImpostazioniPromemoria.self, forKey: .promemoria)) ?? ImpostazioniPromemoria()
+        // Ricerche salvate: gli archivi di prima non le hanno
+        ricercheSalvate = (try? c.decodeIfPresent([RicercaSalvata].self, forKey: .ricercheSalvate)) ?? []
     }
 }
 

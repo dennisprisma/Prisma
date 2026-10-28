@@ -79,8 +79,9 @@ extension StatoShell {
 
         case .apri(let app):
             guard appConsentita(app) else { return ("In modalità cliente non apro \(app.titolo): mostrerebbe i dati di altri clienti.", nil) }
-            apri(app)
-            return ("Ecco \(app.titolo).", nil)
+            // La Ricerca non è più una finestra: si apre il pannello in alto, come Spotlight
+            apriApp(app)
+            return (app == .ricerca ? "Ecco la Ricerca: scrivi cosa cerchi." : "Ecco \(app.titolo).", nil)
 
         case .cliente(let id):
             guard let c = cliente(id) else { return ("Non trovo questo cliente.", nil) }

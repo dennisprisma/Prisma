@@ -95,17 +95,22 @@ extension Tema.Moto {
         static let chiusura = Animation.easeIn(duration: 0.16)
         static let durataChiusura: Double = 0.16
         static let scalaChiusura: CGFloat = 0.95
-        // Riduzione nel dock: «effetto genio» di macOS; il ripristino è lo stesso al contrario
-        static let genio = Animation.timingCurve(0.42, 0, 0.58, 1, duration: 0.5)
+        // Riduzione nel dock: «effetto genio» di macOS (circa mezzo secondo); il ripristino è lo stesso al contrario.
+        // La curva del tempo è appena morbida ai capi: le fasi qui sotto hanno già le loro accelerazioni, e così
+        // la finestra risponde subito al clic (con easeInOut pieno partirebbe troppo piano).
+        static let genio = Animation.timingCurve(0.25, 0.1, 0.55, 1, duration: 0.5)
         static let durataGenio: Double = 0.5
+        // Il ripristino finisce piano: i lati tornano dritti senza scatto
         static let ripristino = Animation.timingCurve(0.42, 0, 0.58, 1, duration: 0.45)
         static let durataRipristino: Double = 0.45
-        /// Prima fase del genio (fino a qui): il bordo in basso si stringe e scivola sull'icona.
-        static let genioFineFondo: CGFloat = 0.5
-        /// Seconda fase (da qui): scende la parte alta e la finestra entra nell'icona.
-        static let genioInizioCima: CGFloat = 0.4
-        /// Da qui la finestra, ormai nell'icona, svanisce.
-        static let genioInizioDissolvenza: CGFloat = 0.85
+        /// Prima fase del genio (fino a qui): il bordo in basso si stringe e scende fino all'icona, la cima resta ferma.
+        static let genioFineFondo: CGFloat = 0.45
+        /// Fino a qui si forma l'imbuto: i lati si piegano a S verso l'icona (subito, mentre il fondo comincia a scendere).
+        static let genioFinePiega: CGFloat = 0.35
+        /// Seconda fase (da qui): la cima scende lungo l'imbuto e la finestra scivola dentro l'icona.
+        static let genioInizioCima: CGFloat = 0.3
+        /// Da qui la finestra, ormai nell'icona, svanisce: il contenuto resta visibile fin quasi alla fine.
+        static let genioInizioDissolvenza: CGFloat = 0.88
         /// Spazio sopra la finestra occupato dalla sua ombra: la prospettiva non deve mai rovesciarla.
         static let genioMargineOmbra: CGFloat = 40
         /// Fattore prospettico minimo (w) sul bordo alto dell'ombra.
@@ -232,9 +237,13 @@ struct EffettoFinestra: ViewModifier {
 }
 
 /// «Effetto genio» di macOS: con progresso 0 la finestra è com'è, con 1 è risucchiata nell'icona del dock.
-/// Un'omografia porta il rettangolo della finestra su un quadrilatero che cambia nel tempo (lati dritti):
-/// prima il bordo in basso si stringe fino alla larghezza dell'icona e scivola su di lei, poi scende la parte
-/// alta e tutta la finestra entra nell'icona. Solo una trasformazione: niente impaginazione a ogni fotogramma.
+/// Il modello è quello del Mac: un imbuto con i lati a S (`GenioImbuto`) che va dalla cima della finestra
+/// all'icona. Prima il bordo in basso si stringe verso l'icona e scende per primo mentre i lati si piegano,
+/// poi la cima scende lungo l'imbuto e il corpo della finestra scivola dentro l'icona; il ripristino è l'inverso.
+/// Un'omografia porta il rettangolo della finestra sul quadrilatero che ha cima e fondo sull'imbuto: i lati
+/// restano corde dritte della curva, ma la prospettiva schiaccia il contenuto verso il collo come nel genio vero,
+/// e la cima resta larga finché non arriva alla piega. Solo una trasformazione (niente istantanee della finestra,
+/// che col vetro non si possono catturare fedelmente, niente impaginazione a ogni fotogramma).
 /// Con «Riduci movimento» nessuna deformazione (resta la dissolvenza di `OpacitaGenio`).
 struct EffettoGenio: GeometryEffect {
     var progresso: CGFloat
@@ -262,28 +271,32 @@ struct EffettoGenio: GeometryEffect {
     static func quadrilatero(progresso p: CGFloat, larghezza w: CGFloat, altezza h: CGFloat,
                              bersaglio: CGPoint, lato: CGFloat) -> (CGPoint, CGPoint, CGPoint, CGPoint) {
         let m = Tema.Moto.Finestre.self
-        func limita(_ x: CGFloat) -> CGFloat { min(max(x, 0), 1) }
-        func verso(_ da: CGFloat, _ a: CGFloat, _ t: CGFloat) -> CGFloat { da + (a - da) * t }
-        // Fondo: rallenta arrivando all'icona. Cima: parte piano e accelera; mai davanti al fondo
-        let f = limita(p / m.genioFineFondo)
-        let fondo = 1 - (1 - f) * (1 - f)
-        let c = limita((p - m.genioInizioCima) / (1 - m.genioInizioCima))
-        let cima = min(c * c, fondo)
         let mezzo = lato / 2
         // L'icona sta sotto la cima della finestra: il quadrilatero non si rovescia mai
         let ty = max(bersaglio.y, mezzo)
-        let larghezzaCima = verso(w, lato, cima)
+        let imbuto = GenioImbuto(larghezza: w, centroIcona: bersaglio.x, lato: lato,
+                                 collo: ty - mezzo,
+                                 piega: GenioImbuto.esce(GenioImbuto.limita(p / m.genioFinePiega)))
+        // Fondo: accelera e rallenta arrivando sul fondo dell'icona
+        let fondo = GenioImbuto.morbido(GenioImbuto.limita(p / m.genioFineFondo))
+        let yFondo = GenioImbuto.verso(h, ty + mezzo, fondo)
+        // Cima: parte piano, scivola lungo l'imbuto e si posa sulla cima dell'icona; mai sotto il fondo
+        let cima = GenioImbuto.morbido(GenioImbuto.limita((p - m.genioInizioCima) / (1 - m.genioInizioCima)))
+        let yCima = min((ty - mezzo) * cima, max(0, yFondo - lato))
+        let alto = imbuto.lati(a: yCima)
+        var basso = imbuto.lati(a: yFondo)
         // Prospettiva limitata: sopra la finestra c'è la sua ombra, che non deve andare all'infinito
         let rapportoMassimo = 1 + (1 - m.genioProspettivaMinima) * h / m.genioMargineOmbra
-        let larghezzaFondo = max(verso(w, lato, fondo), larghezzaCima / rapportoMassimo)
-        let xCima = verso(w / 2, bersaglio.x, cima)
-        let xFondo = verso(w / 2, bersaglio.x, fondo)
-        let yCima = (ty - mezzo) * cima
-        let yFondo = verso(h, ty + mezzo, fondo)
-        return (CGPoint(x: xCima - larghezzaCima / 2, y: yCima),
-                CGPoint(x: xCima + larghezzaCima / 2, y: yCima),
-                CGPoint(x: xFondo + larghezzaFondo / 2, y: yFondo),
-                CGPoint(x: xFondo - larghezzaFondo / 2, y: yFondo))
+        let larghezzaCima = alto.destra - alto.sinistra
+        let minima = larghezzaCima / rapportoMassimo
+        if basso.destra - basso.sinistra < minima {
+            let centro = (basso.sinistra + basso.destra) / 2
+            basso = (centro - minima / 2, centro + minima / 2)
+        }
+        return (CGPoint(x: alto.sinistra, y: yCima),
+                CGPoint(x: alto.destra, y: yCima),
+                CGPoint(x: basso.destra, y: yFondo),
+                CGPoint(x: basso.sinistra, y: yFondo))
     }
 
     /// L'omografia che porta il rettangolo (0, 0, w, h) sul quadrilatero a0 a1 a2 a3 (stesso ordine degli angoli):

@@ -107,76 +107,82 @@ struct AppPosizioni: View {
         let tutte = perStato
         let conteggi = Dictionary(grouping: tutte, by: \.area).mapValues(\.count)
         return VStack(alignment: .leading, spacing: 6) {
-            if !stato.inModoCliente {
-                SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
-                    .padding(.top, 2)
-            }
-            if stato.portafoglio {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("IL TUO PORTAFOGLIO").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
-                    Text("Tutti i clienti").font(Tipo.railTitolo).foregroundColor(Colori.Analisi.railTesto)
-                    Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti") in rubrica").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
-                }
-                .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .bordoBasso(Colori.Analisi.railFilo)
-            } else {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("DOSSIER DI").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
-                Button {
-                    sceltaCliente = true
-                } label: {
-                    HStack(spacing: 5) {
-                        Text(stato.clienteAttivo?.nome ?? "Nessun cliente").font(Tipo.railTitolo)
-                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+            // L'elenco scorre dentro la scheda: con tante voci o schermo basso la finestra non si allunga
+            // sotto il bordo (le due colonne finiscono con lo stesso margine di Clienti)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if !stato.inModoCliente {
+                        SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
+                            .padding(.top, 2)
                     }
-                    .foregroundColor(Colori.Analisi.railTesto)
-                }
-                .buttonStyle(StileSemplice())
-                .popover(isPresented: $sceltaCliente, arrowEdge: .trailing) { ElencoClienti(aperto: $sceltaCliente) }
-                Text(stato.clienteAttivo?.tema ?? "").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
-            }
-            .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .bordoBasso(Colori.Analisi.railFilo)
-            }
+                    if stato.portafoglio {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("IL TUO PORTAFOGLIO").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
+                            Text("Tutti i clienti").font(Tipo.railTitolo).foregroundColor(Colori.Analisi.railTesto)
+                            Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti") in rubrica").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                        }
+                        .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .bordoBasso(Colori.Analisi.railFilo)
+                    } else {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("DOSSIER DI").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
+                            Button {
+                                sceltaCliente = true
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text(stato.clienteAttivo?.nome ?? "Nessun cliente").font(Tipo.railTitolo)
+                                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                                }
+                                .foregroundColor(Colori.Analisi.railTesto)
+                            }
+                            .buttonStyle(StileSemplice())
+                            .popover(isPresented: $sceltaCliente, arrowEdge: .trailing) { ElencoClienti(aperto: $sceltaCliente) }
+                            Text(stato.clienteAttivo?.tema ?? "").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                        }
+                        .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .bordoBasso(Colori.Analisi.railFilo)
+                    }
 
-            EtichettaRail(testo: "Stato")
-            SegmentiAnalisi(opzioni: [(FiltroStato.inEssere, "In essere"), (.proposte, "Proposte"), (.tutte, "Tutte")],
-                            selezione: $filtroStato)
-            EtichettaRail(testo: "Canale")
-            SegmentiAnalisi(opzioni: Self.opzioniCanale, selezione: $filtroCanale)
-            EtichettaRail(testo: "Aree")
-            VStack(spacing: 0) {
-                VoceNavigazione(titolo: "Tutte le aree", conteggio: tutte.count, attiva: area == nil) { area = nil }
-                ForEach(AreaPosizione.allCases) { a in
-                    VoceNavigazione(titolo: a.nome, colore: Colori.Analisi.area(a),
-                                    conteggio: conteggi[a] ?? 0, attiva: area == a) {
-                        area = a
-                        stato.posizioneInDettaglio = nil
+                    EtichettaRail(testo: "Stato")
+                    SegmentiAnalisi(opzioni: [(FiltroStato.inEssere, "In essere"), (.proposte, "Proposte"), (.tutte, "Tutte")],
+                                    selezione: $filtroStato)
+                    EtichettaRail(testo: "Canale")
+                    SegmentiAnalisi(opzioni: Self.opzioniCanale, selezione: $filtroCanale)
+                    EtichettaRail(testo: "Aree")
+                    VStack(spacing: 0) {
+                        VoceNavigazione(titolo: "Tutte le aree", conteggio: tutte.count, attiva: area == nil) { area = nil }
+                        ForEach(AreaPosizione.allCases) { a in
+                            VoceNavigazione(titolo: a.nome, colore: Colori.Analisi.area(a),
+                                            conteggio: conteggi[a] ?? 0, attiva: area == a) {
+                                area = a
+                                stato.posizioneInDettaglio = nil
+                            }
+                        }
                     }
-                }
-            }
-            if !stato.portafoglio {
-                EtichettaRail(testo: "Analisi")
-                VStack(spacing: 0) {
-                    ForEach([("Il patrimonio nel tempo", "patrimonio"), ("Prova di resistenza", "resistenza"), ("Coerenza con il profilo", "coerenza"),
-                             ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
-                        // Chiusa la scheda di una posizione, il dossier è visibile e l'ancora si consuma
-                        VoceNavigazione(titolo: voce.0, attiva: false) {
-                            stato.posizioneInDettaglio = nil
-                            stato.ancoraPosizioni = voce.1
+                    if !stato.portafoglio {
+                        EtichettaRail(testo: "Analisi")
+                        VStack(spacing: 0) {
+                            ForEach([("Il patrimonio nel tempo", "patrimonio"), ("Prova di resistenza", "resistenza"), ("Coerenza con il profilo", "coerenza"),
+                                     ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
+                                // Chiusa la scheda di una posizione, il dossier è visibile e l'ancora si consuma
+                                VoceNavigazione(titolo: voce.0, attiva: false) {
+                                    stato.posizioneInDettaglio = nil
+                                    stato.ancoraPosizioni = voce.1
+                                }
+                            }
+                        }
+                    }
+                    EtichettaRail(testo: "Collegati")
+                    VStack(spacing: 0) {
+                        ForEach([AppPrisma.analisi360, .simulazioni, .confronti, .prodotti]) { app in
+                            VoceNavigazione(titolo: app.titolo, attiva: false) { stato.apri(app) }
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            EtichettaRail(testo: "Collegati")
-            VStack(spacing: 0) {
-                ForEach([AppPrisma.analisi360, .simulazioni, .confronti, .prodotti]) { app in
-                    VoceNavigazione(titolo: app.titolo, attiva: false) { stato.apri(app) }
-                }
-            }
-            Spacer(minLength: 0)
             HStack(spacing: 8) {
                 SimboloLucchetto()
                     .stroke(Colori.Analisi.railEtichetta, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))

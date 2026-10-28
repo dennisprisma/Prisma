@@ -126,7 +126,7 @@ struct CollegamentoApp: View {
     var body: some View {
         Button {
             prima?()
-            stato.apri(app, da: origine.punto)
+            stato.apriApp(app, da: origine.punto)
         } label: {
             Text(testo)
                 .font(Tema.Testo.Shell.collegamento)

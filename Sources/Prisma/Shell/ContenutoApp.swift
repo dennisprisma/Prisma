@@ -34,6 +34,10 @@ struct ContenutoApp: View {
             .padding(.horizontal, app == .ricerca ? 0 : Misure.IntestazioneApp.margineOrizzontale)
             .padding(.vertical, app == .ricerca ? 0 : Misure.IntestazioneApp.margineVerticale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Un contenuto più grande della finestra non si allarga né si centra fuori dai bordi:
+            // l'intestazione resta al suo posto e l'eccesso finisce in basso e a destra, dove la finestra
+            // lo taglia (ogni app scorre dentro i suoi pannelli: vedi l'elenco laterale di Posizioni)
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
             .background(sfondo)
         }
     }

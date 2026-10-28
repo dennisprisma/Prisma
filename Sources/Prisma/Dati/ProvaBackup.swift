@@ -28,6 +28,10 @@ enum ProvaBackup {
                                                  aggiornatoIl: Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down)))]
             // E uno spazio di lavoro salvato
             originale.spazi = [SpazioLavoro(nome: "Revisione annuale", finestre: [.sinistra(.posizioni), .destra(.eve)])]
+            // E una ricerca salvata del pannello ⌘K (nelle impostazioni)
+            var salvata = RicercaSalvata(nome: "Scadenze Alleanza 2027", testo: "scade:2027 canale:alleanza")
+            salvata.creataIl = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
+            originale.impostazioni.ricercheSalvate = [salvata]
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
@@ -107,7 +111,7 @@ enum ProvaBackup {
                   letto.clienti.first?.bisogni == ProfiloBisogni(), letto.incontri.isEmpty, letto.prodotti.isEmpty, letto.obiettivi.isEmpty, letto.documenti.isEmpty, letto.valutazioni.isEmpty, letto.commenti.isEmpty, letto.spazi.isEmpty, letto.note.isEmpty,
                   letto.impostazioni.eve == ImpostazioniEve(), letto.impostazioni.nomeUtente == "Denis",
                   letto.impostazioni.aspetto == .automatico, letto.impostazioni.sfondoAnimato,
-                  letto.impostazioni.pioggia == .leggera else {
+                  letto.impostazioni.pioggia == .leggera, letto.impostazioni.ricercheSalvate.isEmpty else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }

@@ -122,3 +122,159 @@ struct RigaRicerca: View {
         .contentShape(Rectangle())
     }
 }
+
+// MARK: - Pannello ⌘K (come Spotlight)
+
+/// L'icona di un risultato: avatar per i clienti, tessera con il simbolo per le azioni, icona dell'app per il resto.
+struct IconaRisultatoRicerca: View {
+    let risultato: RisultatoRicerca
+    /// Il cliente del risultato (solo per il gruppo Clienti).
+    var cliente: Cliente?
+    var lato: CGFloat = Misure.Spotlight.icona
+
+    var body: some View {
+        if let c = cliente {
+            AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: lato)
+        } else if let a = risultato.azione {
+            TesseraAzioneRicerca(simbolo: a.simbolo, lato: lato)
+        } else {
+            IconaApp(app: risultato.app, lato: lato)
+        }
+    }
+}
+
+/// Tessera neutra con il simbolo di un'azione rapida, alta quanto le icone delle app.
+struct TesseraAzioneRicerca: View {
+    let simbolo: String
+    let lato: CGFloat
+
+    var body: some View {
+        let forma = RoundedRectangle(cornerRadius: Tema.Raggio.iconaApp(lato), style: .continuous)
+        Image(systemName: simbolo)
+            .font(lato > Misure.Spotlight.icona ? Tipo.spotlightSimboloAnteprima : Tipo.spotlightSimboloAzione)
+            .foregroundColor(Colori.Spotlight.simboloAzione)
+            .frame(width: lato, height: lato)
+            .background(forma.fill(Colori.Spotlight.tesseraAzione))
+            .overlay(forma.strokeBorder(Colori.Spotlight.separatore, lineWidth: Tema.Misura.filo))
+    }
+}
+
+/// Una riga dei risultati del pannello (.sr-i): icona, titolo, dettaglio, riga trovata e pallino del canale.
+/// Scelta: accento al 18%; al passaggio un velo leggero.
+struct RigaSpotlight: View {
+    let risultato: RisultatoRicerca
+    let selezionata: Bool
+    var cliente: Cliente?
+
+    var body: some View {
+        let m = Misure.Spotlight.self
+        HStack(spacing: m.rigaSpazio) {
+            IconaRisultatoRicerca(risultato: risultato, cliente: cliente)
+            VStack(alignment: .leading, spacing: m.rigaTestoSpazio) {
+                Text(risultato.titolo)
+                    .font(Tipo.spotlightTitolo)
+                    .foregroundColor(Colori.Spotlight.titolo)
+                if !risultato.dettaglio.isEmpty {
+                    Text(risultato.dettaglio)
+                        .font(Tipo.spotlightDettaglio)
+                        .foregroundColor(Colori.Spotlight.dettaglio)
+                }
+                if let e = risultato.estratto {
+                    Text(e)
+                        .font(Tipo.spotlightEstratto)
+                        .foregroundColor(Colori.Spotlight.estratto)
+                }
+            }
+            .lineLimit(1)
+            Spacer(minLength: 0)
+            // Nella riga stretta il canale resta il suo colore (versione compatta)
+            if let c = risultato.canale {
+                Circle()
+                    .fill(Tema.Colore.canale(c))
+                    .frame(width: Tema.Misura.pallinoCanale, height: Tema.Misura.pallinoCanale)
+                    .help(c.nome)
+            }
+        }
+        .padding(m.rigaMargine)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fondoPassaggio(.arrotondata(Tema.Raggio.voceRicerca), sopra: Colori.Spotlight.sopra,
+                        selezionata: selezionata, selezione: Colori.Spotlight.selezione)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Pillola del pannello: un suggerimento da toccare (pozzetto), un filtro riconosciuto (accento) o a metà (arancio).
+struct PillolaSpotlight: View {
+    enum Tono { case suggerimento, filtro, incompleto }
+
+    let testo: String
+    var nota: String? = nil
+    var tono: Tono = .suggerimento
+    /// Non privato: con uno stato privato l'inizializzatore per membri non si vedrebbe dagli altri file.
+    @State var sopra = false
+
+    var body: some View {
+        let m = Misure.Spotlight.self
+        let colori: (fondo: Color, testo: Color) = {
+            switch tono {
+            case .suggerimento: return (sopra ? Colori.Spotlight.pillolaSopra : Colori.Spotlight.pillola, Colori.Spotlight.pillolaTesto)
+            case .filtro: return (Colori.Spotlight.filtro, Colori.Spotlight.filtroTesto)
+            case .incompleto: return (Colori.Spotlight.incompleto, Colori.Spotlight.incompletoTesto)
+            }
+        }()
+        HStack(spacing: m.pillolaSpazio) {
+            Text(testo).font(Tipo.spotlightPillola).foregroundColor(colori.testo)
+            if let nota {
+                Text(nota).font(Tipo.spotlightPillolaNota).foregroundColor(Colori.Spotlight.pillolaNota)
+            }
+        }
+        .lineLimit(1)
+        .padding(m.pillolaMargine)
+        .frame(minHeight: m.pillolaAltezza)
+        .background(FormaVetro.capsula.fill(colori.fondo))
+        .fixedSize()
+        .onHover { sopra = $0 }
+    }
+}
+
+/// Il totale di un canale nei risultati filtrati: capsula in vetro del colore del canale (blu Alleanza con il
+/// simbolo, cuoio indipendente), numero di posizioni e valore.
+struct TotaleCanaleSpotlight: View {
+    let totale: TotaleCanaleRicerca
+
+    var body: some View {
+        let c = totale.canale
+        HStack(spacing: Misure.Spotlight.totaleSpazio) {
+            EtichettaCanale(canale: c, compatta: true)
+            Text("\(totale.numero) · \(Formati.euro(totale.valore))")
+                .font(Tipo.spotlightPillola)
+                .foregroundColor(Tema.Colore.canale(c))
+                .monospacedDigit()
+        }
+        .lineLimit(1)
+        .fixedSize()
+    }
+}
+
+/// Una cifra dell'anteprima: etichetta a sinistra, valore a destra, filo sotto.
+struct CifraAnteprimaRicerca: View {
+    let etichetta: String
+    let valore: String
+    var ultima = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(etichetta)
+                .font(Tipo.spotlightCifraEtichetta)
+                .foregroundColor(Colori.Spotlight.etichettaCifra)
+            Spacer(minLength: Misure.Spotlight.rigaSpazio)
+            Text(valore)
+                .font(Tipo.spotlightCifraValore)
+                .foregroundColor(Colori.Spotlight.valoreCifra)
+                .multilineTextAlignment(.trailing)
+        }
+        .lineLimit(1)
+        .padding(.vertical, Misure.Spotlight.cifraMargineVerticale)
+        .bordoBasso(ultima ? Color.clear : Colori.Spotlight.separatore)
+    }
+}

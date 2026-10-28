@@ -16,7 +16,7 @@ struct Dock: View {
         }
         let shell = stato
         FilaDock(voci: voci, scrivaniaAttiva: attiva == nil,
-                 apri: { app in shell.apri(app) },
+                 apri: { app in shell.apriApp(app) },
                  mostraScrivania: { shell.mostraScrivania() })
             // Si ridisegna solo se cambiano le icone o i puntini, non a ogni cambiamento dello stato
             .equatable()

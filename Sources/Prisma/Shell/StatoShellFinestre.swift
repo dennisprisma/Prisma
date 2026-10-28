@@ -47,15 +47,10 @@ extension StatoShell {
     /// App in primo piano (nil = scrivania).
     var appAttiva: AppPrisma? { sistema.appAttiva }
 
-    /// La scrivania non si vede: la copre una finestra ingrandita (resta solo una cornice di pochi punti)
-    /// o una presentazione. Allora lo sfondo d'acqua si ferma. Con la schermata di benvenuto lo sfondo si vede.
-    /// Il blocco conta a transizione finita: l'acqua non riparte né si ferma a metà dell'animazione.
-    var scrivaniaCoperta: Bool {
-        if presentazione != nil { return true }
-        if sistema.bloccatoStabile { return false }
-        // A ingrandimento finito (passaggio FLIP tolto): mentre la finestra cresce l'acqua continua a muoversi
-        return finestreVisibili.contains { $0.ingrandita && sistema.flip[$0.app] == nil }
-    }
+    /// Lo sfondo d'acqua non si vede affatto: lo copre la sala (opaca) della presentazione. Solo allora l'acqua
+    /// si ferma: lo sfondo è sempre attivo, anche sotto le finestre aperte e ingrandite (si vede dal vetro e dalla
+    /// cornice attorno) e sotto la schermata di benvenuto.
+    var scrivaniaCoperta: Bool { presentazione != nil }
 
     func aperta(_ app: AppPrisma) -> Bool { sistema.aperta(app) }
 }

@@ -87,6 +87,19 @@ enum ProvaCarico {
         print("INFO Ricerca: 4 ricerche, \(trovati) risultati, in \(secondi(cerca))")
         controlla(trovati > 0 && cerca < limiteRicerca, "Ricerca su tutto l'archivio in \(secondi(cerca)) (limite \(secondi(limiteRicerca)))")
 
+        // Ricerca per criterio (⌘K): parser dei filtri e filtri su tutto l'archivio
+        let erroriFiltri = FiltriRicerca.verifica()
+        for e in erroriFiltri { controlla(false, "Filtri della ricerca: \(e)") }
+        controlla(erroriFiltri.isEmpty, "Filtri della ricerca (scade:, sri>, canale:, costo>, beneficiari:, senza:, riesame:, stato:, area:) letti e applicati")
+        var filtrati = 0
+        let cercaFiltri = tempo {
+            for q in ["scade:2027 canale:alleanza", "sri>=4 stato:inessere", "senza:previdenza", "riesame:dovuto rossi", "costo>1%"] {
+                filtrati += MotoreRicerca.cercaCompleta(q, in: stato).sezioni.reduce(0) { $0 + $1.totale }
+            }
+        }
+        print("INFO Ricerca per criterio: 5 ricerche, \(filtrati) risultati, in \(secondi(cercaFiltri))")
+        controlla(cercaFiltri < limiteRicerca, "Ricerca per criterio su tutto l'archivio in \(secondi(cercaFiltri)) (limite \(secondi(limiteRicerca)))")
+
         // Centro notifiche su tutto l'archivio (si ricalcola a ogni disegno della barra)
         var quante = 0
         let avvisi = tempo { quante = MotoreNotifiche.calcola(stato).count }
