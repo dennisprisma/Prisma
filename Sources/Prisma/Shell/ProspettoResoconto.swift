@@ -95,7 +95,7 @@ private let colonneFinanziarie = [
     ColonnaDoc(titolo: "Versato", sottotitolo: "versamenti", peso: 1),
     ColonnaDoc(titolo: "Valore", sottotitolo: "data", peso: 1.05),
     ColonnaDoc(titolo: "Risultato", sottotitolo: "sul versato", peso: 1.1),
-    ColonnaDoc(titolo: "Rend. medio", sottotitolo: "annuo", peso: 0.8),
+    ColonnaDoc(titolo: "Rend. annuo", sottotitolo: "dei versamenti", peso: 0.8),
     ColonnaDoc(titolo: "Ultimi 12 mesi", sottotitolo: "netto versamenti", peso: 1.05),
     ColonnaDoc(titolo: "Costi stimati", sottotitolo: "in un anno", peso: 0.95),
 ]
@@ -149,7 +149,7 @@ private struct PaginaQuadro: View {
                 CifraProspetto("Debiti residui", CifreDoc.euro(e.riepilogo.debiti), e.rateAnnue > 0 ? "rate \(CifreDoc.euro(e.rateAnnue / 12))/mese" : "—")
             }
             SezioneProspetto(titolo: "Le posizioni finanziarie, una per una",
-                             testo: Text(verbatim: "Versato, valore e risultato già al netto dei costi del prodotto, prima delle imposte sul guadagno. Rendimento medio annuo e ultimi 12 mesi tengono conto delle date dei versamenti (metodo nell'ultima pagina). Imposte e netto incassabile nella pagina seguente."))
+                             testo: Text(verbatim: "Versato, valore e risultato già al netto dei costi del prodotto, prima delle imposte sul guadagno. Rendimento medio annuo: il tasso dei versamenti alle loro date (XIRR), cioè l'esperienza del cliente; ultimi 12 mesi tolti i versamenti (metodo nell'ultima pagina). Imposte e netto incassabile nella pagina seguente."))
             if voci.isEmpty {
                 Text(verbatim: "Nessuna posizione di investimento, risparmio o previdenza in essere.").font(T.pCorpo).foregroundColor(C.tenue)
             } else {

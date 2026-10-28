@@ -25,8 +25,8 @@ struct Attenzione: Identifiable {
             case .beneficiari, .convivente: return "successione"
             case .rischio: return "resistenza"
             case .costi: return "costi"
-            // Finché il dossier non ha un pannello della coerenza, la spiega la prova di resistenza
-            case .concentrazione: return "resistenza"
+            // La spiega il pannello «Coerenza con il profilo» del dossier
+            case .concentrazione: return "coerenza"
             }
         }
     }

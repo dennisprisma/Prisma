@@ -157,7 +157,8 @@ struct AppPosizioni: View {
             if !stato.portafoglio {
                 EtichettaRail(testo: "Analisi")
                 VStack(spacing: 0) {
-                    ForEach([("Il patrimonio nel tempo", "patrimonio"), ("Prova di resistenza", "resistenza"), ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
+                    ForEach([("Il patrimonio nel tempo", "patrimonio"), ("Prova di resistenza", "resistenza"), ("Coerenza con il profilo", "coerenza"),
+                             ("Peso dei costi", "costi"), ("Passaggio generazionale", "successione")], id: \.1) { voce in
                         // Chiusa la scheda di una posizione, il dossier è visibile e l'ancora si consuma
                         VoceNavigazione(titolo: voce.0, attiva: false) {
                             stato.posizioneInDettaglio = nil
@@ -233,6 +234,13 @@ struct AppPosizioni: View {
                     }
                     if !analisi.prova.vuota {
                         PannelloResistenza(prova: analisi.prova).id("resistenza")
+                    }
+                    // Coerenza con il profilo: rischio oltre la propensione e concentrazione su emittente o canale
+                    if let c = stato.clienteAttivo {
+                        let coerenza = CacheMotoriPosizioni.coerenza(cliente: c, posizioni: stato.posizioniCliente(c.id), prodotti: stato.dati.prodotti)
+                        if coerenza.oggi.patrimonioFinanziario > 0 || coerenza.conProposte != nil {
+                            PannelloCoerenza(esito: coerenza).id("coerenza")
+                        }
                     }
                     if !analisi.costi.vuota {
                         PannelloCosti(analisi: analisi.costi).id("costi")

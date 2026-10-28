@@ -2,13 +2,27 @@ import SwiftUI
 
 private typealias T = Tipo.Documento
 
-/// Il prospetto dei costi: A4 verticale, per il consulente. Prima pagina posizione per posizione,
-/// seconda il peso nel tempo, le alternative, il metodo e le firme.
+/// Il prospetto dei costi: A4 verticale, per il consulente. Prima pagina posizione per posizione, poi
+/// l'incidenza annua dei costi come nel KID, infine il peso nel tempo, le alternative, il metodo e le firme.
 enum ProspettoCosti {
-    static func pagine(_ t: TestiCosti) -> [AnyView] {
-        let pagine: [AnyView] = [AnyView(PaginaCostiOggi(t: t)), AnyView(PaginaCostiTempo(t: t))]
+    /// `prodotti`: le schede del catalogo, se chi prepara il documento le passa (periodo raccomandato, penali
+    /// e RIY dichiarato della scheda); senza, valgono i dati della posizione.
+    static func pagine(_ t: TestiCosti, prodotti: [Prodotto] = []) -> [AnyView] {
+        let incidenze = Self.incidenze(t, prodotti: prodotti)
+        var pagine: [AnyView] = [AnyView(PaginaCostiOggi(t: t))]
+        if !incidenze.isEmpty { pagine.append(AnyView(PaginaIncidenzaKID(t: t, incidenze: incidenze))) }
+        pagine.append(AnyView(PaginaCostiTempo(t: t)))
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiCosti.avvertenza, numero: i + 1, totale: pagine.count) { p })
+        }
+    }
+
+    /// L'incidenza annua dei costi come nel KID (RIY) di ogni posizione con i costi, nello stesso ordine
+    /// dell'analisi. Si calcola qui, per il documento: non dentro `MotoreCosti.calcola`, che usa anche Eve.
+    static func incidenze(_ t: TestiCosti, prodotti: [Prodotto] = []) -> [IncidenzaCostiKID] {
+        t.a.voci.compactMap { v -> IncidenzaCostiKID? in
+            let prodotto = v.posizione.prodottoId.flatMap { id in prodotti.first { $0.id == id } }
+            return MotoreCosti.incidenzaKID(v.posizione, prodotto: prodotto, data: t.data)
         }
     }
 }
@@ -77,7 +91,91 @@ private struct PaginaCostiOggi: View {
     }
 }
 
-// MARK: - Pagina 2: nel tempo, alternative, metodo
+// MARK: - Pagina 2: incidenza annua dei costi come nel KID
+
+private struct PaginaIncidenzaKID: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiCosti
+    let incidenze: [IncidenzaCostiKID]
+
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SezioneProspetto(titolo: "Incidenza annua dei costi, come nel KID",
+                             testo: Text(verbatim: "Di quanto i costi di ogni prodotto abbassano il rendimento medio annuo (RIY, «reduction in yield»): rendimento senza costi meno rendimento con i costi, uscendo dopo 1 anno, a metà e alla fine del periodo raccomandato. Accanto, il dato dichiarato nel KID, da confrontare con il calcolo di Prisma."))
+            TabellaCanali(colonne: [
+                ColonnaDoc(titolo: "Posizione", sottotitolo: "periodo raccomandato", peso: 2.4, destra: false),
+                ColonnaDoc(titolo: "Dopo 1 anno", peso: 0.9),
+                ColonnaDoc(titolo: "A metà", sottotitolo: "del periodo", peso: 0.9),
+                ColonnaDoc(titolo: "Alla fine", sottotitolo: "del periodo", peso: 0.9),
+                ColonnaDoc(titolo: "Nel KID", sottotitolo: "dichiarato", peso: 0.9),
+                ColonnaDoc(titolo: "Differenza", sottotitolo: "calcolo − KID", peso: 0.95),
+            ], gruppi: Canale.allCases.compactMap { c -> GruppoCanale? in
+                let mie = incidenze.prefix(Misure.Documento.righeTabellaFissa).filter { $0.posizione.canale == c }
+                guard !mie.isEmpty else { return nil }
+                return GruppoCanale(canale: c, righe: mie.map { riga($0) }, nota: mie.count == 1 ? "1 posizione" : "\(mie.count) posizioni")
+            })
+            Altre(numero: incidenze.count - Misure.Documento.righeTabellaFissa)
+            if let k = piuCara, k.annoPerAnno.count > 1 {
+                SezioneProspetto(titolo: "Come cambia con gli anni: \(k.posizione.nome)",
+                                 testo: Text(verbatim: "Incidenza annua dei costi uscendo alla fine di ciascun anno, fino al periodo raccomandato (al massimo \(M.anniIncidenza) anni). Nei primi anni pesano di più il costo d'ingresso e le penali; poi si distribuiscono su più anni."))
+                GraficoBarreDoc(punti: k.annoPerAnno.prefix(M.anniIncidenza).map { ("\($0.anni)", $0.riy) }, colore: C.intermedio,
+                                fontValori: T.pTabellaNota, fontAssi: T.pAssi)
+                    .frame(height: M.graficoIncidenza)
+            }
+            RiquadroBarra(titolo: "Come leggerla") {
+                VStack(alignment: .leading, spacing: 4) {
+                    PuntoElenco(testo: Text(verbatim: "Punti di rendimento all'anno: ").bold()
+                                + Text(verbatim: "un RIY dell'1% vuol dire che, con i costi, il prodotto rende ogni anno circa un punto in meno di quanto renderebbe senza."))
+                    PuntoElenco(testo: Text(verbatim: "Uscire presto costa di più: ").bold()
+                                + Text(verbatim: "il costo d'ingresso e le penali si dividono su pochi anni."))
+                    PuntoElenco(testo: Text(verbatim: "Calcolo e KID: ").bold()
+                                + Text(verbatim: "se il calcolo supera il dato del KID di oltre \(sogliaScarto) punti, conviene rileggere il KID: costi o periodo registrati possono essere diversi."))
+                }
+            }
+            Text(verbatim: IncidenzaCostiKID.metodo + " Stime con i rendimenti ipotizzati, non garantiti.")
+                .font(T.pTabellaNota).foregroundColor(C.tenue).lineSpacing(1.2).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// "0,3": la soglia oltre cui il calcolo pesa più del KID.
+    private var sogliaScarto: String {
+        Formati.numeroFormatter.string(from: NSNumber(value: CompositoreProspetti.sogliaScartoKID)) ?? "0,3"
+    }
+
+    /// La posizione con l'incidenza più alta al periodo raccomandato.
+    private var piuCara: IncidenzaCostiKID? {
+        incidenze.max { ($0.calcolato ?? 0) < ($1.calcolato ?? 0) }
+    }
+
+    private func riga(_ k: IncidenzaCostiKID) -> RigaDoc {
+        let periodi = k.periodi
+        let unAnno = periodi.first { $0.anni == 1 }
+        let meta: IncidenzaCostiKID.Periodo? = periodi.count >= 3 ? periodi[1] : nil
+        let fine = periodi.last
+        func cella(_ q: IncidenzaCostiKID.Periodo?, forte: Bool) -> CellaDoc {
+            guard let q else { return CellaDoc("—", colore: C.tenue, font: T.pTabella) }
+            return CellaDoc(CifreDoc.percento(q.riy, decimali: 2), sotto: q.anni == 1 ? "" : "\(q.anni) anni", font: forte ? T.pTabellaForte : T.pTabella)
+        }
+        let scarto: CellaDoc
+        if let s = k.scarto {
+            let alto = s > CompositoreProspetti.sogliaScartoKID
+            scarto = CellaDoc(CifreDoc.variazione(s, decimali: 2), sotto: alto ? "pesano di più" : "in linea", colore: alto ? C.negativo : nil, font: T.pTabella)
+        } else {
+            scarto = CellaDoc("—", colore: C.tenue, font: T.pTabella)
+        }
+        let anni = k.periodoRaccomandato == 1 ? "1 anno" : "\(k.periodoRaccomandato) anni"
+        return RigaDoc(celle: [
+            CellaDoc(k.posizione.nome, sotto: anni + (k.posizione.periodoRaccomandato != nil ? " · dal KID" : ""), font: T.pTabellaForte),
+            cella(unAnno, forte: false), cella(meta, forte: false), cella(fine, forte: true),
+            CellaDoc(k.dichiarato.map { CifreDoc.percento($0, decimali: 2) } ?? "non indicato", colore: k.dichiarato == nil ? C.tenue : nil, font: T.pTabella),
+            scarto,
+        ], altezza: M.rigaTabella)
+    }
+}
+
+// MARK: - Pagina 3: nel tempo, alternative, metodo
 
 private struct PaginaCostiTempo: View {
     @Environment(\.paletteDocumento) private var C

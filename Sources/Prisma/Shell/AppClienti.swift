@@ -180,6 +180,12 @@ struct AppClienti: View {
                             .compactMap { $0 }.joined(separator: " · "))
                             .font(Tipo.rubricaTema)
                             .foregroundColor(Colori.Rubrica.rigaTema)
+                        if let analisi = datiAnalisi(f) {
+                            Text(analisi)
+                                .font(Tipo.rubricaTema)
+                                .foregroundColor(Colori.Rubrica.secondario)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     Spacer()
                     Button("Modifica") { familiare = ModificaFamiliare(clienteId: c.id, familiare: f, nuovo: false) }
@@ -194,6 +200,22 @@ struct AppClienti: View {
             .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
             .padding(.top, 6)
         }
+    }
+
+    /// I dati del familiare per la protezione per persona e la pensione: reddito netto, sostegno, pensione stimata
+    /// con il contributivo (una stima). nil se non c'è niente di indicato.
+    private func datiAnalisi(_ f: Familiare) -> String? {
+        var parti: [String] = []
+        if let r = f.redditoNettoAnnuo, r > 0 { parti.append("reddito netto \(Formati.euro(r)) l'anno") }
+        if f.nonAutosufficiente == true {
+            parti.append("non autosufficiente: sostegno per tutta la vita")
+        } else if let fine = f.etaFineCarico {
+            parti.append("a carico fino a \(fine) anni")
+        }
+        if let s = MotorePensionePubblica.stima(familiare: f) {
+            parti.append("pensione stimata circa \(Formati.euro(s.nettaMensile)) netti al mese a \(s.etaPensione) anni (stima contributiva)")
+        }
+        return parti.isEmpty ? nil : parti.joined(separator: " · ")
     }
 
     private func profilo(_ c: Cliente) -> some View {

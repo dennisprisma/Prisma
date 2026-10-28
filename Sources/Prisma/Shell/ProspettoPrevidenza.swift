@@ -7,7 +7,10 @@ private typealias D = Misure.Documento
 /// vantaggio fiscale dei versamenti, aliquota della prestazione nel tempo, uscite anticipate, scenari.
 enum ProspettoPrevidenza {
     static func pagine(_ t: TestiPrevidenza) -> [AnyView] {
-        let pagine: [AnyView] = [AnyView(PaginaDivario(t: t)), AnyView(PaginaFiscoPrevidenza(t: t)), AnyView(PaginaProiezionePrevidenza(t: t))]
+        var pagine: [AnyView] = [AnyView(PaginaDivario(t: t))]
+        // La pensione pubblica stimata con il contributivo, se il cliente ha i dati del lavoro
+        if let stima = t.e.stimaPensione { pagine.append(AnyView(PaginaPensioneStimata(t: t, s: stima))) }
+        pagine += [AnyView(PaginaFiscoPrevidenza(t: t)), AnyView(PaginaProiezionePrevidenza(t: t))]
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiPrevidenza.avvertenza, numero: i + 1, totale: pagine.count) { p })
         }
@@ -102,7 +105,99 @@ private struct PaginaDivario: View {
     }
 }
 
-// MARK: - Pagina 2: fisco dei versamenti e della prestazione
+// MARK: - Pagina 2: la pensione pubblica stimata
+
+private struct PaginaPensioneStimata: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiPrevidenza
+    let s: StimaPensione
+
+    private var e: EsitoPianoPrevidenziale { t.e }
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            SezioneProspetto(titolo: "La pensione pubblica stimata con il contributivo",
+                             testo: Text(verbatim: "Stima di Prisma con il metodo contributivo: i contributi accantonati fino all'uscita, rivalutati, per il coefficiente di trasformazione dell'età (\(RegolePensione.validitaCoefficienti)). In euro di oggi, netta di IRPEF e addizionali stimate, su 13 mensilità. Si affianca alla pensione dell'Analisi 360 e va verificata sull'estratto conto INPS."))
+            HStack(spacing: 6) {
+                CifraProspetto("Pensione netta stimata", TestiPrevidenza.mese(s.nettaMensile), "su 13 mensilità, a \(s.etaPensione) anni")
+                CifraProspetto("Pensione lorda", TestiPrevidenza.mese(s.lordaMensile), "\(CifreDoc.euro(s.lordaAnnua)) l'anno")
+                CifraProspetto("Montante all'uscita", CifreDoc.euro(s.montante), "coefficiente \(CifreDoc.percento(s.coefficiente, decimali: 3))")
+                CifraProspetto("Tasso di sostituzione", s.tassoSostituzione.map { CifreDoc.percento($0, decimali: 0) } ?? "—", "lordo, sull'ultimo reddito")
+                CifraProspetto("Divario con la stima", e.divarioStimato.map { TestiPrevidenza.mese($0) } ?? "—", "nell'analisi \(TestiPrevidenza.mese(e.divario))",
+                               colore: (e.divarioStimato ?? 0) > 0.5 ? C.negativo : C.positivo)
+            }
+            TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Dato", peso: 1.6, destra: false), ColonnaDoc(titolo: "Valore", peso: 1.2),
+                                                       ColonnaDoc(titolo: "Dato", peso: 1.6, destra: false), ColonnaDoc(titolo: "Valore", peso: 1.2)],
+                       righe: righe, fontTesta: T.pTabellaTesta, altezzaTesta: 12, margine: 4)
+            SezioneProspetto(titolo: "Il montante fino all'uscita",
+                             testo: Text(verbatim: "Contributi accumulati anno per anno, in euro di oggi (capitalizzazione reale \(CifreDoc.percento(s.capitalizzazioneReale, decimali: 2)) l'anno)."))
+            GraficoLineeDoc(serie: [SerieDoc(nome: "Montante", colore: C.intermedio, valori: s.punti)],
+                            etichetteAsse: s.punti.indices.map { etichetta($0) }, fontAssi: T.pAssi, fontValori: T.pTabellaNota)
+                .frame(height: M.graficoMontante)
+                .background(C.riquadro.opacity(0.5))
+            RiquadroBarra(titolo: "Con la stima o con l'Analisi 360") {
+                Text(verbatim: confronto).font(T.pCorpo).foregroundColor(C.testo).fixedSize(horizontal: false, vertical: true)
+            }
+            if !s.avvisi.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(Array(s.avvisi.enumerated()), id: \.offset) { _, a in
+                        PuntoElenco(testo: Text(verbatim: "Attenzione: ").bold() + Text(verbatim: a))
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(Array(s.metodo.enumerated()), id: \.offset) { _, m in
+                    Text(verbatim: "• " + m).font(T.pTabellaNota).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private var righe: [RigaDoc] {
+        let coppie: [(String, String)] = [
+            ("Età oggi e all'uscita", "\(s.eta) → \(s.etaPensione) anni"),
+            ("Aliquota contributiva", CifreDoc.condizione(s.aliquota)),
+            ("Reddito lordo oggi", CifreDoc.euro(s.redditoOggi)),
+            ("Ultimo reddito stimato", CifreDoc.euro(s.redditoFinale)),
+            ("Montante di oggi", CifreDoc.euro(s.montanteOggi) + (s.montanteStimato ? " (stimato)" : " (estratto INPS)")),
+            ("Anni di contributi all'uscita", anniContributi),
+            ("IRPEF e addizionali", "\(CifreDoc.togli(s.irpef + s.addizionali)) l'anno"),
+            ("Requisiti all'uscita", s.requisitoRaggiunto ? "raggiunti" : "non raggiunti"),
+            ("Sistema", s.sistemaMisto ? "misto (stima indicativa)" : "contributivo"),
+            ("Pensione nell'Analisi 360", TestiPrevidenza.mese(e.pensionePubblica)),
+        ]
+        return stride(from: 0, to: coppie.count, by: 2).map { i -> RigaDoc in
+            let a = coppie[i]
+            let b: (String, String) = i + 1 < coppie.count ? coppie[i + 1] : ("", "")
+            return RigaDoc(celle: [CellaDoc(a.0, colore: C.tenue, font: T.pTabella), CellaDoc(a.1, font: T.pTabellaForte),
+                                   CellaDoc(b.0, colore: C.tenue, font: T.pTabella), CellaDoc(b.1, font: T.pTabellaForte)],
+                           altezza: M.rigaTabellaBassa)
+        }
+    }
+
+    /// "33 anni", "33,5 anni".
+    private var anniContributi: String {
+        let n = s.anniContributi
+        let testo = n == n.rounded() ? "\(Int(n))" : (Formati.numeroFormatter.string(from: NSNumber(value: (n * 10).rounded() / 10)) ?? "\(n)")
+        return testo + " anni"
+    }
+
+    private var confronto: String {
+        let analisi = "Nel divario del piano conta la pensione dell'Analisi 360: \(TestiPrevidenza.mese(e.pensionePubblica)), divario \(TestiPrevidenza.mese(e.divario))."
+        let stima = " Con la stima contributiva (\(TestiPrevidenza.mese(s.nettaMensile))) il divario sarebbe di \(TestiPrevidenza.mese(e.divarioStimato ?? 0))."
+        return analisi + stima + " La stima netta è su 13 mensilità e il reddito desiderato su 12: il divario stimato esce un po' più alto, cioè prudente."
+    }
+
+    private func etichetta(_ anno: Int) -> String {
+        let n = max(s.punti.count - 1, 1)
+        let passo = n <= 12 ? 2 : (n <= 30 ? 5 : 10)
+        if anno == 0 { return "oggi" }
+        return anno % passo == 0 || anno == n ? "\(s.eta + anno) anni" : ""
+    }
+}
+
+// MARK: - Pagina 3: fisco dei versamenti e della prestazione
 
 private struct PaginaFiscoPrevidenza: View {
     @Environment(\.paletteDocumento) private var C
@@ -145,18 +240,33 @@ private struct PaginaFiscoPrevidenza: View {
                            sfondo: forte ? C.riquadro : .clear, filetto: forte ? C.filettoForte : nil, spessore: forte ? 0.8 : 0.5)
         }
         let senzaReddito = e.aliquotaMarginale == nil
-        return [
-            riga("Contributi annui", CifreDoc.euro(e.contributiInEssere), CifreDoc.euro(e.contributiInEssere + e.contributiProposte)),
+        var righe = [riga("Contributi annui", CifreDoc.euro(e.contributiInEssere), CifreDoc.euro(e.contributiInEssere + e.contributiProposte))]
+        // Il contributo del datore conta nel limite di deducibilità; il TFR no
+        if e.datoreInEssere + e.datoreProposte > 0.5 {
+            righe.append(riga("Contributo del datore di lavoro (conta nel limite)", CifreDoc.euro(e.datoreInEssere), CifreDoc.euro(e.datoreInEssere + e.datoreProposte)))
+            righe.append(riga("Limite che resta ai tuoi contributi", CifreDoc.euroCentesimi(e.limiteClienteOggi), CifreDoc.euroCentesimi(e.limiteClienteConProposte)))
+        }
+        let tfrOggi = e.inEssere.reduce(0) { $0 + $1.tfrConferito }
+        if e.tfrConferito > 0.5 {
+            righe.append(riga("TFR conferito ogni anno (fuori dal limite)", CifreDoc.euro(tfrOggi), CifreDoc.euro(e.tfrConferito)))
+        }
+        return righe + [
             riga("Deducibili (fino al limite)", CifreDoc.euroCentesimi(e.deducibiliOggi), CifreDoc.euroCentesimi(e.deducibiliConProposte)),
             riga("Risparmio IRPEF dell'anno", senzaReddito ? "—" : CifreDoc.euroCentesimi(e.risparmioOggi),
                  senzaReddito ? "—" : CifreDoc.euroCentesimi(e.risparmioConProposte), forte: true),
             riga("Costo netto dei versamenti, al mese", senzaReddito ? "—" : CifreDoc.euro((e.contributiInEssere - e.risparmioOggi) / 12),
                  senzaReddito ? "—" : CifreDoc.euro(e.costoNettoMensile)),
-            riga("Spazio di deducibilità non usato", CifreDoc.euroCentesimi(max(0, RegoleFiscali.limiteDeducibilita - e.contributiInEssere)),
+            riga("Spazio di deducibilità non usato", CifreDoc.euroCentesimi(max(0, e.limiteClienteOggi - e.contributiInEssere)),
                  CifreDoc.euroCentesimi(e.spazioResiduo)),
-            riga("Risparmio in più usando tutto lo spazio", senzaReddito ? "—" : CifreDoc.euroCentesimi(max(0, (e.reddito.map { RegoleFiscali.risparmioDeduzione(reddito: $0, deduzione: RegoleFiscali.limiteDeducibilita) } ?? 0) - e.risparmioOggi)),
+            riga("Risparmio in più usando tutto lo spazio", senzaReddito ? "—" : CifreDoc.euroCentesimi(risparmioInPiuOggi),
                  senzaReddito ? "—" : CifreDoc.euroCentesimi(e.risparmioPossibile)),
         ]
+    }
+
+    /// IRPEF in più che si risparmierebbe oggi usando tutto il limite che resta ai contributi del cliente.
+    private var risparmioInPiuOggi: Double {
+        guard let reddito = e.reddito else { return 0 }
+        return max(0, RegoleFiscali.risparmioDeduzione(reddito: reddito, deduzione: e.limiteClienteOggi) - e.risparmioOggi)
     }
 
     private func uscite(_ p: PianoPrevidenza) -> some View {
@@ -181,7 +291,7 @@ private struct PaginaFiscoPrevidenza: View {
     }
 }
 
-// MARK: - Pagina 3: proiezione, scenari, metodo
+// MARK: - Pagina 4: proiezione, scenari, metodo
 
 private struct PaginaProiezionePrevidenza: View {
     @Environment(\.paletteDocumento) private var C

@@ -432,7 +432,95 @@ enum Istantanee {
             s.apri(.impostazioni)
             s.schedaImpostazioni = .esperienza
         }),
+        // Le analisi nuove dei motori: Posizioni (dettaglio, crisi, coerenza) e le schermate degli altri temi
+        ("91-posizioni-rendimento-versamenti", { s in
+            // Giulia, ETF: il rendimento dei suoi versamenti accanto a quello del prodotto
+            s.clienteAttivoId = "giulia"
+            s.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-andamento"
+        }),
+        ("92-posizioni-gestione-separata", { s in
+            // Giulia, piano rivalutabile: gestione separata, costi come nel KID, quota azionaria
+            s.clienteAttivoId = "giulia"
+            s.posizioneInDettaglio = "pos-giulia-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+        }),
+        ("93-posizioni-riscatto-penali", { s in
+            // Andrea, proposta con penali e 12 mesi di blocco: il riscatto anno per anno
+            s.clienteAttivoId = "andrea"
+            s.posizioneInDettaglio = "pos-andrea-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-riscatto"
+        }),
+        ("94-posizioni-kid-proposta", { s in
+            // Sofia, proposta obbligazionaria: costi calcolati come nel KID contro il RIY dichiarato
+            s.clienteAttivoId = "sofia"
+            s.posizioneInDettaglio = "pos-sofia-obbligazionario-a-scadenza-2030"
+            s.apri(.posizioni)
+        }),
+        ("95-posizioni-crisi", { s in
+            // Giulia: le crisi del 2008, 2020 e 2022 nella prova di resistenza
+            s.clienteAttivoId = "giulia"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "resistenza"
+        }),
+        ("96-posizioni-coerenza", { s in
+            // Marco: tutto su Alleanza, la concentrazione nel pannello della coerenza con il profilo
+            s.clienteAttivoId = "marco"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "coerenza"
+        }),
+        ("97-posizioni-coerenza-giulia", { s in
+            // Giulia: le crisi vere oltre il profilo e le proposte aperte
+            s.clienteAttivoId = "giulia"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "coerenza"
+        }),
+        ("98-obiettivo-probabilita", { s in
+            // Marco, gli studi di Anna: la probabilità di arrivarci (scenari con le probabilità). Solo per la scena
+            // la polizza multiramo lavora per l'obiettivo: senza una posizione che oscilla non ci sono probabilità
+            s.clienteAttivoId = "marco"
+            if let i = s.dati.obiettivi.firstIndex(where: { $0.id == "obiettivo-marco-studi" }) {
+                s.dati.obiettivi[i].posizioniCollegate = ["pos-marco-polizza-multiramo"]
+            }
+            s.obiettivoSelezionato = "obiettivo-marco-studi"
+            s.apri(.obiettivi)
+        }),
+        ("99-analisi360-pensione", { s in
+            // Marco: la pensione pubblica stimata con il contributivo
+            s.clienteAttivoId = "marco"
+            s.areaAnalisi = .previdenza
+            s.apri(.analisi360)
+        }),
+        ("100-analisi360-protezione-persone", { s in
+            // Giulia e Luca: la protezione persona per persona
+            s.clienteAttivoId = "giulia"
+            s.areaAnalisi = .protezione
+            s.apri(.analisi360)
+        }),
+        ("101-resistenza-prospetto", { s in
+            // Giulia: il prospetto della prova di resistenza, seconda pagina (le crisi del passato), a tutta finestra
+            s.clienteAttivoId = "giulia"
+            if let d = s.documentoProspetto(.resistenza(report: false)) {
+                s.presenta(d)
+                s.paginaSeguente()
+            }
+        }),
+        ("102-costi-prospetto", { s in
+            // Giulia: il prospetto dei costi, seconda pagina (l'incidenza come nel KID), a tutta finestra
+            s.clienteAttivoId = "giulia"
+            if let d = s.documentoProspetto(.costi(report: false)) {
+                s.presenta(d)
+                s.paginaSeguente()
+            }
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
+        ("92-posizioni-gestione-separata-scuro", { s in
+            s.clienteAttivoId = "giulia"
+            s.posizioneInDettaglio = "pos-giulia-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+        }),
         ("1-scrivania-scuro", { _ in }),
         ("2-posizioni-scuro", { $0.apri(.posizioni) }),
         ("4-finestra-non-ingrandita-scuro", { s in

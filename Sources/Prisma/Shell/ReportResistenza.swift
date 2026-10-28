@@ -6,7 +6,9 @@ private typealias D = Misure.Documento
 /// Il report della prova di resistenza: A4 orizzontale, per il cliente.
 enum ReportResistenza {
     static func pagine(_ t: TestiResistenza, commento: String? = nil) -> [AnyView] {
-        let slide: [AnyView] = [AnyView(SlideScenari(t: t)), AnyView(SlideProfilo(t: t)), AnyView(SlideSintesiResistenza(t: t))]
+        var slide: [AnyView] = [AnyView(SlideScenari(t: t)), AnyView(SlideProfilo(t: t))]
+        if t.r.crisi.contains(where: { !$0.voci.isEmpty }) { slide.append(AnyView(SlideCrisi(t: t))) }
+        slide.append(AnyView(SlideSintesiResistenza(t: t)))
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiResistenza.titolo) · \(t.cliente)",
                                      lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
@@ -104,6 +106,53 @@ private struct SlideProfilo: View {
                 .riquadroDoc(C.evidenza)
             }
         }
+    }
+}
+
+// MARK: - Le crisi del passato
+
+private struct SlideCrisi: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiResistenza
+
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        let crisi = Array(t.r.crisi.prefix(M.crisiMassime))
+        return VStack(alignment: .leading, spacing: 16) {
+            TestaReport(occhiello: "Le crisi del passato", titolo: titolo,
+                        sottotitolo: "Abbiamo applicato ai tuoi risparmi di oggi quello che è successo davvero in tre anni difficili. Sono stime indicative: il passato non si ripete mai uguale, ma aiuta a capire.")
+            HStack(alignment: .top, spacing: M.spazioRiquadri) {
+                ForEach(crisi) { k in scheda(k) }
+            }
+            Text(verbatim: "Le gestioni separate e i conti restano fermi; la parte investita segue azioni e obbligazioni come in quegli anni. Chi è rimasto investito ha recuperato nel tempo, con tempi diversi.")
+                .font(T.minimo).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var titolo: String {
+        guard let k = t.r.crisiPeggiore, k.perdita > 0.5 else { return "Nelle crisi del passato i tuoi risparmi di oggi avrebbero tenuto" }
+        return "Se tornasse un anno come il \(k.crisi.anno), perderesti circa \(CifreDoc.euro(k.perdita))"
+    }
+
+    private func scheda(_ k: EsitoCrisi) -> some View {
+        let perde = k.perdita > 0.5
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: "\(k.crisi.anno) · \(k.crisi.titolo)".uppercased()).font(T.occhiello).tracking(1.2).foregroundColor(C.occhiello)
+            Text(verbatim: cifraCrisiDoc(k.perdita)).font(T.numeroGrande).foregroundColor(perde ? C.negativo : C.positivo)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(verbatim: perde ? "il \(CifreDoc.percento(k.quota * 100)) dei tuoi risparmi di oggi" : "i tuoi risparmi di oggi non avrebbero perso")
+                .font(T.piccolo).foregroundColor(C.testo)
+            if let g = k.giudizio, perde {
+                Text(verbatim: g.etichetta).font(T.corpoForte).foregroundColor(coloreGiudizio(g, C))
+            }
+            Rectangle().fill(C.filetto).frame(height: 0.6)
+            Text(verbatim: k.crisi.recupero).font(T.minimo).foregroundColor(C.testo).lineSpacing(1.2).fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: "Inflazione di quell'anno: \(CifreDoc.percento(k.crisi.inflazione)).").font(T.minimo).foregroundColor(C.tenue)
+        }
+        .padding(M.margineRiquadro)
+        .frame(maxWidth: .infinity, minHeight: M.schedaReport, alignment: .topLeading)
+        .riquadroDoc(k.id == t.r.crisiPeggiore?.id ? C.sfavorevoleFondo : nil)
     }
 }
 

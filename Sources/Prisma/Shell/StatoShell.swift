@@ -1059,7 +1059,7 @@ final class StatoShell: ObservableObject {
             return DocumentoStampabile(testiSuccessione(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         if case .costi(let report) = scelta {
-            return DocumentoStampabile(testiCosti(clienteAttivoId), report: report, commento: testoCommento(scelta))
+            return DocumentoStampabile(testiCosti(clienteAttivoId), report: report, commento: testoCommento(scelta), prodotti: dati.prodotti)
         }
         if case .resistenza(let report) = scelta {
             return DocumentoStampabile(testiResistenza(clienteAttivoId), report: report, commento: testoCommento(scelta))
@@ -1273,7 +1273,10 @@ final class StatoShell: ObservableObject {
         p.tipologia = d.confermato(.tipologia) ?? ""
         p.sri = d.confermato(.sri).flatMap { Int($0.prefix(1)) }
         p.costoIngresso = EstrattoreDocumento.numero(d.confermato(.costoIngresso))
-        p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo)) ?? EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
+        // Il RIY del KID è un'incidenza complessiva, non il costo corrente: resta nel suo campo, mai come costo annuo
+        p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo))
+        p.incidenzaCostiKID = EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
+        p.periodoRaccomandato = Self.anniDaDocumento(d.confermato(.periodoDetenzione))
         p.rendimentoAtteso = EstrattoreDocumento.numero(d.confermato(.rendimentoModerato))
         p.fonte = "\(d.titolo) (\(d.tipo.breve), importato il \(Formati.dataBreve.string(from: d.importatoIl)))"
         p.verificatoIl = Calendar.current.startOfDay(for: Date())
@@ -1308,11 +1311,22 @@ final class StatoShell: ObservableObject {
         }
         p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo))
         p.costoIngresso = EstrattoreDocumento.numero(d.confermato(.costoIngresso))
+        p.costoUscita = EstrattoreDocumento.numero(d.confermato(.costoUscita))
+        p.incidenzaCostiKID = EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
+        p.periodoRaccomandato = Self.anniDaDocumento(d.confermato(.periodoDetenzione))
         p.sri = d.confermato(.sri).flatMap { Int($0.prefix(1)) }
         p.note = "Dati dal documento «\(d.titolo)», da completare."
         salvaPosizione(p)
         aggiornaDocumento(id) { $0.posizioneId = p.id }
         apriPosizione(p)
+    }
+
+    /// Gli anni del periodo di detenzione raccomandato letti da un documento («5» o «5 anni»), tra 1 e 60.
+    static func anniDaDocumento(_ testo: String?) -> Int? {
+        guard let testo else { return nil }
+        let cifre = testo.trimmingCharacters(in: .whitespaces).prefix(while: { $0.isASCII && $0.isNumber })
+        guard let anni = Int(String(cifre)), anni >= 1, anni <= 60 else { return nil }
+        return anni
     }
 
     /// Porta nella posizione il valore confermato di un estratto conto e collega il documento.

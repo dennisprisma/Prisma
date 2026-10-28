@@ -151,6 +151,7 @@ struct ModuloCondizioni: View {
                     etichetta("Trattenuto"); numero(c.trattenuto, "% l'anno")
                     etichetta("Titoli di Stato"); numero(c.titoliStato, "% (imposta al 12,5%)")
                 }
+                garanziaGestione(c)
             } else {
                 HStack(spacing: 14) {
                     etichetta("Commissione"); numero(c.commissione, "% l'anno")
@@ -184,6 +185,33 @@ struct ModuloCondizioni: View {
         .padding(12)
         .background(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).fill(Colori.Documento.prisma.parte(c.wrappedValue.tipo).opacity(0.12)))
         .overlay(RoundedRectangle(cornerRadius: Misure.Analisi.raggio).strokeBorder(Colori.Analisi.kpiBordo, lineWidth: Tema.Misura.filo))
+    }
+
+    /// Gestione separata: minimo garantito, consolidamento e retrocessione (facoltativi, vuoto = non indicato).
+    /// Senza consolidamento annuo indicato, la valutazione non mette il pavimento del minimo.
+    private func garanziaGestione(_ c: Binding<ComponenteContratto>) -> some View {
+        let m = Tema.Misura.Inserimento.self
+        let indicati = DatiPerAnalisi.conta([c.wrappedValue.minimoGarantito != nil, c.wrappedValue.consolidamento != nil,
+                                            c.wrappedValue.retrocessione != nil])
+        return SezioneRipiegabile("Garanzia e retrocessione", nota: DatiPerAnalisi.nota(indicati)) {
+            Text("Dalle Condizioni di assicurazione. Il minimo fa da pavimento solo se il consolidamento è annuo; la retrocessione sostituisce il trattenuto.")
+                .font(Tema.Testo.Inserimento.nota).foregroundColor(Tema.Colore.Inserimento.nota)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: m.spazioRiga) {
+                etichetta("Minimo garantito")
+                opzionale(c.minimoGarantito, "% l'anno")
+                etichetta("Retrocessione")
+                opzionale(c.retrocessione, "% del lordo")
+            }
+            HStack(spacing: m.spazioRiga) {
+                etichetta("Consolidamento")
+                MenuTendina(selezione: c.consolidamento,
+                            opzioni: [(Bool?.none, "Non indicato · nessun pavimento"),
+                                      (Optional(true), "Annuo: l'accreditato non si perde"),
+                                      (Optional(false), "Solo a scadenza o al decesso")],
+                            larghezza: m.tendinaConsolidamento)
+            }
+        }
     }
 
     private func aggiungi(_ tipo: ComponenteContratto.Tipo) {

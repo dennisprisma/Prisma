@@ -384,6 +384,21 @@ extension AppPosizioni {
     /// Righe al massimo in «Da sistemare nei dossier».
     static let massimoAttenzioni = 12
 
+    /// Il pannello del dossier che spiega un'attenzione. Concentrazione e rischio rispetto al profilo
+    /// (rischio medio, azioni, crisi del passato) li spiega il pannello «Coerenza con il profilo»; il rischio
+    /// della prova sui mercati resta alla prova di resistenza.
+    static func ancora(_ a: Attenzione) -> String {
+        switch a.tipo {
+        case .concentrazione:
+            return "coerenza"
+        case .rischio:
+            let prova = a.titolo.hasPrefix("Rischio oltre il profilo") || a.titolo.hasPrefix("Rischio al limite del profilo")
+            return prova ? a.tipo.ancora : "coerenza"
+        default:
+            return a.tipo.ancora
+        }
+    }
+
     /// Le cose da sistemare nei dossier, raggruppate per tipo: un clic apre il cliente sul pannello che le spiega.
     func daSistemare(_ elenco: [Attenzione]) -> some View {
         VStack(spacing: 0) {
@@ -391,7 +406,7 @@ extension AppPosizioni {
                 Button {
                     stato.clienteAttivoId = a.cliente.id
                     stato.portafoglio = false
-                    stato.ancoraPosizioni = a.tipo.ancora
+                    stato.ancoraPosizioni = Self.ancora(a)
                 } label: {
                     HStack(spacing: 10) {
                         Pillola(testo: a.tipo.nome, tono: a.tipo == .costi ? .neutro : .attenzione)

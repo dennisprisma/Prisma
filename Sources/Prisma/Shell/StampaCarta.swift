@@ -67,12 +67,13 @@ struct DocumentoStampabile {
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del costo degli investimenti.
-    init(_ t: TestiCosti, report: Bool, commento: String? = nil) {
+    /// `prodotti`: le schede del catalogo, per periodo raccomandato, penali e RIY dichiarato dell'incidenza come nel KID.
+    init(_ t: TestiCosti, report: Bool, commento: String? = nil, prodotti: [Prodotto] = []) {
         titolo = TestiCosti.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportCosti.pagine(t, commento: commento) : ProspettoCosti.pagine(t)
+        pagine = report ? ReportCosti.pagine(t, commento: commento, prodotti: prodotti) : ProspettoCosti.pagine(t, prodotti: prodotti)
         tipo = report ? .report : .prospetto
     }
 

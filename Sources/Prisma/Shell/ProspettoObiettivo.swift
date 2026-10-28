@@ -4,13 +4,25 @@ private typealias T = Tipo.Documento
 private typealias D = Misure.Documento
 
 /// Il prospetto del piano obiettivo: A4 verticale, per il consulente. Traguardo rivalutato,
-/// posizioni collegate alla scadenza, strade per arrivarci, scenari, anno per anno, quadro degli obiettivi.
+/// posizioni collegate alla scadenza, strade per arrivarci, scenari, anno per anno, scenari con le probabilità
+/// (Monte Carlo), quadro degli obiettivi.
 enum ProspettoObiettivo {
     static func pagine(_ t: TestiObiettivo) -> [AnyView] {
-        let pagine: [AnyView] = [AnyView(PaginaTraguardo(t: t)), AnyView(PaginaStrade(t: t)), AnyView(PaginaQuadroObiettivi(t: t))]
+        var pagine: [AnyView] = [AnyView(PaginaTraguardo(t: t)), AnyView(PaginaStrade(t: t))]
+        if let mc = probabilita(t) { pagine.append(AnyView(PaginaProbabilita(t: t, mc: mc))) }
+        pagine.append(AnyView(PaginaQuadroObiettivi(t: t)))
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiObiettivo.avvertenza, numero: i + 1, totale: pagine.count) { p })
         }
+    }
+
+    /// Gli scenari con le probabilità (Monte Carlo con seme fisso: stesso risultato a ogni stampa), con le stesse
+    /// ipotesi del piano. Si calcolano qui, per il documento, mai negli spunti di Eve. nil con meno di un anno
+    /// alla scadenza o senza niente da parte né posizioni collegate.
+    static func probabilita(_ t: TestiObiettivo) -> EsitoMonteCarlo? {
+        guard t.e.mesi >= 12, !t.e.contributi.isEmpty || t.o.accantonato != 0 else { return nil }
+        let mc = MotoreMonteCarlo.obiettivo(t.o, posizioni: t.e.contributi.map(\.posizione), data: t.data)
+        return mc.anni.count >= 2 ? mc : nil
     }
 }
 
@@ -147,7 +159,69 @@ private struct PaginaStrade: View {
     }
 }
 
-// MARK: - Pagina 3: tutti gli obiettivi, metodo, firme
+// MARK: - Pagina 3: scenari con le probabilità
+
+private struct PaginaProbabilita: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiObiettivo
+    let mc: EsitoMonteCarlo
+
+    private typealias M = Misure.Documento.Motori
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SezioneProspetto(titolo: "Scenari con le probabilità",
+                             testo: Text(verbatim: "\(Formati.numeroFormatter.string(from: NSNumber(value: mc.traiettorie)) ?? "") percorsi possibili dei mercati, anno per anno, con la volatilità di ogni posizione: in quanti casi il capitale finale, al netto delle imposte, raggiunge l'obiettivo rivalutato di \(CifreDoc.euro(mc.traguardo)). È una stima statistica sulle ipotesi del piano, non una previsione."))
+            HStack(spacing: 6) {
+                CifraProspetto("Probabilità di arrivarci", "\(mc.suDieci) su 10", "\(CifreDoc.percento(mc.probabilita * 100, decimali: 0)) dei percorsi",
+                               colore: coloreProbabilita)
+                CifraProspetto("Sfavorevole", CifreDoc.euro(mc.p10), "1 caso su 10 va peggio", colore: C.sfavorevole)
+                CifraProspetto("Mediano", CifreDoc.euro(mc.p50), "metà dei casi sopra, metà sotto", colore: C.intermedio)
+                CifraProspetto("Favorevole", CifreDoc.euro(mc.p90), "1 caso su 10 va meglio", colore: C.favorevole)
+                CifraProspetto("Obiettivo", CifreDoc.euro(mc.traguardo), "alla scadenza, con l'inflazione")
+            }
+            GraficoVentaglioDoc(anni: mc.anni, traguardo: mc.traguardo, fontAssi: T.pAssi, fontValori: T.pTabellaNota)
+                .frame(height: M.graficoVentaglio)
+                .background(C.riquadro.opacity(0.5))
+            Text(verbatim: "Fascia: tra lo scenario sfavorevole e quello favorevole (8 casi su 10 stanno dentro); linea: il valore mediano. Valori di fine anno prima delle imposte finali; le cifre sopra sono al netto. La proiezione del piano (\(CifreDoc.euro(t.e.proiezione))) usa un rendimento costante: con le oscillazioni il valore mediano è di solito più basso.")
+                .font(T.pTabellaNota).foregroundColor(C.tenue).fixedSize(horizontal: false, vertical: true)
+            SezioneProspetto(titolo: "Anno per anno")
+            TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Anno", peso: 0.9, destra: false),
+                                                       ColonnaDoc(titolo: "Sfavorevole", sottotitolo: "1 su 10 va peggio"),
+                                                       ColonnaDoc(titolo: "Mediano", sottotitolo: "metà sopra, metà sotto"),
+                                                       ColonnaDoc(titolo: "Favorevole", sottotitolo: "1 su 10 va meglio"),
+                                                       ColonnaDoc(titolo: "Obiettivo", sottotitolo: "rivalutato")],
+                       righe: righe, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 18, margine: 4)
+            SezioneProspetto(titolo: "Come sono calcolati")
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(Array(MotoreMonteCarlo.metodo.enumerated()), id: \.offset) { _, n in PuntoElenco(testo: Text(verbatim: n)) }
+            }
+        }
+    }
+
+    /// Verde da 7 su 10 in su, blu da 4, rosso sotto.
+    private var coloreProbabilita: Color {
+        mc.suDieci >= 7 ? C.positivo : (mc.suDieci >= 4 ? C.intermedio : C.negativo)
+    }
+
+    private var righe: [RigaDoc] {
+        let n = mc.anni.count
+        let passo = n <= M.anniTabellaProbabilita ? 1 : 5
+        let obiettivo = t.e.serieObiettivo
+        return mc.anni.indices.filter { $0 % passo == 0 || $0 == n - 1 }.map { i -> RigaDoc in
+            let a = mc.anni[i]
+            let traguardo = i == n - 1 ? mc.traguardo : (i < obiettivo.count ? obiettivo[i] : mc.traguardo)
+            return RigaDoc(celle: [CellaDoc(i == 0 ? "oggi" : "\(a.anno)° anno", font: T.pTabella),
+                                   CellaDoc(CifreDoc.euro(a.p10), colore: C.sfavorevole, font: T.pTabella),
+                                   CellaDoc(CifreDoc.euro(a.p50), font: T.pTabellaForte),
+                                   CellaDoc(CifreDoc.euro(a.p90), colore: C.favorevole, font: T.pTabella),
+                                   CellaDoc(CifreDoc.euro(traguardo), colore: C.tenue, font: T.pTabella)],
+                           altezza: D.rigaTabellaProspetto)
+        }
+    }
+}
+
+// MARK: - Pagina 4: tutti gli obiettivi, metodo, firme
 
 private struct PaginaQuadroObiettivi: View {
     @Environment(\.paletteDocumento) private var C

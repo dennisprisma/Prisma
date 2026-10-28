@@ -95,6 +95,24 @@ struct AppProdotti: View {
         }
     }
 
+    /// I costi come nel KID: l'incidenza annua (RIY) dichiarata, quella che calcola Prisma su un esempio di
+    /// 10.000 € in un'unica soluzione (stima, prima delle imposte) e il periodo raccomandato.
+    private func testoKID(_ p: Prodotto) -> String {
+        var parti: [String] = []
+        if let dichiarato = p.incidenzaCostiKID {
+            parti.append("RIY dichiarato \(Formati.percentuale(dichiarato)) l'anno")
+        }
+        var esempio = p.proposta(per: "")
+        esempio.versamentoIniziale = 10_000
+        if let incidenza = MotoreCosti.incidenzaKID(esempio, prodotto: p), let calcolato = incidenza.calcolato {
+            parti.append("calcolato da Prisma \(Formati.percentuale(calcolato)) a \(incidenza.periodoRaccomandato) anni (stima su 10.000 € in un'unica soluzione)")
+        }
+        if let anni = p.periodoConsigliato {
+            parti.append("periodo raccomandato \(anni) anni")
+        }
+        return parti.joined(separator: " · ")
+    }
+
     private func nuova() {
         var p = Prodotto(nome: "", canale: stato.filtroCanaleProdotti ?? .alleanza, area: stato.filtroAreaProdotti ?? .investimento)
         p.verificatoIl = Calendar.current.startOfDay(for: Date())
@@ -208,6 +226,9 @@ struct AppProdotti: View {
                             RigaDato("Garanzie", p.garanzie)
                             RigaDato("Riscatto e liquidabilità", p.liquidabilita)
                             RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "")
+                            if p.area.proiettabile {
+                                RigaDato("Costi come nel KID", testoKID(p))
+                            }
                             HStack(alignment: .center, spacing: 12) {
                                 Text("Rischio (SRI)").font(Tipo.campoEtichetta).foregroundColor(Colori.Analisi.kpiNota)
                                     .frame(width: 150, alignment: .leading)
@@ -313,6 +334,12 @@ struct ModuloProdotto: View {
                 CampoModulo(etichetta: "Rendimento ipotizzato") { percento($bozza.rendimentoAtteso, "% annuo") }
                 CampoModulo(etichetta: "Costo d'ingresso") { percento($bozza.costoIngresso, "% dei versamenti") }
                 CampoModulo(etichetta: "Costo annuo") { percento($bozza.costoAnnuo, "% all'anno") }
+                CampoModulo(etichetta: "Costi nel KID (RIY)") {
+                    percento($bozza.incidenzaCostiKID, "% l'anno al periodo raccomandato · Prisma lo confronta con il suo calcolo")
+                }
+                CampoModulo(etichetta: "Periodo raccomandato") {
+                    CampoInteroFacoltativo(valore: $bozza.periodoRaccomandato, unita: notaPeriodo)
+                }
                 CampoModulo(etichetta: "Fiscalità") { percento($bozza.aliquotaFiscale, "% sul rendimento") }
                 CampoModulo(etichetta: "Rischio (SRI)") {
                     MenuTendina(selezione: $bozza.sri,
@@ -354,6 +381,15 @@ struct ModuloProdotto: View {
                 .multilineTextAlignment(.trailing)
                 .frame(width: 70)
             Text(unita).font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+                .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Il periodo raccomandato della scheda prevale su quello delle condizioni del contratto.
+    private var notaPeriodo: String {
+        if bozza.periodoRaccomandato == nil, let anni = bozza.condizioni?.periodoRaccomandato {
+            return "anni, dal KID · se vuoto, \(anni) dalle condizioni del contratto"
+        }
+        return "anni, dal KID"
     }
 }

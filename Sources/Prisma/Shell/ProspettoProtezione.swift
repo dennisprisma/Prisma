@@ -4,10 +4,14 @@ private typealias T = Tipo.Documento
 private typealias D = Misure.Documento
 
 /// Il prospetto della protezione della famiglia: A4 verticale, per il consulente. Famiglia, fabbisogno
-/// caso morte, invalidità e riserva, mappa dei rischi, coperture per canale, costi e detrazione dei premi.
+/// caso morte, invalidità e riserva, poi persona per persona, mappa dei rischi, coperture per canale,
+/// costi e detrazione dei premi.
 enum ProspettoProtezione {
     static func pagine(_ t: TestiProtezione) -> [AnyView] {
-        let pagine: [AnyView] = [AnyView(PaginaFabbisogno(t: t)), AnyView(PaginaMappa(t: t)), AnyView(PaginaCostiProtezione(t: t))]
+        var pagine: [AnyView] = [AnyView(PaginaFabbisogno(t: t))]
+        // Per ogni persona che porta reddito: caso morte, invalidità e non autosufficienza
+        if !t.e.persone.isEmpty { pagine.append(AnyView(PaginaPersone(t: t))) }
+        pagine += [AnyView(PaginaMappa(t: t)), AnyView(PaginaCostiProtezione(t: t))]
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiProtezione.avvertenza, numero: i + 1, totale: pagine.count) { p })
         }
@@ -21,6 +25,101 @@ private func colore(_ s: StatoTutela, _ C: PaletteDocumento) -> Color {
     case .coperto: return C.positivo
     case .inProposta: return C.intermedio
     case .scoperto: return C.negativo
+    }
+}
+
+// MARK: - Per ogni persona (prospetto e report)
+
+extension FabbisognoPersona {
+    /// "Luca, convivente, 38 anni" o "Giulia Rossi, 36 anni".
+    var descrizioneDoc: String {
+        var parti = [nome]
+        if let r = relazione { parti.append(r.nome.lowercased()) }
+        if let anni = eta { parti.append("\(anni) anni") }
+        return parti.joined(separator: ", ")
+    }
+
+    /// Chi dipende da questa persona e per quanti anni: "Anna (9 anni, per 16 anni)".
+    var dipendentiDoc: String {
+        dipendenti.map { d -> String in
+            let anni = d.eta.map { "\($0) anni, " } ?? ""
+            let durata = d.aVita ? "per tutta la vita" : (d.anni == 1 ? "per 1 anno" : "per \(d.anni) anni")
+            return "\(d.nome) (\(anni)\(durata))"
+        }.joined(separator: ", ")
+    }
+}
+
+// MARK: - Pagina 2: per ogni persona
+
+private struct PaginaPersone: View {
+    @Environment(\.paletteDocumento) private var C
+    let t: TestiProtezione
+
+    private typealias M = Misure.Documento.Motori
+    private var persone: [FabbisognoPersona] { Array(t.e.persone.prefix(M.personeMassime)) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SezioneProspetto(titolo: "Per ogni persona che porta reddito",
+                             testo: Text(verbatim: "Il fabbisogno di ciascuno, confrontato con le coperture di cui è l'assicurato. Caso morte: debiti a suo carico, prime spese e sostegno alla famiglia per la sua quota di reddito, finché c'è chi dipende da questa persona. Invalidità: il reddito da sostituire fino alla pensione. Non autosufficienza: \(CifreDoc.euro(IpotesiPersona().spesaAssistenzaMensile)) al mese di assistenza per \(IpotesiPersona().anniAssistenza) anni. Stime da completare con le condizioni di polizza; il fabbisogno del nucleo a pagina 1 resta il riferimento."))
+            ForEach(persone) { p in scheda(p) }
+            if t.e.persone.count > persone.count {
+                Text(verbatim: "…e altre \(t.e.persone.count - persone.count) persone: il dettaglio è nell'Analisi 360.").font(T.pTabellaNota).foregroundColor(C.tenue)
+            }
+        }
+    }
+
+    private func scheda(_ p: FabbisognoPersona) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: p.descrizioneDoc).font(T.pSottosezione).foregroundColor(C.titolo)
+                Spacer()
+                Text(verbatim: "reddito netto \(CifreDoc.euro(p.redditoNetto)) l'anno\(p.redditoStimato ? " (stimato)" : "") · il \(CifreDoc.percento(p.quotaReddito * 100, decimali: 0)) del nucleo")
+                    .font(T.pTabellaNota).foregroundColor(C.tenue)
+            }
+            TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Se succede", peso: 2.2, destra: false), ColonnaDoc(titolo: "Fabbisogno"),
+                                                       ColonnaDoc(titolo: "Coperto oggi"), ColonnaDoc(titolo: "Scoperto oggi"),
+                                                       ColonnaDoc(titolo: "Con le proposte", sottotitolo: "scoperto")],
+                       righe: righe(p), fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 18, margine: 4)
+            Text(verbatim: dettaglio(p)).font(T.pTabellaNota).foregroundColor(C.testo).fixedSize(horizontal: false, vertical: true)
+            ForEach(Array(p.avvisi.prefix(3).enumerated()), id: \.offset) { _, a in
+                Text(verbatim: "• " + a).font(T.pTabellaNota).foregroundColor(C.negativo).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.bottom, 4)
+    }
+
+    private func righe(_ p: FabbisognoPersona) -> [RigaDoc] {
+        func riga(_ nome: String, _ sotto: String, _ fabbisogno: Double, _ coperto: Double, _ scoperto: Double, _ conProposte: Double) -> RigaDoc {
+            RigaDoc(celle: [CellaDoc(nome, sotto: sotto, font: T.pTabellaForte),
+                            CellaDoc(CifreDoc.euro(fabbisogno), font: T.pTabella),
+                            CellaDoc(CifreDoc.euro(coperto), font: T.pTabella),
+                            CellaDoc(CifreDoc.euro(scoperto), colore: scoperto > 0.5 ? C.negativo : C.positivo, font: T.pTabellaForte),
+                            CellaDoc(CifreDoc.euro(conProposte), colore: conProposte > 0.5 ? C.negativo : C.positivo, font: T.pTabella)],
+                    altezza: M.rigaTabellaBassa + 4)
+        }
+        return [
+            riga("Caso morte", "per \(TestiProtezione.anni(Double(p.anniCopertura)))", p.fabbisognoMorte, p.capitaleMorte, p.divarioMorte, p.divarioMorteConProposte),
+            riga("Invalidità", "\(TestiProtezione.anni(Double(p.anniAllaPensione))) alla pensione", p.fabbisognoInvalidita, p.capitaleInvalidita,
+                 p.divarioInvalidita, p.divarioInvaliditaConProposte),
+            riga("Non autosufficienza", "assistenza", p.fabbisognoLTC, p.capitaleLTC, p.divarioLTC, p.divarioLTCConProposte),
+        ]
+    }
+
+    private func dettaglio(_ p: FabbisognoPersona) -> String {
+        var parti: [String] = []
+        if !p.dipendenti.isEmpty { parti.append("Chi dipende da questa persona: \(p.dipendentiDoc).") }
+        if p.debiti > 0.5 {
+            let durata = p.mesiDebiti.map { " ancora per \($0) mesi" } ?? ""
+            parti.append("Debiti a suo carico \(CifreDoc.euro(p.debiti))\(durata).")
+        }
+        parti.append("Sostegno alla famiglia \(CifreDoc.euro(p.sostegnoAnnuo)) l'anno per \(TestiProtezione.anni(Double(p.anniSostegno))).")
+        if p.capitaleInfortuni > 0.5 {
+            parti.append("Infortuni \(CifreDoc.euro(p.capitaleInfortuni)), solo se l'invalidità viene da un infortunio.")
+        }
+        let polizze = (p.coperture + p.proposte).map(\.nome)
+        parti.append(polizze.isEmpty ? "Nessuna copertura su questa persona." : "Coperture: \(polizze.joined(separator: ", ")).")
+        return parti.joined(separator: " ")
     }
 }
 
@@ -119,7 +218,7 @@ private struct PaginaFabbisogno: View {
     }
 }
 
-// MARK: - Pagina 2: mappa dei rischi e coperture
+// MARK: - Pagina 3: mappa dei rischi e coperture
 
 private struct PaginaMappa: View {
     @Environment(\.paletteDocumento) private var C
@@ -180,7 +279,7 @@ private struct PaginaMappa: View {
     }
 }
 
-// MARK: - Pagina 3: costi, detrazione, metodo
+// MARK: - Pagina 4: costi, detrazione, metodo
 
 private struct PaginaCostiProtezione: View {
     @Environment(\.paletteDocumento) private var C

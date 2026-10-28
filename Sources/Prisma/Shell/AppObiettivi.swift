@@ -14,7 +14,7 @@ struct AppObiettivi: View {
 
     var body: some View {
         CorniceStrumento(
-            notaStato: "Calcoli eseguiti in locale · rendimento costante ipotizzato, nessuna garanzia di risultato",
+            notaStato: "Calcoli eseguiti in locale · piano a rendimento costante, probabilità da scenari simulati · nessuna garanzia di risultato",
             notaDestra: "\(elenco.count) \(elenco.count == 1 ? "obiettivo" : "obiettivi")"
         ) {
             rail
@@ -194,6 +194,11 @@ struct AppObiettivi: View {
                 }
                 if a.mancante > 0, let v = a.versamentoNecessario, v > a.versamentiAttivi {
                     NotaMetodo(testo: "Con i versamenti attivi mancano \(Formati.euro(v - a.versamentiAttivi)) al mese: si può allungare la data, ridurre l'importo o aggiungere un piano. Il simulatore parte già da questi numeri.")
+                }
+                // Scenari con le probabilità: calcolati una volta all'apertura e ricordati (non a ogni ridisegno)
+                if o.scadenza > Date() {
+                    SezioneProbabilitaObiettivo(esito: CacheMotoriAnalisi.scenari(o, posizioni: posizioni), importo: o.importo)
+                        .padding(.vertical, Tema.Misura.MotoriAnalisi.spazioElenco)
                 }
                 Text("POSIZIONI CHE LAVORANO PER L'OBIETTIVO").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Strumenti.occhiello)
                 if posizioni.isEmpty {
