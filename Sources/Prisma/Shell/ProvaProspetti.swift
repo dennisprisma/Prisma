@@ -401,8 +401,11 @@ enum ProvaProspetti {
                 let compatto = testo.filter { !$0.isWhitespace }
                 for k in r.crisi.prefix(Misure.Documento.Motori.crisiMassime) where !k.voci.isEmpty {
                     let cifra = spazi(cifraCrisiDoc(k.perdita))
-                    verifica("\(nome): crisi del \(k.crisi.anno) \(cifra) nel PDF",
-                             compatto.contains(cifra.filter { !$0.isWhitespace }) && testo.contains("\(k.crisi.anno)"))
+                    let trovata = compatto.contains(cifra.filter { !$0.isWhitespace }) && testo.contains("\(k.crisi.anno)")
+                    // Se manca, si stampa il testo letto attorno all'anno: si capisce subito cosa c'è nel PDF
+                    let attorno = trovata ? "" : testo.components(separatedBy: "\(k.crisi.anno)").dropFirst().prefix(3)
+                        .map { "«\(k.crisi.anno)\($0.prefix(140))»" }.joined(separator: " · ")
+                    verifica("\(nome): crisi del \(k.crisi.anno) \(cifra) nel PDF", trovata, attorno)
                 }
                 if let m = t.mercati, !m.voci.isEmpty {
                     verifica("\(nome): perdita sui mercati \(CifreDoc.togli(m.perdita)) nel PDF", testo.contains(spazi(CifreDoc.togli(m.perdita))))

@@ -139,6 +139,8 @@ private struct SlideCrisi: View {
         let perde = k.perdita > 0.5
         return VStack(alignment: .leading, spacing: 8) {
             Text(verbatim: "\(k.crisi.anno) · \(k.crisi.titolo)".uppercased()).font(T.occhiello).tracking(1.2).foregroundColor(C.occhiello)
+                // una riga sola: le cifre delle tre schede restano allineate
+                .lineLimit(1).minimumScaleFactor(0.7)
             Text(verbatim: cifraCrisiDoc(k.perdita)).font(T.numeroGrande).foregroundColor(perde ? C.negativo : C.positivo)
                 .lineLimit(1).minimumScaleFactor(0.6)
             Text(verbatim: perde ? "il \(CifreDoc.percento(k.quota * 100)) dei tuoi risparmi di oggi" : "i tuoi risparmi di oggi non avrebbero perso")
