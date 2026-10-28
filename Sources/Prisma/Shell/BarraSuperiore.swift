@@ -129,7 +129,7 @@ struct BarraSuperiore: View {
                 ContrassegnoModoCliente()
                     .padding(.horizontal, m.strumentiMargine)
             } else {
-                PulsanteBarra(aiuto: "Cerca in Prisma (⌘K)", azione: { stato.cercaOvunque() }) {
+                PulsanteBarra(aiuto: "Cerca in Prisma (⌘K)", azione: { stato.alternaRicerca() }) {
                     HStack(spacing: m.pulsanteBarraSpazio) {
                         Image(systemName: "magnifyingglass").font(Tema.Testo.Shell.simboloBarra)
                         Text("Cerca").font(Tema.Testo.Shell.pulsanteBarra)

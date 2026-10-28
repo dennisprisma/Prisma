@@ -40,10 +40,11 @@ final class ProvaGuidata {
     private var finestraRisultati: NSWindow?
     private let avanzamento = AvanzamentoProvaGuidata()
 
-    /// Le app che la prova può aprire, in ordine di preferenza (né Eve né Impostazioni, che avviano lavori propri).
+    /// Le app che la prova può aprire, in ordine di preferenza (né Eve né Impostazioni, che avviano lavori propri;
+    /// né la Ricerca, che dal dock apre il pannello ⌘K e non una finestra).
     private static let candidate: [AppPrisma] = [
         .clienti, .posizioni, .agenda, .attivita, .analisi360, .note, .prodotti,
-        .documenti, .obiettivi, .incontri, .simulazioni, .confronti, .ricerca,
+        .documenti, .obiettivi, .incontri, .simulazioni, .confronti,
     ]
 
     // MARK: Avvio e arresto
@@ -160,7 +161,8 @@ final class ProvaGuidata {
                             spazi: stato.pannelloSpazi, appAperte: stato.pannelloAppAperte,
                             finestre: stato.finestre.count, memoria: MisuratoreFluidita.improntaMB())
         let calmo = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let acquaInMoto = stato.dati.impostazioni.sfondoAnimato && !calmo && !ProcessInfo.processInfo.isLowPowerModeEnabled
+        // Con il risparmio energetico l'acqua resta in moto (a ritmo ridotto): il giudizio confronta i ritmi in proporzione
+        let acquaInMoto = stato.dati.impostazioni.sfondoAnimato && !calmo
         let misuratore = MisuratoreFluidita.condiviso
         avanzamento.indice = 0
         avanzamento.totale = passi.count

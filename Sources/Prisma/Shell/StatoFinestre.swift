@@ -17,6 +17,8 @@ final class StatoFinestre: ObservableObject {
     /// Il pannello degli spazi di lavoro è aperto.
     @Published var pannelloSpazi = false
     @Published var pannelloNotifiche = false
+    /// Il pannello di ricerca (⌘K, come Spotlight) è aperto: sta sopra tutto, non è una finestra.
+    @Published var pannelloRicerca = false
     /// Finestre appena aperte che aspettano il giro dopo per animarsi (G1).
     @Published var inArrivo: Set<AppPrisma> = []
     /// FLIP in corso: cornice di partenza e progresso (G1).

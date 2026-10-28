@@ -31,10 +31,9 @@ struct AppProspetti: View {
         ) {
             rail
         } contenuto: {
-            HStack(spacing: 0) {
+            ColonneAffiancate(larghezza: Misure.ColonneStrumento.elenco) {
                 colonnaScelta
-                    .frame(width: Misure.Strumenti.ipotesi)
-                    .bordoDestro(Colori.Strumenti.ipotesiBordo)
+            } flessibile: {
                 VStack(spacing: 0) {
                     if let documento {
                         barra(documento)
@@ -167,9 +166,7 @@ struct AppProspetti: View {
                 Text(intestazioneColonna).font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
                 Spacer()
             }
-            .padding(10)
-            .background(Gradienti.testaIpotesi)
-            .bordoBasso(Colori.Strumenti.ipotesiBordo)
+            .testataColonna()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     switch scelta {
@@ -197,7 +194,6 @@ struct AppProspetti: View {
                 }
             }
         }
-        .background(Gradienti.railAnalisi)
     }
 
     private var intestazioneColonna: String {
@@ -721,7 +717,6 @@ struct AppProspetti: View {
                 .fixedSize()
         }
         .padding(EdgeInsets(top: 9, leading: 14, bottom: 9, trailing: 14))
-        .background(Gradienti.kpi)
         .bordoBasso(Colori.Analisi.kpiBordo)
     }
 

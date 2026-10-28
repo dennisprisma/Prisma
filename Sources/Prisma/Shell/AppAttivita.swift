@@ -140,11 +140,12 @@ struct AppAttivita: View {
         return VStack(spacing: 0) {
             filtri
             GeometryReader { geo in
-                let dettaglio = min(max(Misure.Attivita.dettaglioMinimo, geo.size.width * (1 - Misure.Attivita.quotaElenco)),
-                                    geo.size.width * 0.5)
+                // Dettaglio proporzionato con i suoi limiti: affiancata, la finestra lascia respirare l'elenco
+                let dettaglio = Misure.AttivitaImpaginazione.dettaglio(geo.size.width)
+                let elenco = max(0, geo.size.width - dettaglio)
                 HStack(spacing: 0) {
-                    carta(voci, scelta)
-                        .frame(width: max(0, geo.size.width - dettaglio))
+                    carta(voci, scelta, compatta: elenco < Misure.AttivitaImpaginazione.sogliaRigaCompatta)
+                        .frame(width: elenco)
                     pannelloDettaglio(scelta)
                         .frame(width: dettaglio)
                 }
@@ -173,7 +174,7 @@ struct AppAttivita: View {
         .bordoBasso(Colori.Attivita.metalloBordo)
     }
 
-    private func carta(_ voci: [Attivita], _ scelta: Attivita?) -> some View {
+    private func carta(_ voci: [Attivita], _ scelta: Attivita?, compatta: Bool) -> some View {
         let nomi = Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { a, _ in a })
         return VStack(spacing: 0) {
             HStack {
@@ -199,6 +200,7 @@ struct AppAttivita: View {
                             cliente: nomi[t.clienteId] ?? "Cliente",
                             daAppuntamento: t.appuntamentoId != nil,
                             selezionata: t.id == scelta?.id,
+                            compatta: compatta,
                             spunta: { stato.alternaCompletata(t.id) },
                             seleziona: { stato.attivitaSelezionata = t.id }
                         )
@@ -268,6 +270,8 @@ struct RigaRegistroAttivita: View {
     let cliente: String
     let daAppuntamento: Bool
     let selezionata: Bool
+    /// Elenco stretto: scadenza e priorità vanno sotto il titolo e il titolo ha tutta la larghezza.
+    var compatta = false
     let spunta: () -> Void
     let seleziona: () -> Void
 
@@ -278,23 +282,29 @@ struct RigaRegistroAttivita: View {
                 .frame(maxHeight: .infinity, alignment: .top)
                 .padding(.top, 2)
             Button(action: seleziona) {
-                HStack(spacing: 10) {
+                if compatta {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(attivita.titolo)
-                            .font(Tipo.attivitaTitolo)
-                            .foregroundColor(attivita.completata ? Colori.Attivita.rigaTitoloFatto : Colori.Attivita.rigaTitolo)
-                            .strikethrough(attivita.completata, color: Colori.Attivita.rigaTitoloFatto)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(cliente + (daAppuntamento ? " · Da un appuntamento" : ""))
-                            .font(Tipo.attivitaSotto)
-                            .foregroundColor(Colori.Attivita.rigaSotto)
+                        titolo
+                        sotto
+                        HStack(spacing: Misure.AttivitaImpaginazione.spazioRigaCompatta) {
+                            ScadenzaAttivita(attivita: attivita)
+                            PrioritaAttivita(priorita: attivita.priorita)
+                        }
                     }
-                    Spacer(minLength: 0)
-                    VStack(alignment: .trailing, spacing: 6) {
-                        ScadenzaAttivita(attivita: attivita)
-                        PrioritaAttivita(priorita: attivita.priorita)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            titolo
+                            sotto
+                        }
+                        Spacer(minLength: 0)
+                        VStack(alignment: .trailing, spacing: 6) {
+                            ScadenzaAttivita(attivita: attivita)
+                            PrioritaAttivita(priorita: attivita.priorita)
+                        }
+                        .frame(width: Misure.Attivita.colonnaScadenza, alignment: .trailing)
                     }
-                    .frame(width: Misure.Attivita.colonnaScadenza, alignment: .trailing)
                 }
             }
             .buttonStyle(StileSemplice())
@@ -303,6 +313,21 @@ struct RigaRegistroAttivita: View {
         .frame(minHeight: Misure.Attivita.rigaMinima)
         .background(selezionata ? Colori.Attivita.rigaSelezione : Color.clear)
         .bordoBasso(Colori.Attivita.rigaBordo)
+    }
+
+    private var titolo: some View {
+        Text(attivita.titolo)
+            .font(Tipo.attivitaTitolo)
+            .foregroundColor(attivita.completata ? Colori.Attivita.rigaTitoloFatto : Colori.Attivita.rigaTitolo)
+            .strikethrough(attivita.completata, color: Colori.Attivita.rigaTitoloFatto)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var sotto: some View {
+        Text(cliente + (daAppuntamento ? " · Da un appuntamento" : ""))
+            .font(Tipo.attivitaSotto)
+            .foregroundColor(Colori.Attivita.rigaSotto)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

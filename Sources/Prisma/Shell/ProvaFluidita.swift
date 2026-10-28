@@ -183,6 +183,14 @@ enum ProvaFluidita {
                           verifica: { !stato.pannelloNotifiche }),
         ])
 
+        // La ricerca ⌘K come Spotlight: un pannello sopra tutto, non una finestra
+        s.misura(banco, [
+            PassoFluidita(nome: "apri la ricerca (⌘K)", azione: { stato.alternaRicerca() },
+                          verifica: { stato.pannelloRicerca }),
+            PassoFluidita(nome: "chiudi la ricerca (⌘K)", azione: { stato.alternaRicerca() },
+                          verifica: { !stato.pannelloRicerca }),
+        ])
+
         // Aspetto chiaro e scuro: l'impostazione e l'aspetto della finestra, come fa PrismaApp.applicaAspetto
         let aspettoIniziale = stato.dati.impostazioni.aspetto
         let aspettoChiaro: AspettoInterfaccia = aspettoIniziale == .scuro ? .chiaro : aspettoIniziale

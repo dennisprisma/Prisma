@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// App Eve (.os-app-eve): a sinistra la giornata su carta, a destra la conversazione.
+/// App Eve (.os-app-eve del tema): un solo contenitore in vetro, a sinistra il contesto (Eve, il cliente,
+/// lo stato di Qwen, la giornata), a destra la conversazione con bolle, spunti e campo di scrittura a capsula.
 /// Eve risponde con Qwen sul Mac (Ollama); i calcoli e le cifre li prepara Prisma.
 /// I numeri li calcola sempre Prisma: Eve li legge e li spiega.
 struct AppEve: View {
@@ -17,15 +18,22 @@ struct AppEve: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            testata
-            avviso
-            HStack(alignment: .top, spacing: 10) {
-                giornata
-                    .frame(width: Misure.Eve.giornata)
-                conversazione
-            }
+        let raggio = Tema.Raggio.EveChat.contenitore
+        HStack(spacing: 0) {
+            contesto
+                .frame(width: Tema.Misura.EveChat.contesto)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(Tema.Colore.EveChat.fondoContesto)
+            Rectangle()
+                .fill(Tema.Colore.EveChat.divisore)
+                .frame(width: Tema.Misura.filo)
+                .frame(maxHeight: .infinity)
+                .allowsHitTesting(false)
+            conversazione
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .clipShape(FormaVetro.arrotondata(raggio))
+        .vetro(.sottile, forma: .arrotondata(raggio))
         // Parte sia alla nascita della vista (Eve era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
@@ -55,72 +63,104 @@ struct AppEve: View {
         stato.dettaturaNonPartita()
     }
 
-    // MARK: - Testata
+    // MARK: - Contesto (colonna a sinistra)
 
-    private var testata: some View {
-        HStack(spacing: 12) {
-            SferaEve(lato: Misure.Eve.sfera, pensa: stato.eveInCorso)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("UNO SGUARDO D'INSIEME").font(Tipo.eveOcchiello).tracking(1).foregroundColor(Colori.Eve.testataTesto)
-                Text("Ciao, sono Eve.").font(Tipo.eveSaluto).foregroundColor(Colori.Eve.testataTitolo)
-                Text("Mettiamo in ordine le idee.").font(Tipo.eveSottotitolo).foregroundColor(Colori.Eve.testataTesto)
+    private var contesto: some View {
+        let m = Tema.Misura.EveChat.self
+        return ScrollView {
+            VStack(alignment: .leading, spacing: m.spazioContesto) {
+                saluto
+                ambito
+                motore
+                giornata
+                if let c = cliente, !stato.evePortafoglio { quadro(c) }
             }
-            .incisione(Colori.Eve.testataIncisione, y: -1)
-            .fixedSize()
-            .layoutPriority(1)
-            Spacer(minLength: 0)
+            .padding(m.margineContesto)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Eve si presenta (.eve-ctx del tema): la sfera, il nome e una riga.
+    private var saluto: some View {
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        return VStack(spacing: m.spazioSaluto) {
+            SferaEve(lato: m.sferaContesto, pensa: stato.eveInCorso)
+            Text("Ciao, sono Eve.")
+                .font(Tema.Testo.EveChat.nome)
+                .foregroundColor(c.testo)
+            Text("Mettiamo in ordine le idee.")
+                .font(Tema.Testo.EveChat.ruolo)
+                .foregroundColor(c.testoSecondario)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, m.spazioSaluto)
+    }
+
+    /// Di chi si parla: un cliente (scelto dal menu) o tutto il portafoglio.
+    private var ambito: some View {
+        let m = Tema.Misura.EveChat.self
+        let larghezza = m.contesto - 2 * m.margineContesto
+        return VStack(alignment: .leading, spacing: m.spazioSezione) {
             if !stato.inModoCliente {
                 SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.evePortafoglio)
-                    .frame(width: 170)
+                    .frame(maxWidth: .infinity)
                     .help("Eve parla di un cliente o di tutto il tuo portafoglio")
             }
             if stato.evePortafoglio {
-                Text("Tutti i clienti").font(Tipo.eveAvviso).foregroundColor(Colori.Eve.testataTitolo)
-                    .lineLimit(1)
-                    .frame(minWidth: 120, maxWidth: 200, alignment: .leading)
+                HStack(spacing: m.spazioSezione) {
+                    Image(systemName: "person.3")
+                        .foregroundColor(Tema.Colore.EveChat.testoSecondario)
+                    Text("Tutti i clienti")
+                        .foregroundColor(Tema.Colore.EveChat.testo)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .font(Tema.Testo.EveChat.ambito)
+                .padding(.horizontal, Tema.Misura.Componenti.margineCapsula)
+                .frame(height: m.altezzaAmbito)
+                .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
             } else {
-                MenuTendina(selezione: $stato.clienteAttivoId, opzioni: stato.clienti.map { ($0.id, $0.nome) }, stile: .scuro)
-                    .frame(minWidth: 120, maxWidth: 200, alignment: .trailing)
+                MenuTendina(selezione: $stato.clienteAttivoId, opzioni: stato.clienti.map { ($0.id, $0.nome) },
+                            stile: .vetro, larghezza: larghezza)
             }
         }
-        .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-        .background(
-            ZStack {
-                Gradienti.testataEve
-                Materiale.Trama(nome: "Grana")
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 3))
-        )
-        .luceInterna(Colori.Eve.testataLuce, raggio: 3)
-        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.testataBordo, lineWidth: 1))
     }
 
-    /// Striscia con lo stato di Qwen: è sempre chiaro chi risponde, dove lavora e cosa fare se non c'è.
-    private var avviso: some View {
+    /// Lo stato di Qwen (.engine del tema): chi risponde, dove lavora e cosa fare se non c'è. Chiaro ma discreto.
+    private var motore: some View {
         let q = stato.qwen
         let pronto = q.disponibilita.pronto
-        return HStack(spacing: 8) {
-            Circle().fill(pronto ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).frame(width: 8, height: 8)
-                .shadow(color: (pronto ? Colori.Eve.spiaPronta : Colori.Eve.spiaSintesi).opacity(0.8), radius: 3)
-            Text("\(q.nome) · \(pronto ? "pronto" : "non pronto")").font(Tipo.eveAvviso)
-            Text(pronto ? q.descrizione : (q.disponibilita.motivo ?? q.descrizione))
-                .font(Tipo.eveAvvisoNota)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 6)
-            if !pronto {
-                Button("Verifica") { stato.verificaMotoreLocale() }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
-                    .help("Chiede di nuovo a Ollama se Qwen è pronto")
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        return HStack(alignment: .top, spacing: m.spazioSezione) {
+            Circle()
+                .fill(pronto ? c.pronto : c.nonPronto)
+                .frame(width: m.spia, height: m.spia)
+                .padding(.top, m.spiaAlto)
+            VStack(alignment: .leading, spacing: Tema.Misura.EveChat.righe) {
+                Text("\(q.nome) · \(pronto ? "pronto" : "non pronto")")
+                    .font(Tema.Testo.EveChat.motore)
+                    .foregroundColor(c.testo)
+                    .lineLimit(1)
+                Text(pronto ? q.descrizione : (q.disponibilita.motivo ?? q.descrizione))
+                    .font(Tema.Testo.EveChat.motoreNota)
+                    .foregroundColor(c.testoSecondario)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !pronto {
+                    Button("Verifica") { stato.verificaMotoreLocale() }
+                        .buttonStyle(StileVetro(margine: m.margineVerifica))
+                        .help("Chiede di nuovo a Ollama se Qwen è pronto")
+                        .padding(.top, m.spazioSaluto)
+                }
             }
+            Spacer(minLength: 0)
         }
-        .foregroundColor(Colori.Eve.avvisoTesto)
-        .incisione(Color.white.opacity(0.6))
-        .padding(.horizontal, 10)
-        .frame(height: 32)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.avvisoEve))
-        .luceInterna(.white, raggio: 3)
-        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.avvisoBordo, lineWidth: 1))
+        .padding(m.margineMotore)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.EveChat.motore))
     }
 
     // MARK: - La giornata
@@ -134,78 +174,83 @@ struct AppEve: View {
         let urgente = stato.attivitaAperte.sorted {
             $0.priorita.ordine != $1.priorita.ordine ? $0.priorita.ordine < $1.priorita.ordine : $0.scadenza < $1.scadenza
         }.first
-        return VStack(alignment: .leading, spacing: 0) {
-            CuoioAgenda {
-                HStack {
-                    Text("La giornata").font(Tipo.eveOcchiello).tracking(1)
-                    Spacer()
-                    Text(InterpreteComandi.maiuscola(Formati.dataLunga.string(from: Date()))).font(Tipo.eveGiornataData)
-                }
-                .foregroundColor(Colori.Eve.cuoioTesto)
-                .incisione(Colori.Agenda.cuoioIncisione)
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        let etichetta = incontri.first.map { Calendar.current.isDateInToday($0.inizio) ? "Oggi in agenda" : "Prossimi incontri" } ?? "Agenda libera"
+        return VStack(alignment: .leading, spacing: m.spazioSezione) {
+            SezioneContestoEve(titolo: "La giornata",
+                               dettaglio: InterpreteComandi.maiuscola(Formati.dataLunga.string(from: Date())))
+            Text(etichetta)
+                .font(Tema.Testo.EveChat.incontroNota)
+                .foregroundColor(c.testoSecondario)
+            if incontri.isEmpty {
+                Text("Nessun incontro futuro salvato.")
+                    .font(Tema.Testo.EveChat.incontroNota)
+                    .foregroundColor(c.testoTerziario)
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(incontri.first.map { Calendar.current.isDateInToday($0.inizio) ? "OGGI IN AGENDA" : "PROSSIMI INCONTRI" } ?? "AGENDA LIBERA")
-                        .font(Tipo.eveOcchiello)
-                        .tracking(1)
-                        .foregroundColor(Colori.Agenda.paginaOcchiello)
-                    if incontri.isEmpty {
-                        Text("Nessun incontro futuro salvato.").font(Tipo.eveTappaNota).foregroundColor(Colori.Eve.tappaNota)
-                    }
-                    ForEach(Array(incontri)) { e in
-                        let attivo = e.clienteId == stato.clienteAttivoId
-                        Button { stato.mostraInAgenda(e) } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("\(Formati.ora.string(from: e.inizio)) · \(Formati.giornoRelativo(e.inizio)) · \(e.durataMinuti) min")
-                                    .font(Tipo.eveTappaNota)
-                                    .foregroundColor(Colori.Eve.tappaNota)
-                                Text(e.titolo).font(Tipo.eveTappa).foregroundColor(Colori.Eve.tappaTesto).lineLimit(1)
-                                Text(stato.cliente(e.clienteId)?.nome ?? "").font(Tipo.eveTappaNota).foregroundColor(Colori.Eve.tappaNota)
-                            }
-                            .padding(8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(RoundedRectangle(cornerRadius: 3).fill(attivo ? Colori.Eve.tappaAttiva : Colori.Eve.tappa))
-                            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(attivo ? Colori.Eve.tappaAttivaBordo : Colori.Eve.tappaBordo, lineWidth: 1))
+            VStack(spacing: m.spazioIncontri) {
+                ForEach(Array(incontri)) { e in
+                    let attivo = e.clienteId == stato.clienteAttivoId
+                    Button { stato.mostraInAgenda(e) } label: {
+                        VStack(alignment: .leading, spacing: Tema.Misura.EveChat.righe) {
+                            Text("\(Formati.ora.string(from: e.inizio)) · \(Formati.giornoRelativo(e.inizio)) · \(e.durataMinuti) min")
+                                .font(Tema.Testo.EveChat.incontroOra)
+                                .foregroundColor(c.testoSecondario)
+                            Text(e.titolo)
+                                .font(Tema.Testo.EveChat.incontroTitolo)
+                                .foregroundColor(c.testo)
+                                .lineLimit(1)
+                            Text(stato.cliente(e.clienteId)?.nome ?? "")
+                                .font(Tema.Testo.EveChat.incontroNota)
+                                .foregroundColor(c.testoSecondario)
+                                .lineLimit(1)
                         }
-                        .buttonStyle(StileSemplice())
-                    }
-                    if let t = urgente {
-                        Button { stato.apri(.attivita) } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("DA NON DIMENTICARE").font(Tipo.eveOcchiello).tracking(1)
-                                Text(t.titolo).font(Tipo.evePostit).fixedSize(horizontal: false, vertical: true)
-                                Text("\(stato.cliente(t.clienteId)?.nome ?? "") · \(Formati.giornoMese.string(from: t.scadenza))").font(Tipo.eveTappaNota)
-                            }
-                            .foregroundColor(Colori.Eve.postitTesto)
-                            .padding(10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                ZStack {
-                                    Gradienti.postit
-                                    Materiale.Trama(nome: "Grana")
-                                }
-                            )
-                            .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 2)
-                            .rotationEffect(.degrees(-1))
+                        .padding(m.margineIncontro)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        // La barretta a sinistra: accento per il cliente di cui si parla
+                        .overlay(alignment: .leading) {
+                            Capsule()
+                                .fill(attivo ? c.barraIncontroScelto : c.barraIncontro)
+                                .frame(width: m.barraIncontro)
+                                .padding(.vertical, m.barraIncontroRientro)
+                                .padding(.leading, m.barraIncontroRientro)
+                                .allowsHitTesting(false)
                         }
-                        .buttonStyle(StileSemplice())
-                        .padding(.vertical, 4)
+                        .fondoPassaggio(.arrotondata(Tema.Raggio.EveChat.incontro), sopra: c.incontroSopra,
+                                        selezionata: attivo, selezione: c.incontroScelto)
+                        .contentShape(FormaVetro.arrotondata(Tema.Raggio.EveChat.incontro))
                     }
-                    if let c = cliente { quadro(c) }
+                    .buttonStyle(StileSemplice())
                 }
-                .padding(12)
+            }
+            if let t = urgente {
+                Button { stato.apri(.attivita) } label: {
+                    VStack(alignment: .leading, spacing: Tema.Misura.EveChat.righePromemoria) {
+                        Text("Da non dimenticare")
+                            .font(Tema.Testo.EveChat.sezione)
+                            .foregroundColor(c.occhielloPromemoria)
+                        Text(t.titolo)
+                            .font(Tema.Testo.EveChat.promemoria)
+                            .foregroundColor(c.testo)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("\(stato.cliente(t.clienteId)?.nome ?? "") · \(Formati.giornoMese.string(from: t.scadenza))")
+                            .font(Tema.Testo.EveChat.incontroNota)
+                            .foregroundColor(c.testoSecondario)
+                    }
+                    .padding(m.marginePromemoria)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background { FormaVetro.arrotondata(Tema.Raggio.EveChat.tessera).fill(c.promemoria) }
+                    .overlay {
+                        FormaVetro.arrotondata(Tema.Raggio.EveChat.tessera)
+                            .strokeBorder(c.bordoPromemoria, lineWidth: Tema.Misura.filo)
+                            .allowsHitTesting(false)
+                    }
+                    .contentShape(FormaVetro.arrotondata(Tema.Raggio.EveChat.tessera))
+                }
+                .buttonStyle(StileSemplice())
+                .padding(.top, m.spazioIncontri)
             }
         }
-        .background(
-            ZStack {
-                Gradienti.cartaAgenda
-                Materiale.Trama(nome: "Grana")
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Eve.cartaBordo, lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.25), radius: 1, x: 0, y: 1)
     }
 
     private func quadro(_ c: Cliente) -> some View {
@@ -216,107 +261,112 @@ struct AppEve: View {
             (stato.attivitaCliente(c.id).filter { !$0.completata }.count, "attività aperte", .attivita),
             (stato.simulazioniCliente(c.id).count, "simulazioni", .simulazioni),
         ]
-        return VStack(alignment: .leading, spacing: 6) {
-            Text("IL QUADRO DI \(c.nome.uppercased())").font(Tipo.eveOcchiello).tracking(1).foregroundColor(Colori.Agenda.paginaOcchiello)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 1), GridItem(.flexible(), spacing: 1)], spacing: 1) {
+        let m = Tema.Misura.EveChat.self
+        let forma = FormaVetro.arrotondata(Tema.Raggio.EveChat.tessera)
+        return VStack(alignment: .leading, spacing: m.spazioSezione) {
+            SezioneContestoEve(titolo: "Il quadro di \(c.nome)")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: m.spazioTessere), GridItem(.flexible(), spacing: m.spazioTessere)],
+                      spacing: m.spazioTessere) {
                 ForEach(Array(voci.enumerated()), id: \.offset) { _, v in
                     Button { stato.apri(v.2) } label: {
-                        VStack(spacing: 1) {
-                            Text("\(v.0)").font(Tipo.eveQuadroNumero)
-                            Text(v.1).font(Tipo.eveTappaNota)
+                        VStack(alignment: .leading, spacing: Tema.Misura.EveChat.righeStrette) {
+                            Text("\(v.0)")
+                                .font(Tema.Testo.EveChat.quadroNumero)
+                                .foregroundColor(Tema.Colore.EveChat.testo)
+                            Text(v.1)
+                                .font(Tema.Testo.EveChat.quadroVoce)
+                                .foregroundColor(Tema.Colore.EveChat.testoSecondario)
+                                .lineLimit(1)
                         }
-                        .foregroundColor(Colori.Eve.quadroTesto)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 7)
-                        .background(Gradienti.quadroEve)
+                        .padding(m.margineTessera)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fondoPassaggio(forma, sopra: Tema.Colore.EveChat.tesseraSopra)
+                        .vetro(.sottile, forma: forma)
+                        .contentShape(forma)
                     }
                     .buttonStyle(StileSemplice())
                 }
             }
-            .background(Colori.Eve.quadroBordo)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
-            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.quadroBordo, lineWidth: 1))
         }
-        .padding(.top, 6)
     }
 
-    // MARK: - Conversazione
+    // MARK: - Conversazione (colonna a destra)
 
     private var conversazione: some View {
         VStack(spacing: 0) {
-            HStack {
-                Circle().fill(Colori.Eve.spiaPronta).frame(width: 6, height: 6)
-                Text("Conversazione con Eve").font(Tipo.eveIntestazione).lineLimit(1)
-                Spacer()
-                Button("Nuova conversazione") { stato.nuovaConversazione() }
-                    .buttonStyle(StileSemplice())
-                    .font(Tipo.eveAzione)
-                    .disabled(messaggi.isEmpty)
-                    .opacity(messaggi.isEmpty ? 0.5 : 1)
-            }
-            .foregroundColor(Colori.Eve.barraTesto)
-            .incisione(Color.white.opacity(0.7))
-            .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(Gradienti.barraEve)
-            .luceInterna(.white)
-            .bordoBasso(Colori.Eve.barraBordo)
-
-            display
+            barra
             messaggiVista
+                .frame(maxHeight: .infinity)
             compositore
         }
-        .background(Gradienti.conversazioneEve)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Colori.Eve.conversazioneBordo, lineWidth: 1))
     }
 
-    /// Display scuro con l'onda: Eve pronta, al lavoro, in ascolto o mentre parla.
-    private var display: some View {
+    /// La barra in alto: di chi si parla, lo stato della voce di Eve, Nuova conversazione.
+    private var barra: some View {
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        return HStack(spacing: m.spazioSezione) {
+            VStack(alignment: .leading, spacing: Tema.Misura.EveChat.righeStrette) {
+                Text("Conversazione con Eve")
+                    .font(Tema.Testo.EveChat.titoloBarra)
+                    .foregroundColor(c.testo)
+                    .lineLimit(1)
+                Text(stato.evePortafoglio ? "Tutti i clienti" : (cliente?.nome ?? ""))
+                    .font(Tema.Testo.EveChat.sottotitoloBarra)
+                    .foregroundColor(c.testoSecondario)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: m.spazioSezione)
+            statoVoce
+            Button("Nuova conversazione") { stato.nuovaConversazione() }
+                .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
+                .disabled(messaggi.isEmpty)
+                .fixedSize()
+        }
+        .padding(.horizontal, m.margineBarra)
+        .frame(height: m.barra)
+        .bordoBasso(c.divisore)
+    }
+
+    /// Eve pronta, al lavoro, in ascolto o mentre parla: capsula discreta con l'onda, e i comandi della voce.
+    private var statoVoce: some View {
         conVoce { v in
             let ascolta = v.ascolta || stato.dettaturaAttiva
             let attiva = stato.eveInCorso || ascolta || v.parla
             let scritta = v.prepara ? "EVE · SI PREPARA" : (ascolta ? "EVE · TI ASCOLTA" : (stato.eveInCorso ? "EVE · STA PENSANDO" : (v.parla ? "EVE · TI RISPONDE" : "EVE · PRONTA")))
-            HStack(spacing: 10) {
-                if ascolta || v.parla {
-                    Circle().fill(ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).frame(width: 7, height: 7)
-                        .shadow(color: (ascolta ? Colori.Eve.spiaAscolto : Colori.Eve.spiaVoce).opacity(0.9), radius: 3)
+            let m = Tema.Misura.EveChat.self
+            let c = Tema.Colore.EveChat.self
+            HStack(spacing: m.spazioSezione) {
+                HStack(spacing: m.spazioSezione) {
+                    if ascolta || v.parla {
+                        Circle()
+                            .fill(ascolta ? c.ascolto : c.voce)
+                            .frame(width: m.spiaVoce, height: m.spiaVoce)
+                    }
+                    OndaEve(attiva: attiva, livello: v.ascolta ? v.livello : nil, scala: m.scalaOnda, barre: m.barreOnda)
+                    Text(scritta)
+                        .font(Tema.Testo.EveChat.statoVoce)
+                        .tracking(Tema.Testo.EveChat.spaziaturaStatoVoce)
+                        .foregroundColor(attiva ? c.testo : c.testoSecondario)
+                        .fixedSize()
                 }
-                OndaEve(attiva: attiva, livello: v.ascolta ? v.livello : nil)
-                    .frame(height: 26)
-                Text(scritta)
-                    .font(Tipo.eveDisplay)
-                    .tracking(1.2)
-                    .foregroundColor(attiva ? Colori.Eve.displayAttivo : Colori.Eve.displayTesto)
-                    .fixedSize()
+                .padding(.horizontal, m.margineStatoVoce)
+                .frame(height: m.statoVoce)
+                .background { FormaVetro.capsula.fill(c.statoVoce) }
                 if v.parla {
                     Button("Interrompi") { stato.voceEve.zitta() }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.eveAzione)
-                        .foregroundColor(Colori.Eve.displayTesto)
+                        .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
                         .fixedSize()
                 }
                 if stato.conversazioneAVoce {
                     Button { stato.fermaVoce() } label: {
-                        Text("■ Chiudi la conversazione a voce")
-                            .font(Tipo.eveAzione)
-                            .foregroundColor(Colori.Eve.azioneTesto)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.azioneEve))
-                            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.azioneBordo, lineWidth: 1))
-                            .fixedSize()
+                        Label("Chiudi la conversazione a voce", systemImage: "stop.fill")
                     }
-                    .buttonStyle(StileSemplice())
+                    .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
+                    .fixedSize()
                     .help("Oppure di' a Eve «basta così»")
                 }
             }
-            .padding(.horizontal, 12)
-            .frame(height: Misure.Eve.display)
-            .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.displayEve))
-            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.displayBordo, lineWidth: 1))
-            .shadow(color: .white.opacity(0.5), radius: 0, x: 0, y: 1)
-            .padding(EdgeInsets(top: 8, leading: 10, bottom: 4, trailing: 10))
         }
     }
 
@@ -331,29 +381,41 @@ struct AppEve: View {
     }
 
     private var messaggiVista: some View {
-        ScrollViewReader { lettore in
+        let m = Tema.Misura.EveChat.self
+        return ScrollViewReader { lettore in
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: m.spazioMessaggi) {
                     if messaggi.isEmpty { benvenuto }
-                    ForEach(messaggi) { m in
-                        NuvolaEve(messaggio: m, nomeUtente: stato.nomeUtente, azioniCliente: !stato.evePortafoglio,
-                                  creaAttivita: { stato.attivitaDaEve(m) }, aggiungiNota: { stato.notaDaEve(m) },
-                                  attivitaProposta: { stato.attivitaDaProposta($0, messaggio: m.id) },
-                                  posizioneProposta: { stato.posizioneDaProposta($0, messaggio: m.id) },
+                    ForEach(messaggi) { msg in
+                        NuvolaEve(messaggio: msg, nomeUtente: stato.nomeUtente, azioniCliente: !stato.evePortafoglio,
+                                  creaAttivita: { stato.attivitaDaEve(msg) }, aggiungiNota: { stato.notaDaEve(msg) },
+                                  attivitaProposta: { stato.attivitaDaProposta($0, messaggio: msg.id) },
+                                  posizioneProposta: { stato.posizioneDaProposta($0, messaggio: msg.id) },
                                   apriAzione: { stato.apriAzioneEve($0) },
-                                  annullaAzione: { stato.annullaAzioneEve($0, messaggio: m.id) })
-                            .id(m.id)
+                                  annullaAzione: { stato.annullaAzioneEve($0, messaggio: msg.id) })
+                            .id(msg.id)
                     }
                     if stato.eveInCorso {
-                        HStack(spacing: 8) {
-                            ProgressView().controlSize(.small)
-                            Text("Eve sta leggendo il dossier…").font(Tipo.eveAzione).foregroundColor(Colori.Eve.autore)
-                            Spacer()
+                        // Eve sta scrivendo: la sua sfera e una piccola bolla, come nelle chat del Mac
+                        HStack(alignment: .bottom, spacing: m.spazioSfera) {
+                            SferaEve(lato: m.sferaMessaggio, pensa: true, alone: false)
+                            HStack(spacing: m.spazioSezione) {
+                                ProgressView().controlSize(.small)
+                                Text("Eve sta leggendo il dossier…")
+                                    .font(Tema.Testo.EveChat.azione)
+                                    .foregroundColor(Tema.Colore.EveChat.testoSecondario)
+                            }
+                            .padding(m.margineBolla)
+                            .bollaEve(mia: false)
+                            Spacer(minLength: 0)
                         }
                         .id("pensa")
                     }
                 }
-                .padding(12)
+                .padding(.horizontal, m.margineChat)
+                .padding(.vertical, m.margineChatVerticale)
+                .frame(maxWidth: m.colonnaChat)
+                .frame(maxWidth: .infinity)
             }
             .onChange(of: messaggi.count) { _ in
                 if let ultimo = messaggi.last?.id {
@@ -367,31 +429,37 @@ struct AppEve: View {
     }
 
     private var benvenuto: some View {
-        VStack(spacing: 8) {
-            SferaEve(lato: 34, pensa: false)
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        return VStack(spacing: m.spazioSezione) {
+            SferaEve(lato: m.sferaBenvenuto, pensa: false)
+                .padding(.bottom, m.spazioSaluto)
             Text("Le informazioni ci sono.\nTroviamo il filo.")
-                .font(Tipo.eveBenvenuto)
-                .foregroundColor(Colori.Strumenti.titolo)
-                .multilineTextAlignment(.center)
+                .font(Tema.Testo.EveChat.benvenuto)
+                .tracking(Tema.Testo.EveChat.spaziaturaBenvenuto)
+                .foregroundColor(c.testo)
             Text(stato.evePortafoglio
                  ? "Parliamo di tutti i tuoi clienti: chi ricontattare, cosa scade, la settimana, gli emittenti, le proposte. Leggo gli stessi calcoli del Portafoglio: i dati restano sul Mac."
                  : "Posso riassumere il percorso di \(cliente?.nome ?? "un cliente"), fare il check-up, spiegare pensione, protezione, liquidità e obiettivi, preparare un incontro. Leggo il dossier e gli stessi calcoli dei prospetti: i dati restano sul Mac.")
-                .font(Tipo.eveMessaggio)
-                .foregroundColor(Colori.Eve.nuvolaEveTesto)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 460)
+                .font(Tema.Testo.EveChat.benvenutoTesto)
+                .foregroundColor(c.testoSecondario)
+                .lineSpacing(m.interlinea)
+                .frame(maxWidth: m.testoBenvenuto)
             Text("Scegli uno spunto qui sotto oppure scrivi una richiesta.")
-                .font(Tipo.eveAzione)
-                .foregroundColor(Colori.Eve.autore)
+                .font(Tema.Testo.EveChat.benvenutoNota)
+                .foregroundColor(c.testoTerziario)
         }
-        .padding(.vertical, 26)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.vertical, m.margineBenvenuto)
         .frame(maxWidth: .infinity)
     }
 
     private var compositore: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        let m = Tema.Misura.EveChat.self
+        return VStack(spacing: m.spazioScrittura) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: m.spazioSpunti) {
                     if stato.evePortafoglio {
                         ForEach(SpuntoPortafoglio.allCases) { s in
                             Button { stato.chiediEvePortafoglio(s.domanda, spunto: s) } label: { spunto(s.simbolo, s.domanda) }
@@ -406,59 +474,17 @@ struct AppEve: View {
                         }
                     }
                 }
-                .padding(.trailing, Misure.SpuntiEve.sfumatura)
+                .padding(.trailing, m.sfumaturaSpunti)
             }
             // Gli spunti che non stanno nella riga sfumano sul bordo destro: si capisce che continuano
             .mask {
                 HStack(spacing: 0) {
                     Rectangle()
                     LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: Misure.SpuntiEve.sfumatura)
+                        .frame(width: m.sfumaturaSpunti)
                 }
             }
-            HStack(alignment: .bottom, spacing: 8) {
-                conVoce { v in
-                    if v.ascolta {
-                        // Mentre parli, al posto del campo c'è quello che Eve sta capendo
-                        Text(v.trascritto.isEmpty ? (v.nota ?? "Ti ascolto…") : v.trascritto)
-                            .font(Tipo.eveCampo)
-                            .italic(v.trascritto.isEmpty)
-                            .foregroundColor(v.trascritto.isEmpty ? Colori.Eve.ascoltoTesto : Colori.Eve.nuvolaEveTesto)
-                            .lineLimit(4)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
-                            .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Eve.campo))
-                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Colori.Eve.spiaAscolto, lineWidth: 1.5))
-                    } else {
-                        TextField("Chiedi una sintesi, un incontro, i prossimi passi…", text: $stato.domandaEve, axis: .vertical)
-                            .textFieldStyle(.plain)
-                            .font(Tipo.eveCampo)
-                            .lineLimit(1...4)
-                            .focused($campoAttivo)
-                            .onSubmit { invia(stato.domandaEve) }
-                            .padding(8)
-                            .background(RoundedRectangle(cornerRadius: 5).fill(Colori.Eve.campo))
-                            .overlay(RoundedRectangle(cornerRadius: 5)
-                                .strokeBorder(stato.dettaturaAttiva ? Colori.Eve.spiaAscolto : Colori.Eve.campoBordo, lineWidth: stato.dettaturaAttiva ? 1.5 : 1))
-                    }
-                }
-                conVoce { v in
-                    let acceso = v.ascolta || stato.dettaturaAttiva
-                    Button { stato.alternaAscolto() } label: {
-                        Image(systemName: acceso ? "waveform" : "mic.fill").frame(width: 18)
-                    }
-                    .buttonStyle(StileMicrofono(acceso: acceso))
-                    .disabled(stato.eveInCorso && !acceso)
-                    .help(v.prepara ? "Annulla" : (acceso ? "Ho finito di parlare" : "Parla con Eve (⌥⌘E)"))
-                }
-                Button { invia(stato.domandaEve) } label: {
-                    Text("↑").font(Tipo.eveTitoloRisposta).frame(width: 18)
-                }
-                .buttonStyle(StileBlu())
-                .disabled(stato.eveInCorso || stato.domandaEve.trimmingCharacters(in: .whitespaces).isEmpty)
-                .keyboardShortcut(.return, modifiers: .command)
-                .help("Invia (⌘↩)")
-            }
+            conVoce { v in campoScrittura(v) }
             conVoce { v in
                 let suggerimento = stato.dati.impostazioni.eve.conservaConversazioni
                     ? (stato.evePortafoglio ? "Invio per mandare, ⌥⌘E per parlare · la conversazione del portafoglio resta sul Mac"
@@ -467,31 +493,74 @@ struct AppEve: View {
                 // In modalità diagnostica: l'ultimo passaggio dell'ascolto, per vedere dove si ferma
                 let passaggio = stato.dati.impostazioni.eve.mostraPassaggiVoce ? stato.passaggioVoce : nil
                 Text(v.errore ?? passaggio ?? suggerimento)
-                    .font(Tipo.eveTappaNota)
-                    .foregroundColor(v.errore == nil ? Colori.Eve.autore : Colori.Eve.spiaAscolto)
+                    .font(Tema.Testo.EveChat.suggerimento)
+                    .foregroundColor(v.errore == nil ? Tema.Colore.EveChat.testoTerziario : Tema.Colore.EveChat.ascolto)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
             }
         }
-        .padding(10)
-        .background(Gradienti.barraEve)
-        .luceInterna(.white)
-        .bordoAlto(Colori.Eve.barraBordo)
+        .padding(m.margineScrittura)
+        .frame(maxWidth: m.colonnaChat)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Il campo di scrittura a capsula (.composer): testo (o quello che Eve sta capendo), microfono e invio.
+    private func campoScrittura(_ v: StatoVoce) -> some View {
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        let forma = FormaVetro.arrotondata(Tema.Raggio.EveChat.composer)
+        let acceso = v.ascolta || stato.dettaturaAttiva
+        return HStack(alignment: .bottom, spacing: m.spazioScrittura) {
+            Group {
+                if v.ascolta {
+                    // Mentre parli, al posto del campo c'è quello che Eve sta capendo
+                    Text(v.trascritto.isEmpty ? (v.nota ?? "Ti ascolto…") : v.trascritto)
+                        .font(Tema.Testo.EveChat.campo)
+                        .italic(v.trascritto.isEmpty)
+                        .foregroundColor(v.trascritto.isEmpty ? c.ascolto : c.testo)
+                        .lineLimit(4)
+                } else {
+                    TextField("Chiedi una sintesi, un incontro, i prossimi passi…", text: $stato.domandaEve, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .font(Tema.Testo.EveChat.campo)
+                        .foregroundColor(c.testo)
+                        .lineLimit(1...4)
+                        .focused($campoAttivo)
+                        .onSubmit { invia(stato.domandaEve) }
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: m.tasto, alignment: .leading)
+            Button { stato.alternaAscolto() } label: {
+                Image(systemName: acceso ? "waveform" : "mic.fill")
+            }
+            .buttonStyle(StileTastoEve(aspetto: acceso ? .ascolto : .neutro))
+            .disabled(stato.eveInCorso && !acceso)
+            .help(v.prepara ? "Annulla" : (acceso ? "Ho finito di parlare" : "Parla con Eve (⌥⌘E)"))
+            Button { invia(stato.domandaEve) } label: {
+                Image(systemName: "arrow.up")
+            }
+            .buttonStyle(StileTastoEve(aspetto: .invio))
+            .disabled(stato.eveInCorso || stato.domandaEve.trimmingCharacters(in: .whitespaces).isEmpty)
+            .keyboardShortcut(.return, modifiers: .command)
+            .help("Invia (⌘↩)")
+        }
+        .padding(m.margineComposer)
+        .background {
+            forma.fill(c.composer)
+                .ombraTema(Tema.Ombra.EveChat.composer)
+        }
+        .overlay {
+            forma.strokeBorder(acceso ? c.ascolto : c.bordoComposer, lineWidth: acceso ? m.filoAscolto : Tema.Misura.filo)
+                .allowsHitTesting(false)
+        }
     }
 }
 
 extension AppEve {
-    /// Una capsula degli spunti.
+    /// Una pillola degli spunti.
     func spunto(_ simbolo: String, _ domanda: String) -> some View {
-        HStack(spacing: 5) {
-            Text(simbolo).foregroundColor(Colori.Analisi.navBasso)
-            Text(domanda)
-        }
-        .font(Tipo.eveSpunto)
-        .foregroundColor(Colori.Eve.azioneTesto)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(Gradienti.azioneEve))
-        .overlay(Capsule().strokeBorder(Colori.Eve.azioneBordo, lineWidth: 1))
+        PillolaSpuntoEve(simbolo: simbolo, testo: domanda)
     }
 }
 
@@ -524,10 +593,11 @@ private struct OsservaVoce<C: View>: View {
     }
 }
 
-// MARK: - Nuvola di un messaggio
+// MARK: - Bolla di un messaggio
 
 struct NuvolaEve: View {
     let messaggio: MessaggioEve
+    /// Il tuo nome (le tue bolle, come nelle chat del Mac, non lo ripetono: sono a destra, nell'accento).
     let nomeUtente: String
     /// «Crea attività» e «Nota del cliente» solo nelle conversazioni di un cliente.
     var azioniCliente = true
@@ -540,77 +610,99 @@ struct NuvolaEve: View {
 
     var body: some View {
         let mio = messaggio.autore == .utente
-        HStack {
-            if mio { Spacer(minLength: 60) }
-            VStack(alignment: .leading, spacing: 5) {
-                Text(mio ? nomeUtente.uppercased() : "✦ EVE · \((messaggio.motore ?? "").uppercased())")
-                    .font(Tipo.eveAutore)
-                    .tracking(0.6)
-                    .foregroundColor(mio ? Colori.Eve.nuvolaTuaTesto.opacity(0.7) : Colori.Eve.autore)
-                if let t = messaggio.titolo, !mio {
-                    Text(t).font(Tipo.eveTitoloRisposta).foregroundColor(Colori.Strumenti.titolo)
-                }
-                Text(messaggio.testo)
-                    .font(Tipo.eveMessaggio)
-                    .foregroundColor(mio ? Colori.Eve.nuvolaTuaTesto : Colori.Eve.nuvolaEveTesto)
-                    .textSelection(.enabled)
+        let m = Tema.Misura.EveChat.self
+        HStack(alignment: .bottom, spacing: m.spazioSfera) {
+            if mio {
+                Spacer(minLength: m.respiroBollaTua)
+            } else {
+                SferaEve(lato: m.sferaMessaggio, pensa: false, alone: false)
+            }
+            contenuto(mio)
+                .padding(m.margineBolla)
+                .bollaEve(mia: mio)
+            if !mio { Spacer(minLength: m.respiroBollaEve) }
+        }
+    }
+
+    private func contenuto(_ mio: Bool) -> some View {
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        return VStack(alignment: .leading, spacing: m.spazioBolla) {
+            if !mio {
+                Text(messaggio.motore.map { "Eve · \($0)" } ?? "Eve")
+                    .font(Tema.Testo.EveChat.autore)
+                    .foregroundColor(c.testoTerziario)
+                    .lineLimit(1)
+            }
+            if let t = messaggio.titolo, !mio {
+                Text(t)
+                    .font(Tema.Testo.EveChat.titoloRisposta)
+                    .foregroundColor(c.testo)
                     .fixedSize(horizontal: false, vertical: true)
-                if let proposte = messaggio.proposte, !proposte.isEmpty, !mio {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(Array(proposte.enumerated()), id: \.element.id) { i, p in
-                            HStack(spacing: 6) {
-                                Text("\(i + 1). \(p.titolo)")
-                                    .font(Tipo.eveAzione)
-                                    .foregroundColor(Colori.Strumenti.titolo)
-                                    .lineLimit(1)
-                                Spacer(minLength: 8)
-                                if p.attivitaId != nil {
-                                    Text("✓ in Attività").font(Tipo.eveAzione).foregroundColor(Colori.Eve.autore)
-                                } else {
-                                    azione("✓ Attività") { attivitaProposta(p) }
-                                }
-                                if p.area != nil {
-                                    azione(p.posizioneId == nil ? "＋ Prepara la proposta" : "Apri la proposta ↗") { posizioneProposta(p) }
-                                }
+            }
+            Text(messaggio.testo)
+                .font(Tema.Testo.EveChat.messaggio)
+                .foregroundColor(mio ? c.testoTuo : c.testo)
+                .lineSpacing(m.interlinea)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            if let proposte = messaggio.proposte, !proposte.isEmpty, !mio {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(proposte.enumerated()), id: \.element.id) { i, p in
+                        HStack(spacing: m.spazioAzioni) {
+                            Text("\(i + 1). \(p.titolo)")
+                                .font(Tema.Testo.EveChat.proposta)
+                                .foregroundColor(c.testo)
+                                .lineLimit(1)
+                            Spacer(minLength: m.spazioSezione)
+                            if p.attivitaId != nil {
+                                Text("✓ in Attività")
+                                    .font(Tema.Testo.EveChat.azione)
+                                    .foregroundColor(c.testoTerziario)
+                            } else {
+                                azione("✓ Attività") { attivitaProposta(p) }
+                            }
+                            if p.area != nil {
+                                azione(p.posizioneId == nil ? "＋ Prepara la proposta" : "Apri la proposta ↗") { posizioneProposta(p) }
                             }
                         }
+                        .padding(m.margineProposta)
+                        .bordoAlto(i == 0 ? Color.clear : c.divisore)
                     }
-                    .padding(.top, 4)
                 }
-                if let a = messaggio.azione, !mio {
-                    HStack(spacing: 6) {
-                        if a.annullata {
-                            Text("Annullato").font(Tipo.eveAzione).foregroundColor(Colori.Eve.autore)
-                        } else {
-                            azione(Self.apri(a)) { apriAzione(a) }
-                            azione("Annulla") { annullaAzione(a) }
-                        }
-                    }
-                    .padding(.top, 3)
-                } else if !mio {
-                    HStack(spacing: 6) {
-                        if azioniCliente && messaggio.motore != StatoShell.motoreAzioni {
-                            azione("✓ Crea attività", creaAttivita)
-                            azione("＋ Nota del cliente", aggiungiNota)
-                        }
-                        azione("Copia") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString((messaggio.titolo.map { $0 + "\n\n" } ?? "") + messaggio.testo, forType: .string)
-                        }
-                    }
-                    .padding(.top, 3)
+                .background { FormaVetro.arrotondata(Tema.Raggio.EveChat.gruppoProposte).fill(c.gruppoProposte) }
+                .overlay {
+                    FormaVetro.arrotondata(Tema.Raggio.EveChat.gruppoProposte)
+                        .strokeBorder(c.bordoGruppoProposte, lineWidth: Tema.Misura.filo)
+                        .allowsHitTesting(false)
                 }
+                .padding(.top, m.spazioBolla / 2)
             }
-            .padding(EdgeInsets(top: 9, leading: 12, bottom: 10, trailing: 12))
-            .background(
-                RoundedRectangle(cornerRadius: Misure.Eve.raggioNuvola)
-                    .fill(mio ? AnyShapeStyle(Gradienti.nuvolaTua) : AnyShapeStyle(Gradienti.nuvolaEve))
-            )
-            .luceInterna(Color.white.opacity(0.6), raggio: Misure.Eve.raggioNuvola)
-            .overlay(RoundedRectangle(cornerRadius: Misure.Eve.raggioNuvola)
-                .strokeBorder(mio ? Colori.Eve.nuvolaTuaBordo : Colori.Eve.nuvolaEveBordo, lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.12), radius: 1, x: 0, y: 1)
-            if !mio { Spacer(minLength: 60) }
+            if let a = messaggio.azione, !mio {
+                HStack(spacing: m.spazioAzioni) {
+                    if a.annullata {
+                        Text("Annullato")
+                            .font(Tema.Testo.EveChat.azione)
+                            .foregroundColor(c.testoTerziario)
+                    } else {
+                        azione(Self.apri(a)) { apriAzione(a) }
+                        azione("Annulla") { annullaAzione(a) }
+                    }
+                }
+                .padding(.top, m.spazioBolla / 2)
+            } else if !mio {
+                HStack(spacing: m.spazioAzioni) {
+                    if azioniCliente && messaggio.motore != StatoShell.motoreAzioni {
+                        azione("✓ Crea attività", creaAttivita)
+                        azione("＋ Nota del cliente", aggiungiNota)
+                    }
+                    azione("Copia") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString((messaggio.titolo.map { $0 + "\n\n" } ?? "") + messaggio.testo, forType: .string)
+                    }
+                }
+                .padding(.top, m.spazioBolla / 2)
+            }
         }
     }
 
@@ -624,13 +716,7 @@ struct NuvolaEve: View {
 
     private func azione(_ titolo: String, _ fai: @escaping () -> Void) -> some View {
         Button(action: fai) {
-            Text(titolo)
-                .font(Tipo.eveAzione)
-                .foregroundColor(Colori.Eve.azioneTesto)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .background(RoundedRectangle(cornerRadius: 3).fill(Gradienti.azioneEve))
-                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Colori.Eve.azioneBordo, lineWidth: 1))
+            ChipAzioneEve(titolo: titolo)
         }
         .buttonStyle(StileSemplice())
     }
@@ -642,10 +728,13 @@ struct NuvolaEve: View {
 struct SferaEve: View {
     let lato: CGFloat
     let pensa: Bool
+    /// false = senza alone (la sfera piccola accanto alle bolle).
+    var alone = true
 
     var body: some View {
         IconaApp(app: .eve, lato: lato)
-            .shadow(color: Colori.Widget.eveAlone.opacity(pensa ? 0.9 : 0.55), radius: pensa ? 10 : 6)
+            .shadow(color: alone || pensa ? Colori.Widget.eveAlone.opacity(pensa ? 0.9 : 0.55) : .clear,
+                    radius: pensa ? 10 : 6)
     }
 }
 
@@ -654,18 +743,23 @@ struct OndaEve: View {
     let attiva: Bool
     /// Mentre Eve ascolta, l'onda segue il microfono: ferma vuol dire che il microfono non sente.
     var livello: Float? = nil
+    /// Altezza delle barre rispetto all'onda piena (la capsula della barra la vuole più bassa).
+    var scala: CGFloat = 1
+    /// Quante barre disegnare (al massimo tutte).
+    var barre = Int.max
     private static let altezze: [CGFloat] = [4, 7, 12, 18, 10, 22, 14, 24, 16, 20, 9, 13, 6, 10, 4, 8, 14, 19, 11, 6, 9, 15, 7, 4]
 
     var body: some View {
         HStack(alignment: .center, spacing: 3) {
-            ForEach(Array(Self.altezze.enumerated()), id: \.offset) { i, h in
+            ForEach(Array(Self.altezze.prefix(barre).enumerated()), id: \.offset) { i, h in
                 Capsule()
                     .fill(Gradienti.onda)
-                    .frame(width: 3, height: altezza(h))
+                    .frame(width: 3, height: altezza(h) * scala)
                     .opacity(attiva ? 1 : 0.6 + Double(i % 3) * 0.1)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: (Self.altezze.max() ?? 0) * scala)
+        .fixedSize()
     }
 
     private func altezza(_ h: CGFloat) -> CGFloat {

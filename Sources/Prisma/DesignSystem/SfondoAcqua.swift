@@ -46,10 +46,13 @@ struct AnelloAcqua {
 
 extension Misure {
     enum Acqua {
-        /// Un solo ritmo, sempre uguale (scrivania libera o con finestre, Prisma attiva o no, durante le animazioni):
-        /// l'acqua è al rallentatore e 30 fotogrammi al secondo, battuti dallo schermo (a 60 Hz uno ogni due),
-        /// bastano e lasciano GPU e processori al resto dell'interfaccia su un M1 con 8 GB.
+        /// Un solo ritmo, sempre uguale (scrivania libera o coperta da finestre, anche ingrandite, Prisma attiva
+        /// o no, durante le animazioni): l'acqua è al rallentatore e 30 fotogrammi al secondo, battuti dallo
+        /// schermo (a 60 Hz uno ogni due), bastano e lasciano GPU e processori al resto dell'interfaccia su un M1 con 8 GB.
         static let fotogrammiAlSecondo = 30
+        /// Con il risparmio energetico l'acqua non si ferma: rallenta il ritmo dei fotogrammi (a 60 Hz uno ogni tre).
+        /// La fisica segue sempre il tempo vero, quindi le gocce vanno alla stessa velocità, solo meno fluide.
+        static let fotogrammiAlSecondoBassoConsumo = 20
         /// Drawable del CAMetalLayer e fotogrammi preparati in anticipo per la GPU (uno in meno),
         /// così nextDrawable non fa aspettare la coda del disegno.
         static let drawable = 3
@@ -99,9 +102,12 @@ extension Misure {
 
 /// Lo sfondo d'acqua animato della scrivania.
 /// `intensita` = gocce al secondo (`pioggiaLeggera`, `pioggiaMedia`, `pioggiaForte`).
-/// Si muove sempre allo stesso ritmo, fuori dal thread principale, anche mentre l'interfaccia si anima.
-/// Si ferma solo quando non si vede: `animato` falso (scrivania coperta o «Sfondo fermo»), finestra del Mac
-/// nascosta o coperta, basso consumo, «Riduci movimento» e Mac a riposo.
+/// Si muove sempre allo stesso ritmo, fuori dal thread principale, anche mentre l'interfaccia si anima e
+/// anche con le app aperte sopra (finestre ingrandite comprese): lo sfondo è sempre attivo.
+/// Si ferma solo con `animato` falso («Sfondo fermo» nelle Impostazioni, o la sala della presentazione che lo
+/// copre del tutto), con la finestra del Mac nascosta, ridotta nel Dock o coperta, con «Riduci movimento» e con
+/// il Mac a riposo. Con il risparmio energetico continua a muoversi a un ritmo più basso
+/// (`fotogrammiAlSecondoBassoConsumo`). Nelle istantanee resta il fermo-immagine.
 struct SfondoAcqua: View {
     static let pioggiaLeggera = 0.14
     static let pioggiaMedia = 0.3
@@ -348,6 +354,7 @@ private struct TelaAcquaMetal: NSViewRepresentable {
 /// Disegna l'acqua fuori dal thread principale, a un ritmo solo e sempre uguale.
 /// - Thread principale: impostazioni, notifiche e quando muoversi; accende e spegne il battito.
 /// - Battito: l'orologio dello schermo (CVDisplayLink) sceglie un fotogramma ogni 1/`fotogrammiAlSecondo` s
+///   (1/`fotogrammiAlSecondoBassoConsumo` s con il risparmio energetico)
 ///   e lo mette in coda, mai due alla volta.
 /// - Coda del disegno: fisica, profili, uniformi e GPU. La fisica segue il tempo vero dello schermo: un fotogramma
 ///   saltato (GPU indietro, coda occupata) non ferma il tempo, quindi l'acqua non rallenta mai mentre il resto
@@ -369,6 +376,8 @@ final class RendererAcqua: NSObject {
         var fermoInCoda = false
         /// Istante (orologio dello schermo) dell'ultimo fotogramma accodato.
         var ultimoBattito: CFTimeInterval = 0
+        /// Secondi fra due fotogrammi in moto (1/30, o 1/20 con il risparmio energetico).
+        var intervallo: Double = 1.0 / Double(Misure.Acqua.fotogrammiAlSecondo)
     }
 
     /// Secondi per tick dell'orologio di sistema (lo stesso di CACurrentMediaTime e del CVDisplayLink).
@@ -388,6 +397,8 @@ final class RendererAcqua: NSObject {
     private var animato = true
     private var scuro = false
     private var inMoto = false
+    /// Fotogrammi al secondo in uso (cambia con il risparmio energetico).
+    private var ritmo = Misure.Acqua.fotogrammiAlSecondo
     private var pronta = false
     private var staccato = false
     /// Mac (o schermo) a riposo: ferma fino a poco dopo il risveglio.
@@ -573,16 +584,17 @@ final class RendererAcqua: NSObject {
         if Thread.isMainThread { fai() } else { DispatchQueue.main.async(execute: fai) }
     }
 
-    /// L'acqua si muove se richiesto (scrivania visibile e «Sfondo animato»), con la finestra del Mac visibile,
-    /// senza basso consumo, senza «Riduci movimento» e con il Mac sveglio. Sempre allo stesso ritmo: niente pause
-    /// durante le animazioni dell'interfaccia, niente rallentamenti con finestre aperte o Prisma in secondo piano.
+    /// L'acqua si muove se richiesto («Sfondo animato» e sfondo non coperto dalla presentazione), con la finestra
+    /// del Mac visibile, senza «Riduci movimento» e con il Mac sveglio. Sempre allo stesso ritmo: niente pause
+    /// durante le animazioni dell'interfaccia, niente pause né rallentamenti con finestre aperte (anche ingrandite)
+    /// o Prisma in secondo piano. Con il risparmio energetico solo un ritmo più basso, mai ferma.
     /// Da ferma il CAMetalLayer tiene l'ultima immagine e non si disegna niente.
     func aggiornaMoto() {
         guard !staccato, let v = vista else { return }
         let visibile = v.window?.occlusionState.contains(.visible) ?? false
         let muovi = animato && visibile && pronta && !aRiposo
-            && !ProcessInfo.processInfo.isLowPowerModeEnabled
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        aggiornaRitmo()
         guard muovi != inMoto else { return }
         inMoto = muovi
         serratura.lock()
@@ -593,6 +605,21 @@ final class RendererAcqua: NSObject {
         }
         serratura.unlock()
         if muovi { avviaBattito() } else { fermaBattito() }
+    }
+
+    /// Il ritmo segue il risparmio energetico: il battito dello schermo legge l'intervallo nuovo dal prossimo
+    /// fotogramma; il timer di ripiego (senza CVDisplayLink) si riprogramma.
+    private func aggiornaRitmo() {
+        let nuovo = ProcessInfo.processInfo.isLowPowerModeEnabled
+            ? Misure.Acqua.fotogrammiAlSecondoBassoConsumo : Misure.Acqua.fotogrammiAlSecondo
+        guard nuovo != ritmo else { return }
+        ritmo = nuovo
+        serratura.lock()
+        condiviso.intervallo = 1.0 / Double(nuovo)
+        serratura.unlock()
+        if let t = orologio, battitoAcceso {
+            t.schedule(deadline: .now(), repeating: 1.0 / Double(nuovo), leeway: .milliseconds(1))
+        }
     }
 
     // MARK: Battito
@@ -619,8 +646,7 @@ final class RendererAcqua: NSObject {
             _ = CVDisplayLinkStart(l)
         } else {
             let t = DispatchSource.makeTimerSource(flags: .strict, queue: DispatchQueue.global(qos: .userInteractive))
-            t.schedule(deadline: .now(), repeating: 1.0 / Double(Misure.Acqua.fotogrammiAlSecondo),
-                       leeway: .milliseconds(1))
+            t.schedule(deadline: .now(), repeating: 1.0 / Double(ritmo), leeway: .milliseconds(1))
             t.setEventHandler { [weak self] in self?.battito(ora: CACurrentMediaTime(), periodo: 0) }
             t.resume()
             orologio = t
@@ -644,13 +670,13 @@ final class RendererAcqua: NSObject {
 
     /// Un battito dello schermo (thread del CVDisplayLink o del timer): `ora` è l'istante in cui l'immagine
     /// andrà sullo schermo, `periodo` il periodo dello schermo (0 se non si sa). Un fotogramma ogni intervallo,
-    /// allineato ai battiti (a 60 Hz uno ogni due), e mai due in coda.
+    /// allineato ai battiti (a 60 Hz uno ogni due, uno ogni tre con il risparmio energetico), e mai due in coda.
     private func battito(ora: CFTimeInterval, periodo: Double) {
-        let intervallo = 1.0 / Double(Misure.Acqua.fotogrammiAlSecondo)
+        serratura.lock()
+        let intervallo = condiviso.intervallo
         let margine = periodo > 0
             ? min(periodo * Misure.Acqua.tolleranzaBattito, intervallo * 0.5)
             : intervallo * Misure.Acqua.tolleranzaOrologio
-        serratura.lock()
         var accoda = false
         if condiviso.inMoto && !condiviso.motoInCoda
             && (condiviso.ultimoBattito == 0 || ora - condiviso.ultimoBattito >= intervallo - margine) {

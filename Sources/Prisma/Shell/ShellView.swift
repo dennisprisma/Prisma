@@ -58,7 +58,8 @@ struct CorpoShell: View {
             let misura = misuraCongelata ?? geo.size
             let area = ShellView.area(per: misura, dockNascosto: dockNascosto)
             ZStack(alignment: .topLeading) {
-                // Un solo sfondo d'acqua, anche sotto la schermata di benvenuto: si muove solo se si vede
+                // Un solo sfondo d'acqua, anche sotto la schermata di benvenuto: sempre in movimento, anche con le
+                // app aperte e ingrandite; fermo solo con «Sfondo fermo», sotto la sala della presentazione e nelle istantanee
                 Materiale.SfondoScrivania(animato: stato.dati.impostazioni.sfondoAnimato && !stato.scrivaniaCoperta && !modoIstantanea,
                                           intensita: stato.dati.impostazioni.pioggia.forza)
 
@@ -236,6 +237,18 @@ struct CorpoShell: View {
             }
             .animation(curvaPannello(sistema.pannelloAppAperte, Tema.Moto.Pannelli.appAperte, Tema.Moto.Pannelli.appAperteUscita),
                        value: sistema.pannelloAppAperte)
+            .opacity(nascosti ? 0 : 1)
+
+            // Ricerca ⌘K come Spotlight: in alto al centro, sopra tutto (anche sopra la barra superiore)
+            ZStack {
+                if sistema.pannelloRicerca {
+                    RicercaSpotlight()
+                        .frame(width: misura.width, height: misura.height)
+                        .transition(transizionePannello)
+                }
+            }
+            .animation(curvaPannello(sistema.pannelloRicerca, Tema.Moto.Spotlight.entrata, Tema.Moto.Spotlight.uscita),
+                       value: sistema.pannelloRicerca)
             .opacity(nascosti ? 0 : 1)
         }
     }

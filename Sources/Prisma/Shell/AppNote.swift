@@ -21,19 +21,23 @@ struct AppNote: View {
         let elenco = stato.noteFiltrate
         // La nota scelta resta aperta anche se la ricerca la nasconde dall'elenco: non se ne apre un'altra sotto le dita
         let scelta = stato.nota(stato.notaSelezionata) ?? elenco.first
-        HStack(spacing: 0) {
-            indice(elenco, scelta: scelta?.id)
-                .frame(width: Misure.Note.indice)
-            Group {
-                if let n = scelta {
-                    pagina(n)
-                        .id(n.id)
-                        // La prima nota mostrata diventa la scelta: la ricerca non la cambia più sotto le dita
-                        .onAppear { if stato.notaSelezionata == nil { stato.notaSelezionata = n.id } }
-                } else { vuoto }
+        // L'indice cresce con la finestra entro i suoi limiti; la pagina ha il resto
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                indice(elenco, scelta: scelta?.id)
+                    .frame(width: Misure.NoteImpaginazione.indice(geo.size.width))
+                Group {
+                    if let n = scelta {
+                        pagina(n)
+                            .id(n.id)
+                            // La prima nota mostrata diventa la scelta: la ricerca non la cambia più sotto le dita
+                            .onAppear { if stato.notaSelezionata == nil { stato.notaSelezionata = n.id } }
+                    } else { vuoto }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Colori.Note.paginaCentro)
             }
-            .frame(minWidth: Misure.Note.minimaPagina, maxWidth: .infinity, maxHeight: .infinity)
-            .background(Colori.Note.paginaCentro)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         // La scheda del tema: angoli tondi e filo da 0,5 pt (il contenuto si taglia prima del contorno)
         .clipShape(FormaVetro.arrotondata(Misure.Note.raggio))

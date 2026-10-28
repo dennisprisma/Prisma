@@ -1,8 +1,9 @@
 import SwiftUI
 import AppKit
 
-/// App Ricerca: «Cerca ovunque» (⌘K). Si scrive, i risultati arrivano raggruppati per app;
-/// ↑ ↓ scelgono, Invio apre il risultato nella sua app.
+/// App Ricerca in finestra: resta per compatibilità (spazi di lavoro e sessioni salvate con la Ricerca aperta).
+/// ⌘K, il dock, la barra e Eve aprono il pannello in alto come Spotlight (`RicercaSpotlight`).
+/// Si scrive, i risultati arrivano raggruppati per app; ↑ ↓ scelgono, Invio apre il risultato nella sua app.
 struct AppRicerca: View {
     @EnvironmentObject var stato: StatoShell
     /// App in primo piano, pannelli e blocco: decidono se le frecce scelgono i risultati.
@@ -69,7 +70,9 @@ struct AppRicerca: View {
         .onChange(of: sistema.pannelloAppAperte) { _ in aggiornaFrecce() }
         .onChange(of: sistema.pannelloNotifiche) { _ in aggiornaFrecce() }
         .onChange(of: sistema.bloccato) { _ in aggiornaFrecce() }
-        .onChange(of: stato.richiestaFuocoRicerca) { _ in fuoco = true }
+        .onChange(of: sistema.pannelloRicerca) { _ in aggiornaFrecce() }
+        // ⌘K apre il pannello: il campo della finestra non gli ruba il cursore
+        .onChange(of: stato.richiestaFuocoRicerca) { _ in if !sistema.pannelloRicerca { fuoco = true } }
         .onChange(of: testo) { _ in
             selezione = 0
             cerca()
@@ -86,7 +89,7 @@ struct AppRicerca: View {
     /// Le frecce scelgono i risultati solo con la Ricerca davanti, il cursore nel campo e nessun pannello aperto.
     private func aggiornaFrecce() {
         FrecceRicerca.condivise.attiva = sistema.appAttiva == .ricerca && fuoco && !sistema.pannelloSpazi
-            && !sistema.pannelloAppAperte && !sistema.pannelloNotifiche && !sistema.bloccato
+            && !sistema.pannelloAppAperte && !sistema.pannelloNotifiche && !sistema.pannelloRicerca && !sistema.bloccato
     }
 
     private func barra(_ elenco: [RisultatoRicerca]) -> some View {
@@ -169,7 +172,11 @@ struct AppRicerca: View {
 
     private func apri(_ elenco: [RisultatoRicerca], _ i: Int) {
         guard elenco.indices.contains(i) else { return }
-        stato.vai(a: elenco[i].destinazione)
+        if let a = elenco[i].azione {
+            stato.eseguiAzione(a)
+        } else {
+            stato.vai(a: elenco[i].destinazione)
+        }
     }
 
     /// ↑ e ↓ scelgono il risultato anche mentre si scrive (solo con la Ricerca in primo piano).

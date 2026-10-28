@@ -411,8 +411,12 @@ enum ProvaEve {
             ricerca.vai(a: .attivita(a.id))
             controlla(ricerca.attivitaSelezionata == a.id && ricerca.filtroStatoAttivita != .aperte, "Ricerca: un'attività completata resta visibile quando si apre")
         }
+        let finestrePrima = ricerca.finestre.count
         ricerca.cercaOvunque()
-        controlla(ricerca.appAttiva == .ricerca && ricerca.richiestaFuocoRicerca == 1, "⌘K apre la Ricerca con il cursore nel campo")
+        controlla(ricerca.pannelloRicerca && ricerca.finestre.count == finestrePrima && ricerca.richiestaFuocoRicerca == 1,
+                  "⌘K apre il pannello della Ricerca (come Spotlight, non una finestra) con il cursore nel campo")
+        ricerca.alternaRicerca()
+        controlla(!ricerca.pannelloRicerca, "⌘K di nuovo chiude il pannello della Ricerca")
 
         // Spazi di lavoro: le app al loro posto, affiancate senza sovrapporsi, salvate nell'archivio
         let spazi = StatoShell(persistente: false)
@@ -568,6 +572,8 @@ enum ProvaEve {
         schermo.apri(.impostazioni)
         schermo.portafoglio = true
         controlla(!schermo.aperta(.ricerca) && !schermo.aperta(.impostazioni) && !schermo.portafoglio, "Modalità cliente: Ricerca, Impostazioni e portafoglio non si aprono")
+        schermo.cercaOvunque()
+        controlla(!schermo.pannelloRicerca, "Modalità cliente: il pannello della Ricerca non si apre")
         schermo.apri(.posizioni)
         controlla(schermo.aperta(.posizioni), "Modalità cliente: il dossier del cliente si apre")
         schermo.clienteAttivoId = "giulia"

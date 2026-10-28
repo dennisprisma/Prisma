@@ -34,12 +34,12 @@ struct AppObiettivi: View {
                         }
                         .padding(EdgeInsets(top: 16, leading: 18, bottom: 18, trailing: 18))
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Il dettaglio nello stesso contenitore dell'elenco laterale, diviso da un filo
                     if let o = scelto {
+                        DivisoreColonne()
                         dettaglio(o)
-                            .frame(width: 340)
-                            .overlay(alignment: .leading) {
-                                Rectangle().fill(Colori.Strumenti.ipotesiBordo).frame(width: Tema.Misura.filo)
-                            }
+                            .colonnaFissa(Misure.ColonneStrumento.dettaglio)
                     }
                 }
             }
@@ -243,7 +243,6 @@ struct AppObiettivi: View {
             }
             .padding(14)
         }
-        .background(Colori.Strumenti.risultati)
     }
 }
 

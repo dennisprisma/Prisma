@@ -128,10 +128,7 @@ struct AppSimulazioni: View {
                 .buttonStyle(StileBlu())
             }
         }
-        .padding(.horizontal, 14)
-        .frame(height: 44)
-        .background(Gradienti.kpi)
-        .bordoBasso(Colori.Analisi.kpiBordo)
+        .testataColonna()
     }
 
     // MARK: - Simulatore
@@ -140,7 +137,8 @@ struct AppSimulazioni: View {
         let b = bozza
         let esito = MotoreProiezione.calcola(b.wrappedValue.parametri)
         let impatto = MotoreProiezione.impattoCosti(b.wrappedValue.parametri)
-        return HStack(spacing: 0) {
+        // Comandi e risultati nello stesso contenitore dell'elenco laterale, divisi da un filo
+        return ColonneAffiancate(larghezza: Misure.ColonneStrumento.comandi) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     ComandoSimulatore(etichetta: "Capitale iniziale", valore: b.capitale, unita: "€", intervallo: 0...10_000_000, passo: 1_000,
@@ -166,10 +164,7 @@ struct AppSimulazioni: View {
                 }
                 .padding(EdgeInsets(top: 18, leading: 18, bottom: 18, trailing: 18))
             }
-            .frame(width: Misure.Strumenti.console)
-            .background(Gradienti.console)
-            .bordoDestro(Colori.Strumenti.consoleBordo)
-
+        } flessibile: {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     risultato(b.wrappedValue, esito, impatto)
@@ -192,7 +187,6 @@ struct AppSimulazioni: View {
                 }
                 .padding(EdgeInsets(top: 20, leading: 22, bottom: 20, trailing: 22))
             }
-            .background(Colori.Strumenti.carta)
         }
     }
 
