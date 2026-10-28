@@ -401,9 +401,10 @@ enum ProvaProspetti {
                 let compatto = testo.filter { !$0.isWhitespace }
                 for k in r.crisi.prefix(Misure.Documento.Motori.crisiMassime) where !k.voci.isEmpty {
                     let cifra = spazi(cifraCrisiDoc(k.perdita))
-                    let trovata = compatto.contains(cifra.filter { !$0.isWhitespace }) && testo.contains("\(k.crisi.anno)")
+                    // anche l'anno senza spazi: nei titoli spaziati delle schede esce «2 0 2 0»
+                    let trovata = compatto.contains(cifra.filter { !$0.isWhitespace }) && compatto.contains("\(k.crisi.anno)")
                     // Se manca, si stampa il testo letto attorno all'anno: si capisce subito cosa c'è nel PDF
-                    let attorno = trovata ? "" : testo.components(separatedBy: "\(k.crisi.anno)").dropFirst().prefix(3)
+                    let attorno = trovata ? "" : compatto.components(separatedBy: "\(k.crisi.anno)").dropFirst().prefix(3)
                         .map { "«\(k.crisi.anno)\($0.prefix(140))»" }.joined(separator: " · ")
                     verifica("\(nome): crisi del \(k.crisi.anno) \(cifra) nel PDF", trovata, attorno)
                 }
