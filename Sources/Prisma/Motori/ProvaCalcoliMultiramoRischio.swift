@@ -153,8 +153,8 @@ enum ProvaCalcoliMultiramoRischio {
             verifica("M7c Composizione: titoli di Stato", k?.governativi ?? -1, 0.08, tolleranza: 0.0001)
             verifica("M7c Composizione: obbligazioni societarie", k?.societarie ?? -1, 0.08, tolleranza: 0.0001)
             verifica("M7c Composizione: gestione separata", k?.gestioneSeparata ?? -1, 0.60, tolleranza: 0.0001)
-            let somma = (k?.azioni ?? 0) + (k?.governativi ?? 0) + (k?.societarie ?? 0) + (k?.liquidita ?? 0)
-                + (k?.gestioneSeparata ?? 0) + (k?.immobili ?? 0)
+            let parti: [Double?] = [k?.azioni, k?.governativi, k?.societarie, k?.liquidita, k?.gestioneSeparata, k?.immobili]
+            let somma = parti.reduce(0) { $0 + ($1 ?? 0) }
             verifica("M7c Composizione: la somma fa 1", somma, 1, tolleranza: 0.0001)
             verifica.vero("M7c Composizione: quota azionaria dei fondi indicata, non stimata", k?.stimata == false)
 
