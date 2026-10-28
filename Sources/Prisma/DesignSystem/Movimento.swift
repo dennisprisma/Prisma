@@ -7,7 +7,7 @@ import SwiftUI
 
 extension Notification.Name {
     /// Comincia una transizione dell'interfaccia; userInfo["durata"]: Double (secondi).
-    /// La ascoltano l'acqua (sta ferma) e il misuratore della fluidità.
+    /// Oggi non la ascolta nessuno (l'acqua non si ferma e la prova guidata misura per tratti): resta come aggancio.
     static let prismaTransizione = Notification.Name("prisma.transizione")
 }
 
@@ -83,78 +83,83 @@ extension Tema.Moto {
     /// Con «Riduci movimento».
     static let dissolvenzaCalma = Animation.easeInOut(duration: 0.15)
 
+    // Tutte le curve senza rimbalzo (molle a smorzamento critico) e brevi come in macOS:
+    // l'unico movimento elastico resta lo sblocco col dito (Sblocco.ritorno, Sblocco.pressione).
+
     enum Finestre {
-        // Apertura: dall'icona del dock (o dal punto da cui si apre), scala e dissolvenza
-        static let apertura = Tema.Moto.conMolla(risposta: 0.36, smorzamento: 0.86)
-        static let durataApertura: Double = 0.42
-        /// Ancorata al punto d'origine: la finestra «sale» dal dock.
-        static let scalaDaIcona: CGFloat = 0.88
-        static let scalaSenzaOrigine: CGFloat = 0.965    // tema :1689
-        static let spostamentoSenzaOrigine: CGFloat = 12 // tema :1689
-        // Chiusura: breve, in accelerazione (il Mac ~0,2 s)
-        static let chiusura = Animation.easeIn(duration: 0.18)
-        static let durataChiusura: Double = 0.18
-        static let scalaChiusura: CGFloat = 0.96
-        // Riduzione nel dock («genio» del tema :1717-1722) e ripristino
-        static let genio = Animation.timingCurve(0.6, 0, 0.2, 1, duration: 0.42)
-        static let durataGenio: Double = 0.42
-        static let ripristino = Tema.Moto.conMolla(risposta: 0.42, smorzamento: 0.9)
+        // Apertura, come macOS: compare appena più piccola e trasparente, al suo posto, e decelera morbida
+        static let apertura = Animation.timingCurve(0.2, 0.9, 0.25, 1, duration: 0.24)
+        static let durataApertura: Double = 0.24
+        static let scalaApertura: CGFloat = 0.9
+        // Chiusura: dissolvenza con un lieve rimpicciolimento, in accelerazione
+        static let chiusura = Animation.easeIn(duration: 0.16)
+        static let durataChiusura: Double = 0.16
+        static let scalaChiusura: CGFloat = 0.95
+        // Riduzione nel dock: «effetto genio» di macOS; il ripristino è lo stesso al contrario
+        static let genio = Animation.timingCurve(0.42, 0, 0.58, 1, duration: 0.5)
+        static let durataGenio: Double = 0.5
+        static let ripristino = Animation.timingCurve(0.42, 0, 0.58, 1, duration: 0.45)
         static let durataRipristino: Double = 0.45
-        static let scalaGenioMinima: CGFloat = 0.04
-        /// Opacità tolta dal genio a metà strada (a fine corsa la finestra sparisce del tutto).
-        static let opacitaGenio: Double = 0.7
-        // Ingrandisci / ripristina dimensione / affianca / spazi (FLIP)
-        static let ingrandimento = Tema.Moto.conMolla(risposta: 0.38, smorzamento: 0.92)
-        static let durataIngrandimento: Double = 0.42
-        /// Quando la molla è ferma del tutto: il passaggio FLIP si toglie senza scatti.
-        static let fineIngrandimento: Double = 0.8
+        /// Prima fase del genio (fino a qui): il bordo in basso si stringe e scivola sull'icona.
+        static let genioFineFondo: CGFloat = 0.5
+        /// Seconda fase (da qui): scende la parte alta e la finestra entra nell'icona.
+        static let genioInizioCima: CGFloat = 0.4
+        /// Da qui la finestra, ormai nell'icona, svanisce.
+        static let genioInizioDissolvenza: CGFloat = 0.85
+        /// Spazio sopra la finestra occupato dalla sua ombra: la prospettiva non deve mai rovesciarla.
+        static let genioMargineOmbra: CGFloat = 40
+        /// Fattore prospettico minimo (w) sul bordo alto dell'ombra.
+        static let genioProspettivaMinima: CGFloat = 0.2
+        // Ingrandisci / ripristina dimensione / affianca / spazi (FLIP): fluido, senza rimbalzo
+        static let ingrandimento = Animation.timingCurve(0.3, 0, 0.2, 1, duration: 0.25)
+        static let durataIngrandimento: Double = 0.25
+        /// A curva finita: il passaggio FLIP si toglie senza scatti.
+        static let fineIngrandimento: Double = 0.32
         // Mostra la scrivania: una finestra ogni 50 ms (tema showDesk :1738-1742)
         static let sfalsamento: Double = 0.05
-        // Primo piano: istantaneo come su macOS (nessun token di curva)
+        // Primo piano e cambio app: istantanei come su macOS (nessun token di curva)
     }
 
     enum Pannelli {
-        static let veloEntrata = Animation.easeOut(duration: 0.2)
-        static let veloUscita = Animation.easeIn(duration: 0.14)
+        static let veloEntrata = Animation.easeOut(duration: 0.18)
+        static let veloUscita = Animation.easeIn(duration: 0.12)
         // Centro notifiche: entra da destra
-        static let notifiche = Tema.Moto.conMolla(risposta: 0.34, smorzamento: 0.9)
+        static let notifiche = Tema.Moto.conMolla(risposta: 0.3, smorzamento: 1)
         static let notificheSpostamento: CGFloat = 24
         /// La scheda delle notifiche non si scala: entra solo da destra.
         static let notificheScala: CGFloat = 1
-        static let notificheUscita = Animation.easeIn(duration: 0.16)
+        static let notificheUscita = Animation.easeIn(duration: 0.14)
         // Spazi di lavoro: dall'alto, come Mission Control
-        static let spazi = Tema.Moto.conMolla(risposta: 0.32, smorzamento: 0.88)
+        static let spazi = Tema.Moto.conMolla(risposta: 0.28, smorzamento: 1)
         static let spaziScala: CGFloat = 0.96
-        static let spaziUscita = Animation.easeIn(duration: 0.14)
+        static let spaziUscita = Animation.easeIn(duration: 0.12)
         // «Le tue app aperte»: dal centro, come ⌘Tab
-        static let appAperte = Tema.Moto.conMolla(risposta: 0.28, smorzamento: 0.85)
+        static let appAperte = Tema.Moto.conMolla(risposta: 0.24, smorzamento: 1)
         static let appAperteScala: CGFloat = 0.94
-        static let appAperteUscita = Animation.easeIn(duration: 0.12)
-        // Ricerca (⌘K, è un'app): si apre dall'alto al centro, come Spotlight
-        static let ricercaOrigine = UnitPoint(x: 0.5, y: 0)
+        static let appAperteUscita = Animation.easeIn(duration: 0.1)
         // Avviso (toast, tema :898)
-        static let avviso = Tema.Moto.conMolla(risposta: 0.35, smorzamento: 0.8)
-        static let avvisoUscita = Animation.easeIn(duration: 0.2)
+        static let avviso = Tema.Moto.conMolla(risposta: 0.3, smorzamento: 1)
+        static let avvisoUscita = Animation.easeIn(duration: 0.18)
         static let avvisoSpostamento: CGFloat = 8
         static let avvisoScala: CGFloat = 0.97
         // Presentazione
-        static let presentazione = Animation.easeOut(duration: 0.25)
-        static let durataPresentazione: Double = 0.25
-        static let paginaPresentazione = Animation.easeInOut(duration: 0.18)
+        static let presentazione = Animation.easeOut(duration: 0.22)
+        static let durataPresentazione: Double = 0.22
+        static let paginaPresentazione = Animation.easeInOut(duration: 0.16)
         // I fogli (.sheet), i popover, i menu e le tendine (NSMenu) restano quelli del Mac: nessun token
     }
 
     enum Dock {
-        static let mostra = Tema.Moto.uscita(0.22)
-        static let nascondi = Animation.easeIn(duration: 0.18)
+        static let mostra = Tema.Moto.uscita(0.2)
+        static let nascondi = Animation.easeIn(duration: 0.16)
         static let ritardoNascondi: Double = 0.35
         /// Il suggerimento sopra l'icona cresce dal basso (tema :562).
         static let scalaSuggerimento: CGFloat = 0.95
     }
 
     enum Controlli {
-        static let segmenti = Tema.Moto.conMolla(risposta: 0.3, smorzamento: 0.82)
-        static let interruttore = Tema.Moto.conMolla(risposta: 0.28, smorzamento: 0.75)
+        static let segmenti = Tema.Moto.conMolla(risposta: 0.25, smorzamento: 1)
+        static let interruttore = Tema.Moto.conMolla(risposta: 0.22, smorzamento: 1)
     }
 
     enum Sblocco {
@@ -173,31 +178,31 @@ extension Tema.Moto {
         /// Velocità massima della molla, in percorsi al secondo: niente molle impazzite.
         static let velocitaMassima: CGFloat = 8
         // Uscita della schermata: ora, logo e cursore salgono e svaniscono
-        static let uscitaBenvenuto = Tema.Moto.conMolla(risposta: 0.35, smorzamento: 1)
+        static let uscitaBenvenuto = Tema.Moto.conMolla(risposta: 0.32, smorzamento: 1)
         static let uscitaSpostamento: CGFloat = -24
         // Entrata della scrivania: leggero zoom e dissolvenza
         static let entrataScrivania = entrata()
         /// L'entrata della scrivania con una parte della velocità del gesto di sblocco (percorsi al secondo).
         static func entrata(velocita: Double = 0) -> Animation {
             let v = min(max(velocita, 0), Double(velocitaMassima)) * quotaVelocitaEntrata
-            return Tema.Moto.conMolla(risposta: 0.5, smorzamento: 0.9, velocita: v)
+            return Tema.Moto.conMolla(risposta: 0.45, smorzamento: 1, velocita: v)
         }
         /// Quanta della velocità del gesto passa alla scrivania (la manopola corre, la scrivania segue più calma).
         static let quotaVelocitaEntrata: Double = 0.3
-        static let durataEntrata: Double = 0.55
+        static let durataEntrata: Double = 0.5
         static let scalaScrivania: CGFloat = 1.03
-        static let widget = Tema.Moto.uscita(0.42)        // tema :2097-2101
+        static let widget = Tema.Moto.uscita(0.36)        // tema :2097-2101
         static let sfalsamentoWidget: Double = 0.04
         static let widgetSpostamento: CGFloat = 10
         static let widgetScala: CGFloat = 0.985
     }
 
     enum Blocco {
-        static let scrivania = Animation.easeInOut(duration: 0.3)
+        static let scrivania = Animation.easeInOut(duration: 0.26)
         static let scalaScrivania: CGFloat = 0.98
-        static let benvenuto = Tema.Moto.uscita(0.4)
+        static let benvenuto = Tema.Moto.uscita(0.32)
         static let scalaBenvenuto: CGFloat = 1.03
-        static let durata: Double = 0.4
+        static let durata: Double = 0.34
         /// Stand-by (stop del Mac o schermo spento): nessuna animazione; l'acqua riparte dopo il risveglio.
         static let ripresaAcquaDopoRisveglio: Double = 1.2
     }
@@ -226,17 +231,116 @@ struct EffettoFinestra: ViewModifier {
     }
 }
 
-/// «Genio»: con progresso 1 la finestra è ridotta sull'icona del dock (l'ancora è il centro dell'icona
-/// nelle coordinate della finestra, anche fuori da [0, 1]); con 0 è com'è.
-struct EffettoGenio: ViewModifier {
+/// «Effetto genio» di macOS: con progresso 0 la finestra è com'è, con 1 è risucchiata nell'icona del dock.
+/// Un'omografia porta il rettangolo della finestra su un quadrilatero che cambia nel tempo (lati dritti):
+/// prima il bordo in basso si stringe fino alla larghezza dell'icona e scivola su di lei, poi scende la parte
+/// alta e tutta la finestra entra nell'icona. Solo una trasformazione: niente impaginazione a ogni fotogramma.
+/// Con «Riduci movimento» nessuna deformazione (resta la dissolvenza di `OpacitaGenio`).
+struct EffettoGenio: GeometryEffect {
     var progresso: CGFloat
-    let ancora: UnitPoint
-    let scalaFinale: CGFloat
+    /// Il centro dell'icona nelle coordinate della finestra (di solito sotto la finestra).
+    let bersaglio: CGPoint
+    /// Il lato dell'icona: alla fine la finestra è grande così.
+    let lato: CGFloat
+    let calmo: Bool
+
+    var animatableData: CGFloat {
+        get { progresso }
+        set { progresso = newValue }
+    }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let identita = ProjectionTransform(CGAffineTransform.identity)
+        guard !calmo, progresso > 0, size.width > 1, size.height > 1 else { return identita }
+        let q = EffettoGenio.quadrilatero(progresso: min(progresso, 1), larghezza: size.width, altezza: size.height,
+                                          bersaglio: bersaglio, lato: lato)
+        return EffettoGenio.omografia(larghezza: size.width, altezza: size.height, q.0, q.1, q.2, q.3)
+    }
+
+    /// Gli angoli (in alto a sinistra, in alto a destra, in basso a destra, in basso a sinistra) della finestra
+    /// deformata. Con progresso 0 sono quelli del rettangolo; con 1 quelli dell'icona attorno al bersaglio.
+    static func quadrilatero(progresso p: CGFloat, larghezza w: CGFloat, altezza h: CGFloat,
+                             bersaglio: CGPoint, lato: CGFloat) -> (CGPoint, CGPoint, CGPoint, CGPoint) {
+        let m = Tema.Moto.Finestre.self
+        func limita(_ x: CGFloat) -> CGFloat { min(max(x, 0), 1) }
+        func verso(_ da: CGFloat, _ a: CGFloat, _ t: CGFloat) -> CGFloat { da + (a - da) * t }
+        // Fondo: rallenta arrivando all'icona. Cima: parte piano e accelera; mai davanti al fondo
+        let f = limita(p / m.genioFineFondo)
+        let fondo = 1 - (1 - f) * (1 - f)
+        let c = limita((p - m.genioInizioCima) / (1 - m.genioInizioCima))
+        let cima = min(c * c, fondo)
+        let mezzo = lato / 2
+        // L'icona sta sotto la cima della finestra: il quadrilatero non si rovescia mai
+        let ty = max(bersaglio.y, mezzo)
+        let larghezzaCima = verso(w, lato, cima)
+        // Prospettiva limitata: sopra la finestra c'è la sua ombra, che non deve andare all'infinito
+        let rapportoMassimo = 1 + (1 - m.genioProspettivaMinima) * h / m.genioMargineOmbra
+        let larghezzaFondo = max(verso(w, lato, fondo), larghezzaCima / rapportoMassimo)
+        let xCima = verso(w / 2, bersaglio.x, cima)
+        let xFondo = verso(w / 2, bersaglio.x, fondo)
+        let yCima = (ty - mezzo) * cima
+        let yFondo = verso(h, ty + mezzo, fondo)
+        return (CGPoint(x: xCima - larghezzaCima / 2, y: yCima),
+                CGPoint(x: xCima + larghezzaCima / 2, y: yCima),
+                CGPoint(x: xFondo + larghezzaFondo / 2, y: yFondo),
+                CGPoint(x: xFondo - larghezzaFondo / 2, y: yFondo))
+    }
+
+    /// L'omografia che porta il rettangolo (0, 0, w, h) sul quadrilatero a0 a1 a2 a3 (stesso ordine degli angoli):
+    /// quadrato → quadrilatero di Heckbert, preceduta dalla scala del rettangolo sul quadrato unitario.
+    /// ProjectionTransform moltiplica il vettore riga (x, y, 1). Con il rettangolo stesso dà l'identità.
+    static func omografia(larghezza w: CGFloat, altezza h: CGFloat,
+                          _ a0: CGPoint, _ a1: CGPoint, _ a2: CGPoint, _ a3: CGPoint) -> ProjectionTransform {
+        let dx1 = a1.x - a2.x
+        let dx2 = a3.x - a2.x
+        let dx3 = a0.x - a1.x + a2.x - a3.x
+        let dy1 = a1.y - a2.y
+        let dy2 = a3.y - a2.y
+        let dy3 = a0.y - a1.y + a2.y - a3.y
+        let den = dx1 * dy2 - dx2 * dy1
+        var g: CGFloat = 0
+        var k: CGFloat = 0
+        if abs(den) > 1e-9 {
+            g = (dx3 * dy2 - dx2 * dy3) / den
+            k = (dx1 * dy3 - dx3 * dy1) / den
+        }
+        var t = ProjectionTransform(CGAffineTransform.identity)
+        t.m11 = (a1.x - a0.x + g * a1.x) / w
+        t.m12 = (a1.y - a0.y + g * a1.y) / w
+        t.m13 = g / w
+        t.m21 = (a3.x - a0.x + k * a3.x) / h
+        t.m22 = (a3.y - a0.y + k * a3.y) / h
+        t.m23 = k / h
+        t.m31 = a0.x
+        t.m32 = a0.y
+        t.m33 = 1
+        return t
+    }
+}
+
+/// La dissolvenza del genio: piena finché la finestra entra nell'icona, poi svanisce (a 1 è invisibile).
+/// Con «Riduci movimento» è tutta la riduzione: una dissolvenza breve.
+struct OpacitaGenio: ViewModifier, Animatable {
+    var progresso: CGFloat
+    let calmo: Bool
+
+    var animatableData: CGFloat {
+        get { progresso }
+        set { progresso = newValue }
+    }
 
     func body(content: Content) -> some View {
-        content
-            .scaleEffect(1 - (1 - scalaFinale) * progresso, anchor: ancora)
-            .opacity(progresso >= 1 ? 0 : 1 - Tema.Moto.Finestre.opacitaGenio * Double(progresso))
+        content.opacity(opacita)
+    }
+
+    private var opacita: Double {
+        if progresso <= 0 { return 1 }
+        if progresso >= 1 { return 0 }
+        if calmo { return Double(1 - progresso) }
+        let inizio = Tema.Moto.Finestre.genioInizioDissolvenza
+        guard progresso > inizio else { return 1 }
+        let t = (progresso - inizio) / (1 - inizio)
+        return Double(1 - t * t * (3 - 2 * t))
     }
 }
 

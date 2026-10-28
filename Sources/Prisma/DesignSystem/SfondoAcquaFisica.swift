@@ -97,7 +97,8 @@ final class TabelleAcqua {
 }
 
 /// Lo stato dell'acqua: gocce che cadono, conche, impatti e i loro profili.
-/// Vive sul thread principale; nessuna allocazione per fotogramma.
+/// Vive sulla coda del disegno di RendererAcqua (mai sul thread principale); nessuna allocazione per fotogramma.
+/// `passo` riceve il tempo vero trascorso: l'acqua va sempre alla stessa velocità, anche se un fotogramma salta.
 final class FisicaAcqua {
     struct Impatto {
         var x: Float, y: Float, t: Float, a: Float, amp: Float, vf: Float

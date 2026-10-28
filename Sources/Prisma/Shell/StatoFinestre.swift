@@ -23,6 +23,8 @@ final class StatoFinestre: ObservableObject {
     @Published var flip: [AppPrisma: PassaggioCornice] = [:]
     /// Finestre del tutto coperte da una finestra ingrandita, a transizione finita: non si disegnano (G1).
     @Published var coperte: Set<AppPrisma> = []
+    /// Finestre ridotte nel dock a genio finito: i loro controlli sono spenti (i tasti non ci finiscono).
+    @Published var spente: Set<AppPrisma> = []
     /// Da dove si apre ogni app (coordinate `ShellView.spazioShell`): non pubblicato, si legge all'apertura.
     /// Riducendo un'app vale il centro della sua icona nel dock, dove va il «genio».
     var origini: [AppPrisma: CGPoint] = [:]

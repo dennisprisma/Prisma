@@ -97,8 +97,6 @@ extension Tema.Testo {
         static let segmentoCompattoAttivo = Tema.Testo.sf(12, .semibold)
         static let badgeGrande = Tema.Testo.sf(11, .bold)
         static let avviso = Tema.Testo.sf(13, .medium)
-        /// Simboli ×, −, + dei semafori (7 pt, non seguono la dimensione del testo).
-        static let simboloSemaforo = Font.system(size: 7, weight: .black)
         /// Mese e giorno sull'icona Agenda, in proporzione al lato.
         static func meseIconaAgenda(_ lato: CGFloat) -> Font { .system(size: lato * 0.1538, weight: .bold) }
         static func giornoIconaAgenda(_ lato: CGFloat) -> Font { .system(size: lato * 0.4395, weight: .light) }
@@ -400,47 +398,6 @@ struct Badge: View {
                     .stroke(Tema.Colore.Componenti.bordoBadge, lineWidth: bordo)
             }
             .fixedSize()
-    }
-}
-
-// MARK: - Semafori della finestra
-
-/// I tre pulsanti della finestra interna: cerchi piatti, grigi se la finestra non è in primo piano,
-/// simboli visibili solo al passaggio del mouse.
-struct Semafori: View {
-    let attiva: Bool
-    let chiudi: () -> Void
-    let riduci: () -> Void
-    let ingrandisci: () -> Void
-    @State var sopra = false
-
-    var body: some View {
-        HStack(spacing: Tema.Misura.spazioSemafori) {
-            pulsante(Tema.Colore.semaforoChiudi, "xmark", chiudi)
-            pulsante(Tema.Colore.semaforoRiduci, "minus", riduci)
-            pulsante(Tema.Colore.semaforoIngrandisci, "plus", ingrandisci)
-        }
-        .onHover { sopra = $0 }
-    }
-
-    private func pulsante(_ colore: Color, _ simbolo: String, _ azione: @escaping () -> Void) -> some View {
-        let lato = Tema.Misura.semaforo
-        let colorato = attiva || sopra
-        return Button(action: azione) {
-            ZStack {
-                Circle().fill(colorato ? colore : Tema.Colore.pozzettoScuro)
-                // inset 0 0 0 .5px rgba(0,0,0,.2)
-                Circle().strokeBorder(Tema.Colore.bordoSemaforo, lineWidth: Tema.Misura.filo)
-                if sopra {
-                    Image(systemName: simbolo)
-                        .font(Tema.Testo.Componenti.simboloSemaforo)
-                        .foregroundColor(Tema.Colore.simboloSemaforo)
-                }
-            }
-            .frame(width: lato, height: lato)
-            .contentShape(Circle())
-        }
-        .buttonStyle(StileSemplice())
     }
 }
 

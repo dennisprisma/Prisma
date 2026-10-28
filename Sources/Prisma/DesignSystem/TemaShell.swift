@@ -26,6 +26,11 @@ extension Tema.Colore {
         /// Riquadro tratteggiato quando si trascina un file su Prisma.
         static let rilascio = Tema.Colore.accento
         static let rilascioFondo: Color = Tema.Colore.accento.opacity(0.06)
+        /// Pallini delle finestre interne non in primo piano: grigi, come macOS.
+        static let semaforoSpento = Color.dinamico(chiaro: Color(r: 0, g: 0, b: 0, a: 0.15),
+                                                   scuro: Color(r: 255, g: 255, b: 255, a: 0.2))
+        /// Segni ✕ − + dei pallini: scuri e semitrasparenti, come macOS (uguali in chiaro e in scuro).
+        static let segnoSemaforo = Color(r: 0, g: 0, b: 0, a: 0.5)
 
         /// Fondo della finestra del Mac sotto lo sfondo d'acqua (il colore medio del cielo, chiaro o scuro).
         static var fondoFinestraMac: NSColor {
@@ -41,6 +46,11 @@ extension Tema.Misura {
     enum Shell {
         // Barra superiore
         static let barraMargineSinistro: CGFloat = 10
+        /// Spazio fra il pulsante verde vero della finestra del Mac e il logo di Prisma nella barra.
+        static let spazioDopoSemafori: CGFloat = 20
+        /// Dove finiscono di solito i tre pulsanti della finestra (bordo destro del verde, macOS 26): il ripiego
+        /// quando non si possono leggere (istantanee, prima misura).
+        static let bordoSemaforiTipico: CGFloat = 70
         static let barraMargineDestro: CGFloat = 8
         static let barraSpazio: CGFloat = 4
         static let marchioMargine: CGFloat = 10
@@ -115,6 +125,13 @@ extension Tema.Misura {
         static let passiIngrandimento = 3
 
         // Finestre interne
+        /// Pallini (semafori) come macOS: cerchi da 12 pt, 20 pt fra i centri.
+        static let semaforoLato: CGFloat = 12
+        static let semaforoPasso: CGFloat = 20
+        /// Mezza diagonale della ✕ e mezza lunghezza di − e +, dal centro del cerchio.
+        static let semaforoCroce: CGFloat = 2.3
+        static let semaforoLinea: CGFloat = 3
+        static let semaforoTratto: CGFloat = 1.1
         static let titoloFinestraSinistra: CGFloat = 96
         static let titoloFinestraDestra: CGFloat = 14
         static let titoloFinestraSpazio: CGFloat = 8

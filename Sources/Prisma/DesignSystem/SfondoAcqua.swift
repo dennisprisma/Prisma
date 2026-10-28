@@ -1,8 +1,8 @@
 import SwiftUI
 import AppKit
 import Metal
-import MetalKit
 import QuartzCore
+import CoreVideo
 
 // Lo sfondo della scrivania: acqua vista dall'alto con gocce al rallentatore (prototipo approvato
 // anteprima-sfondo.html). Metal disegna l'acqua; sotto c'è sempre il fermo-immagine in SwiftUI,
@@ -46,23 +46,24 @@ struct AnelloAcqua {
 
 extension Misure {
     enum Acqua {
-        /// È un rallentatore: 30 fotogrammi al secondo bastano e risparmiano energia (scrivania libera, Prisma attiva).
+        /// Un solo ritmo, sempre uguale (scrivania libera o con finestre, Prisma attiva o no, durante le animazioni):
+        /// l'acqua è al rallentatore e 30 fotogrammi al secondo, battuti dallo schermo (a 60 Hz uno ogni due),
+        /// bastano e lasciano GPU e processori al resto dell'interfaccia su un M1 con 8 GB.
         static let fotogrammiAlSecondo = 30
-        /// Con finestre aperte (non ingrandite) o con Prisma in secondo piano: l'acqua si vede appena.
-        static let fotogrammiRidotti = 15
-        /// Fotogrammi preparati in anticipo per la GPU: uno in meno dei drawable del CAMetalLayer (3),
-        /// così currentDrawable non fa aspettare il thread principale.
+        /// Drawable del CAMetalLayer e fotogrammi preparati in anticipo per la GPU (uno in meno),
+        /// così nextDrawable non fa aspettare la coda del disegno.
+        static let drawable = 3
         static let fotogrammiInVolo = 2
-        /// Passo di tempo massimo (s): un fotogramma saltato non fa scatti (a 15 fps il passo è 0,067 s).
-        static let passoMassimo: Double = 0.1
+        /// Passo di tempo massimo (s): la fisica segue il tempo vero; il limite serve solo per i risvegli.
+        static let passoMassimo: Double = 0.25
+        /// Un battito dello schermo vale come puntuale se arriva entro questa quota del periodo dello schermo.
+        static let tolleranzaBattito: Double = 0.5
+        /// Lo stesso, in quota dell'intervallo, per il timer di ripiego (senza CVDisplayLink).
+        static let tolleranzaOrologio: Double = 0.25
+        /// Riprova di un'immagine ferma quando la GPU è indietro (s).
+        static let riprovaFermo: Double = 1.0 / 60
         /// Pixel del drawable rispetto a quelli dello schermo Retina: l'acqua è morbida, così la GPU fa poco più di metà del lavoro.
         static let quotaRisoluzione: CGFloat = 0.75
-        /// Margine dopo una transizione dell'interfaccia prima che l'acqua riparta (s).
-        static let codaTransizione: Double = 0.08
-        /// Durata di una transizione annunciata senza durata (s).
-        static let durataTransizione: Double = 0.35
-        /// Quando Prisma torna l'app attiva (⌘Tab) il Mac ridisegna tutta la finestra: l'acqua aspetta un attimo (s).
-        static let pausaAttivazione: Double = 0.25
         /// Dissolvenza della prima immagine disegnata sopra il fermo-immagine (s).
         static let comparsa: Double = 0.4
 
@@ -98,9 +99,9 @@ extension Misure {
 
 /// Lo sfondo d'acqua animato della scrivania.
 /// `intensita` = gocce al secondo (`pioggiaLeggera`, `pioggiaMedia`, `pioggiaForte`).
-/// `lento`: finestre aperte davanti, l'acqua va a `fotogrammiRidotti`.
-/// Si ferma da solo con la finestra nascosta, a basso consumo, con «Riduci movimento», durante le transizioni
-/// dell'interfaccia (`.prismaTransizione`) e con il Mac a riposo; va più piano con Prisma in secondo piano.
+/// Si muove sempre allo stesso ritmo, fuori dal thread principale, anche mentre l'interfaccia si anima.
+/// Si ferma solo quando non si vede: `animato` falso (scrivania coperta o «Sfondo fermo»), finestra del Mac
+/// nascosta o coperta, basso consumo, «Riduci movimento» e Mac a riposo.
 struct SfondoAcqua: View {
     static let pioggiaLeggera = 0.14
     static let pioggiaMedia = 0.3
@@ -109,14 +110,12 @@ struct SfondoAcqua: View {
     let animato: Bool
     let intensita: Double
     let scuro: Bool
-    let lento: Bool
     @Environment(\.modoIstantanea) private var modoIstantanea
 
-    init(animato: Bool, intensita: Double, scuro: Bool, lento: Bool = false) {
+    init(animato: Bool, intensita: Double, scuro: Bool) {
         self.animato = animato
         self.intensita = intensita
         self.scuro = scuro
-        self.lento = lento
     }
 
     var body: some View {
@@ -124,7 +123,7 @@ struct SfondoAcqua: View {
             // sotto c'è sempre il fermo-immagine: la tela Metal compare sopra alla prima immagine
             SfondoAcquaFermo(scuro: scuro)
             if !modoIstantanea && ProgrammaAcqua.condiviso.device != nil {
-                TelaAcquaMetal(animato: animato, intensita: intensita, scuro: scuro, lento: lento)
+                TelaAcquaMetal(animato: animato, intensita: intensita, scuro: scuro)
                     .allowsHitTesting(false)
             }
         }
@@ -270,10 +269,33 @@ final class ProgrammaAcqua {
 
 // MARK: - Tela Metal
 
-/// La MTKView dell'acqua: non prende i clic, avvisa quando entra o esce da una finestra e disegna
-/// a `Misure.Acqua.quotaRisoluzione` dei pixel dello schermo (il CAMetalLayer stira l'immagine).
-final class TelaAcqua: MTKView {
+/// La vista dell'acqua: un CAMetalLayer che non prende i clic. Avvisa quando entra o esce da una finestra e quando
+/// cambia misura; il drawable è a `Misure.Acqua.quotaRisoluzione` dei pixel dello schermo (il layer stira l'immagine).
+/// Non disegna da sé: il disegno lo fa RendererAcqua sulla sua coda, fuori dal thread principale.
+final class TelaAcqua: NSView {
+    let strato = CAMetalLayer()
     var cambioFinestra: (() -> Void)?
+    /// Misura in punti e in pixel del drawable (dal thread principale).
+    var cambioMisura: ((CGSize, CGSize) -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layerContentsRedrawPolicy = .never
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("TelaAcqua si crea solo dal codice")
+    }
+
+    override func makeBackingLayer() -> CALayer { strato }
+
+    // AppKit non disegna niente nel layer: le immagini le presenta Metal
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {}
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -291,15 +313,13 @@ final class TelaAcqua: MTKView {
         aggiornaRisoluzione()
     }
 
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
     /// Misura del drawable: punti × scala dello schermo × quota (mai sotto 1 pixel per punto).
     func aggiornaRisoluzione() {
-        guard !autoResizeDrawable else { return }
         let schermo = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1
         let f = max(1, schermo * Misure.Acqua.quotaRisoluzione)
-        let misura = CGSize(width: max(1, (bounds.width * f).rounded()), height: max(1, (bounds.height * f).rounded()))
-        if drawableSize != misura { drawableSize = misura }
+        let lato = bounds.size
+        let pixel = CGSize(width: max(1, (lato.width * f).rounded()), height: max(1, (lato.height * f).rounded()))
+        cambioMisura?(lato, pixel)
     }
 }
 
@@ -307,18 +327,17 @@ private struct TelaAcquaMetal: NSViewRepresentable {
     let animato: Bool
     let intensita: Double
     let scuro: Bool
-    let lento: Bool
 
     func makeCoordinator() -> RendererAcqua { RendererAcqua() }
 
     func makeNSView(context: Context) -> TelaAcqua {
-        let v = TelaAcqua(frame: .zero, device: ProgrammaAcqua.condiviso.device)
-        context.coordinator.configura(v, animato: animato, intensita: intensita, scuro: scuro, lento: lento)
+        let v = TelaAcqua(frame: .zero)
+        context.coordinator.configura(v, animato: animato, intensita: intensita, scuro: scuro)
         return v
     }
 
     func updateNSView(_ v: TelaAcqua, context: Context) {
-        context.coordinator.imposta(animato: animato, intensita: intensita, scuro: scuro, lento: lento)
+        context.coordinator.imposta(animato: animato, intensita: intensita, scuro: scuro)
     }
 
     static func dismantleNSView(_ v: TelaAcqua, coordinator: RendererAcqua) {
@@ -326,37 +345,70 @@ private struct TelaAcquaMetal: NSViewRepresentable {
     }
 }
 
-/// Disegna l'acqua: fa avanzare la fisica, scrive profili e uniformi, lancia lo shader.
-/// Gira sul thread principale (MTKView chiama draw(in:) da lì) e non lo fa mai aspettare: se la GPU è indietro
-/// salta il fotogramma. In pausa non ridisegna niente.
-final class RendererAcqua: NSObject, MTKViewDelegate {
+/// Disegna l'acqua fuori dal thread principale, a un ritmo solo e sempre uguale.
+/// - Thread principale: impostazioni, notifiche e quando muoversi; accende e spegne il battito.
+/// - Battito: l'orologio dello schermo (CVDisplayLink) sceglie un fotogramma ogni 1/`fotogrammiAlSecondo` s
+///   e lo mette in coda, mai due alla volta.
+/// - Coda del disegno: fisica, profili, uniformi e GPU. La fisica segue il tempo vero dello schermo: un fotogramma
+///   saltato (GPU indietro, coda occupata) non ferma il tempo, quindi l'acqua non rallenta mai mentre il resto
+///   dell'interfaccia si anima, e non lo fa aspettare.
+/// Fra i tre passa solo `Condiviso`, sotto `serratura` (tenuta per poche istruzioni, mai durante il disegno).
+final class RendererAcqua: NSObject {
+    /// Ciò che il thread principale e il battito passano alla coda del disegno.
+    private struct Condiviso {
+        var inMoto = false
+        var intensita: Float = 0
+        var scuro = false
+        var lato = CGSize.zero
+        var pixel = CGSize.zero
+        /// L'acqua è appena ripartita: la fisica riprende da qui, senza recuperare la pausa.
+        var ripartenza = true
+        /// Un fotogramma in moto è in coda o in corso: il battito non ne accoda un altro.
+        var motoInCoda = false
+        /// Un'immagine ferma è in coda.
+        var fermoInCoda = false
+        /// Istante (orologio dello schermo) dell'ultimo fotogramma accodato.
+        var ultimoBattito: CFTimeInterval = 0
+    }
+
+    /// Secondi per tick dell'orologio di sistema (lo stesso di CACurrentMediaTime e del CVDisplayLink).
+    private static let secondiPerTick: Double = {
+        var info = mach_timebase_info_data_t()
+        _ = mach_timebase_info(&info)
+        return info.denom > 0 ? Double(info.numer) / Double(info.denom) / 1_000_000_000 : 1e-9
+    }()
+
+    private let serratura = NSLock()
+    private var condiviso = Condiviso()
+    private let codaDisegno = DispatchQueue(label: "prisma.acqua.disegno", qos: .userInteractive,
+                                            autoreleaseFrequency: .workItem)
+
+    // Solo thread principale
     private weak var vista: TelaAcqua?
     private var animato = true
-    private var intensita = Float(SfondoAcqua.pioggiaLeggera)
     private var scuro = false
-    private var lento = false
+    private var inMoto = false
+    private var pronta = false
+    private var staccato = false
+    /// Mac (o schermo) a riposo: ferma fino a poco dopo il risveglio.
+    private var aRiposo = false
+    private var ripresaRisveglio: DispatchWorkItem?
+    private var link: CVDisplayLink?
+    private var battitoAcceso = false
+    /// Ripiego se il Mac non dà il CVDisplayLink: un timer preciso fuori dal thread principale.
+    private var orologio: DispatchSourceTimer?
 
+    // Solo coda del disegno
+    private var strato: CAMetalLayer?
     private var pipeline: MTLRenderPipelineState?
-    private var coda: MTLCommandQueue?
+    private var comandiGPU: MTLCommandQueue?
     private var fisica: FisicaAcqua?
     private var profili: [MTLBuffer] = []
     private var prossimo = 0
     private let semaforo = DispatchSemaphore(value: Misure.Acqua.fotogrammiInVolo)
     private var uniformi = [Float](repeating: 0, count: ShaderAcqua.Strato.totale)
-
     private var ultimo: CFTimeInterval = 0   // 0 = si riparte senza scatti
-    private var inMoto = false
     private var mostrata = false
-    private var staccato = false
-
-    /// Pausa per una transizione dell'interfaccia fino a questo istante (CACurrentMediaTime).
-    private var sospesoFino: CFTimeInterval = 0
-    private var ripresaTransizione: DispatchWorkItem?
-    /// Mac (o schermo) a riposo: ferma fino a poco dopo il risveglio.
-    private var aRiposo = false
-    private var ripresaRisveglio: DispatchWorkItem?
-    /// Un ridisegno chiesto durante una pausa: si fa alla ripresa, se l'acqua resta ferma.
-    private var daRidisegnare = false
 
     override init() {
         super.init()
@@ -365,11 +417,8 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
                            name: NSWindow.didChangeOcclusionStateNotification, object: nil)
         centro.addObserver(self, selector: #selector(statoCambiato(_:)),
                            name: .NSProcessInfoPowerStateDidChange, object: nil)
-        centro.addObserver(self, selector: #selector(statoCambiato(_:)),
-                           name: NSApplication.didResignActiveNotification, object: nil)
-        centro.addObserver(self, selector: #selector(attivata(_:)),
-                           name: NSApplication.didBecomeActiveNotification, object: nil)
-        centro.addObserver(self, selector: #selector(transizione(_:)), name: .prismaTransizione, object: nil)
+        centro.addObserver(self, selector: #selector(schermoCambiato(_:)),
+                           name: NSWindow.didChangeScreenNotification, object: nil)
         let spazio = NSWorkspace.shared.notificationCenter
         spazio.addObserver(self, selector: #selector(statoCambiato(_:)),
                            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
@@ -383,53 +432,67 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
         }
     }
 
-    func configura(_ v: TelaAcqua, animato: Bool, intensita: Double, scuro: Bool, lento: Bool) {
+    deinit {
+        if let l = link, battitoAcceso { _ = CVDisplayLinkStop(l) }
+        orologio?.cancel()
+    }
+
+    func configura(_ v: TelaAcqua, animato: Bool, intensita: Double, scuro: Bool) {
         vista = v
         self.animato = animato
-        self.intensita = Float(max(0, intensita))
         self.scuro = scuro
-        self.lento = lento
-        v.colorPixelFormat = .bgra8Unorm
-        v.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
-        v.framebufferOnly = true
-        // Il drawable lo misura TelaAcqua, a una quota dei pixel dello schermo
-        v.autoResizeDrawable = false
-        v.aggiornaRisoluzione()
-        (v.layer as? CAMetalLayer)?.allowsNextDrawableTimeout = true
-        v.preferredFramesPerSecond = ritmo
-        v.isPaused = true
-        v.enableSetNeedsDisplay = true
+        let s = v.strato
+        s.device = ProgrammaAcqua.condiviso.device
+        s.pixelFormat = .bgra8Unorm
+        s.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
+        s.framebufferOnly = true
+        s.isOpaque = true
+        s.presentsWithTransaction = false
+        s.allowsNextDrawableTimeout = true
+        s.maximumDrawableCount = Misure.Acqua.drawable
         v.alphaValue = 0   // compare alla prima immagine disegnata
-        v.delegate = self
-        v.cambioFinestra = { [weak self] in self?.aggiornaMoto() }
+        serratura.lock()
+        condiviso.intensita = Float(max(0, intensita))
+        condiviso.scuro = scuro
+        serratura.unlock()
+        v.cambioMisura = { [weak self] lato, pixel in self?.misura(lato: lato, pixel: pixel) }
+        v.cambioFinestra = { [weak self] in self?.cambioFinestra() }
+        v.aggiornaRisoluzione()
+        codaDisegno.async { [weak self] in self?.strato = s }
         ProgrammaAcqua.condiviso.richiedi { [weak self] stato in self?.pronto(stato) }
     }
 
-    func imposta(animato: Bool, intensita: Double, scuro: Bool, lento: Bool) {
+    func imposta(animato: Bool, intensita: Double, scuro: Bool) {
         let cambiaColore = scuro != self.scuro
         self.animato = animato
-        self.intensita = Float(max(0, intensita))
         self.scuro = scuro
-        self.lento = lento
+        serratura.lock()
+        condiviso.intensita = Float(max(0, intensita))
+        condiviso.scuro = scuro
+        serratura.unlock()
         aggiornaMoto()
-        if cambiaColore && !inMoto { ridisegna() }
+        if cambiaColore && !inMoto { chiediFermo() }
     }
 
     func stacca() {
         staccato = true
-        inMoto = false
-        ripresaTransizione?.cancel()
         ripresaRisveglio?.cancel()
+        ripresaRisveglio = nil
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
-        vista?.isPaused = true
-        vista?.delegate = nil
+        fermaBattito()
+        inMoto = false
+        serratura.lock()
+        condiviso.inMoto = false
+        serratura.unlock()
         vista?.cambioFinestra = nil
+        vista?.cambioMisura = nil
+        codaDisegno.async { [weak self] in self?.strato = nil }
     }
 
     private func pronto(_ stato: MTLRenderPipelineState?) {
         guard !staccato, let stato, let device = ProgrammaAcqua.condiviso.device,
-              let coda = device.makeCommandQueue() else { return }   // resta il fermo-immagine
+              let comandi = device.makeCommandQueue() else { return }   // resta il fermo-immagine
         let lunghezza = ShaderAcqua.maxImpatti * TabelleAcqua.nr * 2 * MemoryLayout<Float>.stride
         var buffer: [MTLBuffer] = []
         for _ in 0..<Misure.Acqua.fotogrammiInVolo {
@@ -437,34 +500,49 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
             else { return }
             buffer.append(b)
         }
-        profili = buffer
-        self.coda = coda
-        fisica = FisicaAcqua()
-        pipeline = stato
+        let nuova = FisicaAcqua()
+        let pronti = buffer
+        // Da qui in poi programma, buffer e fisica li tocca solo la coda del disegno
+        codaDisegno.async { [weak self] in
+            guard let self else { return }
+            self.pipeline = stato
+            self.comandiGPU = comandi
+            self.profili = pronti
+            self.fisica = nuova
+        }
+        pronta = true
         aggiornaMoto()
-        vista?.needsDisplay = true   // la prima immagine, anche durante una pausa: sopra il fermo-immagine
+        chiediFermo()   // la prima immagine sopra il fermo-immagine, anche se l'acqua resta ferma
     }
 
-    // MARK: Quando muoversi
+    // MARK: Quando muoversi (thread principale)
+
+    private func misura(lato: CGSize, pixel: CGSize) {
+        serratura.lock()
+        let cambiata = condiviso.lato != lato || condiviso.pixel != pixel
+        condiviso.lato = lato
+        condiviso.pixel = pixel
+        serratura.unlock()
+        // in moto ci pensa il prossimo fotogramma
+        if cambiata && !inMoto { chiediFermo() }
+    }
+
+    private func cambioFinestra() {
+        collegaSchermo()
+        aggiornaMoto()
+    }
 
     @objc private func statoCambiato(_ nota: Notification) {
         // le notifiche del risparmio energetico arrivano da un thread qualsiasi
         DispatchQueue.main.async { [weak self] in self?.aggiornaMoto() }
     }
 
-    /// Prisma torna l'app attiva: il Mac ridisegna la finestra, l'acqua aspetta un attimo e poi torna a 30 fps.
-    @objc private func attivata(_ nota: Notification) {
-        sulMain { [weak self] in self?.sospendi(per: Misure.Acqua.pausaAttivazione) }
+    /// La finestra è passata su un altro schermo: il battito segue quello schermo.
+    @objc private func schermoCambiato(_ nota: Notification) {
+        sulMain { [weak self] in self?.collegaSchermo() }
     }
 
-    /// Una transizione dell'interfaccia (apertura, chiusura, riduzione, ingrandimento, sblocco...): l'acqua sta
-    /// ferma senza ridisegnare (il CAMetalLayer tiene l'ultima immagine) e riparte subito dopo.
-    @objc private func transizione(_ nota: Notification) {
-        let durata = (nota.userInfo?["durata"] as? Double) ?? Misure.Acqua.durataTransizione
-        sulMain { [weak self] in self?.sospendi(per: durata) }
-    }
-
-    /// Stop del Mac, schermo spento o utente cambiato: ferma subito, senza ultima immagine.
+    /// Stop del Mac, schermo spento o utente cambiato: ferma subito.
     @objc private func riposo(_ nota: Notification) {
         sulMain { [weak self] in
             guard let self else { return }
@@ -484,7 +562,7 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
                 guard let self else { return }
                 self.ripresaRisveglio = nil
                 self.aRiposo = false
-                self.riprendi()
+                self.aggiornaMoto()
             }
             self.ripresaRisveglio = lavoro
             DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.Blocco.ripresaAcquaDopoRisveglio, execute: lavoro)
@@ -495,92 +573,156 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
         if Thread.isMainThread { fai() } else { DispatchQueue.main.async(execute: fai) }
     }
 
-    /// Pausa fino alla fine della transizione più lunga in corso, più un piccolo margine.
-    private func sospendi(per durata: Double) {
-        guard !staccato else { return }
-        let ora = CACurrentMediaTime()
-        let fine = ora + max(0, durata) + Misure.Acqua.codaTransizione
-        guard fine > sospesoFino else { return }   // c'è già una pausa che dura di più
-        sospesoFino = fine
-        aggiornaMoto()
-        ripresaTransizione?.cancel()
-        let lavoro = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.ripresaTransizione = nil
-            self.sospesoFino = 0
-            self.riprendi()
-        }
-        ripresaTransizione = lavoro
-        DispatchQueue.main.asyncAfter(deadline: .now() + (fine - ora), execute: lavoro)
-    }
-
-    /// Fine di una pausa: l'acqua riparte, oppure (se resta ferma) si fa il ridisegno chiesto nel frattempo.
-    private func riprendi() {
-        aggiornaMoto()
-        if !inMoto && daRidisegnare { ridisegna() }
-    }
-
-    private var inPausa: Bool { aRiposo || CACurrentMediaTime() < sospesoFino }
-
-    /// 30 fps con la scrivania libera e Prisma attiva; 15 con finestre davanti o Prisma in secondo piano.
-    private var ritmo: Int {
-        lento || !NSApplication.shared.isActive ? Misure.Acqua.fotogrammiRidotti : Misure.Acqua.fotogrammiAlSecondo
-    }
-
-    /// Un'immagine ferma nuova (colore o misura cambiati); durante una pausa si rimanda alla ripresa.
-    private func ridisegna() {
-        if inPausa {
-            daRidisegnare = true
-        } else {
-            daRidisegnare = false
-            vista?.needsDisplay = true
-        }
-    }
-
-    /// L'acqua si muove solo se richiesto, con la finestra visibile, senza basso consumo, senza «Riduci movimento»,
-    /// fuori dalle transizioni e con il Mac sveglio. In pausa la MTKView non ridisegna niente.
+    /// L'acqua si muove se richiesto (scrivania visibile e «Sfondo animato»), con la finestra del Mac visibile,
+    /// senza basso consumo, senza «Riduci movimento» e con il Mac sveglio. Sempre allo stesso ritmo: niente pause
+    /// durante le animazioni dell'interfaccia, niente rallentamenti con finestre aperte o Prisma in secondo piano.
+    /// Da ferma il CAMetalLayer tiene l'ultima immagine e non si disegna niente.
     func aggiornaMoto() {
         guard !staccato, let v = vista else { return }
-        let fps = ritmo
-        if v.preferredFramesPerSecond != fps { v.preferredFramesPerSecond = fps }
-        let pausa = inPausa
         let visibile = v.window?.occlusionState.contains(.visible) ?? false
-        let muovi = animato && visibile && pipeline != nil && !pausa
+        let muovi = animato && visibile && pronta && !aRiposo
             && !ProcessInfo.processInfo.isLowPowerModeEnabled
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         guard muovi != inMoto else { return }
         inMoto = muovi
-        ultimo = 0
+        serratura.lock()
+        condiviso.inMoto = muovi
         if muovi {
-            daRidisegnare = false
-            v.enableSetNeedsDisplay = false
-            v.isPaused = false
+            condiviso.ripartenza = true
+            condiviso.ultimoBattito = 0
+        }
+        serratura.unlock()
+        if muovi { avviaBattito() } else { fermaBattito() }
+    }
+
+    // MARK: Battito
+
+    private func avviaBattito() {
+        guard !battitoAcceso else { return }
+        if link == nil && orologio == nil {
+            var nuovo: CVDisplayLink?
+            if CVDisplayLinkCreateWithActiveCGDisplays(&nuovo) == kCVReturnSuccess, let l = nuovo {
+                // Arriva sul thread dello schermo: niente thread principale, solo la scelta del fotogramma
+                _ = CVDisplayLinkSetOutputHandler(l) { [weak self] _, _, uscita, _, _ in
+                    let t = uscita.pointee
+                    let periodo = t.videoTimeScale > 0 ? Double(t.videoRefreshPeriod) / Double(t.videoTimeScale) : 0
+                    let ora = t.hostTime > 0 ? Double(t.hostTime) * RendererAcqua.secondiPerTick : CACurrentMediaTime()
+                    self?.battito(ora: ora, periodo: periodo)
+                    return kCVReturnSuccess
+                }
+                link = l
+            }
+        }
+        battitoAcceso = true
+        if let l = link {
+            collegaSchermo()
+            _ = CVDisplayLinkStart(l)
         } else {
-            v.isPaused = true
-            v.enableSetNeedsDisplay = true
-            // Un'ultima immagine ferma, poi niente; in una pausa breve resta quella che c'è già
-            if !pausa { v.needsDisplay = true }
+            let t = DispatchSource.makeTimerSource(flags: .strict, queue: DispatchQueue.global(qos: .userInteractive))
+            t.schedule(deadline: .now(), repeating: 1.0 / Double(Misure.Acqua.fotogrammiAlSecondo),
+                       leeway: .milliseconds(1))
+            t.setEventHandler { [weak self] in self?.battito(ora: CACurrentMediaTime(), periodo: 0) }
+            t.resume()
+            orologio = t
         }
     }
 
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        if !inMoto { ridisegna() }
+    private func fermaBattito() {
+        guard battitoAcceso else { return }
+        battitoAcceso = false
+        if let l = link { _ = CVDisplayLinkStop(l) }
+        orologio?.cancel()
+        orologio = nil
     }
 
-    func draw(in view: MTKView) {
-        guard !staccato, let pipeline, let coda, let fisica, !profili.isEmpty else { return }
-        let lato = view.bounds.size
-        let px = view.drawableSize
-        guard lato.width >= 1, lato.height >= 1, px.width >= 1, px.height >= 1 else { return }
-        // La GPU ha già tutti i fotogrammi in volo: si salta questo, senza aspettarla e senza far avanzare la fisica
-        guard semaforo.wait(timeout: .now()) == .success else { return }
+    /// Il battito segue lo schermo su cui sta la finestra.
+    private func collegaSchermo() {
+        guard let l = link, let schermo = vista?.window?.screen,
+              let numero = schermo.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return }
+        _ = CVDisplayLinkSetCurrentCGDisplay(l, CGDirectDisplayID(numero.uint32Value))
+    }
+
+    /// Un battito dello schermo (thread del CVDisplayLink o del timer): `ora` è l'istante in cui l'immagine
+    /// andrà sullo schermo, `periodo` il periodo dello schermo (0 se non si sa). Un fotogramma ogni intervallo,
+    /// allineato ai battiti (a 60 Hz uno ogni due), e mai due in coda.
+    private func battito(ora: CFTimeInterval, periodo: Double) {
+        let intervallo = 1.0 / Double(Misure.Acqua.fotogrammiAlSecondo)
+        let margine = periodo > 0
+            ? min(periodo * Misure.Acqua.tolleranzaBattito, intervallo * 0.5)
+            : intervallo * Misure.Acqua.tolleranzaOrologio
+        serratura.lock()
+        var accoda = false
+        if condiviso.inMoto && !condiviso.motoInCoda
+            && (condiviso.ultimoBattito == 0 || ora - condiviso.ultimoBattito >= intervallo - margine) {
+            condiviso.motoInCoda = true
+            condiviso.ultimoBattito = ora
+            accoda = true
+        }
+        serratura.unlock()
+        guard accoda else { return }
+        codaDisegno.async { [weak self] in self?.disegna(ora: ora, moto: true) }
+    }
+
+    /// Un'immagine ferma (colore o misura cambiati, prima immagine), da qualsiasi thread; le richieste si sommano.
+    private func chiediFermo(dopo ritardo: Double = 0) {
+        serratura.lock()
+        let gia = condiviso.fermoInCoda
+        condiviso.fermoInCoda = true
+        serratura.unlock()
+        guard !gia else { return }
+        let lavoro: () -> Void = { [weak self] in self?.disegna(ora: CACurrentMediaTime(), moto: false) }
+        if ritardo > 0 {
+            codaDisegno.asyncAfter(deadline: .now() + ritardo, execute: lavoro)
+        } else {
+            codaDisegno.async(execute: lavoro)
+        }
+    }
+
+    // MARK: Disegno (coda del disegno)
+
+    /// `moto`: fotogramma dal battito, la fisica avanza; altrimenti un'immagine ferma.
+    private func disegna(ora: CFTimeInterval, moto: Bool) {
+        serratura.lock()
+        let c = condiviso
+        if moto && c.inMoto { condiviso.ripartenza = false }
+        if !moto { condiviso.fermoInCoda = false }
+        serratura.unlock()
+        let riprova = autoreleasepool { fotogramma(c, ora: ora, moto: moto) }
+        if moto {
+            serratura.lock()
+            condiviso.motoInCoda = false
+            serratura.unlock()
+        } else if riprova {
+            chiediFermo(dopo: Misure.Acqua.riprovaFermo)
+        }
+    }
+
+    /// Fa avanzare la fisica con il tempo vero, scrive profili e uniformi, lancia lo shader e presenta.
+    /// Non aspetta mai: se la GPU è indietro salta il fotogramma (il passo successivo recupera il tempo).
+    /// Ridà true se un'immagine ferma va riprovata.
+    private func fotogramma(_ c: Condiviso, ora: CFTimeInterval, moto: Bool) -> Bool {
+        if moto && c.ripartenza { ultimo = 0 }
+        guard let strato, let pipeline, let comandiGPU, let fisica, !profili.isEmpty else { return false }
+        if moto && !c.inMoto { return false }   // fermata nel frattempo
+        let lato = c.lato
+        let px = c.pixel
+        guard lato.width >= 1, lato.height >= 1, px.width >= 1, px.height >= 1 else { return false }
+        guard semaforo.wait(timeout: .now()) == .success else { return !moto }
+
+        if strato.drawableSize != px {
+            // fuori dal thread principale si cambia il layer solo in una transazione esplicita
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            strato.drawableSize = px
+            CATransaction.commit()
+        }
         let w = Float(lato.width)
         let h = Float(lato.height)
         fisica.misura(larghezza: w, altezza: h)
-        if inMoto {
-            let ora = CACurrentMediaTime()
+        if moto {
             if ultimo > 0 {
-                fisica.passo(Float(min(ora - ultimo, Misure.Acqua.passoMassimo)), intensita: intensita)
+                let dt = min(max(0, ora - ultimo), Misure.Acqua.passoMassimo)
+                if dt > 0 { fisica.passo(Float(dt), intensita: c.intensita) }
             }
             ultimo = ora
         }
@@ -588,17 +730,17 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
         let buffer = profili[prossimo]
         prossimo = (prossimo + 1) % profili.count
         let dati = buffer.contents().bindMemory(to: Float.self, capacity: ShaderAcqua.maxImpatti * TabelleAcqua.nr * 2)
-        let scuro = self.scuro
+        let scuro = c.scuro
         let tempo = Float(fisica.tempo)
         let dpr = Float(px.width / lato.width)
         uniformi.withUnsafeMutableBufferPointer { u in
             guard let p = u.baseAddress else { return }
             fisica.scrivi(profili: dati, uniformi: p)
-            let c = ShaderAcqua.Strato.camera
-            p[c] = w * 0.5
-            p[c + 1] = h * 0.42
-            p[c + 2] = max(w, h) * 1.15
-            p[c + 3] = tempo
+            let cam = ShaderAcqua.Strato.camera
+            p[cam] = w * 0.5
+            p[cam + 1] = h * 0.42
+            p[cam + 2] = max(w, h) * 1.15
+            p[cam + 3] = tempo
             let cielo = Colori.Acqua.cielo(scuro: scuro)
             RendererAcqua.scrivi(colore: cielo[0], in: p + ShaderAcqua.Strato.cielo1)
             RendererAcqua.scrivi(colore: cielo[1], in: p + ShaderAcqua.Strato.cielo2)
@@ -610,16 +752,18 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
             p[r + 3] = scuro ? 1 : 0
         }
 
-        guard let passaggio = view.currentRenderPassDescriptor,
-              let drawable = view.currentDrawable,
-              let comandi = coda.makeCommandBuffer() else {
+        // Con un drawable in meno dei fotogrammi in volo, nextDrawable di solito non aspetta
+        guard let drawable = strato.nextDrawable(), let comandi = comandiGPU.makeCommandBuffer() else {
             semaforo.signal()
-            return
+            return false
         }
+        let passaggio = MTLRenderPassDescriptor()
+        passaggio.colorAttachments[0].texture = drawable.texture
         passaggio.colorAttachments[0].loadAction = .dontCare
+        passaggio.colorAttachments[0].storeAction = .store
         guard let enc = comandi.makeRenderCommandEncoder(descriptor: passaggio) else {
             semaforo.signal()
-            return
+            return false
         }
         enc.setRenderPipelineState(pipeline)
         uniformi.withUnsafeBytes { b in
@@ -632,14 +776,23 @@ final class RendererAcqua: NSObject, MTKViewDelegate {
         let s = semaforo
         comandi.addCompletedHandler { _ in s.signal() }
         comandi.commit()
+        // La prova guidata della fluidità conta i fotogrammi d'acqua in moto (contatore sicuro da ogni thread)
+        if moto { MisuratoreFluidita.segnaFotogrammaAcqua() }
 
         if !mostrata {
             mostrata = true
-            NSAnimationContext.runAnimationGroup({ contesto in
-                contesto.duration = Misure.Acqua.comparsa
-                view.animator().alphaValue = 1
-            }, completionHandler: nil)
+            DispatchQueue.main.async { [weak self] in self?.mostra() }
         }
+        return false
+    }
+
+    /// Dissolvenza della prima immagine sopra il fermo-immagine (thread principale).
+    private func mostra() {
+        guard !staccato, let v = vista else { return }
+        NSAnimationContext.runAnimationGroup({ contesto in
+            contesto.duration = Misure.Acqua.comparsa
+            v.animator().alphaValue = 1
+        }, completionHandler: nil)
     }
 
     /// Un colore 0xRRGGBB come float RGB (+ 1) nelle uniformi.

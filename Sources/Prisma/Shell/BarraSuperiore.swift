@@ -3,24 +3,33 @@ import SwiftUI
 
 /// Barra superiore (tema «Liquid Glass»): niente fondo, solo un velo che sfuma sotto; a sinistra il marchio
 /// e l'app in primo piano, al centro data e ora, a destra gli strumenti in una capsula di vetro.
+/// Il marchio comincia dopo i pulsanti veri della finestra del Mac, alla loro altezza (`LettoreSemafori`).
 struct BarraSuperiore: View {
     @EnvironmentObject var stato: StatoShell
     @Environment(\.modoIstantanea) var modoIstantanea
+    /// Dove sono i pulsanti veri della finestra del Mac (nil: non letti, o non ci sono).
+    @State var semafori: PosizioneSemafori? = nil
 
     var body: some View {
         let m = Tema.Misura.Shell.self
+        let y = spostamentoVerticale
         ZStack {
             HStack(spacing: m.barraSpazio) {
                 marchio
+                    .offset(y: y)
                 appCorrente
+                    .offset(y: y)
                 Spacer(minLength: 20)
+                // La capsula è quasi alta quanto la barra: segue i pulsanti finché resta un punto dal bordo
                 strumenti
+                    .offset(y: BarraSuperiore.limita(y, (Tema.Misura.barra - Tema.Misura.barraStrumenti) / 2 - Tema.Misura.filo * 2))
             }
             // Fuori dallo schermo intero a sinistra ci sono i pulsanti della finestra del Mac
-            .padding(.leading, stato.schermoIntero ? m.barraMargineSinistro : Misure.Barra.spazioSemaforiNativi)
+            .padding(.leading, margineSinistro)
             .padding(.trailing, m.barraMargineDestro)
 
             orologio
+                .offset(y: y)
         }
         .frame(height: Tema.Misura.barra)
         .frame(maxWidth: .infinity)
@@ -31,11 +40,40 @@ struct BarraSuperiore: View {
                     .frame(height: Tema.Misura.barra + Tema.Misura.veloBarra)
                     .allowsHitTesting(false)
                 if !modoIstantanea {
+                    // Legge dove sono i pulsanti veri della finestra (invisibile, non prende il mouse)
+                    LettoreSemafori { nuova in
+                        if semafori != nuova { semafori = nuova }
+                    }
+                    .frame(height: Tema.Misura.barra)
+                    .allowsHitTesting(false)
                     AreaTrascinamento().frame(height: Tema.Misura.barra)
                 }
             }
             .frame(maxHeight: .infinity, alignment: .top)
         }
+    }
+
+    /// Margine a sinistra: il logo sta a `spazioDopoSemafori` dal pulsante verde vero della finestra
+    /// (letto da AppKit; se non si legge, dove sta di solito). A schermo intero i pulsanti non ci sono.
+    private var margineSinistro: CGFloat {
+        let m = Tema.Misura.Shell.self
+        guard !stato.schermoIntero else { return m.barraMargineSinistro }
+        let bordo = semafori?.bordoDestro ?? m.bordoSemaforiTipico
+        // Il logo ha davanti il suo margine interno (la capsula al passaggio del mouse)
+        return max(m.barraMargineSinistro, bordo + m.spazioDopoSemafori - m.marchioMargineSinistro)
+    }
+
+    /// Quanto spostare in verticale il contenuto della barra perché il suo centro stia su quello dei pulsanti
+    /// veri della finestra; mai oltre lo spazio che il marchio ha nella barra.
+    private var spostamentoVerticale: CGFloat {
+        guard !stato.schermoIntero, let s = semafori else { return 0 }
+        return BarraSuperiore.limita(s.centroVerticale - Tema.Misura.barra / 2,
+                                     (Tema.Misura.barra - Tema.Misura.marchioBarra) / 2)
+    }
+
+    /// `valore` tenuto fra −`gioco` e +`gioco`.
+    private static func limita(_ valore: CGFloat, _ gioco: CGFloat) -> CGFloat {
+        min(max(valore, -gioco), gioco)
     }
 
     /// Il logo e «Prisma»: torna alla scrivania.
