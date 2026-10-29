@@ -389,7 +389,7 @@ enum Istantanee {
             s.alternaNotifiche()
         }),
         ("63-benvenuto", { s in
-            // Come dopo il primo avvio: senza l'invito all'introduzione (lo mostra la 220)
+            // Come dopo il primo avvio (introduzione già vista), con una finestra aperta sotto il blocco
             s.dati.impostazioni.introduzioneVista = true
             s.apri(.clienti)
             s.blocca()
@@ -1006,7 +1006,8 @@ enum Istantanee {
         // Avvio sulla schermata di benvenuto e guida di Prisma (G7). Il genio non si vede: è Core Animation
         // sul Mac vero (le prove dei suoi conti stanno in --prova-fluidita)
         ("220-avvio-benvenuto", { s in
-            // Il primo avvio: Prisma si apre sul blocco, nessuna app aperta, l'invito all'introduzione
+            // Il primo avvio: Prisma si apre sul blocco, nessuna app aperta. Solo data, ora, logo e cursore:
+            // l'introduzione parte da sola dopo lo sblocco, senza invito sul blocco
             s.dati.impostazioni.introduzioneVista = false
             s.blocca()
         }),

@@ -29,8 +29,6 @@ extension Colori {
         static let cursoreBordo = Tema.Colore.bordoChip
         static let cursoreOmbra = Color(r: 0, g: 0, b: 0, a: 0.3)
         static let freccia = Tema.Colore.inchiostro
-        static let collegamento = Tema.Colore.inchiostroBenvenuto
-        static let nota: Color = Tema.Colore.inchiostroBenvenuto.opacity(0.7)
         // Riepilogo delle app aperte
         static let veloApp = Tema.Colore.velo
         static let schedaAlto = Tema.Colore.chip
@@ -85,11 +83,8 @@ extension Tipo {
     static let benvenutoData = Tema.Testo.sf(22, .semibold)
     static let benvenutoMarchio = Tema.Testo.sf(20, .bold)
     static let benvenutoMarchioLeggero = Tema.Testo.sf(20)
-    static let benvenutoMotto = Tema.Testo.sf(13)
     static let benvenutoScritta = Tema.Testo.sf(15, .medium)
     static let benvenutoFreccia = Tema.Testo.sf(16, .semibold)
-    static let benvenutoCollegamento = Tema.Testo.sf(13)
-    static let benvenutoNota = Tema.Testo.didascalia
     static let appApertaTitolo = Tema.Testo.sf(13, .semibold)
     static let appApertaCliente = Tema.Testo.didascalia
     static let appApertaStato = Tema.Testo.didascalia
