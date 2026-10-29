@@ -113,6 +113,8 @@ struct PannelloResistenza: View {
                 }
             }
             .contornoTabella()
+            // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+            .scorreSeStretto()
             Text(fraseCrisi(peggiore))
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Analisi.kpiNota)
@@ -203,5 +205,7 @@ struct PannelloResistenza: View {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 }

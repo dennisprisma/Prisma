@@ -16,6 +16,10 @@ struct AppNote: View {
     @State private var scorrimentoTesto: CGFloat = 0
     /// La scrittura di titolo e testo in attesa dell'ultimo tasto (si fa subito prima di esportare o creare un'attività).
     @State private var scritturaNota = Rinvio()
+    #if os(iOS)
+    /// La copia della nota da salvare con `.fileExporter` (al posto di NSSavePanel del Mac).
+    @State private var copiaDaSalvare: DocumentoTestoMobile?
+    #endif
 
     /// Quanto aspettare dopo l'ultimo tasto prima di passare il testo allo stato condiviso (ricerca e nota).
     static let attesaRicerca = 0.15
@@ -65,6 +69,15 @@ struct AppNote: View {
         .onChange(of: stato.filtroClienteNote) { filtro in
             if let n = stato.nota(stato.notaSelezionata), filtro != nil, n.clienteId != filtro { stato.scegliNota(nil) }
         }
+        #if os(iOS)
+        .fileExporter(isPresented: Binding(get: { copiaDaSalvare != nil }, set: { if !$0 { copiaDaSalvare = nil } }),
+                      document: copiaDaSalvare, contentType: .plainText,
+                      defaultFilename: copiaDaSalvare?.nome) { esito in
+            if case .failure(let errore) = esito, (errore as? CocoaError)?.code != .userCancelled {
+                stato.mostraAvviso("Copia non salvata: \(errore.localizedDescription)")
+            }
+        }
+        #endif
     }
 
     // MARK: - Indice
@@ -283,8 +296,9 @@ struct AppNote: View {
             try? Data(stato.testoEsportato(n).utf8).write(to: url)
         }
         #elseif os(iOS)
-        // Su iPhone e iPad la copia si salverà con `.fileExporter` o la condivisione (giro 2)
-        stato.mostraAvviso(StatoShell.soloSulMacPerOra)
+        // Su iPhone e iPad la copia si salva con `.fileExporter` (in File, iCloud Drive o dove si sceglie)
+        copiaDaSalvare = DocumentoTestoMobile(testo: stato.testoEsportato(n),
+                                              nome: "\(n.titoloMostrato.replacingOccurrences(of: "/", with: "-")).txt")
         #endif
     }
 }

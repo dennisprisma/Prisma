@@ -26,7 +26,7 @@ struct AppProspetti: View {
         let pagine = documento?.pagine.count ?? 0
         let formato = documento.map { $0.formato.width > $0.formato.height ? "A4 orizzontale" : "A4 verticale" } ?? ""
         return CorniceStrumento(
-            notaStato: "Impaginati sul Mac · stessi calcoli dell'app · il PDF resta dove lo salvi",
+            notaStato: Self.notaStato,
             notaDestra: pagine == 0 ? "" : "\(formato) · \(pagine) \(pagine == 1 ? "pagina" : "pagine")"
         ) {
             rail
@@ -71,6 +71,12 @@ struct AppProspetti: View {
             .environmentObject(stato)
         }
     }
+
+    #if os(macOS)
+    private static let notaStato = "Impaginati sul Mac · stessi calcoli dell'app · il PDF resta dove lo salvi"
+    #elseif os(iOS)
+    private static let notaStato = "Impaginati sul dispositivo · stessi calcoli dell'app · il PDF resta dove lo salvi o lo mandi"
+    #endif
 
     private var vuoto: some View {
         VStack(spacing: 10) {

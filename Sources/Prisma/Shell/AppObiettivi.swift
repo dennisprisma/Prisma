@@ -42,8 +42,14 @@ struct AppObiettivi: View {
                     // Il dettaglio nello stesso contenitore dell'elenco laterale, diviso da un filo
                     if let o = scelto {
                         DivisoreColonne()
+                        #if os(iOS)
+                        // iPad: il dettaglio si stringe fino a `colonnaMinima` perché le schede restino leggibili
+                        dettaglio(o)
+                            .colonnaFissaAdattiva(Misure.ColonneStrumento.dettaglio)
+                        #elseif os(macOS)
                         dettaglio(o)
                             .colonnaFissa(Misure.ColonneStrumento.dettaglio)
+                        #endif
                     }
                 }
             }

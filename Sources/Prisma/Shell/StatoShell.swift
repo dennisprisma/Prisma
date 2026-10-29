@@ -357,6 +357,9 @@ final class StatoShell: ObservableObject {
     #elseif os(iOS)
     /// Per le funzioni legate ai pannelli e alle finestre del Mac, che su iPhone e iPad arrivano nei prossimi giri.
     static let soloSulMacPerOra = "Su iPhone e iPad questa funzione non c'è ancora: usala da Prisma sul Mac."
+    /// Il file da scegliere con `.fileImporter` (al posto di NSOpenPanel del Mac): lo presenta il guscio
+    /// dell'iPad (GuscioiPad), poi StatoMobile.importa passa la copia a `importaClienti(da:)` e simili.
+    @Published var sceltaFileMobile: SceltaFileMobile?
     #endif
 
     // MARK: - Lettura

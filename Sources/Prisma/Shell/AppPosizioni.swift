@@ -55,29 +55,23 @@ struct AppPosizioni: View {
     var body: some View {
         let forma = FormaVetro.arrotondata(Tema.Raggio.scheda)
         VStack(spacing: 0) {
+            #if os(iOS)
+            // iPad: con poco spazio l'elenco laterale si chiude in una striscia e si apre sopra il contenuto
+            ColonnaLateraleAdattiva(larghezzaLaterale: Misure.Analisi.rail, titolo: "i filtri delle posizioni") {
+                rail
+                    .frame(width: Misure.Analisi.rail)
+                    .bordoDestro(Colori.Analisi.railFilo)
+            } contenuto: {
+                corpo
+            }
+            #elseif os(macOS)
             HStack(spacing: 0) {
                 rail
                     .frame(width: Misure.Analisi.rail)
                     .bordoDestro(Colori.Analisi.railFilo)
-                Group {
-                    if let id = stato.posizioneInDettaglio, let p = stato.posizioni.first(where: { $0.id == id }) {
-                        DettaglioPosizione(posizione: p, modifica: { modulo = p })
-                    } else if let s = stato.aggiornaValori {
-                        // Il pannello «Aggiorna i valori»: sopra portafoglio e dossier, sotto il dettaglio («Apri ↗»)
-                        PannelloAggiornaValori(sessione: s).id(s.id)
-                    } else if stato.portafoglio {
-                        // Come nel dossier: gli indicatori contano in essere e proposte, lo stato filtra solo l'elenco
-                        portafoglio
-                    } else if senzaPosizioni, let c = stato.clienteAttivo {
-                        // Il cliente non ha niente (e nessun filtro è attivo): il vuoto spiega che cosa fare
-                        vuotoPosizioni(c)
-                    } else {
-                        principale
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Colori.Analisi.principale)
+                corpo
             }
+            #endif
             barraStato
         }
         // La scheda del tema: angoli tondi e filo da 0,5 pt (il contenuto si taglia prima del contorno)
@@ -113,6 +107,28 @@ struct AppPosizioni: View {
         .onChange(of: stato.clienteAttivoId) { _ in stato.posizioneInDettaglio = nil }
         // Entrando nel portafoglio si chiude il dettaglio; uscendo no (apriPosizione lo sta aprendo)
         .onChange(of: stato.portafoglio) { if $0 { stato.posizioneInDettaglio = nil } }
+    }
+
+    /// Il contenuto accanto all'elenco laterale: dettaglio, aggiornamento dei valori, portafoglio o dossier.
+    private var corpo: some View {
+        Group {
+            if let id = stato.posizioneInDettaglio, let p = stato.posizioni.first(where: { $0.id == id }) {
+                DettaglioPosizione(posizione: p, modifica: { modulo = p })
+            } else if let s = stato.aggiornaValori {
+                // Il pannello «Aggiorna i valori»: sopra portafoglio e dossier, sotto il dettaglio («Apri ↗»)
+                PannelloAggiornaValori(sessione: s).id(s.id)
+            } else if stato.portafoglio {
+                // Come nel dossier: gli indicatori contano in essere e proposte, lo stato filtra solo l'elenco
+                portafoglio
+            } else if senzaPosizioni, let c = stato.clienteAttivo {
+                // Il cliente non ha niente (e nessun filtro è attivo): il vuoto spiega che cosa fare
+                vuotoPosizioni(c)
+            } else {
+                principale
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Colori.Analisi.principale)
     }
 
     private func controllaRichiesta(_ richiesta: StatoPosizione?) {
@@ -299,7 +315,8 @@ struct AppPosizioni: View {
                         }
                     }
 
-                    HStack(alignment: .top, spacing: 24) {
+                    // Sull'iPad stretto i due pannelli vanno uno sotto l'altro (sul Mac sempre affiancati)
+                    Affiancati(soglia: SoglieAffiancati.posizioni, spazio: 24) {
                         PannelloAnalisi(titolo: "Ripartizione per area", nota: "Posizioni in essere, debiti a parte") { EmptyView() } contenuto: {
                             Self.ripartizione(r)
                         }
@@ -307,7 +324,7 @@ struct AppPosizioni: View {
                         PannelloAnalisi(titolo: "Per canale", nota: "Attività in essere") { EmptyView() } contenuto: {
                             Self.canali(r, apri: { stato.posizioneInDettaglio = $0.id })
                         }
-                        .frame(width: 330, alignment: .leading)
+                        .larghezzaAffiancata(330, alignment: .leading)
                     }
 
                     // Calcolate una volta e riusate finché i dati non cambiano (DerivatiDati)
@@ -544,6 +561,8 @@ struct TabellaPosizioni: View {
             }
         }
         .contornoTabella()
+        // Sull'iPad stretto la tabella scorre in orizzontale invece di uscire dalla scheda
+        .scorreSeStretto()
     }
 
     @ViewBuilder private func valore(_ p: Posizione) -> some View {

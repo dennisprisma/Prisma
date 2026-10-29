@@ -47,10 +47,22 @@ extension StatoShell {
         }
         apriElencoValori(tabella: tabella, file: url.lastPathComponent)
         #elseif os(iOS)
-        // Su iPhone e iPad il file si sceglierà con `.fileImporter` nella vista (giro 2)
-        mostraAvviso(StatoShell.soloSulMacPerOra)
+        // Su iPhone e iPad il file si sceglie con `.fileImporter` (GuscioiPad), poi `valoriDaFile(_:)` sulla copia
+        sceltaFileMobile = .valori
         #endif
     }
+
+    #if os(iOS)
+    /// La copia del file scelto con `.fileImporter`: come la seconda metà di `scegliFileValori` sul Mac.
+    @MainActor
+    func valoriDaFile(_ url: URL) {
+        guard let tabella = ImportaClienti.righe(url) else {
+            mostraAvviso(TestiAggiornaValori.fileSenzaValori)
+            return
+        }
+        apriElencoValori(tabella: tabella, file: url.lastPathComponent)
+    }
+    #endif
 
     /// Appunti (come incollaDaExcel) → `ImportaClienti.righeCSV` → sessione.
     @MainActor

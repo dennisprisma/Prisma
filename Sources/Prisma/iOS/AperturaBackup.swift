@@ -17,8 +17,9 @@ struct AperturaBackup: View {
 
     var body: some View {
         ZStack {
-            SfondoAcquaFermo(scuro: schema == .dark)
-                .ignoresSafeArea()
+            // L'acqua della scrivania: animata sull'iPad, ferma sull'iPhone e nelle istantanee (SfondoAcqua)
+            Materiale.SfondoScrivania(animato: mobile.stato.dati.impostazioni.sfondoAnimato,
+                                      intensita: mobile.stato.dati.impostazioni.pioggia.forza)
             ScrollView {
                 VStack(spacing: M.spazioApertura) {
                     intestazione

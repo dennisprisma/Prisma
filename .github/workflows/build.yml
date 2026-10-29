@@ -168,15 +168,13 @@ jobs:
 
   # Prisma per iPhone e iPad: compilazione per il simulatore, prove e istantanee.
   # Niente .xcodeproj: xcodebuild apre Package.swift, il .app si assembla con Supporto/iOS/assembla.sh.
-  # Per ora non bloccante (continue-on-error): resta così finché tutto il target non compila su iOS,
-  # poi si toglie e da lì vale «iOS rosso = niente merge».
+  # Bloccante dal giro 2: tutto il target compila su iOS, e da qui vale «iOS rosso = niente merge».
   ios:
     permissions:
       contents: read
     # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
     runs-on: macos-15-intel
     timeout-minutes: 75
-    continue-on-error: true
     env:
       BID: local.prisma
     steps:
@@ -312,9 +310,10 @@ jobs:
         timeout-minutes: 10
         run: bash Supporto/iOS/prove.sh "$PAD" verifica-risorse
 
+      # Più scene che sull'iPhone (tutte le app, in verticale e in orizzontale): più tempo
       - name: iPad · istantanee
         if: always() && steps.avvio-ipad.outcome == 'success'
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: bash Supporto/iOS/istantanee.sh "$PAD" anteprime-ios/ipad
 
       - name: iPad · spegni
@@ -381,7 +380,9 @@ jobs:
           retention-days: 7
 
   # Un solo push -f sul branch anteprime: le PNG del Mac dove sono sempre state, quelle di iOS in ios/.
-  # Parte anche se iOS è rosso (le anteprime Mac servono a capire il problema), purché la build Mac sia riuscita.
+  # Aspetta entrambi i job (Mac e iOS). Parte anche se iOS è rosso (le anteprime Mac, e le PNG iOS scattate
+  # prima dell'errore, servono a capire il problema), purché la build Mac sia riuscita: il rosso di iOS
+  # blocca comunque il merge, perché il job ios ora è bloccante.
   pubblica:
     needs: [build, ios]
     if: always() && github.event_name == 'push' && needs.build.result == 'success' && needs.build.outputs.anteprime == '1'

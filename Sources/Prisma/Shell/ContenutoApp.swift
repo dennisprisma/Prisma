@@ -29,6 +29,9 @@ struct ContenutoApp: View {
                 default: AppSegnaposto(app: app)
                 }
             }
+            // iPhone e iPad: la larghezza che resta all'app va nell'ambiente (`larghezzaApp`), così colonne e
+            // pannelli del Mac si adattano (ImpaginazioneAdattiva). Sul Mac non fa niente.
+            .misuraLarghezzaApp()
             // La Ricerca va da bordo a bordo, come una tabella di iOS
             .padding(.horizontal, app == .ricerca ? 0 : Misure.IntestazioneApp.margineOrizzontale)
             .padding(.vertical, app == .ricerca ? 0 : Misure.IntestazioneApp.margineContenuto)

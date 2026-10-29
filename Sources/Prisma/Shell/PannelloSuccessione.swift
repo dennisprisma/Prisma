@@ -28,7 +28,8 @@ struct PannelloSuccessione: View {
                         Text("beneficiari e tutele")
                     }
                 }
-                HStack(alignment: .top, spacing: 14) {
+                // iPad stretto: la tabella sopra, gli eredi sotto (sul Mac sempre affiancati)
+                Affiancati(soglia: SoglieAffiancati.pannello, spazio: 14) {
                     tabella.frame(maxWidth: .infinity, alignment: .topLeading)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("EREDI SENZA TESTAMENTO").font(Tipo.kpiTitolo).tracking(0.3).foregroundColor(Colori.Analisi.kpiTitolo)
@@ -54,7 +55,7 @@ struct PannelloSuccessione: View {
                             Text(a).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.attenzioneTesto).fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    .frame(width: Misure.Analisi.colonnaEredi, alignment: .topLeading)
+                    .larghezzaAffiancata(Misure.Analisi.colonnaEredi, alignment: .topLeading)
                 }
             }
         }
@@ -99,5 +100,7 @@ struct PannelloSuccessione: View {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 }

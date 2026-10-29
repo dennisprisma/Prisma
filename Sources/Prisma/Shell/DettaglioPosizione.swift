@@ -34,7 +34,8 @@ struct DettaglioPosizione: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         intestazione
-                        HStack(alignment: .top, spacing: 28) {
+                        // iPad stretto: una colonna sola, i costi sotto il contratto (sul Mac sempre due colonne)
+                        Affiancati(soglia: SoglieAffiancati.dettaglio, spazio: 28) {
                             VStack(alignment: .leading, spacing: 22) {
                                 contratto
                                 if p.multiramo && p.area.proiettabile {
@@ -54,8 +55,8 @@ struct DettaglioPosizione: View {
                                 }
                             }
                             // Con la colonna destra il contratto non va oltre la sua misura: la destra prende il resto
-                            .frame(maxWidth: p.area.proiettabile ? Tema.Misura.Dossier.dettaglioSinistraMassima : .infinity,
-                                   alignment: .leading)
+                            .limitiAffiancati(massima: p.area.proiettabile ? Tema.Misura.Dossier.dettaglioSinistraMassima : .infinity,
+                                              alignment: .leading)
                             if p.area.proiettabile {
                                 VStack(alignment: .leading, spacing: 22) {
                                     costiERischio(prodotto)
@@ -65,7 +66,7 @@ struct DettaglioPosizione: View {
                                         storico(voce)
                                     }
                                 }
-                                .frame(minWidth: Tema.Misura.Dossier.dettaglioDestraMinima, maxWidth: .infinity, alignment: .leading)
+                                .limitiAffiancati(minima: Tema.Misura.Dossier.dettaglioDestraMinima, massima: .infinity, alignment: .leading)
                             }
                         }
                         // La scheda di adeguatezza della proposta (giro 4): controlli, documenti, PDF da firmare
@@ -146,6 +147,10 @@ struct DettaglioPosizione: View {
         ViewThatFits(in: .horizontal) {
             rigaNavigazione(soloIcona: false)
             rigaNavigazione(soloIcona: true)
+            #if os(iOS)
+            // iPad stretto: neppure le icone stanno su una riga, la barra scorre in orizzontale
+            ScrollView(.horizontal, showsIndicators: false) { rigaNavigazione(soloIcona: true) }
+            #endif
         }
         .padding(.horizontal, 12)
         .frame(minHeight: 40)
@@ -565,6 +570,8 @@ struct DettaglioPosizione: View {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 
     // MARK: - Proiezione
@@ -658,6 +665,8 @@ struct DettaglioPosizione: View {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 
     private func metodo(_ p: ParametriProiezione) -> some View {

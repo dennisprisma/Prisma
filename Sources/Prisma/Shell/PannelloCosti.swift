@@ -70,6 +70,8 @@ struct PannelloCosti: View {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 
     private func riga(_ v: CostiPosizione, incidenza: IncidenzaCostiKID?) -> some View {

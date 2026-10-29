@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UniformTypeIdentifiers
+#endif
 
 /// Un PDF pronto da salvare, con il cliente a cui è destinato.
 struct PDFDaSalvare: Identifiable {
@@ -16,6 +19,11 @@ struct ModuloSalvaPDF: View {
     let pdf: PDFDaSalvare
     @State private var proteggi: Bool
     @State private var password: String
+    #if os(iOS)
+    /// Il PDF pronto per «Salva in File…» e il pannello del sistema che lo salva.
+    @State private var daEsportare: FilePDF?
+    @State private var esporta = false
+    #endif
 
     init(pdf: PDFDaSalvare, impostazioni: ImpostazioniPDF) {
         self.pdf = pdf
@@ -56,6 +64,7 @@ struct ModuloSalvaPDF: View {
             Button("Annulla") { chiudi() }
                 .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
+            #if os(macOS)
             Button {
                 let dati = proteggi ? StampaCarta.protetto(pdf.dati, password: password) : pdf.dati
                 chiudi()
@@ -72,9 +81,55 @@ struct ModuloSalvaPDF: View {
             .disabled(!valida)
             .opacity(valida ? 1 : 0.5)
             .keyboardShortcut(.defaultAction)
+            #elseif os(iOS)
+            // Su iPhone e iPad: la condivisione (AirDrop, Mail…) e il salvataggio in File, con la stessa protezione
+            ShareLink(item: PDFCondiviso(dati: pdf.dati, nome: pdf.nome, password: proteggi ? password : nil),
+                      preview: SharePreview(pdf.nome)) {
+                Label("Condividi…", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(StileVetro())
+            .disabled(!valida)
+            .opacity(valida ? 1 : 0.5)
+            Button(action: preparaEsportazione) {
+                Label("Salva in File…", systemImage: "folder")
+            }
+            .buttonStyle(StileBlu())
+            .disabled(!valida)
+            .opacity(valida ? 1 : 0.5)
+            .keyboardShortcut(.defaultAction)
+            #endif
         }
+        #if os(macOS)
         .frame(width: Misure.Analisi.moduloSalvaPDF.width, height: Misure.Analisi.moduloSalvaPDF.height)
+        #elseif os(iOS)
+        // Nel foglio di iPad la stessa misura del Mac; su iPhone si stringe alla larghezza dello schermo
+        .frame(maxWidth: Misure.Analisi.moduloSalvaPDF.width, minHeight: Misure.Analisi.moduloSalvaPDF.height)
+        .fileExporter(isPresented: $esporta, document: daEsportare, contentType: .pdf,
+                      defaultFilename: (pdf.nome as NSString).deletingPathExtension) { esito in
+            daEsportare = nil
+            switch esito {
+            case .success:
+                chiudi()
+            case .failure(let errore):
+                // Annullato dall'utente: il modulo resta aperto, senza avvisi
+                if (errore as? CocoaError)?.code == .userCancelled { return }
+                stato.mostraAvviso("Non sono riuscito a salvare il PDF: \(errore.localizedDescription)")
+            }
+        }
+        #endif
     }
+
+    #if os(iOS)
+    /// I dati del PDF (protetti, se richiesto) per il pannello «Salva in File…» del sistema.
+    private func preparaEsportazione() {
+        guard let dati = proteggi ? StampaCarta.protetto(pdf.dati, password: password) : pdf.dati else {
+            stato.mostraAvviso("Non sono riuscito a proteggere il PDF.")
+            return
+        }
+        daEsportare = FilePDF(dati: dati)
+        esporta = true
+    }
+    #endif
 
     private var suggerimento: String {
         if !valida { return "La password deve avere almeno \(ImpostazioniPDF.lunghezzaMinima) caratteri." }
