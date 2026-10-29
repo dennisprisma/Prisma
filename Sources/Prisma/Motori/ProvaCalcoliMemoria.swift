@@ -242,7 +242,7 @@ enum ProvaCalcoliMemoria {
             let a2 = MotoreMemoria.apriConVariazioni(note, memoria: m, massimo: 12)
             let righe2 = a2.components(separatedBy: "\n")
             verifica.vero("MA2 Memoria: con 12 righe «…e un'altra variazione»",
-                          righe2.count > 15 && righe2[14] =="…e un'altra variazione nel prospetto del riesame." && righe2[15] == "Punti da trattare:")
+                          righe2.count > 15 && righe2[14] == "…e un'altra variazione nel prospetto del riesame." && righe2[15] == "Punti da trattare:")
             let senza = MotoreMemoria.memoria(attuale: o, fotografie: [], oggi: oggi, cal: cal)
             verifica.vero("MA3 Memoria: senza memoria o senza precedente le note restano uguali",
                           MotoreMemoria.apriConVariazioni(note, memoria: nil) == note
