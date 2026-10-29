@@ -56,10 +56,24 @@ enum MotoreNotifiche {
         }
         // Appuntamenti passati senza esito
         // (anche quelli di oggi, appena finiti)
+        // Le proposte ancora aperte, per id: un appuntamento di proposta o di firma chiede com'è finita
+        var proposteAperte: [String: Posizione] = [:]
+        for p in dati.posizioni where p.stato == .proposta && p.esito != .accettata && p.esito != .rifiutata {
+            // Con due posizioni con lo stesso id vale la prima
+            if proposteAperte[p.id] == nil { proposteAperte[p.id] = p }
+        }
         for a in dati.appuntamenti where a.stato == .pianificato && a.fine <= oggi && a.fine > cal.date(byAdding: .day, value: -giorniAvanti, to: inizio) ?? inizio {
+            var proposta: Posizione?
+            if MotoreSeguitoProposte.tipiConEsito.contains(a.tipo), let pid = a.posizioneId { proposta = proposteAperte[pid] }
+            let dettaglioEsito: String
+            if let proposta {
+                dettaglioEsito = TestiSeguito.esitoAppuntamento(cliente: nome(a.clienteId), giorno: a.inizio, proposta: proposta)
+            } else {
+                dettaglioEsito = "\(nome(a.clienteId)) · \(Formati.giornoMese.string(from: a.inizio)): segna l'esito in agenda"
+            }
             elenco.append(Notifica(id: "esito-\(a.id)", gruppo: .daFare, app: .agenda,
                                    titolo: "Com'è andato «\(a.titolo)»?",
-                                   dettaglio: "\(nome(a.clienteId)) · \(Formati.giornoMese.string(from: a.inizio)): segna l'esito in agenda",
+                                   dettaglio: dettaglioEsito,
                                    data: a.inizio, canale: a.canale, destinazione: .appuntamento(a.id)))
         }
         // Attività scadute e di oggi
@@ -87,6 +101,29 @@ enum MotoreNotifiche {
                                    titolo: "\(p.nome) è scaduta il \(Formati.giornoMese.string(from: s))",
                                    dettaglio: "\(nome(p.clienteId)) · reinvestimento o stato da aggiornare",
                                    data: s, canale: p.canale, destinazione: .posizione(p.id)))
+        }
+        // Proposte ferme: presentate da più dei giorni del seguito senza un appuntamento in agenda, o rimandate e da
+        // riprendere. Una voce sola per tutte, come i clienti da ricontattare (apre il Portafoglio)
+        let sogliaSeguito = dati.impostazioni.giorniSeguitoProposte
+        let ferme = MotoreSeguitoProposte.inSospeso(posizioni: dati.posizioni, clienti: dati.clienti, appuntamenti: dati.appuntamenti,
+                                                    attivita: dati.attivita, adesso: oggi, soglia: sogliaSeguito)
+        if ferme.count == 1, let s = ferme.first {
+            let p = s.posizione
+            // Il giorno in cui è diventata ferma (le riprese: il giorno scelto); l'id si rinnova se viene ripresentata
+            var ferma = s.dal
+            if s.fonte != .ripresa { ferma = cal.date(byAdding: .day, value: sogliaSeguito, to: s.dal) ?? s.dal }
+            elenco.append(Notifica(id: "seguito-\(p.id)-\(Int(s.dal.timeIntervalSince1970))", gruppo: .daFare, app: .posizioni,
+                                   titolo: TestiSeguito.titoloNotifica(s),
+                                   dettaglio: "\(s.cliente.nome) · \(TestiSeguito.riga(s))",
+                                   data: ferma, canale: p.canale, destinazione: .posizione(p.id)))
+        } else if let primo = ferme.first {
+            let stessoCanale = ferme.allSatisfy { $0.posizione.canale == primo.posizione.canale }
+            let canaleFerme: Canale? = stessoCanale ? primo.posizione.canale : nil
+            let idFerme = "seguito-" + ferme.map(\.id).joined(separator: ",")
+            elenco.append(Notifica(id: idFerme, gruppo: .daFare, app: .posizioni,
+                                   titolo: TestiSeguito.aspettano(ferme.count),
+                                   dettaglio: TestiSeguito.piuFerma(primo),
+                                   data: inizio, canale: canaleFerme, destinazione: nil))
         }
         // Compleanni dei clienti
         for c in dati.clienti {
@@ -150,6 +187,36 @@ enum MotoreNotifiche {
                                    titolo: senzaBeneficiari.count == 1 ? "\(primo.nome): beneficiari da indicare" : "\(senzaBeneficiari.count) clienti con beneficiari da indicare",
                                    dettaglio: "Polizze o previdenza senza beneficiari: il capitale andrebbe agli eredi legittimi",
                                    data: inizio, destinazione: nil))
+        }
+        // Proposte di un tipo che il cliente dice di non conoscere (griglia dell'esperienza nel profilo)
+        let ignoti = MotoreEsperienza.daSegnalare(clienti: dati.clienti, posizioni: dati.posizioni, prodotti: dati.prodotti)
+        if let primo = ignoti.first {
+            // Una sola proposta di un solo cliente: la notifica porta alla proposta
+            var una: Posizione?
+            if ignoti.count == 1, primo.proposte.count == 1 { una = primo.proposte.first }
+            var idProposte: [String] = []
+            for voce in ignoti { idProposte += voce.proposte.map(\.id) }
+            let titoloEsperienza: String
+            if ignoti.count == 1 {
+                titoloEsperienza = "\(primo.cliente.nome): proposta di un tipo che non conosce"
+            } else {
+                titoloEsperienza = "\(ignoti.count) clienti con proposte di tipi che non conoscono"
+            }
+            let dettaglioEsperienza: String
+            var destinazioneEsperienza: DestinazioneRicerca?
+            if let una {
+                dettaglioEsperienza = "\(una.nome): spiegalo prima di presentarla"
+                destinazioneEsperienza = .posizione(una.id)
+            } else {
+                let nomiIgnoti = ignoti.map { $0.cliente.nome }.joined(separator: ", ")
+                dettaglioEsperienza = "Spiega il prodotto prima di presentarlo: " + nomiIgnoti
+            }
+            elenco.append(Notifica(id: "esperienza-" + idProposte.joined(separator: ","),
+                                   gruppo: .daSistemare, app: .posizioni,
+                                   titolo: titoloEsperienza,
+                                   dettaglio: dettaglioEsperienza,
+                                   data: inizio, canale: una?.canale,
+                                   destinazione: destinazioneEsperienza))
         }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = !MotoreFineAnno.ultimiGiorni(oggi) ? [] : MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
@@ -252,6 +319,12 @@ extension StatoShell {
             portafoglio = true
             posizioneInDettaglio = nil
             ancoraPosizioni = "attenzioni"
+            apri(.posizioni)
+        } else if n.id.hasPrefix("seguito-") {
+            // Più proposte ferme: l'elenco «Proposte da riprendere» nel Portafoglio
+            portafoglio = true
+            posizioneInDettaglio = nil
+            ancoraPosizioni = "seguito"
             apri(.posizioni)
         } else if n.id.hasPrefix("ricontattare-") || n.id.hasPrefix("fineanno-") {
             // Più clienti da ricontattare o con spazio deducibile: l'elenco è nel Portafoglio

@@ -620,6 +620,9 @@ enum ProvaProspetti {
             }
         }
 
+        // Completezza dei dati: pagina e slide delle ipotesi stimate, sezione «Dati per l'analisi» del riesame
+        ProvaProspettiCompletezza.esegui(verifica, cartella: cartella)
+
         if errori == 0 {
             print("OK: prospetti verificati")
             return 0

@@ -70,6 +70,10 @@ final class DerivatiDati {
     var portafoglioComune: (ora: Int, valore: PortafoglioComune)?
     var portafoglio: (chiave: ChiavePortafoglio, valore: Portafoglio)?
     var documento: (chiave: ChiaveDocumento, valore: DocumentoStampabile?)?
+    /// Completezza dei dati per l'analisi, per cliente (StatoCompletezza.swift).
+    var completezze: [String: CompletezzaCliente] = [:]
+    /// Le proposte ferme, con l'ora del calcolo (StatoSeguito.swift).
+    var seguito: (ora: Int, valore: [PropostaInSospeso])?
     /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
     /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
     /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
@@ -100,6 +104,8 @@ final class DerivatiDati {
         portafoglioComune = nil
         portafoglio = nil
         documento = nil
+        completezze = [:]
+        seguito = nil
     }
 }
 

@@ -52,6 +52,10 @@ struct Cliente: Identifiable, Codable, Hashable {
     var consensi = Consensi()
     /// Profilo dei bisogni (dalla versione 7 dell'archivio).
     var bisogni = ProfiloBisogni()
+    /// Dati segnati dal consulente come «non pertinenti» per la completezza dell'analisi (dalla versione 21
+    /// dell'archivio). Chiave: `VoceCompletezza.id` (per esempio "lavoro", "costi:pos-…"); valore: quando è
+    /// stato segnato. nil = nessuno. Le chiavi che non corrispondono più a una voce si ignorano.
+    var datiNonPertinenti: [String: Date]?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -87,6 +91,7 @@ struct Cliente: Identifiable, Codable, Hashable {
     private enum CodingKeys: String, CodingKey {
         case id, nome, iniziali, tinta, tema, email, telefono, preferito, nota, creatoIl
         case dataNascita, codiceFiscale, professione, statoCivile, indirizzo, canali, famiglia, profilo, consensi, bisogni
+        case datiNonPertinenti
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -112,6 +117,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         profilo = try c.decodeIfPresent(ProfiloInvestitore.self, forKey: .profilo) ?? ProfiloInvestitore()
         consensi = try c.decodeIfPresent(Consensi.self, forKey: .consensi) ?? Consensi()
         bisogni = (try? c.decodeIfPresent(ProfiloBisogni.self, forKey: .bisogni)) ?? ProfiloBisogni()
+        // Dati non pertinenti (dalla versione 21): un valore malformato diventa nil e non fa scartare il cliente
+        datiNonPertinenti = try? c.decodeIfPresent([String: Date].self, forKey: .datiNonPertinenti)
     }
 }
 
@@ -294,6 +301,9 @@ struct ProfiloInvestitore: Codable, Hashable {
     var redditoNettoAnnuo: Double?
     /// Lavoro e contributi del cliente, per la pensione pubblica stimata con il contributivo.
     var lavoro: DatiLavoro?
+    /// Esperienza per tipo di prodotto e capacità di sostenere perdite (dalla versione 21 dell'archivio).
+    /// nil = mai compilata: nessun controllo sulle proposte (le prove di prima restano uguali).
+    var esperienzaProdotti: EsperienzaProdotti?
 
     /// Reddito lordo annuo da lavoro: quello del lavoro se indicato, altrimenti il reddito complessivo.
     var redditoDaLavoro: Double? { lavoro?.redditoLavoro ?? redditoLordoAnnuo }

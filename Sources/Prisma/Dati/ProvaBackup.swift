@@ -32,6 +32,29 @@ enum ProvaBackup {
             var salvata = RicercaSalvata(nome: "Scadenze Alleanza 2027", testo: "scade:2027 canale:alleanza")
             salvata.creataIl = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
             originale.impostazioni.ricercheSalvate = [salvata]
+            // Completezza dei dati (versione 21): un dato segnato come non pertinente
+            originale.clienti[0].datiNonPertinenti = ["lavoro": Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))]
+            // Seguito delle proposte (versione 21): un seguito con tutti i campi, una proposta rimandata, i giorni scelti
+            if let i = originale.posizioni.firstIndex(where: { $0.id == "pos-giulia-piano-previdenziale-integrativo" }) {
+                let adesso = Date()
+                var s = SeguitoProposta()
+                s.presentataIl = ValoriDaDocumento.mezzogiorno(adesso.addingTimeInterval(-30 * 86_400))
+                s.esitoIl = ValoriDaDocumento.mezzogiorno(adesso.addingTimeInterval(-10 * 86_400))
+                s.riprendereIl = ValoriDaDocumento.mezzogiorno(adesso.addingTimeInterval(60 * 86_400))
+                s.motivo = .tempi
+                s.nota = "prova"
+                s.attivitaId = "task-dati"
+                s.appuntamentoEsitoId = "event-giulia-previdenza"
+                originale.posizioni[i].seguito = s
+            }
+            if let i = originale.posizioni.firstIndex(where: { $0.id == "pos-andrea-piano-di-risparmio-rivalutabile" }) {
+                originale.posizioni[i].esito = .rimandata
+            }
+            originale.impostazioni.giorniSeguitoProposte = 30
+            // E gli orari di lavoro dell'agenda (nelle impostazioni)
+            originale.impostazioni.orari.giorni = [2, 3, 4]
+            originale.impostazioni.orari.margineMinuti = 30
+            originale.impostazioni.orari.pomeriggioAttivo = false
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
@@ -103,6 +126,34 @@ enum ProvaBackup {
                 print("ERRORE: i dati di rischio del Fondo Interno non tornano uguali dal backup")
                 return 1
             }
+            // Giro 3 (versione 21). Completezza: i dati non pertinenti
+            guard estratto.dati.clienti.first?.datiNonPertinenti?["lavoro"] != nil else {
+                print("ERRORE: i dati non pertinenti della completezza non tornano dal backup")
+                return 1
+            }
+            // Seguito delle proposte: il seguito pieno, i giorni scelti e la proposta rimandata
+            let pipGiulia = "pos-giulia-piano-previdenziale-integrativo", pianoAndrea = "pos-andrea-piano-di-risparmio-rivalutabile"
+            guard let seguitoEstratto = estratto.dati.posizioni.first(where: { $0.id == pipGiulia })?.seguito,
+                  seguitoEstratto == originale.posizioni.first(where: { $0.id == pipGiulia })?.seguito,
+                  seguitoEstratto.motivo == .tempi, seguitoEstratto.appuntamentoEsitoId == "event-giulia-previdenza",
+                  estratto.dati.impostazioni.giorniSeguitoProposte == 30,
+                  estratto.dati.posizioni.first(where: { $0.id == pianoAndrea })?.esito == .rimandata else {
+                print("ERRORE: il seguito delle proposte non torna uguale dal backup")
+                return 1
+            }
+            // Orari di lavoro dell'agenda
+            guard estratto.dati.impostazioni.orari == originale.impostazioni.orari, estratto.dati.impostazioni.orari.giorni == [2, 3, 4],
+                  estratto.dati.impostazioni.orari.margineMinuti == 30, !estratto.dati.impostazioni.orari.pomeriggioAttivo else {
+                print("ERRORE: gli orari di lavoro dell'agenda non tornano uguali dal backup")
+                return 1
+            }
+            // Esperienza per tipo di prodotto (versione 21): griglia e capacità di Giulia identiche dal backup
+            guard let g = estratto.dati.clienti.first(where: { $0.id == "giulia" })?.profilo.esperienzaProdotti,
+                  g == originale.clienti.first(where: { $0.id == "giulia" })?.profilo.esperienzaProdotti,
+                  g.voci.count == 7, g.capacitaPerdite == .limitata, g.voce(.previdenza).conosce == false else {
+                print("ERRORE: l'esperienza per tipo di prodotto non torna uguale dal backup")
+                return 1
+            }
             try GestoreBackup.sostituisci(cartellaDati: destinazione, con: estratto.cartella)
             let documento = try String(contentsOf: destinazione.appendingPathComponent("Documenti/prova.txt"), encoding: .utf8)
             guard documento == "documento di prova",
@@ -131,7 +182,9 @@ enum ProvaBackup {
                   letto.clienti.first?.bisogni == ProfiloBisogni(), letto.incontri.isEmpty, letto.prodotti.isEmpty, letto.obiettivi.isEmpty, letto.documenti.isEmpty, letto.valutazioni.isEmpty, letto.commenti.isEmpty, letto.spazi.isEmpty, letto.note.isEmpty,
                   letto.impostazioni.eve == ImpostazioniEve(), letto.impostazioni.nomeUtente == "Denis",
                   letto.impostazioni.aspetto == .automatico, letto.impostazioni.sfondoAnimato,
-                  letto.impostazioni.pioggia == .leggera, letto.impostazioni.ricercheSalvate.isEmpty else {
+                  letto.impostazioni.pioggia == .leggera, letto.impostazioni.ricercheSalvate.isEmpty,
+                  letto.impostazioni.orari == OrariLavoro(), letto.impostazioni.giorniSeguitoProposte == Impostazioni.giorniSeguitoPredefiniti,
+                  letto.clienti.first?.datiNonPertinenti == nil, letto.clienti.first?.profilo.esperienzaProdotti == nil else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }

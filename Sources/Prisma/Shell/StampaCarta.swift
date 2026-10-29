@@ -37,12 +37,15 @@ struct DocumentoStampabile {
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del check-up del primo incontro.
-    init(_ t: TestiCheckUp, report: Bool, commento: String? = nil) {
+    /// `ipotesi`: i dati da completare del cliente (completezza dei dati), dichiarati in una pagina del prospetto
+    /// e in una slide del report; `percentuale`: la completezza dei dati, scritta nella pagina del prospetto.
+    init(_ t: TestiCheckUp, report: Bool, commento: String? = nil, ipotesi: [VoceCompletezza] = [], percentuale: Int? = nil) {
         titolo = TestiCheckUp.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportCheckUp.pagine(t, commento: commento) : ProspettoCheckUp.pagine(t)
+        pagine = report ? ReportCheckUp.pagine(t, commento: commento, ipotesi: ipotesi)
+            : ProspettoCheckUp.pagine(t, ipotesi: ipotesi, percentuale: percentuale)
         tipo = report ? .report : .prospetto
     }
 
@@ -108,22 +111,26 @@ struct DocumentoStampabile {
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) della protezione della famiglia.
-    init(_ t: TestiProtezione, report: Bool, commento: String? = nil) {
+    /// `ipotesi` e `percentuale`: la completezza dei dati, come nel check-up.
+    init(_ t: TestiProtezione, report: Bool, commento: String? = nil, ipotesi: [VoceCompletezza] = [], percentuale: Int? = nil) {
         titolo = TestiProtezione.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportProtezione.pagine(t, commento: commento) : ProspettoProtezione.pagine(t)
+        pagine = report ? ReportProtezione.pagine(t, commento: commento, ipotesi: ipotesi)
+            : ProspettoProtezione.pagine(t, ipotesi: ipotesi, percentuale: percentuale)
         tipo = report ? .report : .prospetto
     }
 
     /// Il prospetto (A4 verticale) o il report (A4 orizzontale) del piano previdenziale.
-    init(_ t: TestiPrevidenza, report: Bool, commento: String? = nil) {
+    /// `ipotesi` e `percentuale`: la completezza dei dati, come nel check-up.
+    init(_ t: TestiPrevidenza, report: Bool, commento: String? = nil, ipotesi: [VoceCompletezza] = [], percentuale: Int? = nil) {
         titolo = TestiPrevidenza.titolo
         cliente = t.cliente
         genere = report ? "Report" : "Prospetto"
         formato = report ? Misure.Documento.report : Misure.Documento.prospetto
-        pagine = report ? ReportPrevidenza.pagine(t, commento: commento) : ProspettoPrevidenza.pagine(t)
+        pagine = report ? ReportPrevidenza.pagine(t, commento: commento, ipotesi: ipotesi)
+            : ProspettoPrevidenza.pagine(t, ipotesi: ipotesi, percentuale: percentuale)
         tipo = report ? .report : .prospetto
     }
 

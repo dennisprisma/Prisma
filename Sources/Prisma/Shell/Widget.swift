@@ -199,6 +199,8 @@ private struct CorpoWidgetAgenda: View, Equatable {
     let chiave: ChiaveVista
 
     nonisolated static func == (a: CorpoWidgetAgenda, b: CorpoWidgetAgenda) -> Bool { a.chiave == b.chiave }
+    /// Il Portafoglio si apre dalla riga delle proposte ferme.
+    @State private var origineSeguito = OrigineApertura()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -216,6 +218,8 @@ private struct CorpoWidgetAgenda: View, Equatable {
     private func giorno(_ oggi: Date) -> some View {
         let incontriOggi = stato.appuntamentiDiOggi.count
         let prossimo = stato.prossimiAppuntamenti.first { $0.inizio >= oggi }
+        // Le proposte ferme (cache oraria, leggera: niente motori del Portafoglio)
+        let ferme = stato.proposteInSospeso
         return VStack(alignment: .leading, spacing: 0) {
             Text(Formati.giornoSettimana.string(from: oggi).capitalized)
                 .font(Tema.Testo.Shell.giornoSettimana)
@@ -239,6 +243,24 @@ private struct CorpoWidgetAgenda: View, Equatable {
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, Tema.Misura.Shell.rigaTestoSpazio)
+            }
+            if !ferme.isEmpty {
+                // Le proposte che aspettano una risposta: il pannello «Proposte da riprendere» del Portafoglio
+                Button {
+                    stato.posizioneInDettaglio = nil
+                    stato.portafoglio = true
+                    stato.ancoraPosizioni = "seguito"
+                    stato.apriApp(.posizioni, da: origineSeguito.punto)
+                } label: {
+                    Text(TestiSeguito.aspettano(ferme.count))
+                        .font(Tema.Testo.Shell.riepilogoAgenda)
+                        .foregroundColor(ferme.contains { $0.urgente } ? Colori.Seguito.urgente : Colori.Seguito.ferma)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .buttonStyle(StileSemplice())
+                .misuraOrigine(origineSeguito)
+                .padding(.top, Tema.Misura.Shell.rigaTestoSpazio)
             }
         }
         .padding(Tema.Misura.Shell.colonnaGiornoMargine)

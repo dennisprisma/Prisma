@@ -137,9 +137,13 @@ struct DettaglioPosizione: View {
                     .help(posizione.stato == .proposta ? "Confronta la proposta con la posizione in essere" : "Confronta con una proposta o un'altra posizione")
             }
             if posizione.stato == .proposta {
-                Button("Segna come in essere") { stato.attivaProposta(posizione.id) }
+                // L'esito della proposta passa dal modulo: decorrenza, primo valore e versato veri (seguito delle proposte)
+                Button("Segna come in essere") { stato.apriEsito(posizione, passo: .accettata, origine: .posizioni) }
                     .buttonStyle(StileBlu())
-                    .help("La proposta è stata accettata: diventa una posizione in essere")
+                    .help("Chiede decorrenza, primo valore e versato prima di passarla in essere")
+                Button("Esito…") { stato.apriEsito(posizione, passo: .scelta, origine: .posizioni) }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .help("Rifiutata, rimandata o ancora in attesa")
             }
             if posizione.stato == .proposta, stato.prodotto(posizione.prodottoId)?.condizioni != nil {
                 Button("Valutazione") { stato.valutaPosizione(posizione) }
@@ -204,7 +208,10 @@ struct DettaglioPosizione: View {
                 if let c = p.capitaleAssicurato {
                     RigaDato("Capitale assicurato", Formati.euro(c) + (p.rischio.map { " · \($0.nome)" } ?? ""))
                 }
-                if p.stato == .proposta { RigaDato("Esito della proposta", p.esito?.nome ?? "Bozza") }
+                if p.stato == .proposta || p.esito == .accettata {
+                    RigaDato("Esito della proposta", TestiSeguito.esito(p, adesso: Date()))
+                }
+                if let n = p.seguito?.nota, !n.isEmpty { RigaDato("Nota sull'esito", n) }
                 RigaDato("Garanzie", p.garanzie)
                 RigaDato("Note", p.note)
             }
@@ -271,10 +278,10 @@ struct DettaglioPosizione: View {
                              larghezza: l)
                         .help("Per il profilo conta l'SRI della combinazione scelta, quello del KID; senza, la stima dalla volatilità combinata (solo rischio di mercato).")
                 }
-                // Le proposte oltre il profilo o l'orizzonte del cliente
+                // Le proposte oltre il profilo, l'orizzonte, l'esperienza o la capacità di perdita del cliente
                 ForEach(incoerenze) { i in
                     HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.MotoriPosizioni.spazioPillola) {
-                        Pillola(testo: i.tipo == .orizzonte ? "Orizzonte più lungo" : "Oltre il profilo", tono: .attenzione)
+                        Pillola(testo: i.tipo.pillola, tono: .attenzione)
                         Text(i.dettaglio)
                             .font(Tipo.kpiNota)
                             .foregroundColor(Colori.Analisi.tabellaTesto)

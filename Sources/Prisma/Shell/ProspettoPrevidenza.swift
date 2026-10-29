@@ -6,11 +6,14 @@ private typealias D = Misure.Documento
 /// Il prospetto del piano previdenziale: A4 verticale, per il consulente. Divario, piani alla pensione,
 /// vantaggio fiscale dei versamenti, aliquota della prestazione nel tempo, uscite anticipate, scenari.
 enum ProspettoPrevidenza {
-    static func pagine(_ t: TestiPrevidenza) -> [AnyView] {
+    /// `ipotesi`: i dati da completare del cliente; se ci sono, una pagina in fondo li dichiara
+    /// (prima della numerazione, così «pag. x di y» la conta). `percentuale`: la completezza dei dati.
+    static func pagine(_ t: TestiPrevidenza, ipotesi: [VoceCompletezza] = [], percentuale: Int? = nil) -> [AnyView] {
         var pagine: [AnyView] = [AnyView(PaginaDivario(t: t))]
         // La pensione pubblica stimata con il contributivo, se il cliente ha i dati del lavoro
         if let stima = t.e.stimaPensione { pagine.append(AnyView(PaginaPensioneStimata(t: t, s: stima))) }
         pagine += [AnyView(PaginaFiscoPrevidenza(t: t)), AnyView(PaginaProiezionePrevidenza(t: t))]
+        if !ipotesi.isEmpty { pagine.append(AnyView(PaginaIpotesiStimate(voci: ipotesi, percentuale: percentuale))) }
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiPrevidenza.avvertenza, numero: i + 1, totale: pagine.count) { p })
         }

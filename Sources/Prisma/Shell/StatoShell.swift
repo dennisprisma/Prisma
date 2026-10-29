@@ -79,6 +79,12 @@ final class StatoShell: ObservableObject {
     @Published var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     @Published var richiestaNuovoCliente = false
+    /// Completezza dei dati: chiede a Clienti o Posizioni di aprire il modulo su un campo (si consuma appena letta).
+    @Published var richiestaCompletamento: RichiestaCompletamento?
+    /// Completezza dei dati: il campo dell'Analisi 360 da evidenziare (si toglie lasciando quell'area).
+    @Published var fuocoAnalisi: FuocoAnalisi?
+    /// Seguito delle proposte: il modulo dell'esito da mostrare, con l'app che lo presenta.
+    @Published var richiestaEsito: RichiestaEsito?
     /// Contatti letti da un file, in attesa di conferma nell'anteprima della rubrica.
     @Published var importazione: ImportazioneClienti?
     /// Posizioni lette da un file, in attesa di conferma in Posizioni.
@@ -545,9 +551,13 @@ final class StatoShell: ObservableObject {
             // Il valore che cambia resta nello storico, per il resoconto
             var nuova = posizione
             nuova.registraValorePrecedente(dati.posizioni[i])
+            // Seguito delle proposte: date di presentazione e di esito quando cambia l'esito
+            MotoreSeguitoProposte.registraCambio(da: dati.posizioni[i], a: &nuova, adesso: Posizione.oggiArrotondato)
             dati.posizioni[i] = nuova
         } else {
-            dati.posizioni.append(posizione)
+            var nuova = posizione
+            MotoreSeguitoProposte.registraCambio(da: nil, a: &nuova, adesso: Posizione.oggiArrotondato)
+            dati.posizioni.append(nuova)
         }
     }
 
@@ -576,14 +586,11 @@ final class StatoShell: ObservableObject {
         dati.commenti.removeAll { $0.id.hasPrefix("sostituzione·") && $0.id.components(separatedBy: "·").contains(id) }
     }
 
-    /// Una proposta accettata diventa una posizione in essere.
+    /// Una proposta accettata diventa una posizione in essere, con i dati proposti dal seguito (decorrenza,
+    /// primo valore, versato). L'interfaccia apre il modulo dell'esito; questa resta per chi la chiama.
     func attivaProposta(_ id: String) {
-        guard let i = dati.posizioni.firstIndex(where: { $0.id == id }) else { return }
-        dati.posizioni[i].stato = .inEssere
-        dati.posizioni[i].esito = .accettata
-        if dati.posizioni[i].decorrenza == nil { dati.posizioni[i].decorrenza = Date() }
-        if dati.posizioni[i].totaleVersato == nil { dati.posizioni[i].totaleVersato = dati.posizioni[i].versamentoIniziale }
-        if dati.posizioni[i].controvalore == nil { dati.posizioni[i].controvalore = dati.posizioni[i].versamentoIniziale }
+        guard let p = dati.posizioni.first(where: { $0.id == id }) else { return }
+        chiudiProposta(id, .accettata(datiAccettazione(p, appuntamento: nil)), appuntamentoId: nil)
     }
 
     /// Apre una posizione nel dettaglio di Posizioni.
@@ -929,7 +936,10 @@ final class StatoShell: ObservableObject {
             return testiObiettivo(id).map { DocumentoStampabile($0, report: report, commento: testoCommento(scelta)) }
         }
         if case .checkUp(let report) = scelta {
-            return DocumentoStampabile(testiCheckUp(clienteAttivoId), report: report, commento: testoCommento(scelta))
+            // Le ipotesi stimate della completezza: pagina (prospetto) o slide (report) in più
+            let k = completezzaCliente(clienteAttivoId)
+            return DocumentoStampabile(testiCheckUp(clienteAttivoId), report: report, commento: testoCommento(scelta),
+                                       ipotesi: k?.ipotesi(per: .checkUp) ?? [], percentuale: k?.percentuale)
         }
         if case .liquidita(let report) = scelta {
             return DocumentoStampabile(testiLiquidita(clienteAttivoId), report: report, commento: testoCommento(scelta))
@@ -948,10 +958,16 @@ final class StatoShell: ObservableObject {
             return DocumentoStampabile(testiResistenza(clienteAttivoId), report: report, commento: testoCommento(scelta))
         }
         if case .protezione(let report) = scelta {
-            return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report, commento: testoCommento(scelta))
+            // Le ipotesi stimate della completezza: pagina (prospetto) o slide (report) in più
+            let k = completezzaCliente(clienteAttivoId)
+            return DocumentoStampabile(testiProtezione(clienteAttivoId), report: report, commento: testoCommento(scelta),
+                                       ipotesi: k?.ipotesi(per: .protezione) ?? [], percentuale: k?.percentuale)
         }
         if case .previdenza(let report) = scelta {
-            return DocumentoStampabile(testiPrevidenza(clienteAttivoId), report: report, commento: testoCommento(scelta))
+            // Le ipotesi stimate della completezza: pagina (prospetto) o slide (report) in più
+            let k = completezzaCliente(clienteAttivoId)
+            return DocumentoStampabile(testiPrevidenza(clienteAttivoId), report: report, commento: testoCommento(scelta),
+                                       ipotesi: k?.ipotesi(per: .previdenza) ?? [], percentuale: k?.percentuale)
         }
         if case .resoconto(let report) = scelta {
             return DocumentoStampabile(testiResoconto(clienteAttivoId), report: report, commento: testoCommento(scelta))
@@ -1432,6 +1448,8 @@ final class StatoShell: ObservableObject {
         }
         if let k = dati.appuntamenti.firstIndex(where: { $0.id == i.appuntamentoId }) {
             dati.appuntamenti[k].stato = .concluso
+            // Seguito delle proposte: Incontri chiede l'esito della proposta presentata
+            segnaConclusione(dati.appuntamenti[k].id, origine: .incontri)
         }
         i.stato = .concluso
         salvaIncontro(i)
@@ -1946,31 +1964,24 @@ final class StatoShell: ObservableObject {
         return a
     }
 
-    /// La bozza dell'incontro di riesame: un'ora, in ufficio, il primo giorno lavorativo tra una settimana,
-    /// con l'ordine del giorno nelle note. Si completa nel modulo dell'agenda.
+    /// La bozza dell'incontro di riesame: un'ora nel primo spazio libero degli orari di lavoro (da domani),
+    /// con canale e ordine del giorno nelle note. Si completa nel modulo dell'agenda.
     func bozzaRiesame(_ clienteId: String, oggi: Date = Date()) -> Appuntamento? {
-        guard let f = fonteEve(clienteId) else { return nil }
-        let r = MotoreRiesame.calcola(f)
-        let cal = Calendar.current
-        var giorno = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: oggi)) ?? oggi
-        while cal.isDateInWeekend(giorno) { giorno = cal.date(byAdding: .day, value: 1, to: giorno) ?? giorno }
-        var a = Appuntamento.nuovo(clienteId: clienteId, giorno: giorno)
-        a.titolo = "Riesame annuale"
-        a.tipo = .revisione
-        a.durataMinuti = 60
-        a.note = MotoreRiesame.agenda(r)
-        return a
+        pianificaRiesame(clienteId, oggi: oggi)?.appuntamento
     }
 
     func salvaAppuntamento(_ a: Appuntamento) {
         var x = a
         x.titolo = x.titolo.trimmingCharacters(in: .whitespacesAndNewlines)
         x.luogo = x.luogo.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Lo stato di prima: «Incontro concluso» acceso nel modulo chiede l'esito della proposta
+        let prima = dati.appuntamenti.first { $0.id == x.id }?.stato
         if let i = dati.appuntamenti.firstIndex(where: { $0.id == x.id }) {
             dati.appuntamenti[i] = x
         } else {
             dati.appuntamenti.append(x)
         }
+        if prima == .pianificato && x.stato == .concluso { segnaConclusione(x.id) }
         giornoAgenda = Calendar.current.startOfDay(for: x.inizio)
         appuntamentoSelezionato = x.id
         if filtroClienteAgenda != nil && filtroClienteAgenda != x.clienteId { filtroClienteAgenda = x.clienteId }
@@ -1988,6 +1999,8 @@ final class StatoShell: ObservableObject {
     func alternaConcluso(_ id: String) {
         guard let i = dati.appuntamenti.firstIndex(where: { $0.id == id }) else { return }
         dati.appuntamenti[i].stato = dati.appuntamenti[i].stato == .concluso ? .pianificato : .concluso
+        // Seguito delle proposte: la proposta presentata e l'eventuale ripresa completata
+        if dati.appuntamenti[i].stato == .concluso { segnaConclusione(id) }
     }
 
     // MARK: - Attività

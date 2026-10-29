@@ -8,6 +8,8 @@ struct ModuloAppuntamento: View {
     let nuovo: Bool
     let salva: (Appuntamento) -> Void
     let elimina: () -> Void
+    /// La riga in testa a «Quando e dove» (dopo «Pianifica» della striscia dei riesami); nil = nessuna.
+    var spiegazione: String? = nil
     @State var confermaEliminazione = false
 
     private var valido: Bool {
@@ -44,11 +46,20 @@ struct ModuloAppuntamento: View {
                     }
                 }
                 sezione("Quando e dove") {
+                    if let spiegazione {
+                        Text(spiegazione)
+                            .font(Tipo.kpiNota)
+                            .foregroundColor(Colori.Analisi.kpiNota)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     CampoModulo(etichetta: "Data e ora") {
-                        DatePicker("", selection: $bozza.inizio, displayedComponents: [.date, .hourAndMinute])
-                            .labelsHidden()
-                            .datePickerStyle(.field)
-                            .environment(\.locale, Formati.italiano)
+                        VStack(alignment: .leading, spacing: Misure.RiesamiAgenda.spazioRighe) {
+                            DatePicker("", selection: $bozza.inizio, displayedComponents: [.date, .hourAndMinute])
+                                .labelsHidden()
+                                .datePickerStyle(.field)
+                                .environment(\.locale, Formati.italiano)
+                            avvisiOrario
+                        }
                     }
                     CampoModulo(etichetta: "Durata") {
                         Stepper(value: $bozza.durataMinuti, in: 5...480, step: 5) {
@@ -114,6 +125,31 @@ struct ModuloAppuntamento: View {
             }
         } message: {
             Text("Le attività collegate restano nel tuo elenco. Se serve, potrai recuperarlo da un backup.")
+        }
+    }
+
+    /// Avvisi calcolati dal vivo a ogni cambio della bozza, per qualunque appuntamento: si sovrappone a un altro
+    /// (di qualunque cliente) o cade fuori dagli orari di lavoro. Avvisano soltanto: si può salvare lo stesso.
+    @ViewBuilder private var avvisiOrario: some View {
+        let accavallati = MotorePianificazione.sovrapposti(bozza, in: stato.dati.appuntamenti)
+        let orari = stato.dati.impostazioni.orari
+        if let primo = accavallati.first {
+            // In modalità cliente il nome di un altro cliente non compare
+            let nome = stato.cliente(primo.clienteId)?.nome ?? "un altro cliente"
+            let altri = accavallati.count - 1
+            let orario = "\(Formati.ora.string(from: primo.inizio))–\(Formati.ora.string(from: primo.fine))"
+            let seguito: String = altri > 0 ? " e ad altri \(altri)" : ""
+            let avviso: String = "⚠︎ Si sovrappone a «\(primo.titolo)» con \(nome) (\(orario))" + seguito
+            Text(avviso)
+                .font(Tipo.kpiNota)
+                .foregroundColor(Colori.Analisi.attenzioneTesto)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if MotorePianificazione.fuoriOrario(bozza, orari: orari) {
+            Text("Fuori dagli orari di lavoro (\(orari.descrizione))")
+                .font(Tipo.kpiNota)
+                .foregroundColor(Colori.Analisi.kpiNota)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

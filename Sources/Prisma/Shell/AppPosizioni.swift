@@ -13,6 +13,8 @@ struct AppPosizioni: View {
     @State var modulo: Posizione?
     /// L'appuntamento da fissare per un cliente da ricontattare (dal Portafoglio).
     @State var moduloAppuntamento: Appuntamento?
+    /// Il campo su cui si apre il modulo della posizione (completezza dei dati); si toglie alla chiusura.
+    @State var fuocoPosizione: FuocoModulo?
 
     static let opzioniCanale: [(Canale?, String)] = [(nil, "Tutti"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")]
 
@@ -68,8 +70,15 @@ struct AppPosizioni: View {
         // La scheda del tema: angoli tondi e filo da 0,5 pt (il contenuto si taglia prima del contorno)
         .clipShape(forma)
         .overlay { forma.strokeBorder(Colori.Analisi.kpiBordo, lineWidth: Tema.Misura.filo).allowsHitTesting(false) }
-        .sheet(item: $modulo) { p in
+        .sheet(item: $modulo, onDismiss: { fuocoPosizione = nil }) { p in
             ModuloPosizione(bozza: p, nuova: !stato.posizioni.contains { $0.id == p.id }) { stato.salvaPosizione($0) }
+                .environment(\.fuocoModulo, fuocoPosizione)
+        }
+        // L'esito di una proposta (dettaglio e Portafoglio): solo le richieste di Posizioni, così Incontri aperto
+        // insieme non lo presenta una seconda volta
+        .sheet(item: richiestaEsitoPosizioni) { r in
+            ModuloEsitoProposta(richiesta: r)
+                .environmentObject(stato)
         }
         .sheet(item: $stato.importazionePosizioni) { i in
             ModuloImportaPosizioni(importazione: i)
@@ -82,8 +91,12 @@ struct AppPosizioni: View {
             }, elimina: {})
             .environmentObject(stato)
         }
-        .onAppear { controllaRichiesta(stato.richiestaNuovaPosizione) }
+        .onAppear {
+            controllaRichiesta(stato.richiestaNuovaPosizione)
+            controllaCompletamento(stato.richiestaCompletamento)
+        }
         .onChange(of: stato.richiestaNuovaPosizione) { controllaRichiesta($0) }
+        .onChange(of: stato.richiestaCompletamento) { controllaCompletamento($0) }
         .onChange(of: stato.clienteAttivoId) { _ in stato.posizioneInDettaglio = nil }
         // Entrando nel portafoglio si chiude il dettaglio; uscendo no (apriPosizione lo sta aprendo)
         .onChange(of: stato.portafoglio) { if $0 { stato.posizioneInDettaglio = nil } }
@@ -98,6 +111,26 @@ struct AppPosizioni: View {
         var p = Posizione(clienteId: stato.clienteAttivoId, canale: canale, stato: richiesta, area: area ?? .investimento, nome: "")
         if richiesta == .proposta { p.esito = .bozza }
         modulo = p
+    }
+
+    /// La richiesta dell'esito solo se viene da Posizioni (quelle di Incontri le presenta Incontri).
+    private var richiestaEsitoPosizioni: Binding<RichiestaEsito?> {
+        Binding<RichiestaEsito?>(
+            get: {
+                guard let r = stato.richiestaEsito, r.origine == .posizioni else { return nil }
+                return r
+            },
+            set: { stato.richiestaEsito = $0 }
+        )
+    }
+
+    /// Completezza dei dati: apre il modulo della posizione sul campo che manca (le altre richieste sono di Clienti).
+    private func controllaCompletamento(_ richiesta: RichiestaCompletamento?) {
+        guard let richiesta, case .posizione(let id, let campo) = richiesta.destinazione else { return }
+        stato.richiestaCompletamento = nil
+        stato.portafoglio = false
+        fuocoPosizione = FuocoModulo(campo: campo)
+        modulo = stato.posizioni.first { $0.id == id }
     }
 
     // MARK: - Elenco laterale
@@ -216,8 +249,8 @@ struct AppPosizioni: View {
                     .equatable()
             }
             // Solo le ancore del portafoglio: quelle del dossier le consuma la vista del cliente
-            .onAppear { if stato.ancoraPosizioni == "attenzioni" { scorri(lettore) } }
-            .onChange(of: stato.ancoraPosizioni) { a in if a == "attenzioni" { scorri(lettore) } }
+            .onAppear { if AppPosizioni.ancorePortafoglio.contains(stato.ancoraPosizioni ?? "") { scorri(lettore) } }
+            .onChange(of: stato.ancoraPosizioni) { a in if AppPosizioni.ancorePortafoglio.contains(a ?? "") { scorri(lettore) } }
         }
     }
 
@@ -291,6 +324,9 @@ struct AppPosizioni: View {
             .onChange(of: stato.ancoraPosizioni) { _ in scorri(lettore) }
         }
     }
+
+    /// Le ancore del Portafoglio: le cose da sistemare nei dossier e le proposte da riprendere.
+    static let ancorePortafoglio: Set<String> = ["attenzioni", "seguito"]
 
     /// Porta in vista il pannello chiesto (dalla colonna o da un'istantanea), poi dimentica l'ancora.
     func scorri(_ lettore: ScrollViewProxy) {
@@ -521,11 +557,20 @@ struct TabellaPosizioni: View {
 struct PillolaStato: View {
     let posizione: Posizione
 
+    /// Rifiutata in rosso, rimandata in ambra, le altre neutre.
+    private var tonoProposta: Pillola.Tono {
+        switch posizione.esito {
+        case .rifiutata?: return .errore
+        case .rimandata?: return .attenzione
+        default: return .neutro
+        }
+    }
+
     var body: some View {
         let p = posizione
         switch p.stato {
         case .proposta:
-            Pillola(testo: "Proposta · \(p.esito?.nome ?? "Bozza")", tono: p.esito == .rifiutata ? .errore : .neutro)
+            Pillola(testo: "Proposta · \(p.esito?.nome ?? "Bozza")", tono: tonoProposta)
         case .chiusa:
             Pillola(testo: "Chiusa", tono: .neutro)
         case .inEssere:

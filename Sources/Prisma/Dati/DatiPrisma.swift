@@ -48,7 +48,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 18: note del taccuino.
     /// 19: data del valore e totale versato tra i dati letti dai documenti (estratti conto).
     /// 20: multiramo a due parti (rendimento, costi e rischio della gestione separata e dei fondi, ribilanciamento) nelle posizioni e nelle schede prodotto; dati di rischio delle parti nelle condizioni.
-    static let versioneAttuale = 20
+    /// 21: seguito delle proposte (esito «rimandata», giorni del seguito); dati non pertinenti per la completezza; orari di lavoro dell'agenda; esperienza per tipo di prodotto e capacità di sostenere perdite.
+    static let versioneAttuale = 21
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
@@ -138,12 +139,17 @@ struct Impostazioni: Codable, Equatable {
     var promemoria = ImpostazioniPromemoria()
     /// Le ricerche salvate dal pannello ⌘K (le più recenti prima).
     var ricercheSalvate: [RicercaSalvata] = []
+    /// Dopo quanti giorni una proposta presentata, senza appuntamento in agenda, torna tra le cose da recuperare
+    /// (dalla versione 21; si sceglie tra `Impostazioni.sceltaGiorniSeguito`).
+    var giorniSeguitoProposte = Impostazioni.giorniSeguitoPredefiniti
+    /// Orari di lavoro dell'agenda: dove «Pianifica» cerca lo spazio libero (dalla versione 21).
+    var orari = OrariLavoro()
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
-        case promemoria, ricercheSalvate
+        case promemoria, ricercheSalvate, giorniSeguitoProposte, orari
     }
 
     init(from decoder: Decoder) throws {
@@ -165,6 +171,11 @@ struct Impostazioni: Codable, Equatable {
         promemoria = (try? c.decodeIfPresent(ImpostazioniPromemoria.self, forKey: .promemoria)) ?? ImpostazioniPromemoria()
         // Ricerche salvate: gli archivi di prima non le hanno
         ricercheSalvate = (try? c.decodeIfPresent([RicercaSalvata].self, forKey: .ricercheSalvate)) ?? []
+        // Giorni del seguito delle proposte: gli archivi di prima non li hanno, un valore fuori scelta torna al predefinito
+        let giorni = (try? c.decodeIfPresent(Int.self, forKey: .giorniSeguitoProposte)) ?? Impostazioni.giorniSeguitoPredefiniti
+        giorniSeguitoProposte = Impostazioni.sceltaGiorniSeguito.contains(giorni) ? giorni : Impostazioni.giorniSeguitoPredefiniti
+        // Orari di lavoro: gli archivi di prima non li hanno
+        orari = (try? c.decodeIfPresent(OrariLavoro.self, forKey: .orari)) ?? OrariLavoro()
     }
 }
 

@@ -5,9 +5,13 @@ private typealias D = Misure.Documento
 
 /// Il report del check-up del primo incontro: A4 orizzontale, per il cliente.
 enum ReportCheckUp {
-    static func pagine(_ t: TestiCheckUp, commento: String? = nil) -> [AnyView] {
-        let slide: [AnyView] = [AnyView(SlideChiSei(t: t)), AnyView(SlideFotografia(t: t)), AnyView(SlideSemaforo(t: t)),
-                                AnyView(SlidePartire(t: t)), AnyView(SlideSintesiCheckUp(t: t))]
+    /// `ipotesi`: i dati da completare del cliente; quelli con il testo per il cliente vanno nella slide
+    /// «Le ipotesi da confermare insieme», subito prima della sintesi.
+    static func pagine(_ t: TestiCheckUp, commento: String? = nil, ipotesi: [VoceCompletezza] = []) -> [AnyView] {
+        var slide: [AnyView] = [AnyView(SlideChiSei(t: t)), AnyView(SlideFotografia(t: t)), AnyView(SlideSemaforo(t: t)),
+                                AnyView(SlidePartire(t: t))]
+        slide += SlideIpotesiStimate.slide(ipotesi)
+        slide.append(AnyView(SlideSintesiCheckUp(t: t)))
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiCheckUp.titolo) · \(t.cliente)",
                                      lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }
