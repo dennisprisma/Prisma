@@ -29,6 +29,7 @@ enum DatiDemo {
                     creatoIl: data(-14)),
         ]
         completa(&elenco)
+        completaConformita(&elenco)
         return elenco
     }
 

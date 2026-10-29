@@ -79,6 +79,7 @@ enum ClientiFittizi {
             c.bisogni.eventi = [EventoVita(id: "evento-\(id)", tipo: e.tipo, anno: annoCorrente + e.traAnni, nota: e.nota)]
         }
         c.bisogni.aggiornatoIl = giorno(-60 + indice)
+        completaConformita(&c, indice: indice)
         return c
     }
 

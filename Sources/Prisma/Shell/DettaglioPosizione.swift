@@ -65,6 +65,10 @@ struct DettaglioPosizione: View {
                                 .frame(width: 320, alignment: .leading)
                             }
                         }
+                        // La scheda di adeguatezza della proposta (giro 4): controlli, documenti, PDF da firmare
+                        if MotoreAdeguatezza.pertinente(p, scheda: stato.schedaAdeguatezza(p.id)) {
+                            PannelloAdeguatezza(posizione: p).id("dettaglio-adeguatezza")
+                        }
                         if let a = andamentoPosizione {
                             andamento(a, voce: voce).id("dettaglio-andamento")
                         }
@@ -149,6 +153,11 @@ struct DettaglioPosizione: View {
                 Button("Valutazione") { stato.valutaPosizione(posizione) }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                     .help("Prospetto e report di riscatto: incassi netti anno per anno in tre scenari")
+            }
+            if MotoreAdeguatezza.pertinente(posizione, scheda: stato.schedaAdeguatezza(posizione.id)) {
+                Button("Adeguatezza") { stato.ancoraPosizioni = "dettaglio-adeguatezza" }
+                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .help("La scheda di adeguatezza: controlli a semaforo, documenti da consegnare, PDF da firmare")
             }
             Button("Prospetto") { stato.apriProspetto(.posizione(posizione.id)) }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))

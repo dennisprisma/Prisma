@@ -74,6 +74,10 @@ final class DerivatiDati {
     var completezze: [String: CompletezzaCliente] = [:]
     /// Le proposte ferme, con l'ora del calcolo (StatoSeguito.swift).
     var seguito: (ora: Int, valore: [PropostaInSospeso])?
+    /// Le scadenze di conformità («In regola»), per cliente (StatoConformita.swift).
+    var conformita: [String: EsitoConformita] = [:]
+    /// Le occasioni per intervallo di date e filtro (AgendaOccasioni.swift).
+    var occasioni: [ChiaveOccasioni: [Occasione]] = [:]
     /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
     /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
     /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
@@ -106,6 +110,8 @@ final class DerivatiDati {
         documento = nil
         completezze = [:]
         seguito = nil
+        conformita = [:]
+        occasioni = [:]
     }
 }
 
@@ -213,7 +219,7 @@ extension StatoShell {
             d.riesami = [:]
         }
         if let memorizzato = d.riesami[id] { return memorizzato }
-        let r = fonteEve(id).map(MotoreRiesame.calcola)
+        let r = fonteEve(id).map { MotoreRiesame.calcola($0, conformita: conformitaCliente(id), occasioni: occasioniRiesame(id)) }
         d.riesami[id] = .some(r)
         return r
     }
@@ -302,6 +308,9 @@ extension DatiPrisma {
         b.impostazioni.backup = a.impostazioni.backup
         b.impostazioni.promemoria = a.impostazioni.promemoria
         b.impostazioni.eve = a.impostazioni.eve
+        // Le schede di adeguatezza e l'elenco dei documenti da consegnare non entrano in nessun calcolo in cache
+        a.schedeAdeguatezza = []; b.schedeAdeguatezza = []
+        b.impostazioni.consegna = a.impostazioni.consegna
         return a == b
     }
 }

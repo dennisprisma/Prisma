@@ -55,6 +55,33 @@ enum ProvaBackup {
             originale.impostazioni.orari.giorni = [2, 3, 4]
             originale.impostazioni.orari.margineMinuti = 30
             originale.impostazioni.orari.pomeriggioAttivo = false
+            // Giro 4 (versione 22). Scheda di adeguatezza della PIP di Giulia, firmata, e l'elenco dei documenti cambiato
+            let secondo = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
+            var schedaPIP = SchedaAdeguatezza(posizioneId: "pos-giulia-piano-previdenziale-integrativo", clienteId: "giulia", creataIl: secondo)
+            schedaPIP.areaBisogno = .pensione
+            schedaPIP.fonte = .nuoviRisparmi
+            schedaPIP.motivazione = "Avvio della previdenza integrativa con versamenti mensili dal reddito."
+            schedaPIP.consegne = [ConsegnaDocumento(voceId: "all-allegato3", consegnatoIl: secondo),
+                                  ConsegnaDocumento(voceId: "all-pip-chiave", consegnatoIl: secondo)]
+            schedaPIP.nonPertinenti = ["all-condizioni"]
+            schedaPIP.aggiornataIl = secondo
+            schedaPIP.firmataIl = secondo
+            schedaPIP.esitiAllaFirma = [EsitoRegistrato(controllo: "rischio", semaforo: "verde", esito: "SRI 2 su 7."),
+                                        EsitoRegistrato(controllo: "bisogno", semaforo: "verde", esito: "Risponde all'area «Pensione».")]
+            originale.schedeAdeguatezza = [schedaPIP]
+            originale.impostazioni.consegna.voci.append(VoceDocumento(id: "voce-prova", canale: .indipendente, titolo: "Documento di prova",
+                                                                      perTipo: .previdenza, soloSostituzione: true))
+            if let k = originale.impostazioni.consegna.voci.firstIndex(where: { $0.id == "all-kid" }) {
+                originale.impostazioni.consegna.voci[k].attiva = false
+            }
+            // Scadenze di conformità: regole cambiate (la chiave non sintetizzata di Impostazioni è provata dal confronto)
+            originale.impostazioni.conformita.mesiVerificaAlto = 6
+            originale.impostazioni.conformita.informativaAggiornataIl = AiutiProva.data(2026, 6, 1)
+            // Calendario delle occasioni: impostazioni e promemoria cambiati
+            originale.impostazioni.occasioni.anticipoGiorni = 60
+            originale.impostazioni.occasioni.tipiSpenti = [.ricorrenzaGestione]
+            originale.impostazioni.occasioni.etaLimiteLTC = 75
+            originale.impostazioni.promemoria.occasioni = false
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
@@ -154,6 +181,29 @@ enum ProvaBackup {
                 print("ERRORE: l'esperienza per tipo di prodotto non torna uguale dal backup")
                 return 1
             }
+            // Giro 4 (versione 22). Scheda di adeguatezza ed elenco dei documenti da consegnare
+            guard let s = estratto.dati.schedeAdeguatezza.first, s.consegne.count == 2, s.firmataIl != nil,
+                  s.esitiAllaFirma?.count == 2, s.areaBisogno == .pensione,
+                  estratto.dati.impostazioni.consegna.voci.contains(where: { $0.id == "voce-prova" && $0.soloSostituzione }),
+                  estratto.dati.impostazioni.consegna.voci.first(where: { $0.id == "all-kid" })?.attiva == false else {
+                print("ERRORE: la scheda di adeguatezza o l'elenco dei documenti non tornano uguali dal backup")
+                return 1
+            }
+            // Scadenze di conformità di Giulia e regole
+            guard let gc = estratto.dati.clienti.first(where: { $0.id == "giulia" }),
+                  gc.conformita?.questionarioAlleanza?.compilatoIl != nil, gc.conformita?.documento?.numero == "CA12345AB",
+                  gc.conformita?.verificaIndipendente?.rischio == .basso, gc.consensi.dataMarketing != nil,
+                  estratto.dati.impostazioni.conformita.mesiVerificaAlto == 6 else {
+                print("ERRORE: le scadenze di conformità non tornano uguali dal backup")
+                return 1
+            }
+            // Calendario delle occasioni
+            guard estratto.dati.impostazioni.occasioni == originale.impostazioni.occasioni,
+                  estratto.dati.impostazioni.occasioni.tipiSpenti == [.ricorrenzaGestione],
+                  !estratto.dati.impostazioni.promemoria.occasioni else {
+                print("ERRORE: le impostazioni delle occasioni non tornano uguali dal backup")
+                return 1
+            }
             try GestoreBackup.sostituisci(cartellaDati: destinazione, con: estratto.cartella)
             let documento = try String(contentsOf: destinazione.appendingPathComponent("Documenti/prova.txt"), encoding: .utf8)
             guard documento == "documento di prova",
@@ -184,7 +234,11 @@ enum ProvaBackup {
                   letto.impostazioni.aspetto == .automatico, letto.impostazioni.sfondoAnimato,
                   letto.impostazioni.pioggia == .leggera, letto.impostazioni.ricercheSalvate.isEmpty,
                   letto.impostazioni.orari == OrariLavoro(), letto.impostazioni.giorniSeguitoProposte == Impostazioni.giorniSeguitoPredefiniti,
-                  letto.clienti.first?.datiNonPertinenti == nil, letto.clienti.first?.profilo.esperienzaProdotti == nil else {
+                  letto.clienti.first?.datiNonPertinenti == nil, letto.clienti.first?.profilo.esperienzaProdotti == nil,
+                  letto.schedeAdeguatezza.isEmpty, letto.impostazioni.consegna == ImpostazioniConsegna(),
+                  letto.clienti.first?.conformita == nil, letto.clienti.first?.consensi.dataMarketing == nil,
+                  letto.impostazioni.conformita == RegoleConformita(), letto.impostazioni.occasioni == ImpostazioniOccasioni(),
+                  letto.impostazioni.promemoria.occasioni else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }

@@ -434,6 +434,6 @@ enum ProvaCalcoliMultiramo {
         let conTrattenuto = (try? JSONSerialization.data(withJSONObject: oggetto)).flatMap { try? Archivio.decodificatore.decode(Posizione.self, from: $0) }
         verifica.vero("M11 Archivio 19 con il trattenuto: divisa", conTrattenuto?.multiramoDivisa == true)
         verifica("M11 Archivio 19 con il trattenuto: costo complessivo 0,4 × 1,3 + 0,6 × 1,8", conTrattenuto?.costoComplessivo ?? -1, 1.6, tolleranza: 0.0001)
-        verifica("M11 Archivio: versione 21", Double(DatiPrisma.versioneAttuale), 21)
+        verifica("M11 Archivio: versione 22", Double(DatiPrisma.versioneAttuale), 22)
     }
 }

@@ -409,10 +409,24 @@ enum MotoreRicerca {
                                      ("Contratto", p.numeroContratto), ("Note", p.note)])
         }
         let filtriClienti = r.filtriClienti.map(\.descrizione).joined(separator: " · ")
-        let candidatiClienti = filtrati.clienti.map { c in
-            Candidato(risultato: RisultatoRicerca(destinazione: .cliente(c.id), gruppo: .clienti, titolo: c.nome, dettaglio: c.tema,
-                                                  estratto: filtriClienti.isEmpty ? nil : filtriClienti),
-                      campi: [("Progetto", c.tema), ("Professione", c.professione), ("Nota", c.nota)])
+        // Con «conformita:» l'estratto del cliente sono le sue voci da sistemare (le prime due), con il canale se è uno solo;
+        // con «canale:» contano solo le voci di quel canale e quelle comuni
+        let filtroConf = r.filtriClienti.compactMap { f -> FiltroConformita? in
+            if case .conformita(let x) = f { return x } else { return nil }
+        }.first
+        let canaleScritto = FiltriRicerca.canaleDelFiltro(r)
+        let candidatiClienti = filtrati.clienti.map { c -> Candidato in
+            var estratto: String? = filtriClienti.isEmpty ? nil : filtriClienti
+            var canaleEstratto: Canale?
+            if let f = filtroConf, let e = filtrati.conformita[c.id],
+               let testo = TestiConformita.estrattoRicerca(e, filtro: f, canale: canaleScritto) {
+                estratto = testo
+                let canali = Set(MotoreConformita.vociFiltro(e, f, canale: canaleScritto).prefix(2).map(\.canale))
+                if canali.count == 1, let unico = canali.first { canaleEstratto = unico }
+            }
+            return Candidato(risultato: RisultatoRicerca(destinazione: .cliente(c.id), gruppo: .clienti, titolo: c.nome, dettaglio: c.tema,
+                                                         estratto: estratto, canale: canaleEstratto),
+                             campi: [("Progetto", c.tema), ("Professione", c.professione), ("Nota", c.nota)])
         }
         // Con le parole il nome trovato non si ripete come estratto: l'estratto dei filtri resta
         func conEstratto(_ s: SezioneRicerca?, _ originali: [Candidato]) -> SezioneRicerca? {

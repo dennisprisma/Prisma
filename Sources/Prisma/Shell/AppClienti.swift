@@ -144,6 +144,7 @@ struct AppClienti: View {
                         case .anagrafica: anagrafica(c)
                         case .famiglia: famiglia(c)
                         case .profilo: profilo(c)
+                        case .inRegola: InRegolaCliente(cliente: c)
                         case .note: note(c)
                         }
                     }
@@ -272,7 +273,9 @@ struct AppClienti: View {
                 RigaCampo(etichetta: "Privacy", valore: c.consensi.privacy
                           ? "Sì" + (c.consensi.dataPrivacy.map { ", dal \(Formati.dataEstesa.string(from: $0))" } ?? "")
                           : "Non raccolto")
-                RigaCampo(etichetta: "Comunicazioni commerciali", valore: c.consensi.marketing ? "Sì" : "No")
+                RigaCampo(etichetta: "Comunicazioni commerciali", valore: c.consensi.marketing
+                          ? "Sì" + (c.consensi.dataMarketing.map { ", dal \(Formati.dataEstesa.string(from: $0))" } ?? "")
+                          : "No")
             }
             Text("Il profilo orienta le analisi di Posizioni. Non sostituisce i questionari di adeguatezza ufficiali.")
                 .font(Tipo.rubricaTema)
@@ -548,6 +551,7 @@ struct PanoramicaCliente: View {
                 }
             }
             riesame
+            RiquadroInRegola(clienteId: cliente.id)
             OcchielloSezione(titolo: "Il dossier collegato")
             LazyVGrid(columns: [GridItem(.adaptive(minimum: Misure.Rubrica.schedaAppMinima), spacing: 8)], spacing: 8) {
                 collegamento(.posizioni, "In essere e in proposta")

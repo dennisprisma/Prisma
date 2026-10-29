@@ -3,10 +3,12 @@ import Foundation
 /// Il riesame annuale di un cliente: tutto ciò che serve per preparare l'incontro di revisione,
 /// ricavato dai motori di Prisma. Com'è andata ogni posizione rispetto all'atteso, cosa scade, gli
 /// obiettivi, le aree del check-up da rivedere, le proposte rimaste aperte, i dati da aggiornare;
-/// da qui l'ordine del giorno dell'incontro e le domande da fare.
+/// da qui l'ordine del giorno dell'incontro e le domande da fare. Dalla Shell arrivano anche le scadenze
+/// di conformità («In regola») e le occasioni dei prossimi 12 mesi; Eve chiama il calcolo senza.
 struct Riesame {
     enum Tema: Int, CaseIterable {
-        case posizioni, scadenze, protezione, obiettivi, proposte, rischio, costi, famiglia, fisco, dati
+        // I casi nuovi vanno in fondo: l'ordine dei temi esistenti non cambia
+        case posizioni, scadenze, protezione, obiettivi, proposte, rischio, costi, famiglia, fisco, dati, conformita, occasioni
 
         var nome: String {
             switch self {
@@ -20,6 +22,8 @@ struct Riesame {
             case .famiglia: return "Famiglia"
             case .fisco: return "Fisco"
             case .dati: return "Dati"
+            case .conformita: return "In regola"
+            case .occasioni: return "Occasioni"
             }
         }
     }
@@ -69,6 +73,10 @@ struct Riesame {
     let fineAnno: FineAnno
     let punti: [Punto]
     let domande: [String]
+    /// Le scadenze di conformità del cliente (nil quando il calcolo non le riceve, come per Eve).
+    var conformita: EsitoConformita? = nil
+    /// Le occasioni ricevute dal calcolo (vuote per Eve); il prospetto ne mostra quelle dei prossimi 12 mesi.
+    var occasioni: [Occasione] = []
 
     /// Mesi dall'ultimo contatto (nil se non ce ne sono).
     var mesiDallUltimo: Int? {
@@ -125,7 +133,9 @@ enum MotoreRiesame {
     /// Una scadenza così vicina va affrontata subito.
     static let mesiScadenzaVicina = 6
 
-    static func calcola(_ f: FonteEve) -> Riesame {
+    /// Il riesame di oggi. Senza `conformita` e `occasioni` (come lo chiama Eve) è identico a quello di sempre;
+    /// la Shell passa l'esito «In regola» del cliente e le sue occasioni dei prossimi 12 mesi.
+    static func calcola(_ f: FonteEve, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil) -> Riesame {
         let cal = Calendar.current
         let oggi = f.oggi
         let inizio = cal.startOfDay(for: oggi)
@@ -273,6 +283,8 @@ enum MotoreRiesame {
                                dettaglio: f.cliente.bisogni.aggiornatoIl.map { "Rilevato il \(data($0)): priorità ed eventi di vita sono ancora quelli?" } ?? "Non ancora rilevato: si compila nella scheda Bisogni del cliente.",
                                priorita: .bassa))
         }
+        if let e = conformita { punti += puntiConformita(e) }
+        if let o = occasioni { punti += MotoreOccasioni.puntiRiesame(o, oggi: oggi) }
         punti.sort { $0.priorita != $1.priorita ? $0.priorita < $1.priorita : $0.tema.rawValue < $1.tema.rawValue }
 
         // Le domande da fare
@@ -298,11 +310,99 @@ enum MotoreRiesame {
         if !successione.daSistemare.isEmpty || successione.conviventeEscluso != nil {
             domande.append("Chi vorrebbe che ricevesse il capitale delle sue polizze, se venisse a mancare?")
         }
+        if let e = conformita { domande += domandeConformita(e) }
+        if let o = occasioni { domande += MotoreOccasioni.domandeRiesame(o, oggi: oggi) }
 
         return Riesame(cliente: f.cliente, oggi: oggi, ultimoContatto: passati.max(), prossimo: prossimo,
                        andamenti: andamenti, senzaStorico: senzaStorico, valoriDaAggiornare: valoriDaAggiornare,
                        scadenze: scadenze, proposte: proposte, obiettivi: obiettivi, checkUp: checkUp,
-                       attivitaAperte: attivita, fineAnno: fisco, punti: punti, domande: domande)
+                       attivitaAperte: attivita, fineAnno: fisco, punti: punti, domande: domande,
+                       conformita: conformita, occasioni: occasioni ?? [])
+    }
+
+    // MARK: - In regola: scadenze di conformità
+
+    /// I punti dell'ordine del giorno dalle scadenze di conformità: uno per voce scaduta (alta), in scadenza
+    /// entro 30 giorni (media) o entro 60 (bassa); le voci mancanti in un punto solo (bassa).
+    static func puntiConformita(_ e: EsitoConformita) -> [Riesame.Punto] {
+        var punti: [Riesame.Punto] = []
+        for v in e.scadute {
+            let titolo: String
+            switch v.tipo {
+            case .privacy: titolo = "Informativa privacy da riconsegnare"
+            case .commerciale: titolo = "Consenso commerciale da riconfermare"
+            default: titolo = "\(nomeConformita(v)) da rinnovare"
+            }
+            punti.append(.init(tema: .conformita, titolo: titolo,
+                               dettaglio: fraseConformita(v, e) + azioneScaduta(v.tipo),
+                               priorita: .alta, canale: v.canale))
+        }
+        for (voci, priorita) in [(e.entro30, Riesame.Priorita.media), (e.entro60, Riesame.Priorita.bassa)] {
+            for v in voci {
+                punti.append(.init(tema: .conformita, titolo: "\(nomeConformita(v)) in scadenza",
+                                   dettaglio: fraseConformita(v, e) + " Conviene rinnovarl\(TestiConformita.femminile(v.tipo) ? "a" : "o") in questo incontro.",
+                                   priorita: priorita, canale: v.canale))
+            }
+        }
+        let mancanti = e.mancanti
+        if !mancanti.isEmpty {
+            // Il canale comune a tutte le voci mancanti, se c'è (le voci comuni non hanno canale)
+            let canali = Set(mancanti.map(\.canale))
+            punti.append(.init(tema: .conformita, titolo: "Dati di conformità da registrare",
+                               dettaglio: "Non registrati in Prisma: " + mancanti.map { TestiConformita.nomeBreve($0.tipo) }.joined(separator: ", ") + ".",
+                               priorita: .bassa, canale: canali.count == 1 ? mancanti.first?.canale : nil))
+        }
+        return punti
+    }
+
+    /// Le domande da fare sulle scadenze di conformità: questionari, documento d'identità, consenso commerciale.
+    static func domandeConformita(_ e: EsitoConformita) -> [String] {
+        var domande: [String] = []
+        for v in e.voci where v.tipo.questionario && (v.stato == .scaduta || v.stato == .entro30 || v.stato == .entro60) {
+            guard let c = v.canale else { continue }
+            domande.append("Aggiorniamo insieme il questionario di adeguatezza (\(c.nomeBreve))? Sono cambiati obiettivi, situazione finanziaria o esperienza?")
+        }
+        if let d = e.voce(.documento), d.stato == .scaduta || d.stato == .entro30 || d.stato == .entro60 || d.stato == .mancante {
+            var testo = "Può portare un documento d'identità valido?"
+            if let s = d.scadenza {
+                testo += d.stato == .scaduta
+                    ? " Quello registrato è scaduto il \(TestiConformita.data(s))."
+                    : " Quello registrato scade il \(TestiConformita.data(s))."
+            }
+            domande.append(testo)
+        }
+        if e.voce(.commerciale)?.stato == .scaduta {
+            domande.append("Vuole continuare a ricevere comunicazioni commerciali?")
+        }
+        return domande
+    }
+
+    /// «Questionario di adeguatezza Alleanza», «Documento d'identità»: il nome della voce con il canale, se ce l'ha.
+    private static func nomeConformita(_ v: VoceConformita) -> String {
+        let nome = TestiConformita.nome(v.tipo)
+        switch v.canale {
+        case .alleanza?: return nome + " Alleanza"
+        case .indipendente?: return nome + " indipendente"
+        case nil: return nome
+        }
+    }
+
+    /// Il dettaglio della voce come nella scheda «In regola», chiuso dal punto.
+    private static func fraseConformita(_ v: VoceConformita, _ e: EsitoConformita) -> String {
+        let testo = TestiConformita.dettaglio(v, cliente: e.cliente).trimmingCharacters(in: .whitespaces)
+        guard let ultimo = testo.last else { return "" }
+        return ".!?".contains(ultimo) ? testo : testo + "."
+    }
+
+    /// Cosa fare per una voce scaduta (con lo spazio iniziale; vuoto per l'informativa privacy, che lo dice già).
+    private static func azioneScaduta(_ t: VoceConformita.Tipo) -> String {
+        switch t {
+        case .questionarioAlleanza, .questionarioIndipendente: return " Va compilato di nuovo prima di nuove proposte sul canale."
+        case .verificaAlleanza, .verificaIndipendente: return " Aggiornare i dati e il profilo di rischio."
+        case .documento: return " Chiedere una copia del documento nuovo."
+        case .commerciale: return " Chiedere se lo conferma."
+        case .privacy: return ""
+        }
     }
 
     /// L'ordine del giorno da mettere nelle note dell'appuntamento.

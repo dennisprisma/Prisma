@@ -654,6 +654,116 @@ enum Istantanee {
             ProvaRiesamiAgenda.prepara(s)
             s.apri(.agenda)
         }),
+        // Giro 4 · calendario delle occasioni (specifica 4)
+        ("130-agenda-occasioni", { s in
+            // Martedì, mercoledì e giovedì con gli anelli; la polizza di Marco senza più penali nel dettaglio
+            Istantanee.preparaOccasioni(s)
+            s.vistaAgenda = .settimana
+            if let martedi = Istantanee.questaSettimana(1, anni: 0) { s.giornoAgenda = Calendar.current.startOfDay(for: martedi) }
+            s.occasioneSelezionata = s.occasioniDelGiorno(s.giornoAgenda).first { $0.tipo == .senzaPenali }
+            s.apri(.agenda)
+        }),
+        ("131-agenda-occasioni-elenco", { s in
+            // La vista «Occasioni»: 12 mesi da questo mese, con il dettaglio della prima occasione importante
+            Istantanee.preparaOccasioni(s)
+            s.vistaAgenda = .occasioni
+            s.giornoAgenda = Calendar.current.startOfDay(for: Date())
+            let elenco = s.elencoOccasioniAgenda
+            s.occasioneSelezionata = elenco.first { $0.importanza == .alta } ?? elenco.first
+            s.apri(.agenda)
+        }),
+        ("133-notifiche-occasioni", { s in
+            // «5 anni alla pensione di Sofia Romano» e «Anna Bianchi diventa maggiorenne» in NEI PROSSIMI GIORNI
+            let cal = Calendar.current
+            let oggi = cal.startOfDay(for: Date())
+            if let c = s.dati.clienti.firstIndex(where: { $0.id == "marco" }),
+               let f = s.dati.clienti[c].famiglia.firstIndex(where: { $0.nome == "Anna Bianchi" }) {
+                s.dati.clienti[c].famiglia[f].dataNascita = cal.date(byAdding: .day, value: 12, to: oggi).flatMap { cal.date(byAdding: .year, value: -18, to: $0) }
+            }
+            if let c = s.dati.clienti.firstIndex(where: { $0.id == "sofia" }) {
+                s.dati.clienti[c].dataNascita = cal.date(byAdding: .day, value: 20, to: oggi).flatMap { cal.date(byAdding: .year, value: -62, to: $0) }
+            }
+            s.alternaNotifiche()
+        }),
+        ("134-impostazioni-occasioni", { s in
+            // Il gruppo «Occasioni» della scheda Esperienza, portato in vista dall'ancora
+            s.schedaImpostazioni = .esperienza
+            s.ancoraImpostazioni = "impostazioni-occasioni"
+            s.apri(.impostazioni)
+        }),
+        // Giro 4 · scheda di adeguatezza della proposta (specifica 1)
+        ("140-posizioni-adeguatezza", { s in
+            // Sofia: la scheda della proposta obbligazionaria (indipendente, etichetta cuoio), sostituzione gialla
+            // per le garanzie della polizza in scadenza, quattro documenti spuntati su sette
+            ProvaAdeguatezza.prepara(s)
+            s.clienteAttivoId = "sofia"
+            s.posizioneInDettaglio = "pos-sofia-obbligazionario-a-scadenza-2030"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-adeguatezza"
+        }),
+        ("141-posizioni-adeguatezza-rossa", { s in
+            // Andrea: Ramo I che non conosce (rosso), SRI stimato, orizzonte e bisogno da completare, etichetta blu Alleanza
+            s.clienteAttivoId = "andrea"
+            s.posizioneInDettaglio = "pos-andrea-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-adeguatezza"
+        }),
+        ("142-adeguatezza-pdf", { s in
+            // Sofia: la prima pagina del PDF (controlli e riferimenti), a tutta finestra
+            ProvaAdeguatezza.prepara(s)
+            s.clienteAttivoId = "sofia"
+            if let p = s.dati.posizioni.first(where: { $0.id == "pos-sofia-obbligazionario-a-scadenza-2030" }),
+               let d = s.documentoAdeguatezza(p) { s.presenta(d) }
+        }),
+        ("143-adeguatezza-pdf-firme", { s in
+            // Sofia: la seconda pagina (esperienza, documenti con le caselle, dichiarazioni, firme)
+            ProvaAdeguatezza.prepara(s)
+            s.clienteAttivoId = "sofia"
+            if let p = s.dati.posizioni.first(where: { $0.id == "pos-sofia-obbligazionario-a-scadenza-2030" }),
+               let d = s.documentoAdeguatezza(p) {
+                s.presenta(d)
+                s.paginaSeguente()
+            }
+        }),
+        ("144-impostazioni-proposte", { s in
+            // L'elenco dei documenti da consegnare per canale, con le etichette blu e cuoio
+            s.schedaImpostazioni = .proposte
+            s.apri(.impostazioni)
+        }),
+        // Giro 4 · scadenze di conformità «In regola» (specifica 3)
+        ("150-clienti-in-regola", { s in
+            // Giulia: tessere, blocco Alleanza con il questionario in scadenza, documento e consenso commerciale
+            s.clienteAttivoId = "giulia"
+            s.schedaCliente = .inRegola
+            s.apri(.clienti)
+        }),
+        ("151-clienti-in-regola-andrea", { s in
+            // Andrea: tre voci «Da raccogliere», solo il blocco Alleanza
+            s.clienteAttivoId = "andrea"
+            s.schedaCliente = .inRegola
+            s.apri(.clienti)
+        }),
+        ("152-clienti-panoramica-in-regola", { s in
+            // Marco: il riquadro «In regola» nella Panoramica, con la pillola rossa
+            s.clienteAttivoId = "marco"
+            s.schedaCliente = .panoramica
+            s.apri(.clienti)
+        }),
+        ("153-notifiche-conformita", { s in
+            // Le scadenze di conformità in DA RECUPERARE, NEI PROSSIMI GIORNI e DA SISTEMARE
+            s.alternaNotifiche()
+        }),
+        ("154-ricerca-conformita", { s in
+            // Il filtro «Conformità scaduta» nel pannello ⌘K: i clienti con l'estratto delle voci
+            s.testoRicerca = "conformita:scaduta"
+            s.cercaOvunque()
+        }),
+        ("155-impostazioni-conformita", { s in
+            // Il gruppo «Scadenze di conformità» della scheda Esperienza, portato in vista dall'ancora
+            s.schedaImpostazioni = .esperienza
+            s.ancoraImpostazioni = "impostazioni-conformita"
+            s.apri(.impostazioni)
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
         ("53-ricerca-scuro", { s in
             s.apri(.posizioni)
@@ -695,6 +805,34 @@ enum Istantanee {
         ("124-agenda-riesami-mese-scuro", { s in
             ProvaRiesamiAgenda.prepara(s)
             s.apri(.agenda)
+        }),
+        ("130-agenda-occasioni-scuro", { s in
+            Istantanee.preparaOccasioni(s)
+            s.vistaAgenda = .settimana
+            if let martedi = Istantanee.questaSettimana(1, anni: 0) { s.giornoAgenda = Calendar.current.startOfDay(for: martedi) }
+            s.occasioneSelezionata = s.occasioniDelGiorno(s.giornoAgenda).first { $0.tipo == .senzaPenali }
+            s.apri(.agenda)
+        }),
+        ("132-agenda-occasioni-mese-scuro", { s in
+            // Il mese in vetro scuro con gli anelli dei due canali e la nota «· N occasioni» della settimana
+            Istantanee.preparaOccasioni(s)
+            s.vistaAgenda = .mese
+            s.apri(.agenda)
+        }),
+        ("140-posizioni-adeguatezza-scuro", { s in
+            ProvaAdeguatezza.prepara(s)
+            s.clienteAttivoId = "sofia"
+            s.posizioneInDettaglio = "pos-sofia-obbligazionario-a-scadenza-2030"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-adeguatezza"
+        }),
+        ("150-clienti-in-regola-scuro", { s in
+            s.clienteAttivoId = "giulia"
+            s.schedaCliente = .inRegola
+            s.apri(.clienti)
+        }),
+        ("153-notifiche-conformita-scuro", { s in
+            s.alternaNotifiche()
         }),
         ("1-scrivania-scuro", { _ in }),
         ("2-posizioni-scuro", { $0.apri(.posizioni) }),
@@ -768,6 +906,30 @@ enum Istantanee {
             sg.esitoIl = g(-40)
         }
         s.dati = d
+    }
+
+    /// Una data di questa settimana spostata indietro di `anni` (lunedì + `giorno`), per mettere le occasioni
+    /// nella settimana mostrata (scene 130–132).
+    nonisolated private static func questaSettimana(_ giorno: Int, anni: Int) -> Date? {
+        let lunedi = CalendarioAgenda.giorni(settimanaDi: Date()).first ?? Date()
+        return Calendar.current.date(byAdding: .day, value: giorno, to: lunedi).flatMap { Calendar.current.date(byAdding: .year, value: -anni, to: $0) }
+    }
+
+    /// Occasioni (scene 130–132): penali finite per Marco (martedì), periodo raccomandato dei fondi di Sofia
+    /// (mercoledì), Anna Bianchi maggiorenne (giovedì).
+    nonisolated private static func preparaOccasioni(_ s: StatoShell) {
+        if let i = s.dati.posizioni.firstIndex(where: { $0.id == "pos-marco-polizza-rivalutabile-a-premio-unico" }) {
+            s.dati.posizioni[i].penali = [2, 1]
+            s.dati.posizioni[i].decorrenza = questaSettimana(1, anni: 3)
+        }
+        if let i = s.dati.posizioni.firstIndex(where: { $0.id == "pos-sofia-portafoglio-di-fondi" }) {
+            s.dati.posizioni[i].periodoRaccomandato = 5
+            s.dati.posizioni[i].decorrenza = questaSettimana(2, anni: 5)
+        }
+        if let c = s.dati.clienti.firstIndex(where: { $0.id == "marco" }),
+           let f = s.dati.clienti[c].famiglia.firstIndex(where: { $0.nome == "Anna Bianchi" }) {
+            s.dati.clienti[c].famiglia[f].dataNascita = questaSettimana(3, anni: 18)
+        }
     }
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:

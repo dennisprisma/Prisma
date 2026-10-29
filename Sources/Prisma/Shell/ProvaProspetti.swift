@@ -622,6 +622,8 @@ enum ProvaProspetti {
 
         // Completezza dei dati: pagina e slide delle ipotesi stimate, sezione «Dati per l'analisi» del riesame
         ProvaProspettiCompletezza.esegui(verifica, cartella: cartella)
+        // Scheda di adeguatezza della proposta: Sofia (indipendente) e Andrea (Alleanza), due pagine A4
+        ProvaAdeguatezza.provaProspetti(verifica, cartella: cartella)
 
         if errori == 0 {
             print("OK: prospetti verificati")
