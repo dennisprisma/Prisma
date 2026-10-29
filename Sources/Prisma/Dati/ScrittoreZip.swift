@@ -174,8 +174,15 @@ enum ScrittoreZip {
     private static func dataDOS(_ data: Date) -> (ora: UInt16, giorno: UInt16) {
         let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day, .hour, .minute, .second], from: data)
         let anno = max(1980, min(2107, c.year ?? 1980))
-        let ora = UInt16((c.hour ?? 0) << 11 | (c.minute ?? 0) << 5 | (c.second ?? 0) / 2)
-        let giorno = UInt16((anno - 1980) << 9 | (c.month ?? 1) << 5 | (c.day ?? 1))
+        let ore: Int = c.hour ?? 0
+        let minuti: Int = c.minute ?? 0
+        let secondi: Int = c.second ?? 0
+        let mese: Int = c.month ?? 1
+        let giornoMese: Int = c.day ?? 1
+        let bitOra: Int = (ore << 11) | (minuti << 5) | (secondi / 2)
+        let bitGiorno: Int = ((anno - 1980) << 9) | (mese << 5) | giornoMese
+        let ora = UInt16(truncatingIfNeeded: bitOra)
+        let giorno = UInt16(truncatingIfNeeded: bitGiorno)
         return (ora, giorno)
     }
 
