@@ -77,6 +77,25 @@ struct ModuloImportaPosizioni: View {
                             .frame(width: 240)
                     }
                 }
+                // Righe di posizioni già in Prisma, con i valori: si possono aggiornare invece di importarle
+                let gia = importazione.posizioni.filter { $0.problema == ImportaPosizioni.giaPresente }.count
+                if gia > 0 && importazione.colonne.contains(.controvalore) {
+                    HStack(spacing: Tema.Misura.AggiornaValori.spazioComandi) {
+                        Text(TestiAggiornaValori.bannerImportazione(gia))
+                            .font(Tipo.campoEtichetta)
+                            .foregroundColor(Colori.Rubrica.testo)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: Tema.Misura.AggiornaValori.spazioComandi)
+                        Button(TestiAggiornaValori.aggiornaLoroValori) {
+                            stato.apriAggiornaValori(da: importazione)
+                            chiudi()
+                        }
+                        .buttonStyle(StileVetro(margine: Tema.Misura.AggiornaValori.marginePulsante))
+                        .fixedSize()
+                    }
+                    .padding(Tema.Misura.AggiornaValori.margineRiquadro)
+                    .riquadroStrumento()
+                }
                 VStack(spacing: 0) {
                     ForEach(importazione.posizioni) { x in riga(x) }
                 }

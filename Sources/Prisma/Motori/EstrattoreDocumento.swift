@@ -68,7 +68,30 @@ enum EstrattoreDocumento {
         Regola(campo: .dataValore, schema: #"(?:data di riferimento|data di valorizzazione|data di valutazione|valori aggiornati al|aggiornat[oa] al)[^\d\n]{0,20}?\#(schemaData)"#, dataPiuRecente: true),
         Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(nonDiPeriodo)\#(fraEtichettaEValore)(?:€|eur(?:o)?)\s*\#(schemaImporto)"#),
         Regola(campo: .totaleVersato, schema: #"(?:totale (?:dei )?(?:premi|versamenti|contributi)(?: (?:versati|pagati|investiti|netti))?|premi (?:complessivamente )?versati|versamenti effettuati|contributi versati|capitale versato|cumulo (?:dei )?premi|totale versato)\#(nonDiPeriodo)\#(fraEtichettaEValore)\#(schemaImportoMigliaia)"#),
+        // Dalla versione 23 dell'archivio: KID più completi, documenti d'identità e questionari (in coda: le regole di
+        // prima mantengono la precedenza e i loro risultati)
+        // ISIN (ISO 6166): 2 lettere del paese, 9 caratteri, 1 cifra di controllo
+        Regola(campo: .isin, schema: #"\b(?:codice isin|isin)\s*[:\-–]?\s*([A-Z]{2}[A-Z0-9]{9}\d)\b"#),
+        Regola(campo: .dataDocumento, schema: #"(?:data di realizzazione(?: del (?:presente )?documento)?|data di (?:redazione|compilazione)|documento (?:redatto|aggiornato) (?:il|al)|compilato il|redatto il)[^\d\n]{0,20}?\#(schemaData)"#),
+        // KID dal 2023: «il rendimento medio annuo previsto è pari al 4,6% prima dei costi e al 2,7% al netto dei costi»
+        Regola(campo: .rendimentoPrimaCosti, schema: #"rendimento[^\n%]{0,90}?\#(schemaNumero)\s*%\s*prima dei costi"#),
+        Regola(campo: .numeroDocumento, schema: #"(?:carta d['’]identit[àa]|carta di identit[àa]|passaporto|patente(?: di guida)?|documento (?:d['’]|di )identit[àa]|numero (?:del )?documento)\s*(?:n\.?|nr\.?|numero)?\s*[:°]?\s*((?=[A-Z0-9]*\d)[A-Z]{1,3}[A-Z0-9]{4,10})\b"#),
+        Regola(campo: .intestatario, schema: #"(?:intestatario|titolare|cognome e nome|nome e cognome)\s*[:\-–]\s*([^\n]{3,60})"#),
+        // Codice fiscale (D.M. 23 dicembre 1976): 6 lettere, anno, lettera del mese, giorno, comune, controllo
+        Regola(campo: .codiceFiscale, schema: #"(?:codice fiscale|cod\.\s?fisc\.|c\.f\.)\s*[:\-–]?\s*([A-Z]{6}\d{2}[A-EHLMPR-T]\d{2}[A-Z]\d{3}[A-Z])\b"#),
+        Regola(campo: .dataRilascio, schema: #"(?:data di rilascio|rilasciat[oa] il|data di emissione|emess[oa] il)[^\d\n]{0,20}?\#(schemaData)"#),
+        Regola(campo: .profiloRischio, schema: #"(?:profilo (?:di rischio|dell['’]investitore|di investimento|finanziario)|propensione al rischio)\s*[:\-–]?\s*(prudente|conservativo|moderato|moderata|bilanciato|equilibrato|medio-basso|medio-alto|medio|dinamico|dinamica|aggressivo|aggressiva|basso|alto)\b"#),
+        Regola(campo: .orizzonte, schema: #"orizzonte (?:temporale|di investimento)[^\d\n]{0,40}?(\d{1,2})\s*ann[oi]"#),
     ]
+
+    /// Forma intera di un codice ISIN e di un codice fiscale (le risposte di Qwen si controllano con queste).
+    private static let formaISIN = #"^[A-Z]{2}[A-Z0-9]{9}\d$"#
+    private static let formaCodiceFiscale = #"^[A-Z]{6}\d{2}[A-EHLMPR-T]\d{2}[A-Z]\d{3}[A-Z]$"#
+
+    /// Un codice fiscale con la forma giusta (maiuscole o minuscole). Lo usa anche il confronto con il dossier.
+    static func formaCodiceFiscaleValida(_ s: String) -> Bool {
+        s.trimmingCharacters(in: .whitespaces).uppercased().range(of: formaCodiceFiscale, options: .regularExpression) != nil
+    }
 
     /// Applica le regole pagina per pagina; per ogni campo tiene la prima occorrenza.
     static func conRegole(_ pagine: [String]) -> [CampoEstratto] {
@@ -115,16 +138,24 @@ enum EstrattoreDocumento {
     private static func pulisci(_ s: String, campo: CampoDocumento) -> String {
         // "Non addebitiamo una commissione di uscita" → 0
         if campo.unita == "%", s.lowercased().hasPrefix("non ") { return "0" }
-        let testuale = [.nomeProdotto, .emittente, .tipologia, .contraente, .assicurato, .beneficiari].contains(campo)
+        let testuali: [CampoDocumento] = [.nomeProdotto, .emittente, .tipologia, .contraente, .assicurato, .beneficiari, .intestatario, .profiloRischio]
+        let testuale = testuali.contains(campo)
         // Nei nomi il punto finale fa parte del testo ("S.p.A.")
         var v = s.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: testuale ? ",;:" : ".,;:")))
-        if campo == .nomeProdotto || campo == .emittente || campo == .contraente || campo == .assicurato {
+        let nomi: [CampoDocumento] = [.nomeProdotto, .emittente, .contraente, .assicurato, .intestatario]
+        if nomi.contains(campo) {
             // Si ferma prima di eventuali altre etichette sulla stessa riga
             for separatore in ["  ", " - ", " – ", "Sito", "www", "Per ulteriori", "ISIN"] {
                 if let r = v.range(of: separatore) { v = String(v[..<r.lowerBound]) }
             }
         }
-        return v.trimmingCharacters(in: .whitespaces)
+        v = v.trimmingCharacters(in: .whitespaces)
+        // Le regole non distinguono maiuscole e minuscole: i codici si scrivono in maiuscolo, il profilo in minuscolo
+        switch campo {
+        case .isin, .codiceFiscale, .numeroDocumento: return v.uppercased()
+        case .profiloRischio: return v.lowercased()
+        default: return v
+        }
     }
 
     // MARK: - Qwen
@@ -150,18 +181,24 @@ enum EstrattoreDocumento {
                 // "3/7", "3 su 7" → "3"
                 guard let n = Int(valore.prefix(1)), (1...7).contains(n) else { return nil }
                 valore = "\(n)"
-            case .periodoDetenzione:
+            case .periodoDetenzione, .orizzonte:
                 // "5 anni" → "5"
                 let cifre = valore.prefix { $0.isNumber }
                 guard !cifre.isEmpty else { return nil }
                 valore = String(cifre)
-            case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato, .premio, .capitaleAssicurato, .controvalore, .totaleVersato:
+            case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato, .rendimentoPrimaCosti,
+                 .premio, .capitaleAssicurato, .controvalore, .totaleVersato:
                 valore = valore.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "€", with: "")
                     .replacingOccurrences(of: "EUR", with: "").trimmingCharacters(in: .whitespaces)
                 guard numero(valore) != nil else { return nil }
-            case .decorrenza, .scadenza, .dataValore:
+            case .decorrenza, .scadenza, .dataValore, .dataDocumento, .dataRilascio:
                 // Una data che non esiste non entra nella tabella (e poi nel dossier)
                 guard data(valore) != nil else { return nil }
+            case .isin, .codiceFiscale:
+                // Solo un codice con la forma giusta (la stessa delle regole), in maiuscolo
+                let codice = valore.replacingOccurrences(of: " ", with: "").uppercased()
+                guard codice.range(of: campo == .isin ? formaISIN : formaCodiceFiscale, options: .regularExpression) != nil else { return nil }
+                valore = codice
             default:
                 break
             }

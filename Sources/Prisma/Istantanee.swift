@@ -764,6 +764,156 @@ enum Istantanee {
             s.ancoraImpostazioni = "impostazioni-conformita"
             s.apri(.impostazioni)
         }),
+        // Giro 5 · Documenti rifatti (160–166)
+        ("160-documenti-vuoto", { s in
+            // Laura non ha documenti: il vuoto che spiega cosa fare
+            s.clienteAttivoId = "laura"
+            s.apri(.documenti)
+        }),
+        ("161-documenti-cosa-non-torna", { s in
+            // La raccolta «Cosa non torna»: la polizza di Marco, con il banner delle differenze nella scheda Dati
+            s.clienteAttivoId = "marco"
+            s.vistaDocumenti.raccolta = .conDifferenze
+            s.documentoSelezionato = "doc-marco-polizza"
+            s.apri(.documenti)
+        }),
+        ("162-documenti-fonte-pagina", { s in
+            // La fonte di una cifra: «p. 2» porta l'anteprima alla pagina e ne illumina la riga
+            s.clienteAttivoId = "giulia"
+            s.documentoSelezionato = "doc-giulia-kid"
+            s.vistaDocumenti.pagina = 2
+            s.vistaDocumenti.evidenzia = .sri
+            s.apri(.documenti)
+        }),
+        ("163-documenti-testo", { s in
+            s.clienteAttivoId = "giulia"
+            s.documentoSelezionato = "doc-giulia-kid"
+            s.vistaDocumenti.scheda = .testo
+            s.vistaDocumenti.pagina = 3
+            s.apri(.documenti)
+        }),
+        ("164-documenti-schermo-basso", { s in
+            // Schermo più basso: l'anteprima si nasconde da sola, la scheda resta leggibile; «Aggiorna il valore»
+            s.clienteAttivoId = "giulia"
+            s.documentoSelezionato = "doc-giulia-estratto"
+            if let d = s.documento("doc-giulia-estratto") { for c in d.campi { s.confermaCampo(d.id, c.chiave, true) } }
+            s.apri(.documenti)
+        }),
+        ("165-documenti-identita-in-regola", { s in
+            // Il documento d'identità di Giulia contro il dossier e «In regola» (giro 4)
+            s.clienteAttivoId = "giulia"
+            let d = ProvaCalcoliDocumenti.documento("doc-demo-identita", cliente: "giulia", titolo: "Carta d'identità di Giulia Rossi",
+                                                    tipo: .altro, pagine: ProvaCalcoliDocumenti.identita)
+            s.dati.documenti.append(d)
+            s.memorizzaTesto(d.id, ProvaCalcoliDocumenti.identita)
+            s.documentoSelezionato = d.id
+            s.vistaDocumenti.scheda = .confronto
+            s.apri(.documenti)
+        }),
+        ("166-documenti-kid-categorie", { s in
+            // Barra laterale con più tipi: il KID nuovo della multiramo di Marco, collegato alla scheda
+            s.clienteAttivoId = "marco"
+            var d = ProvaCalcoliDocumenti.documento("doc-demo-kid-multiramo", cliente: "marco", titolo: "KID 2026 · Polizza multiramo",
+                                                    tipo: .kid, pagine: ProvaCalcoliDocumenti.kidMultiramo)
+            d.prodottoId = "prodotto-multiramo"
+            s.dati.documenti.append(d)
+            s.memorizzaTesto(d.id, ProvaCalcoliDocumenti.kidMultiramo)
+            s.documentoSelezionato = d.id
+            s.apri(.documenti)
+        }),
+        // Giro 5 · aggiornamento dei valori in blocco (180–183)
+        ("180-posizioni-aggiorna-elenco", { s in
+            // «Aggiorna i valori» sull'elenco della compagnia: indicatori, righe per canale, tutte le pillole
+            s.portafoglio = true
+            s.aggiornaValori = AggiornaValori.sessione(tabella: ImportaClienti.righeCSV(DatiAggiornaValoriDemo.elenco(oggi: Date())),
+                                                       file: "Valori Alleanza e indipendenti.xlsx", dataComune: Date())
+            s.apri(.posizioni)
+        }),
+        ("181-posizioni-valori-fermi", { s in
+            // La griglia dei valori fermi da più di 12 mesi, con due righe già scritte
+            DatiAggiornaValoriDemo.invecchia(s)
+            s.portafoglio = true
+            s.aggiornaValori = AggiornaValori.Sessione(scheda: .griglia, bozze: DatiAggiornaValoriDemo.bozze())
+            s.apri(.posizioni)
+        }),
+        ("182-posizioni-aggiorna-registrati", { s in
+            // Il riepilogo dopo «Registra»: prima e dopo, righe per canale, elenco delle posizioni
+            s.portafoglio = true
+            s.aggiornaValori = AggiornaValori.sessione(tabella: ImportaClienti.righeCSV(DatiAggiornaValoriDemo.elenco(oggi: Date())),
+                                                       file: "Valori Alleanza e indipendenti.xlsx", dataComune: Date())
+            if let sessione = s.aggiornaValori {
+                let e = AggiornaValori.esiti(sessione.righe, posizioni: s.posizioni, clienti: s.clienti,
+                                             dataComune: sessione.dataComune, oggi: Date())
+                s.applicaValoriInBlocco(e, esclusi: AggiornaValori.esclusiIniziali(e))
+            }
+            s.apri(.posizioni)
+        }),
+        ("183-posizioni-multiramo-aggiornata", { s in
+            // Il dettaglio della multiramo di Marco dopo l'aggiornamento: valore, quota della gestione, andamento
+            s.aggiornaValori = AggiornaValori.sessione(tabella: ImportaClienti.righeCSV(DatiAggiornaValoriDemo.elenco(oggi: Date())),
+                                                       file: "Valori Alleanza e indipendenti.xlsx", dataComune: Date())
+            if let sessione = s.aggiornaValori {
+                let e = AggiornaValori.esiti(sessione.righe, posizioni: s.posizioni, clienti: s.clienti,
+                                             dataComune: sessione.dataComune, oggi: Date())
+                s.applicaValoriInBlocco(e, esclusi: AggiornaValori.esclusiIniziali(e))
+            }
+            s.aggiornaValori = nil
+            s.clienteAttivoId = "marco"
+            s.portafoglio = false
+            s.posizioneInDettaglio = "pos-marco-polizza-multiramo"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-andamento"
+        }),
+        // Giro 5 · documento contro dossier (190–194)
+        ("190-documenti-confronto-polizza", { s in
+            // Marco: la polizza Infortuni famiglia contro la posizione. Capitale 150.000 contro 200.000 (scende, in rosso),
+            // scadenza diversa, beneficiari nuovi (non scelti), premio uguale; etichetta Alleanza
+            s.clienteAttivoId = "marco"
+            s.documentoSelezionato = "doc-marco-polizza"
+            s.vistaDocumenti.scheda = .confronto
+            s.apri(.documenti)
+        }),
+        ("191-documenti-confronto-kid-impatto", { s in
+            // Giulia: il nuovo KID dell'ETF contro la scheda. SRI 4→5, costi 0,20→0,25%, incidenza 0,20→0,25%;
+            // impatto su Giulia (oltre il profilo) e Laura, collegate per nome; etichetta indipendente
+            s.clienteAttivoId = "giulia"
+            s.dati.documenti.append(DatiConfrontoDemo.kidETF())
+            s.memorizzaTesto(DatiConfrontoDemo.idKIDETF, DatiConfrontoDemo.pagineKIDETF)
+            s.documentoSelezionato = DatiConfrontoDemo.idKIDETF
+            s.vistaDocumenti.scheda = .confronto
+            s.apri(.documenti)
+        }),
+        ("192-prodotti-avviso-nuovo-kid", { s in
+            // La scheda dell'ETF dopo l'aggiornamento: avviso «Nuovo KID» in alto con i due clienti
+            s.clienteAttivoId = "giulia"
+            let d = DatiConfrontoDemo.kidETF()
+            s.dati.documenti.append(d)
+            s.memorizzaTesto(d.id, DatiConfrontoDemo.pagineKIDETF)
+            if let c = s.confronto(d, .prodotto("prodotto-etf-globale")) {
+                s.aggiornaDalDocumento(d.id, bersaglio: .prodotto("prodotto-etf-globale"), voci: c.preselezione, ancheProposte: true)
+            }
+            s.prodottoSelezionato = "prodotto-etf-globale"
+            s.apri(.prodotti)
+        }),
+        ("193-documenti-appendice-da-collegare", { s in
+            // Giulia: un'appendice non collegata; Prisma suggerisce il piano di risparmio dal numero di polizza
+            s.clienteAttivoId = "giulia"
+            let scadenza = s.dati.posizioni.first { $0.id == "pos-giulia-piano-di-risparmio-rivalutabile" }?.scadenza ?? Date()
+            s.dati.documenti.append(DatiConfrontoDemo.appendice(scadenza: scadenza))
+            s.memorizzaTesto(DatiConfrontoDemo.idAppendice, DatiConfrontoDemo.pagineAppendice(scadenza: scadenza))
+            s.documentoSelezionato = DatiConfrontoDemo.idAppendice
+            s.vistaDocumenti.scheda = .confronto
+            s.apri(.documenti)
+        }),
+        ("194-documenti-confronto-storico", { s in
+            // Marco: capitale aggiornato dalla polizza; la riga è uguale e lo storico mostra 200.000 → 150.000 con «Ripristina»
+            s.clienteAttivoId = "marco"
+            s.aggiornaDalDocumento("doc-marco-polizza", bersaglio: .posizione("pos-marco-infortuni-famiglia"),
+                                   voci: [.capitaleAssicurato], ancheProposte: false)
+            s.documentoSelezionato = "doc-marco-polizza"
+            s.vistaDocumenti.scheda = .confronto
+            s.apri(.documenti)
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
         ("53-ricerca-scuro", { s in
             s.apri(.posizioni)
@@ -833,6 +983,27 @@ enum Istantanee {
         }),
         ("153-notifiche-conformita-scuro", { s in
             s.alternaNotifiche()
+        }),
+        ("161-documenti-cosa-non-torna-scuro", { s in
+            // Vetro scuro, foglio dell'anteprima sempre bianco
+            s.clienteAttivoId = "marco"
+            s.vistaDocumenti.raccolta = .conDifferenze
+            s.documentoSelezionato = "doc-marco-polizza"
+            s.apri(.documenti)
+        }),
+        ("180-posizioni-aggiorna-elenco-scuro", { s in
+            s.portafoglio = true
+            s.aggiornaValori = AggiornaValori.sessione(tabella: ImportaClienti.righeCSV(DatiAggiornaValoriDemo.elenco(oggi: Date())),
+                                                       file: "Valori Alleanza e indipendenti.xlsx", dataComune: Date())
+            s.apri(.posizioni)
+        }),
+        ("191-documenti-confronto-kid-impatto-scuro", { s in
+            s.clienteAttivoId = "giulia"
+            s.dati.documenti.append(DatiConfrontoDemo.kidETF())
+            s.memorizzaTesto(DatiConfrontoDemo.idKIDETF, DatiConfrontoDemo.pagineKIDETF)
+            s.documentoSelezionato = DatiConfrontoDemo.idKIDETF
+            s.vistaDocumenti.scheda = .confronto
+            s.apri(.documenti)
         }),
         ("1-scrivania-scuro", { _ in }),
         ("2-posizioni-scuro", { $0.apri(.posizioni) }),

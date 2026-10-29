@@ -59,6 +59,8 @@ struct Prodotto: Identifiable, Codable, Hashable {
     var titoliStatoFondi: Double?
     /// Multiramo: true se il contratto riporta ogni anno la gestione separata alla quota scelta.
     var ribilanciamento: Bool?
+    /// Dati cambiati dal confronto con un nuovo KID, dal più vecchio (dalla versione 23 dell'archivio).
+    var variazioni: [VariazioneDossier]?
 
     init(nome: String, canale: Canale, area: AreaPosizione) {
         self.nome = nome
@@ -122,6 +124,7 @@ struct Prodotto: Identifiable, Codable, Hashable {
         case trattenuto, retrocessione, minimoGarantito, consolidamento
         case quotaGestioneSeparata, quotaGestioneMinima, quotaGestioneMassima, rendimentoGestione, rendimentoFondi
         case costoFondi, sriFondi, volatilitaFondi, quotaAzionariaFondi, titoliStatoGestione, titoliStatoFondi, ribilanciamento
+        case variazioni
     }
 
     init(from decoder: Decoder) throws {
@@ -161,6 +164,7 @@ struct Prodotto: Identifiable, Codable, Hashable {
         titoliStatoGestione = try? c.decodeIfPresent(Double.self, forKey: .titoliStatoGestione)
         titoliStatoFondi = try? c.decodeIfPresent(Double.self, forKey: .titoliStatoFondi)
         ribilanciamento = try? c.decodeIfPresent(Bool.self, forKey: .ribilanciamento)
+        variazioni = try? c.decodeIfPresent([VariazioneDossier].self, forKey: .variazioni)
     }
 }
 

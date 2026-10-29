@@ -55,6 +55,9 @@ struct AppPosizioni: View {
                 Group {
                     if let id = stato.posizioneInDettaglio, let p = stato.posizioni.first(where: { $0.id == id }) {
                         DettaglioPosizione(posizione: p, modifica: { modulo = p })
+                    } else if let s = stato.aggiornaValori {
+                        // Il pannello «Aggiorna i valori»: sopra portafoglio e dossier, sotto il dettaglio («Apri ↗»)
+                        PannelloAggiornaValori(sessione: s).id(s.id)
                     } else if stato.portafoglio {
                         // Come nel dossier: gli indicatori contano in essere e proposte, lo stato filtra solo l'elenco
                         portafoglio

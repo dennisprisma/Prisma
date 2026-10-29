@@ -288,6 +288,7 @@ struct AppProdotti: View {
                         }
                     }
                 }
+                AvvisoNuovoKID(prodotto: p)
                 // Condizioni e fonte affiancate se c'è posto, altrimenti una sotto l'altra (finestra non ingrandita)
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: Misure.SchedaProdotto.spazioAffiancate) {
@@ -301,6 +302,7 @@ struct AppProdotti: View {
                     }
                 }
                 condizioni(p)
+                StoricoAggiornamentiProdotto(prodotto: p)
                 PannelloAnalisi(titolo: "Dove è usata", nota: usi.isEmpty ? "Nessuna posizione o proposta collegata" : nil) { EmptyView() } contenuto: {
                     VStack(spacing: 0) {
                         ForEach(usi) { u in

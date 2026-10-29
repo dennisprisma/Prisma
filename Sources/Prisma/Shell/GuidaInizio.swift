@@ -119,7 +119,8 @@ extension StatoShell {
     func importaPosizioni(da url: URL) {
         if let lettura = ImportaPosizioni.leggi(url, clienti: clienti, posizioni: posizioni, prodotti: dati.prodotti) {
             apri(.posizioni)
-            importazionePosizioni = lettura
+            // Quasi tutte posizioni che Prisma ha già, con i valori: si propone di aggiornarli
+            if ImportaPosizioni.propostoAggiornamento(lettura) { apriAggiornaValori(da: lettura) } else { importazionePosizioni = lettura }
         } else {
             mostraAvviso("Nel file non ho trovato posizioni: servono almeno il prodotto o il numero di contratto, con i nomi delle colonne nella prima riga.")
         }
@@ -137,7 +138,7 @@ extension StatoShell {
         if preferite || ImportaPosizioni.sembraPosizioni(righe),
            let lettura = ImportaPosizioni.incollate(testo, clienti: clienti, posizioni: posizioni, prodotti: dati.prodotti) {
             apri(.posizioni)
-            importazionePosizioni = lettura
+            if ImportaPosizioni.propostoAggiornamento(lettura) { apriAggiornaValori(da: lettura) } else { importazionePosizioni = lettura }
         } else if let lettura = ImportaClienti.incollati(testo, rubrica: clienti) {
             apri(.clienti)
             importazione = lettura

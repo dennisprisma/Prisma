@@ -281,6 +281,8 @@ struct Posizione: Identifiable, Codable, Hashable {
     /// Multiramo: true se ogni anno il contratto riporta la gestione separata alla quota scelta
     /// (`quotaGestioneSeparata`); nil o false = nessun ribilanciamento, le parti si allontanano dalle quote.
     var ribilanciamento: Bool?
+    /// Dati cambiati dal confronto con i documenti (polizze, appendici, KID), dal più vecchio (dalla versione 23).
+    var variazioni: [VariazioneDossier]?
 
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }

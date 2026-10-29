@@ -82,6 +82,21 @@ enum ProvaBackup {
             originale.impostazioni.occasioni.tipiSpenti = [.ricorrenzaGestione]
             originale.impostazioni.occasioni.etaLimiteLTC = 75
             originale.impostazioni.promemoria.occasioni = false
+            // Giro 5 (versione 23). Documenti: categoria scelta per la polizza di Marco
+            if let i = originale.documenti.firstIndex(where: { $0.id == "doc-marco-polizza" }) {
+                originale.documenti[i].categoria = .contratto
+                // Documento contro dossier: una voce lasciata come in Prisma (per la coppia di valori)
+                originale.documenti[i].vociTenute = ["scadenza|2026-12-01|2026-12-13"]
+            }
+            // Storico dei dati portati dai documenti, nella posizione multiramo di Marco e nella scheda multiramo
+            // (la data a secondi interi, come le altre)
+            let quando = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
+            var variazione = VariazioneDossier(voce: "sri", prima: "3 su 7", dopo: "4 su 7", valorePrima: ValoreVoce(numero: 3), valoreDopo: ValoreVoce(numero: 4),
+                                               documentoId: "doc-marco-polizza", titoloDocumento: "Prova", tipoDocumento: "kid", il: quando,
+                                               fontePrecedente: "Fonte di prima")
+            variazione.id = "var-prova"
+            if let i = originale.posizioni.firstIndex(where: { $0.id == "pos-marco-polizza-multiramo" }) { originale.posizioni[i].variazioni = [variazione] }
+            if let i = originale.prodotti.firstIndex(where: { $0.id == "prodotto-multiramo" }) { originale.prodotti[i].variazioni = [variazione] }
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
@@ -202,6 +217,15 @@ enum ProvaBackup {
                   estratto.dati.impostazioni.occasioni.tipiSpenti == [.ricorrenzaGestione],
                   !estratto.dati.impostazioni.promemoria.occasioni else {
                 print("ERRORE: le impostazioni delle occasioni non tornano uguali dal backup")
+                return 1
+            }
+            // Giro 5 (versione 23). Categoria dei documenti, voci tenute e storico dei dati portati dai documenti
+            guard let polizza = estratto.dati.documenti.first(where: { $0.id == "doc-marco-polizza" }), polizza.categoria == .contratto,
+                  polizza.vociTenute == ["scadenza|2026-12-01|2026-12-13"],
+                  estratto.dati.posizioni.first(where: { $0.id == "pos-marco-polizza-multiramo" })?.variazioni?.first?.valoreDopo?.numero == 4,
+                  estratto.dati.posizioni.first(where: { $0.id == "pos-marco-polizza-multiramo" })?.variazioni?.first?.id == "var-prova",
+                  estratto.dati.prodotti.first(where: { $0.id == "prodotto-multiramo" })?.variazioni?.first?.fontePrecedente == "Fonte di prima" else {
+                print("ERRORE: i dati nuovi dei documenti non tornano uguali dal backup")
                 return 1
             }
             try GestoreBackup.sostituisci(cartellaDati: destinazione, con: estratto.cartella)
