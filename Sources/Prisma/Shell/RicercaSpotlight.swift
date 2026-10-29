@@ -179,7 +179,32 @@ struct RicercaSpotlight: View {
             }, elimina: {})
             .environmentObject(stato)
         }
+        #if os(iOS)
+        // La tastiera dell'iPad: ↑ ↓ scelgono, Tab completa un filtro, Esc chiude (Invio lo dà già il campo)
+        .onKeyPress(.upArrow) { tastoiPad(.su) }
+        .onKeyPress(.downArrow) { tastoiPad(.giu) }
+        .onKeyPress(.tab) { tastoiPad(.tab) }
+        .onKeyPress(.escape) { tastoiPad(.esc) }
+        #endif
     }
+
+    #if os(iOS)
+    /// Le stesse regole del monitor dei tasti del Mac (`TastiSpotlight.gestisci`), per `.onKeyPress`.
+    @MainActor
+    private func tastoiPad(_ tasto: TastiSpotlight.Tasto) -> KeyPress.Result {
+        guard tasti.attivo, let esegui = tasti.esegui else { return .ignored }
+        switch tasto {
+        case .su, .giu, .invio:
+            guard !tasti.inNome, tasti.conRisultati else { return .ignored }
+        case .tab:
+            guard !tasti.inNome, tasti.conSuggerimenti else { return .ignored }
+        case .esc:
+            break
+        }
+        esegui(tasto)
+        return .handled
+    }
+    #endif
 
     // MARK: Struttura
 

@@ -38,6 +38,42 @@ extension Tema.Misura {
         /// Segnaposto «In arrivo su iPad».
         static let iconaInArrivo: CGFloat = 72
         static let testoInArrivoMassimo: CGFloat = 460
+
+        // MARK: Impaginazione adattiva dell'iPad (le viste App* del Mac dentro la colonna di dettaglio)
+        // La colonna di dettaglio dell'iPad va da circa 470 pt (11" verticale con la barra laterale) a circa
+        // 1.100 pt (13" orizzontale): sotto queste soglie le colonne del Mac si chiudono o vanno una sotto l'altra.
+
+        /// Area di tocco minima dei controlli principali (Human Interface Guidelines).
+        static let areaTocco: CGFloat = 44
+        /// Sotto questa larghezza del contenuto dell'app l'elenco laterale (Posizioni, cornice degli strumenti,
+        /// rubrica di Clienti) si chiude in una striscia con un pulsante e si apre sopra il contenuto.
+        static let sogliaLaterale: CGFloat = 760
+        /// La striscia dell'elenco laterale chiuso e il suo pulsante.
+        static let strisciaLaterale: CGFloat = 52
+        static let margineStriscia: CGFloat = 4
+        /// L'elenco laterale aperto sopra il contenuto: raggio e velo sul contenuto (si tocca per chiudere).
+        static let raggioLateraleAperto: CGFloat = Tema.Raggio.scheda
+        static let opacitaVelo: Double = 0.18
+        /// Due colonne di una cornice (`ColonneAffiancate`): sotto questa larghezza della colonna che prende il
+        /// resto, le due colonne vanno una sotto l'altra; la colonna fissa si stringe fino a `colonnaMinima`.
+        static let flessibileMinima: CGFloat = 360
+        static let colonnaMinima: CGFloat = 240
+        /// Colonna fissa impilata sopra l'altra: quota massima dell'altezza (il resto va ai risultati).
+        static let quotaColonnaImpilata: CGFloat = 0.42
+        /// Pannelli affiancati dentro una scheda (Posizioni, dettaglio della posizione, pannelli dell'analisi):
+        /// sotto queste larghezze del contenuto vanno uno sotto l'altro.
+        static let sogliaAffiancatiPosizioni: CGFloat = 760
+        static let sogliaAffiancatiDettaglio: CGFloat = 700
+        static let sogliaAffiancatiPannello: CGFloat = 640
+        /// Spazio verticale fra due blocchi impilati.
+        static let spazioImpilati: CGFloat = 18
+        /// Rubrica di Clienti: larghezza sull'iPad e altezza minima della testata del dossier su due righe.
+        static let rubrica: CGFloat = 240
+        static let testataDossierDueRighe: CGFloat = 8
+        /// La finestra di vetro dell'app nella colonna di dettaglio dell'iPad: margine dall'acqua ai lati e in basso.
+        static let margineFinestra: CGFloat = 12
+        /// Impostazioni: sotto questa larghezza dell'app la colonna delle informazioni a destra non c'è.
+        static let sogliaInformazioniImpostazioni: CGFloat = 820
     }
 }
 
@@ -46,6 +82,8 @@ extension Tema.Raggio {
         static let scheda: CGFloat = Tema.Raggio.scheda
         static let riga: CGFloat = Tema.Raggio.riga
         static let apertura: CGFloat = Tema.Raggio.pannello
+        /// La finestra dell'app nella colonna di dettaglio dell'iPad (come una finestra ingrandita del Mac).
+        static let finestra: CGFloat = Tema.Raggio.finestraIngrandita
         static let controllo: CGFloat = 12
     }
 }
@@ -77,6 +115,11 @@ extension Tema.Colore {
         static let riuscita = Tema.Colore.testoInEssere
         /// Voce scelta nella barra laterale dell'iPad.
         static let selezione = Tema.Colore.selezioneRiga
+        /// Velo sul contenuto sotto l'elenco laterale aperto sopra (iPad stretto).
+        static let velo = Color.black.opacity(Tema.Misura.Mobile.opacitaVelo)
+        /// Fondo dell'elenco laterale aperto sopra il contenuto e della sua striscia chiusa.
+        static let fondoLaterale = Colori.Analisi.railAlto
+        static let filoLaterale = Colori.ColonneStrumento.divisore
     }
 }
 #endif

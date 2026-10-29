@@ -14,6 +14,10 @@ struct AppDocumenti: View {
     @State private var sopra = false
     @State private var daEliminare: Documento?
     @State private var confermaEliminazione = false
+    #if os(iOS)
+    /// Il pannello di sistema per scegliere i file da importare (File, iCloud Drive).
+    @State private var sceltaFile = false
+    #endif
 
     private var cliente: String { stato.clienteAttivoId }
 
@@ -46,7 +50,7 @@ struct AppDocumenti: View {
         let scelta = mostrate.first { $0.id == stato.documentoSelezionato } ?? mostrate.first
         let nome = stato.clienteAttivo?.nome ?? "questo cliente"
         CorniceStrumento(
-            notaStato: "Lettura sul Mac: PDFKit per il testo, Vision per le scansioni · nessun file lascia il computer",
+            notaStato: Self.notaStato,
             notaDestra: voci.count == 1 ? "1 documento di \(nome)" : "\(voci.count) documenti di \(nome)"
         ) {
             rail(voci)
@@ -69,6 +73,7 @@ struct AppDocumenti: View {
                 }
             }
         }
+        #if os(macOS)
         .onDrop(of: [UTType.fileURL], isTargeted: $sopra) { fornitori in
             let raccolta = RaccoltaRilascio()
             let gruppo = DispatchGroup()
@@ -86,6 +91,22 @@ struct AppDocumenti: View {
             }
             return true
         }
+        #elseif os(iOS)
+        // Su iPad i file trascinati (da File o da un'altra app) arrivano come rappresentazioni da copiare subito
+        .onDrop(of: ImportaDocumentiMobile.tipiRilascio, isTargeted: $sopra) { fornitori in
+            ImportaDocumentiMobile.rilascia(fornitori) { stato.aggiungiDocumenti($0) }
+            return true
+        }
+        .fileImporter(isPresented: $sceltaFile, allowedContentTypes: ImportaDocumentiMobile.tipiScelta,
+                      allowsMultipleSelection: true) { esito in
+            switch esito {
+            case .success(let urls):
+                ImportaDocumentiMobile.importa(urls, avviso: { stato.mostraAvviso($0) }) { stato.aggiungiDocumenti($0) }
+            case .failure(let errore):
+                stato.mostraAvviso("Non riesco ad aprire i file scelti: \(errore.localizedDescription)")
+            }
+        }
+        #endif
         .overlay {
             if sopra { RilascioDocumenti(nome: nome) }
         }
@@ -133,10 +154,16 @@ struct AppDocumenti: View {
         pannello.message = "Scegli KID, polizze, estratti conto, documenti d'identità o questionari: vengono copiati nell'archivio di Prisma."
         if pannello.runModal() == .OK { stato.aggiungiDocumenti(pannello.urls) }
         #elseif os(iOS)
-        // Su iPhone e iPad i documenti si sceglieranno con `.fileImporter` (giro 2)
-        stato.mostraAvviso(StatoShell.soloSulMacPerOra)
+        // Su iPhone e iPad: il pannello di sistema (File, iCloud Drive), vedi `.fileImporter` nel corpo
+        sceltaFile = true
         #endif
     }
+
+    #if os(macOS)
+    private static let notaStato = "Lettura sul Mac: PDFKit per il testo, Vision per le scansioni · nessun file lascia il computer"
+    #elseif os(iOS)
+    private static let notaStato = "Lettura sul dispositivo: PDFKit per il testo, Vision per le scansioni · nessun file lascia il dispositivo"
+    #endif
 
     // MARK: - Barra laterale
 
@@ -254,10 +281,20 @@ struct ElencoDocumenti: View {
         }
         .buttonStyle(StileSemplice())
         .contextMenu {
+            #if os(macOS)
             Button("Apri in Anteprima") { if let file { ApriFile.apri(file) } }
                 .disabled(file == nil)
             Button("Mostra nel Finder") { stato.mostraNelFinder(d) }
                 .disabled(file == nil)
+            #elseif os(iOS)
+            // Su iPhone e iPad: condivisione (AirDrop, Mail, Salva su File) e stampa con AirPrint
+            if let file {
+                Button { StampaCarta.condividi(file, nome: d.titolo) } label: {
+                    Label("Condividi…", systemImage: "square.and.arrow.up")
+                }
+                Button { StampaCarta.stampa(file: file) } label: { Label("Stampa…", systemImage: "printer") }
+            }
+            #endif
             Button("Rileggi") {
                 TestiRinviati.scriviOra()
                 stato.leggiDocumento(d.id)
@@ -288,3 +325,112 @@ struct ElencoDocumenti: View {
     }
     #endif
 }
+
+#if os(iOS)
+/// I documenti che arrivano da fuori su iPhone e iPad: dal pannello `.fileImporter` (file con accesso a tempo, anche su
+/// iCloud Drive non ancora scaricati) o trascinati sull'app (rappresentazioni temporanee). In entrambi i casi si fa
+/// prima una copia locale in tmp/, poi Prisma la copia nel suo archivio (`aggiungiDocumenti`) e la copia locale
+/// si cancella subito: i documenti dei clienti non restano in giro.
+enum ImportaDocumentiMobile {
+    /// I tipi del pannello di scelta: quelli che Prisma sa leggere (`LetturaDocumenti.estensioniAccettate`).
+    static let tipiScelta: [UTType] = [.pdf, .png, .jpeg, .tiff, .heic]
+    /// I tipi accettati nel trascinamento: PDF e qualunque immagine (i formati non letti li segnala `aggiungiDocumenti`).
+    static let tipiRilascio: [UTType] = [.pdf, .image]
+
+    /// Una cartella nuova per ogni importazione, sotto tmp/documenti-in-arrivo.
+    private static func nuovaCartella() -> URL? {
+        let cartella = FileManager.default.temporaryDirectory
+            .appendingPathComponent("documenti-in-arrivo", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
+            return cartella
+        } catch {
+            return nil
+        }
+    }
+
+    /// I file scelti con il pannello: accesso a tempo, lettura coordinata (scarica da iCloud Drive se serve),
+    /// copia locale fuori dal thread principale; poi `aggiungi` sul thread principale e pulizia.
+    static func importa(_ urls: [URL], avviso: @escaping (String) -> Void, aggiungi: @escaping ([URL]) -> Void) {
+        guard !urls.isEmpty, let cartella = Self.nuovaCartella() else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            var copie: [URL] = []
+            var mancati: [String] = []
+            for url in urls {
+                // `false` per i file già copiati dal sistema: non è un errore
+                let accesso = url.startAccessingSecurityScopedResource()
+                defer { if accesso { url.stopAccessingSecurityScopedResource() } }
+                var erroreCoordinamento: NSError?
+                var copia: URL?
+                NSFileCoordinator().coordinate(readingItemAt: url, options: .withoutChanges,
+                                               error: &erroreCoordinamento) { letto in
+                    copia = Self.copiaLocale(letto, nome: url.lastPathComponent, in: cartella)
+                }
+                if let copia { copie.append(copia) } else { mancati.append(url.lastPathComponent) }
+            }
+            let pronte = copie
+            let saltati = mancati
+            DispatchQueue.main.async {
+                if !pronte.isEmpty { aggiungi(pronte) }
+                if let primo = saltati.first {
+                    avviso(saltati.count == 1 ? "Non riesco a leggere \(primo)" : "Non riesco a leggere \(saltati.count) file")
+                }
+                try? FileManager.default.removeItem(at: cartella)
+            }
+        }
+    }
+
+    /// I file trascinati: ogni rappresentazione temporanea si copia dentro il suo gestore (dopo non esiste più).
+    static func rilascia(_ fornitori: [NSItemProvider], aggiungi: @escaping ([URL]) -> Void) {
+        guard !fornitori.isEmpty, let cartella = Self.nuovaCartella() else { return }
+        let raccolta = RaccoltaRilascio()
+        let gruppo = DispatchGroup()
+        for (indice, f) in fornitori.enumerated() {
+            guard let tipo = f.registeredTypeIdentifiers.first(where: { id in
+                guard let t = UTType(id) else { return false }
+                return Self.tipiRilascio.contains { t.conforms(to: $0) }
+            }) else { continue }
+            gruppo.enter()
+            _ = f.loadFileRepresentation(forTypeIdentifier: tipo) { url, _ in
+                var copia: URL?
+                if let url {
+                    var nome = url.lastPathComponent
+                    if let suggerito = f.suggestedName, !suggerito.isEmpty {
+                        let estensione = url.pathExtension.isEmpty
+                            ? (UTType(tipo)?.preferredFilenameExtension ?? "") : url.pathExtension
+                        nome = estensione.isEmpty ? suggerito : "\(suggerito).\(estensione)"
+                    }
+                    // Una sottocartella per file: due rilasci con lo stesso nome non si sovrascrivono
+                    let posto = cartella.appendingPathComponent("\(indice)", isDirectory: true)
+                    try? FileManager.default.createDirectory(at: posto, withIntermediateDirectories: true)
+                    copia = Self.copiaLocale(url, nome: nome, in: posto)
+                }
+                let pronta = copia
+                DispatchQueue.main.async {
+                    if let pronta { raccolta.urls.append(pronta) }
+                    gruppo.leave()
+                }
+            }
+        }
+        gruppo.notify(queue: .main) {
+            if !raccolta.urls.isEmpty { aggiungi(raccolta.urls) }
+            try? FileManager.default.removeItem(at: cartella)
+        }
+    }
+
+    /// Copia `url` in `cartella` con il nome dato (protetta come il resto dei dati del dispositivo).
+    private static func copiaLocale(_ url: URL, nome: String, in cartella: URL) -> URL? {
+        let pulito = nome.replacingOccurrences(of: "/", with: "-")
+        let destinazione = cartella.appendingPathComponent(pulito.isEmpty ? UUID().uuidString : pulito)
+        do {
+            try? FileManager.default.removeItem(at: destinazione)
+            try FileManager.default.copyItem(at: url, to: destinazione)
+            try? (destinazione as NSURL).setResourceValue(FileProtectionType.complete, forKey: .fileProtectionKey)
+            return destinazione
+        } catch {
+            return nil
+        }
+    }
+}
+#endif

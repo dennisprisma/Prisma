@@ -76,7 +76,11 @@ struct AnteprimaDocumento: View {
     }
 
     private func notaFoglio(vuoto: Bool) -> String {
+        #if os(macOS)
         if stato.documentiInLettura.contains(documento.id) { return "Prisma sta leggendo il testo sul Mac…" }
+        #elseif os(iOS)
+        if stato.documentiInLettura.contains(documento.id) { return "Prisma sta leggendo il testo…" }
+        #endif
         if vuoto { return "Il testo di questo documento non è ancora disponibile." }
         return documento.file == nil ? "Documento di prova: pagina ricostruita dal testo" : "Pagina ricostruita dal testo letto"
     }
@@ -98,6 +102,7 @@ struct AnteprimaDocumento: View {
             }
             .disabled(pagina >= totale)
             if let url {
+                #if os(macOS)
                 Button { ApriFile.apri(url) } label: {
                     HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
                         Text("Apri in Anteprima")
@@ -107,6 +112,17 @@ struct AnteprimaDocumento: View {
                 .buttonStyle(StileCollegamento())
                 .fixedSize()
                 .help("Apre il file nell'app Anteprima del Mac")
+                #elseif os(iOS)
+                // Su iPhone e iPad l'Anteprima del Mac non c'è: il file si manda (AirDrop, Mail) o si salva in File
+                Button { StampaCarta.condividi(url, nome: documento.titolo) } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("Condividi")
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+                .buttonStyle(StileCollegamento())
+                .fixedSize()
+                #endif
             }
         }
         .padding(.horizontal, m.marginePagine)

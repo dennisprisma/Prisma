@@ -37,11 +37,12 @@ struct PannelloAdeguatezza: View {
         } contenuto: {
             VStack(alignment: .leading, spacing: M.spazioSezioni) {
                 fascia(esito, scheda: scheda)
-                HStack(alignment: .top, spacing: M.spazioColonne) {
+                // iPad stretto: le scelte vanno sotto i controlli, a tutta larghezza (sul Mac sempre affiancate)
+                Affiancati(soglia: SoglieAffiancati.pannello, spazio: M.spazioColonne) {
                     controlli(esito)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     scelte(i, esito, firmata: firmata)
-                        .frame(width: M.colonnaScelte, alignment: .leading)
+                        .larghezzaAffiancata(M.colonnaScelte, alignment: .leading)
                 }
                 Text(TestiAdeguatezza.avvertenzaBreve)
                     .font(Tipo.kpiNota)

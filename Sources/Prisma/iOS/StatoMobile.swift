@@ -36,6 +36,64 @@ enum DestinazioneTelefono: Hashable {
     case appuntamento(String)
 }
 
+/// Il file che l'iPad chiede di scegliere con `.fileImporter` (`StatoShell.sceltaFileMobile`): sul Mac sono
+/// i pannelli di apertura di `importaClientiDaFile`, `importaPosizioniDaFile` e `scegliFileValori`.
+enum SceltaFileMobile: String, Identifiable {
+    case clienti, posizioni, valori
+
+    var id: String { rawValue }
+
+    /// vCard solo per i clienti; per tutti CSV, testo a tabulazioni ed Excel (.xlsx), come sul Mac.
+    var tipi: [UTType] {
+        switch self {
+        case .clienti: return [.vCard] + StatoShell.tipiTabelle
+        case .posizioni, .valori: return StatoShell.tipiTabelle
+        }
+    }
+}
+
+/// Un backup pronto da rimandare al Mac con `.fileExporter`: il file resta in tmp/ e si legge solo al salvataggio
+/// (niente copia in memoria: il backup comprende i documenti).
+struct DocumentoBackupMobile: FileDocument {
+    static var readableContentTypes: [UTType] { [.backupPrisma, .zip] }
+    static var writableContentTypes: [UTType] { [.backupPrisma, .zip] }
+
+    let url: URL
+
+    init(url: URL) { self.url = url }
+
+    init(configuration: ReadConfiguration) throws {
+        // Prisma non apre backup da qui (lo fa AperturaBackup): il tipo serve solo all'esportazione
+        throw CocoaError(.featureUnsupported)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        try FileWrapper(url: url, options: [])
+    }
+}
+
+/// Un testo da salvare con `.fileExporter` (la copia di una nota del taccuino): resta in memoria, è piccolo.
+struct DocumentoTestoMobile: FileDocument {
+    static var readableContentTypes: [UTType] { [.plainText] }
+
+    let testo: String
+    /// Il nome proposto nel selettore, con l'estensione.
+    let nome: String
+
+    init(testo: String, nome: String) {
+        self.testo = testo
+        self.nome = nome
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        throw CocoaError(.featureUnsupported)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(testo.utf8))
+    }
+}
+
 extension UTType {
     /// Il backup protetto di Prisma (`.zip.cifrato`), dichiarato in Supporto/iOS/Info.plist.
     static let backupPrisma = UTType(exportedAs: "local.prisma.backup")
@@ -68,8 +126,12 @@ final class StatoMobile: ObservableObject {
     /// true se il file scelto è un backup protetto da password (`.zip.cifrato`).
     @Published private(set) var protetto = false
 
-    /// L'app mostrata nella colonna di dettaglio dell'iPad.
+    /// L'app mostrata nella colonna di dettaglio dell'iPad (la cambiano la barra laterale con `mostra(_:)`
+    /// e le app stesse con `stato.apri(_:)`, che sul Mac porta davanti una finestra).
     @Published var appiPad: AppPrisma = .clienti
+    /// Il backup per il Mac: in preparazione, poi pronto da salvare con `.fileExporter`.
+    @Published private(set) var preparazioneBackup = false
+    @Published var backupDaInviare: DocumentoBackupMobile?
     /// La scheda scelta sull'iPhone e il percorso aperto in ciascuna (le istantanee lo impostano).
     @Published var schedaiPhone: SchedaTelefono = .clienti
     @Published var percorsoClienti: [DestinazioneTelefono] = []
@@ -78,6 +140,8 @@ final class StatoMobile: ObservableObject {
 
     /// Dopo la fine del ripristino, quanto aspettare prima di leggerne l'esito (gli ultimi passi di StatoShell).
     nonisolated static let ritardoEsito: UInt64 = 800_000_000
+    /// Dopo la scelta di un file da importare, quanto aspettare che il selettore finisca di chiudersi.
+    nonisolated static let ritardoDopoSelettore: UInt64 = 500_000_000
 
     private var abbonamenti = Set<AnyCancellable>()
     private var attesaEsito: AnyCancellable?
@@ -97,6 +161,128 @@ final class StatoMobile: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] richiesta in self?.passwordRifiutata(richiesta) }
             .store(in: &abbonamenti)
+        // Le app aprono le altre con `stato.apri(_:)` (risultati della Ricerca, importazioni, rimandi): sul Mac
+        // la finestra viene davanti, sull'iPad cambia la colonna di dettaglio
+        stato.sistema.$elenco
+            .map { elenco in elenco.last(where: { !$0.ridotta })?.app }
+            .removeDuplicates()
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] app in
+                guard let self, self.appiPad != app else { return }
+                self.appiPad = app
+            }
+            .store(in: &abbonamenti)
+    }
+
+    // MARK: - App dell'iPad
+
+    /// Una voce della barra laterale: l'app va nel dettaglio e, come sul Mac, davanti alle altre in StatoShell
+    /// (così le app che chiedono `stato.apri` di quella già davanti non restano senza effetto). In modo cliente
+    /// le app riservate non si aprono: lo dice `stato.apri` con il suo avviso.
+    func mostra(_ app: AppPrisma) {
+        guard stato.appConsentita(app) else {
+            stato.apri(app)
+            return
+        }
+        appiPad = app
+        if stato.sistema.appAttiva != app { stato.apri(app) }
+    }
+
+    // MARK: - Importazioni da file
+
+    /// Il file scelto con `.fileImporter` per un'importazione: si legge da una copia in tmp/ (scaricata da
+    /// iCloud Drive se serve), che si cancella subito dopo la lettura. Il nome resta quello del file scelto.
+    func importa(_ esito: Result<URL, Error>, per scelta: SceltaFileMobile) {
+        let url: URL
+        switch esito {
+        case .success(let scelto): url = scelto
+        case .failure(let errore):
+            stato.mostraAvviso("Non riesco ad aprire il file scelto: \(errore.localizedDescription)")
+            return
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let copia = Result { try Self.copiaDiLavoro(url) }
+            Task { @MainActor [weak self] in
+                // Il foglio dell'anteprima (Clienti, Posizioni) si apre a selettore dei file chiuso del tutto
+                try? await Task.sleep(nanoseconds: StatoMobile.ritardoDopoSelettore)
+                guard let self else {
+                    if case .success(let file) = copia { StatoMobile.cancellaCopia(file) }
+                    return
+                }
+                switch copia {
+                case .success(let file):
+                    switch scelta {
+                    case .clienti: self.stato.importaClienti(da: file)
+                    case .posizioni: self.stato.importaPosizioni(da: file)
+                    case .valori: self.stato.valoriDaFile(file)
+                    }
+                    Self.cancellaCopia(file)
+                case .failure(let errore):
+                    self.stato.mostraAvviso("Non riesco a leggere «\(url.lastPathComponent)»: \(errore.localizedDescription). Se è su iCloud Drive, aspetta che sia scaricato e riprova.")
+                }
+            }
+        }
+    }
+
+    // MARK: - Backup da rimandare al Mac
+
+    /// Crea un backup protetto dell'archivio del dispositivo in tmp/ (mai nella cartella dei backup arrivata dal
+    /// Mac, che qui non esiste), poi lo offre a `.fileExporter`: si salva in File o iCloud Drive e sul Mac si apre
+    /// con Impostazioni › Archivio › «Ripristina da file…». Sempre con password: i dati dei clienti escono dal
+    /// dispositivo solo cifrati.
+    func preparaBackupPerMac(password: String) {
+        guard persistente, !preparazioneBackup, !stato.backupInCorso else { return }
+        guard password.count >= ImpostazioniBackup.lunghezzaMinimaPassword else {
+            stato.mostraAvviso("La password deve avere almeno \(ImpostazioniBackup.lunghezzaMinimaPassword) caratteri.")
+            return
+        }
+        scartaBackupDaInviare()
+        stato.salvaOra()
+        preparazioneBackup = true
+        // UIDevice si legge sul thread principale
+        let nota = Self.notaBackupDispositivo
+        DispatchQueue.global(qos: .userInitiated).async {
+            let cartella = FileManager.default.temporaryDirectory.appendingPathComponent("backup-invio-\(UUID().uuidString)", isDirectory: true)
+            let esito = Result {
+                try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: cartella,
+                                       nota: nota, password: password)
+            }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.preparazioneBackup = false
+                switch esito {
+                case .success(let file):
+                    self.backupDaInviare = DocumentoBackupMobile(url: file)
+                case .failure(let errore):
+                    try? FileManager.default.removeItem(at: cartella)
+                    self.stato.mostraAvviso("Backup non riuscito: \(errore.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Il salvataggio con `.fileExporter` è finito (o annullato): la copia in tmp/ si cancella.
+    func backupInviato(_ esito: Result<URL, Error>) {
+        switch esito {
+        case .success(let url):
+            stato.mostraAvviso("Backup salvato: «\(url.lastPathComponent)». Sul Mac aprilo da Impostazioni › Archivio.")
+        case .failure(let errore):
+            if (errore as? CocoaError)?.code != .userCancelled {
+                stato.mostraAvviso("Backup non salvato: \(errore.localizedDescription)")
+            }
+        }
+        scartaBackupDaInviare()
+    }
+
+    func scartaBackupDaInviare() {
+        if let file = backupDaInviare?.url { Self.cancellaCopia(file) }
+        backupDaInviare = nil
+    }
+
+    /// La nota nel nome del backup fatto sul dispositivo («Prisma backup … (da iPad).zip.cifrato»).
+    static var notaBackupDispositivo: String {
+        UIDevice.current.userInterfaceIdiom == .pad ? "da iPad" : "da iPhone"
     }
 
     /// Lo stato vero dell'app, con l'archivio sul disco. Le cartelle d'arrivo si svuotano prima.
@@ -157,7 +343,7 @@ final class StatoMobile: ObservableObject {
 
     /// Copia il file in tmp/ con l'accesso del sistema (può non servire: `false` non è un errore) e il
     /// coordinamento dei file, che scarica da iCloud Drive un file non ancora sul dispositivo.
-    nonisolated private static func copiaDiLavoro(_ url: URL) throws -> URL {
+    nonisolated static func copiaDiLavoro(_ url: URL) throws -> URL {
         let fm = FileManager.default
         let accesso = url.startAccessingSecurityScopedResource()
         defer { if accesso { url.stopAccessingSecurityScopedResource() } }
@@ -270,7 +456,7 @@ final class StatoMobile: ObservableObject {
         protetto = false
     }
 
-    nonisolated private static func cancellaCopia(_ copia: URL) {
+    nonisolated static func cancellaCopia(_ copia: URL) {
         try? FileManager.default.removeItem(at: copia.deletingLastPathComponent())
     }
 
@@ -307,21 +493,28 @@ final class StatoMobile: ObservableObject {
         compitoSalvataggio = .invalid
     }
 
-    /// Documents/Inbox (copie di «Apri con» e AirDrop) e tmp/ (copie di lavoro dei backup) si svuotano a ogni
-    /// avvio: contengono dati dei clienti. Documents/ resta fuori dal backup iCloud del dispositivo.
+    /// Documents/Inbox (copie di «Apri con» e AirDrop) e tmp/ (copie di lavoro dei backup, PDF condivisi,
+    /// documenti in arrivo) si svuotano a ogni avvio: contengono dati dei clienti. Documents/ resta fuori dal
+    /// backup iCloud del dispositivo.
     static func pulisciArrivi() {
         let fm = FileManager.default
         if let inbox = cartellaInArrivo {
             try? fm.removeItem(at: inbox)
         }
         if let voci = try? fm.contentsOfDirectory(at: fm.temporaryDirectory, includingPropertiesForKeys: nil) {
-            for voce in voci where voce.lastPathComponent.hasPrefix("backup-") { try? fm.removeItem(at: voce) }
+            for voce in voci where Self.daSvuotare(voce.lastPathComponent) { try? fm.removeItem(at: voce) }
         }
         if var documenti = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
             var valori = URLResourceValues()
             valori.isExcludedFromBackup = true
             try? documenti.setResourceValues(valori)
         }
+    }
+
+    /// Le voci di tmp/ con dati dei clienti: copie dei backup («backup-…», anche «backup-invio-…» per il Mac),
+    /// PDF da condividere (StampaCarta.cartellaCondivisi) e documenti importati (ImportaDocumentiMobile).
+    nonisolated private static func daSvuotare(_ nome: String) -> Bool {
+        nome.hasPrefix("backup-") || nome == "pdf-condivisi" || nome == "documenti-in-arrivo"
     }
 
     nonisolated private static var cartellaInArrivo: URL? {

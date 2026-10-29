@@ -65,7 +65,12 @@ extension Tema.Misura {
         /// Spazio fra l'icona e la scritta di un pulsante (gap 7 del .btn del tema).
         static let spazioSimboloPulsante: CGFloat = 7
         /// Il bersaglio più piccolo ammesso (anche croci e «i»), e il lato dei pulsanti solo icona.
+        #if os(iOS)
+        /// Sull'iPad e sull'iPhone il bersaglio più piccolo è l'area di tocco (44 pt).
+        static let areaClicMinima: CGFloat = Tema.Misura.Mobile.areaTocco
+        #elseif os(macOS)
         static let areaClicMinima: CGFloat = 28
+        #endif
         static let pulsanteIcona: CGFloat = 32
         /// Quanto si allarga l'area di clic di un'icona da 22 pt dentro una riga densa (22 + 2 × 3 = 28),
         /// senza alzare la riga: `.contentShape(Rectangle().inset(by: -allargamentoClic))`.
@@ -318,7 +323,12 @@ struct CorpoPulsante<Etichetta: View>: View {
                 base.background { pieno }
             }
         }
+        #if os(iOS)
+        // Al tocco il bersaglio è alto almeno 44 pt, anche se la capsula disegnata resta della sua taglia
+        .contentShape(RettangoloTocco(altezza: max(taglia.altezza, altezza ?? 0), ancheLati: true))
+        #elseif os(macOS)
         .contentShape(FormaVetro.capsula)
+        #endif
         .scaleEffect(premuto ? Tema.Moto.scalaPressione : 1)
         .animation(Tema.Moto.molla, value: premuto)
         .opacity(abilitato ? 1 : 0.55)
@@ -590,7 +600,12 @@ struct ControlloSegmenti<Valore: Hashable>: View {
                             .matchedGeometryEffect(id: "cursore", in: spazio)
                     }
                 }
+                #if os(iOS)
+                // Al tocco la voce è alta almeno 44 pt (in verticale: le voci vicine non si rubano il tocco)
+                .contentShape(RettangoloTocco(altezza: altezza, ancheLati: false))
+                #elseif os(macOS)
                 .contentShape(Rectangle())
+                #endif
         }
         .buttonStyle(StileSemplice())
     }

@@ -227,22 +227,85 @@ enum StampaCarta {
             try? dati.write(to: url)
         }
         #elseif os(iOS)
-        // Su iPhone e iPad: il foglio di condivisione (Salva su File, AirDrop…), da una copia temporanea.
-        // Il salvataggio con `.fileExporter` nella vista arriva nel giro 2.
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(nome)
-        guard (try? dati.write(to: url, options: [.atomic, .completeFileProtection])) != nil else { return }
-        presenta(UIActivityViewController(activityItems: [url], applicationActivities: nil))
+        // Su iPhone e iPad il modulo usa `.fileExporter` e `ShareLink` (ModuloSalvaPDF): qui resta il ripiego
+        // del foglio di condivisione (Salva su File, AirDrop…), da una copia temporanea.
+        guard let url = try? copiaDaCondividere(dati, nome: nome) else { return }
+        condividi(url)
         #endif
     }
 
     #if os(iOS)
+    /// La cartella temporanea dei PDF da condividere: una copia alla volta (si svuota a ogni nuova copia),
+    /// protetta come il resto dei dati del dispositivo. Il sistema la svuota con tmp/.
+    static let cartellaCondivisi = FileManager.default.temporaryDirectory
+        .appendingPathComponent("pdf-condivisi", isDirectory: true)
+
+    /// Scrive il PDF nella cartella dei condivisi con il nome del documento e ne restituisce l'indirizzo.
+    static func copiaDaCondividere(_ dati: Data, nome: String) throws -> URL {
+        let url = try nuovaCopiaCondivisa(nome)
+        try dati.write(to: url, options: [.atomic, .completeFileProtection])
+        return url
+    }
+
+    /// Svuota la cartella dei condivisi e restituisce l'indirizzo della nuova copia (il nome senza «/» e «:»).
+    private static func nuovaCopiaCondivisa(_ nome: String) throws -> URL {
+        let fm = FileManager.default
+        try? fm.removeItem(at: cartellaCondivisi)
+        try fm.createDirectory(at: cartellaCondivisi, withIntermediateDirectories: true)
+        let pulito = nome.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
+        return cartellaCondivisi.appendingPathComponent(pulito)
+    }
+
+    /// Il foglio di condivisione di sistema (AirDrop, Mail, Salva su File…) per un file del dispositivo.
+    /// Con `nome` si condivide una copia con quel nome (il file nell'archivio ha per nome il codice del documento).
+    @MainActor
+    static func condividi(_ url: URL, nome: String? = nil) {
+        var daCondividere = url
+        if let nome, !nome.isEmpty {
+            let estensione = url.pathExtension
+            guard let copia = try? nuovaCopiaCondivisa(estensione.isEmpty ? nome : "\(nome).\(estensione)"),
+                  (try? FileManager.default.copyItem(at: url, to: copia)) != nil else { return }
+            daCondividere = copia
+        }
+        presenta(UIActivityViewController(activityItems: [daCondividere], applicationActivities: nil))
+    }
+
+    /// Stampa con AirPrint un file del dispositivo (PDF o immagine di un documento).
+    @MainActor
+    static func stampa(file url: URL) {
+        guard UIPrintInteractionController.canPrint(url) else { return }
+        let info = UIPrintInfo(dictionary: nil)
+        info.outputType = .general
+        info.jobName = url.deletingPathExtension().lastPathComponent
+        mostraStampa(info, elemento: url)
+    }
+
+    /// Il pannello di stampa: su iPad come fumetto al centro della finestra, su iPhone come foglio dal basso.
+    @MainActor
+    private static func mostraStampa(_ info: UIPrintInfo, elemento: Any) {
+        let stampante = UIPrintInteractionController.shared
+        stampante.printInfo = info
+        stampante.printingItem = elemento
+        if UIDevice.current.userInterfaceIdiom == .pad, let finestra = finestraAttiva() {
+            let centro = CGRect(x: finestra.bounds.midX, y: finestra.bounds.midY, width: 1, height: 1)
+            _ = stampante.present(from: centro, in: finestra, animated: true, completionHandler: nil)
+        } else {
+            _ = stampante.present(animated: true, completionHandler: nil)
+        }
+    }
+
+    /// La finestra in primo piano della scena attiva.
+    @MainActor
+    private static func finestraAttiva() -> UIWindow? {
+        let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        return scena?.windows.first(where: \.isKeyWindow) ?? scena?.windows.first
+    }
+
     /// Mostra un controller di UIKit sopra quello in primo piano della scena attiva (su iPad come fumetto al centro).
     @MainActor
     private static func presenta(_ controller: UIViewController) {
-        let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }
-        guard let finestra = scena?.windows.first(where: \.isKeyWindow) ?? scena?.windows.first,
-              var sopra = finestra.rootViewController else { return }
+        guard let finestra = finestraAttiva(), var sopra = finestra.rootViewController else { return }
         while let presentato = sopra.presentedViewController { sopra = presentato }
         if let fumetto = controller.popoverPresentationController {
             fumetto.sourceView = finestra
@@ -277,13 +340,11 @@ enum StampaCarta {
         documento.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true)?.run()
         #elseif os(iOS)
         // Su iPhone e iPad: la stampa di sistema (AirPrint); il PDF ha già il formato giusto
+        guard UIPrintInteractionController.canPrint(dati) else { return }
         let info = UIPrintInfo(dictionary: nil)
         info.outputType = .general
         info.orientation = formato.width > formato.height ? .landscape : .portrait
-        let stampante = UIPrintInteractionController.shared
-        stampante.printInfo = info
-        stampante.printingItem = dati
-        stampante.present(animated: true, completionHandler: nil)
+        mostraStampa(info, elemento: dati)
         #endif
     }
 
@@ -293,3 +354,49 @@ enum StampaCarta {
         return (0..<d.pageCount).map { d.page(at: $0)?.string ?? "" }
     }
 }
+
+#if os(iOS)
+/// Il PDF per `.fileExporter` (Salva in File su iPhone e iPad): i dati sono già pronti, protetti o no.
+struct FilePDF: FileDocument {
+    static var readableContentTypes: [UTType] { [.pdf] }
+    let dati: Data
+
+    init(dati: Data) {
+        self.dati = dati
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let dati = configuration.file.regularFileContents else { throw CocoaError(.fileReadCorruptFile) }
+        self.dati = dati
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: dati)
+    }
+}
+
+/// Il PDF per `ShareLink` (Condividi su iPhone e iPad). La protezione con la password si applica solo quando
+/// l'utente sceglie dove mandarlo, e il file porta il nome del documento.
+struct PDFCondiviso: Transferable {
+    let dati: Data
+    let nome: String
+    /// La password con cui proteggerlo, o nessuna.
+    let password: String?
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .pdf) { pdf in
+            SentTransferredFile(try pdf.scrivi())
+        }
+    }
+
+    /// La copia da condividere, con la password se c'è.
+    func scrivi() throws -> URL {
+        var finale = dati
+        if let password {
+            guard let protetto = StampaCarta.protetto(dati, password: password) else { throw CocoaError(.fileWriteUnknown) }
+            finale = protetto
+        }
+        return try StampaCarta.copiaDaCondividere(finale, nome: nome)
+    }
+}
+#endif

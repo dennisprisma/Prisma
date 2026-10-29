@@ -84,7 +84,21 @@ struct AppRicerca: View {
         }
         // Cambiato da fuori: vale quello dello stato
         .onChange(of: stato.testoRicerca) { nuovo in if nuovo != testo { testo = nuovo } }
+        #if os(iOS)
+        // Le frecce della tastiera dell'iPad scelgono il risultato (sul Mac lo fa il monitor dei tasti)
+        .onKeyPress(.downArrow) { spostaSelezione(1, in: elenco) }
+        .onKeyPress(.upArrow) { spostaSelezione(-1, in: elenco) }
+        #endif
     }
+
+    #if os(iOS)
+    @MainActor
+    private func spostaSelezione(_ passo: Int, in elenco: [RisultatoRicerca]) -> KeyPress.Result {
+        guard fuoco, !elenco.isEmpty else { return .ignored }
+        selezione = min(max(selezione + passo, 0), elenco.count - 1)
+        return .handled
+    }
+    #endif
 
     private func cerca() {
         sezioni = MotoreRicerca.cerca(testo, in: stato)

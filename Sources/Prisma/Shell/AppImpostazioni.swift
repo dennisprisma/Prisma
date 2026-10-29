@@ -39,7 +39,13 @@ struct AppImpostazioni: View {
                                 switch stato.schedaImpostazioni {
                                 case .esperienza: esperienza
                                 case .proposte: ImpostazioniProposte()
-                                case .archivio: archivio
+                                case .archivio:
+                                    #if os(macOS)
+                                    archivio
+                                    #elseif os(iOS)
+                                    // Su iPhone e iPad: apertura di un altro backup e backup da rimandare al Mac
+                                    ArchivioMobile()
+                                    #endif
                                 case .riferimenti: ImpostazioniRiferimenti()
                                 case .scorciatoie: scorciatoie
                                 }
@@ -52,10 +58,24 @@ struct AppImpostazioni: View {
                         .onAppear { scorri(lettore) }
                         .onChange(of: stato.ancoraImpostazioni) { _ in scorri(lettore) }
                     }
+                    #if os(macOS)
                     .frame(width: geo.size.width * (1 - Misure.Impostazioni.informazioniLarghezza))
+                    #elseif os(iOS)
+                    // iPad stretto: senza la colonna delle informazioni le schede prendono tutta la larghezza
+                    .frame(width: Self.conInformazioni(geo.size.width)
+                           ? geo.size.width * (1 - Misure.Impostazioni.informazioniLarghezza) : geo.size.width)
+                    #endif
+                    #if os(macOS)
                     informazioni
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .padding(.leading, 30)
+                    #elseif os(iOS)
+                    if Self.conInformazioni(geo.size.width) {
+                        informazioni
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .padding(.leading, 30)
+                    }
+                    #endif
                 }
             }
         }
@@ -842,6 +862,13 @@ struct AppImpostazioni: View {
 
     // MARK: Informazioni
 
+    #if os(iOS)
+    /// iPad: la colonna delle informazioni a destra c'è solo se l'app è abbastanza larga.
+    private static func conInformazioni(_ larghezza: CGFloat) -> Bool {
+        larghezza >= Tema.Misura.Mobile.sogliaInformazioniImpostazioni
+    }
+    #endif
+
     private var informazioni: some View {
         VStack(alignment: .leading, spacing: 0) {
             LogoPrismaConNome(colore: Tema.Colore.logo, altezza: Tema.Misura.Shell.logoImpostazioni)
@@ -856,10 +883,17 @@ struct AppImpostazioni: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 300, alignment: .leading)
                 .padding(.bottom, 14)
+            #if os(macOS)
             Text("Archivio locale · solo su questo Mac\nVersione \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "–")")
                 .font(Tipo.informazioniPiccolo)
                 .foregroundColor(Colori.Impostazioni.nota)
                 .lineSpacing(3)
+            #elseif os(iOS)
+            Text("Archivio locale · solo su questo dispositivo, dal backup del Mac\nVersione \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "–")")
+                .font(Tipo.informazioniPiccolo)
+                .foregroundColor(Colori.Impostazioni.nota)
+                .lineSpacing(3)
+            #endif
         }
         .padding(Misure.Impostazioni.informazioniMargine)
         .overlay(alignment: .leading) {

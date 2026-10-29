@@ -97,8 +97,9 @@ extension StatoShell {
         guard pannello.runModal() == .OK, let url = pannello.url else { return }
         importaClienti(da: url)
         #elseif os(iOS)
-        // Su iPhone e iPad il file si sceglierà con `.fileImporter` nella vista (giro 2), poi `importaClienti(da:)`
-        mostraAvviso(StatoShell.soloSulMacPerOra)
+        // Su iPhone e iPad il file si sceglie con `.fileImporter` (GuscioiPad), poi `importaClienti(da:)` sulla copia
+        guard !solaLettura else { return }
+        sceltaFileMobile = .clienti
         #endif
     }
 
@@ -122,8 +123,9 @@ extension StatoShell {
         guard pannello.runModal() == .OK, let url = pannello.url else { return }
         importaPosizioni(da: url)
         #elseif os(iOS)
-        // Su iPhone e iPad il file si sceglierà con `.fileImporter` nella vista (giro 2), poi `importaPosizioni(da:)`
-        mostraAvviso(StatoShell.soloSulMacPerOra)
+        // Su iPhone e iPad il file si sceglie con `.fileImporter` (GuscioiPad), poi `importaPosizioni(da:)` sulla copia
+        guard !solaLettura else { return }
+        sceltaFileMobile = .posizioni
         #endif
     }
 

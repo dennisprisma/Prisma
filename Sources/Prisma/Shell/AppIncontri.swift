@@ -25,7 +25,12 @@ struct AppIncontri: View {
                 SegmentiAnalisi(opzioni: [(SchedaIncontro.preparazione, "01 · Preparazione"), (.ascolto, "02 · Ascolto"),
                                           (.passi, "03 · Prossimi passi")],
                                 selezione: $stato.schedaIncontro)
+                    #if os(iOS)
+                    // iPad stretto: le fasi si stringono (SegmentiAnalisi passa alle voci compatte)
+                    .frame(maxWidth: Misure.IncontriImpaginazione.fasi)
+                    #elseif os(macOS)
                     .frame(width: Misure.IncontriImpaginazione.fasi)
+                    #endif
                 // Ogni fase si impagina sullo spazio che resta: le schede riempiono la larghezza
                 // e la barra in basso resta sempre dentro la finestra
                 GeometryReader { geo in

@@ -143,8 +143,9 @@ struct SfondoAcqua: View {
         #if os(macOS)
         let conMetal = !modoIstantanea && !senzaMetal && ProgrammaAcqua.condiviso.device != nil
         #elseif os(iOS)
-        // Su iPhone e iPad, per ora, solo il fermo-immagine: la tela animata (CADisplayLink) arriverà dopo
-        let conMetal = false
+        // iPad: l'acqua animata (iOS/SfondoAcquaMobile.swift, CAMetalLayer e CADisplayLink); iPhone e istantanee
+        // iOS: il fermo-immagine
+        let conMetal = SfondoAcqua.animabileSuiOS && !modoIstantanea && !senzaMetal && ProgrammaAcqua.condiviso.device != nil
         #endif
         ZStack {
             // Sotto c'è sempre il fermo-immagine: la tela Metal compare sopra alla prima immagine. Quando Metal disegna,
@@ -154,6 +155,11 @@ struct SfondoAcqua: View {
             #if os(macOS)
             if conMetal {
                 TelaAcquaMetal(animato: animato, intensita: intensita, scuro: scuro, rinuncia: { senzaMetal = true })
+                    .allowsHitTesting(false)
+            }
+            #elseif os(iOS)
+            if conMetal {
+                TelaAcquaMetalMobile(animato: animato, intensita: intensita, scuro: scuro, rinuncia: { senzaMetal = true })
                     .allowsHitTesting(false)
             }
             #endif

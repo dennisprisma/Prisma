@@ -166,6 +166,8 @@ struct PannelloRiscatto: View {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 
     private func sfondo(_ r: RiscattoAnno, alternata: Bool) -> Color {

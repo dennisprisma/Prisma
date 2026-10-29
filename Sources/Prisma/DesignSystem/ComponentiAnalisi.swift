@@ -5,7 +5,12 @@ import SwiftUI
 extension Tema.Misura.Componenti {
     /// Voce della barra laterale (.side-item): margini e altezza minima.
     static let voceLaterale = EdgeInsets(top: 7, leading: 8, bottom: 7, trailing: 8)
+    #if os(iOS)
+    /// Sull'iPad la voce è alta almeno quanto l'area di tocco.
+    static let voceLateraleMinima: CGFloat = Tema.Misura.Mobile.areaTocco
+    #elseif os(macOS)
     static let voceLateraleMinima: CGFloat = 34
+    #endif
     static let quadratinoVoce: CGFloat = 10
     /// Intestazione di sezione della barra laterale (.side-sec).
     static let sezioneLaterale = EdgeInsets(top: 12, leading: 8, bottom: 4, trailing: 8)
@@ -166,10 +171,26 @@ struct FasciaKPI<Contenuto: View>: View {
     @ViewBuilder let contenuto: () -> Contenuto
 
     var body: some View {
+        #if os(iOS)
+        // iPad: se le tessere non stanno su una fila vanno su due colonne
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: Tema.Misura.Componenti.spazioTessere) {
+                contenuto()
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: Tema.Misura.Componenti.spazioTessere, alignment: .top),
+                                GridItem(.flexible(), spacing: Tema.Misura.Componenti.spazioTessere, alignment: .top)],
+                      alignment: .leading, spacing: Tema.Misura.Componenti.spazioTessere) {
+                contenuto()
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        #elseif os(macOS)
         HStack(alignment: .top, spacing: Tema.Misura.Componenti.spazioTessere) {
             contenuto()
         }
         .fixedSize(horizontal: false, vertical: true)
+        #endif
     }
 }
 

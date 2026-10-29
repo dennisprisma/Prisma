@@ -29,7 +29,8 @@ struct PannelloPatrimonio: View {
                         Text(p.conProposte == nil ? "nessuna proposta aperta" : "tra \(p.anni) anni, +\(Formati.euroBreve(p.versamentiAnnuiProposte)) l'anno")
                     }
                 }
-                HStack(alignment: .top, spacing: 16) {
+                // iPad stretto: il grafico sopra, gli obiettivi sotto (sul Mac sempre affiancati)
+                Affiancati(soglia: SoglieAffiancati.pannello, spazio: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         GraficoProiezione(serie: serie)
                             .frame(height: Misure.Analisi.grafico)
@@ -61,7 +62,7 @@ struct PannelloPatrimonio: View {
                             Rectangle().fill(Colori.Analisi.tabellaRiga).frame(height: 1)
                         }
                     }
-                    .frame(width: Misure.Analisi.colonnaEredi, alignment: .topLeading)
+                    .larghezzaAffiancata(Misure.Analisi.colonnaEredi, alignment: .topLeading)
                 }
             }
         }

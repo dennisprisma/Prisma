@@ -19,16 +19,24 @@ struct AppClienti: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            indice
-                .frame(width: Misure.Rubrica.indice)
-            dossier
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .leading) {
-                    Rectangle().fill(Colori.Rubrica.divisoreOmbra)
-                        .frame(width: Tema.Misura.filo)
-                        .allowsHitTesting(false)
-                }
+        Group {
+            #if os(iOS)
+            // iPad stretto: la rubrica si chiude in una striscia e si apre sopra il dossier (il cliente si sceglie
+            // anche dalla barra degli strumenti)
+            ColonnaLateraleAdattiva(larghezzaLaterale: Tema.Misura.Mobile.rubrica, titolo: "la rubrica",
+                                    chiudiAlCambio: AnyHashable(stato.clienteAttivoId)) {
+                indice
+                    .frame(width: Tema.Misura.Mobile.rubrica)
+            } contenuto: {
+                dossierConFilo
+            }
+            #elseif os(macOS)
+            HStack(spacing: 0) {
+                indice
+                    .frame(width: Misure.Rubrica.indice)
+                dossierConFilo
+            }
+            #endif
         }
         .clipShape(FormaVetro.arrotondata(Tema.Raggio.scheda))
         .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
@@ -85,6 +93,17 @@ struct AppClienti: View {
         guard richiesta else { return }
         stato.richiestaNuovoCliente = false
         modulo = Cliente.nuovo(tinta: stato.prossimaTinta)
+    }
+
+    /// Il dossier con il filo d'ombra verso la rubrica.
+    private var dossierConFilo: some View {
+        dossier
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .leading) {
+                Rectangle().fill(Colori.Rubrica.divisoreOmbra)
+                    .frame(width: Tema.Misura.filo)
+                    .allowsHitTesting(false)
+            }
     }
 
     // MARK: - Indice
@@ -511,43 +530,74 @@ struct IntestazioneDossier: View {
     let modifica: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: Misure.Rubrica.avatarProfilo)
-                .padding(Misure.Rubrica.cornicesAvatar)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("DOSSIER PERSONALE")
-                    .font(Tipo.profiloOcchiello)
-                    .tracking(0.7)
-                    .foregroundColor(Colori.Rubrica.profiloOcchiello)
-                Text(cliente.nome)
-                    .font(Tipo.profiloNome)
-                    .tracking(-0.5)
-                    .foregroundColor(Colori.Rubrica.profiloNome)
-                Text(cliente.tema)
-                    .font(Tipo.profiloTema)
-                    .foregroundColor(Colori.Rubrica.profiloOcchiello)
+        #if os(iOS)
+        // iPad: se nome e comandi non stanno su una riga, i comandi scendono sotto il nome (mai il nome troncato)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                identita
+                Spacer()
+                comandi
             }
-            .lineLimit(1)
-            Spacer()
-            HStack(spacing: 6) {
-                ForEach(cliente.canali) { EtichettaCanale(canale: $0, compatta: true) }
+            VStack(alignment: .leading, spacing: Tema.Misura.Mobile.testataDossierDueRighe) {
+                HStack(spacing: 12) { identita }
+                HStack(spacing: 12) {
+                    Spacer(minLength: 0)
+                    comandi
+                }
             }
-            Button {
-                stato.alternaPreferito(cliente.id)
-            } label: {
-                Text(cliente.preferito ? "★" : "☆")
-                    .font(Tipo.stellaGrande)
-                    .foregroundColor(cliente.preferito ? Colori.Rubrica.stellaGrande : Colori.Rubrica.stellaVuota)
-            }
-            .buttonStyle(StileSemplice())
-            .help(cliente.preferito ? "Togli dai preferiti" : "Aggiungi ai preferiti")
-            .accessibilityLabel(cliente.preferito ? "Togli dai preferiti" : "Aggiungi ai preferiti")
-            Button(action: modifica) { Label("Modifica", systemImage: "pencil") }
-                .buttonStyle(StileVetro())
         }
         .padding(Misure.Rubrica.margineProfilo)
         .frame(minHeight: 86)
         .bordoBasso(Colori.Rubrica.selleriaBordo)
+        #elseif os(macOS)
+        HStack(spacing: 12) {
+            identita
+            Spacer()
+            comandi
+        }
+        .padding(Misure.Rubrica.margineProfilo)
+        .frame(minHeight: 86)
+        .bordoBasso(Colori.Rubrica.selleriaBordo)
+        #endif
+    }
+
+    /// Avatar, occhiello, nome e tema del cliente.
+    @ViewBuilder private var identita: some View {
+        AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: Misure.Rubrica.avatarProfilo)
+            .padding(Misure.Rubrica.cornicesAvatar)
+        VStack(alignment: .leading, spacing: 2) {
+            Text("DOSSIER PERSONALE")
+                .font(Tipo.profiloOcchiello)
+                .tracking(0.7)
+                .foregroundColor(Colori.Rubrica.profiloOcchiello)
+            Text(cliente.nome)
+                .font(Tipo.profiloNome)
+                .tracking(-0.5)
+                .foregroundColor(Colori.Rubrica.profiloNome)
+            Text(cliente.tema)
+                .font(Tipo.profiloTema)
+                .foregroundColor(Colori.Rubrica.profiloOcchiello)
+        }
+        .lineLimit(1)
+    }
+
+    /// Canali, preferito e «Modifica».
+    @ViewBuilder private var comandi: some View {
+        HStack(spacing: 6) {
+            ForEach(cliente.canali) { EtichettaCanale(canale: $0, compatta: true) }
+        }
+        Button {
+            stato.alternaPreferito(cliente.id)
+        } label: {
+            Text(cliente.preferito ? "★" : "☆")
+                .font(Tipo.stellaGrande)
+                .foregroundColor(cliente.preferito ? Colori.Rubrica.stellaGrande : Colori.Rubrica.stellaVuota)
+        }
+        .buttonStyle(StileSemplice())
+        .help(cliente.preferito ? "Togli dai preferiti" : "Aggiungi ai preferiti")
+        .accessibilityLabel(cliente.preferito ? "Togli dai preferiti" : "Aggiungi ai preferiti")
+        Button(action: modifica) { Label("Modifica", systemImage: "pencil") }
+            .buttonStyle(StileVetro())
     }
 }
 

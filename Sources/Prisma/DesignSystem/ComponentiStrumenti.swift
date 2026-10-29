@@ -53,29 +53,26 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
         let m = Tema.Misura.Componenti.self
         let forma = FormaVetro.arrotondata(Misure.ColonneStrumento.raggio)
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 6) {
-                    // L'elenco scorre se è lungo: la finestra non si allunga mai sotto il dock.
-                    // All'apertura porta in vista la voce scelta (anche quando è in fondo all'elenco).
-                    ScrollViewReader { lettore in
-                        ScrollView(.vertical, showsIndicators: false) {
-                            VStack(alignment: .leading, spacing: 6) { rail() }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.bottom, m.sfumaturaRail / 2)
-                        }
-                        .sfumaturaBordiScorrimento(sotto: m.sfumaturaRail)
-                        .onAppear {
-                            DispatchQueue.main.async { lettore.scrollTo(VoceNavigazione.idScelta) }
-                        }
-                    }
-                    ArchivioLocaleRail()
+            #if os(iOS)
+            // iPad: con poco spazio l'elenco laterale si chiude in una striscia e si apre sopra il contenuto
+            ColonnaLateraleAdattiva(larghezzaLaterale: Misure.ColonneStrumento.rail + Misure.ColonneStrumento.filo,
+                                    titolo: "l'elenco") {
+                HStack(spacing: 0) {
+                    colonnaLaterale
+                    DivisoreColonne()
                 }
-                .padding(m.margineLaterale)
-                .colonnaFissa(Misure.ColonneStrumento.rail)
+            } contenuto: {
+                contenuto()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            #elseif os(macOS)
+            HStack(spacing: 0) {
+                colonnaLaterale
                 DivisoreColonne()
                 contenuto()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            #endif
             HStack(spacing: 8) {
                 Circle().fill(Tema.Colore.verde).frame(width: m.spiaStato, height: m.spiaStato)
                 Text(notaStato).lineLimit(1)
@@ -91,6 +88,29 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
         // Il contenuto si taglia sugli angoli tondi prima del vetro (come Clienti): i piedi restano dentro
         .clipShape(forma)
         .vetro(.sottile, forma: forma)
+    }
+
+    /// L'elenco laterale con il lucchetto dell'archivio in fondo, alla larghezza della cornice.
+    private var colonnaLaterale: some View {
+        let m = Tema.Misura.Componenti.self
+        return VStack(alignment: .leading, spacing: 6) {
+            // L'elenco scorre se è lungo: la finestra non si allunga mai sotto il dock.
+            // All'apertura porta in vista la voce scelta (anche quando è in fondo all'elenco).
+            ScrollViewReader { lettore in
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 6) { rail() }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, m.sfumaturaRail / 2)
+                }
+                .sfumaturaBordiScorrimento(sotto: m.sfumaturaRail)
+                .onAppear {
+                    DispatchQueue.main.async { lettore.scrollTo(VoceNavigazione.idScelta) }
+                }
+            }
+            ArchivioLocaleRail()
+        }
+        .padding(m.margineLaterale)
+        .colonnaFissa(Misure.ColonneStrumento.rail)
     }
 }
 

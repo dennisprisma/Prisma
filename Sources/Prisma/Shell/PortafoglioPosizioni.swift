@@ -74,7 +74,8 @@ struct CorpoPortafoglio: View, Equatable {
                 }
             }
 
-            HStack(alignment: .top, spacing: 24) {
+            // iPad stretto: i blocchi affiancati vanno uno sotto l'altro (sul Mac sempre affiancati)
+            Affiancati(soglia: SoglieAffiancati.posizioni, spazio: 24) {
                 PannelloAnalisi(titolo: "Ripartizione per area", nota: "Tutti i clienti, posizioni in essere") { EmptyView() } contenuto: {
                     AppPosizioni.ripartizione(r)
                 }
@@ -82,7 +83,7 @@ struct CorpoPortafoglio: View, Equatable {
                 PannelloAnalisi(titolo: "Per canale", nota: "Attività in essere") { EmptyView() } contenuto: {
                     AppPosizioni.canali(r, massimo: Self.massimoInScadenza, apri: { stato.posizioneInDettaglio = $0.id })
                 }
-                .frame(width: 330, alignment: .leading)
+                .larghezzaAffiancata(330, alignment: .leading)
             }
 
             PannelloAnalisi(titolo: "Per cliente", nota: "Dal più seguito · tocca una riga per aprire le sue posizioni") { EmptyView() } contenuto: {
@@ -115,7 +116,7 @@ struct CorpoPortafoglio: View, Equatable {
                 riesami(dovuti)
             }
 
-            HStack(alignment: .top, spacing: 24) {
+            Affiancati(soglia: SoglieAffiancati.posizioni, spazio: 24) {
                 PannelloAnalisi(titolo: "Scadenze dei prossimi \(Portafoglio.mesiScadenze) mesi",
                                 nota: "Capitali da reinvestire e coperture da rinnovare") { EmptyView() } contenuto: {
                     scadenze(p.scadenze)
@@ -133,7 +134,7 @@ struct CorpoPortafoglio: View, Equatable {
                         esiti(p, statistiche: statistiche)
                     }
                 }
-                .frame(width: Misure.Portafoglio.emittenti, alignment: .leading)
+                .larghezzaAffiancata(Misure.Portafoglio.emittenti, alignment: .leading)
             }
         }
         .padding(EdgeInsets(top: 10, leading: 12, bottom: 16, trailing: 12))
@@ -201,6 +202,8 @@ struct CorpoPortafoglio: View, Equatable {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 
     // MARK: - Scadenze
@@ -556,6 +559,8 @@ struct CorpoPortafoglio: View, Equatable {
             }
         }
         .contornoTabella()
+        // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+        .scorreSeStretto()
     }
 
     // MARK: - Celle

@@ -56,8 +56,7 @@ struct DettaglioDocumento: View {
         VStack(spacing: 0) {
             barra
             if d.genere == .prisma {
-                NotaMetodo(testo: "Impaginato da Prisma con i dati del dossier: è un documento da consultare, stampare o consegnare, non ci sono dati da estrarre. Con «Apri in Anteprima» lo apri sul Mac.",
-                           titolo: d.tipo.nome)
+                NotaMetodo(testo: Self.notaImpaginato, titolo: d.tipo.nome)
                     .padding(Tema.Misura.Documenti.margineScheda)
             }
             GeometryReader { geo in
@@ -79,6 +78,12 @@ struct DettaglioDocumento: View {
         stato.vistaDocumenti.evidenzia = campo
         if !conAnteprima(larghezza) { stato.vistaDocumenti.scheda = .testo }
     }
+
+    #if os(macOS)
+    private static let notaImpaginato = "Impaginato da Prisma con i dati del dossier: è un documento da consultare, stampare o consegnare, non ci sono dati da estrarre. Con «Apri in Anteprima» lo apri sul Mac."
+    #elseif os(iOS)
+    private static let notaImpaginato = "Impaginato da Prisma con i dati del dossier: è un documento da consultare, stampare o consegnare, non ci sono dati da estrarre. Con «Condividi…» lo mandi al cliente o lo salvi in File."
+    #endif
 
     // MARK: Corpo
 
@@ -394,12 +399,24 @@ struct DettaglioDocumento: View {
         let documento = d
         let file = stato.urlDocumento(d).flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
         let collegati = stato.bersagli(d)
+        #if os(macOS)
         var voci: [VoceMenuAzioni] = [
             VoceMenuAzioni.azione("Apri in Anteprima", attiva: file != nil) {
                 if let file { ApriFile.apri(file) }
             },
             VoceMenuAzioni.azione("Mostra nel Finder", attiva: file != nil) { stato.mostraNelFinder(documento) },
         ]
+        #elseif os(iOS)
+        // Su iPhone e iPad: il foglio di condivisione (AirDrop, Mail, Salva su File) e la stampa con AirPrint
+        var voci: [VoceMenuAzioni] = [
+            VoceMenuAzioni.azione("Condividi…", attiva: file != nil) {
+                if let file { StampaCarta.condividi(file, nome: documento.titolo) }
+            },
+            VoceMenuAzioni.azione("Stampa…", attiva: file != nil) {
+                if let file { StampaCarta.stampa(file: file) }
+            },
+        ]
+        #endif
         if d.genere != .prisma {
             voci.append(VoceMenuAzioni.azione("Rileggi il documento", attiva: file != nil && !inLettura && !stato.solaLettura) {
                 TestiRinviati.scriviOra()
@@ -953,6 +970,11 @@ private struct RigaDatoDocumento: View {
         }
         .onHover { sopra = $0 }
         .contextMenu {
+            #if os(iOS)
+            // Al tocco non c'è il passaggio del puntatore che mostra la matita: la correzione sta anche qui
+            Button { modifica = true } label: { Label("Correggi il valore", systemImage: "pencil") }
+                .disabled(stato.solaLettura || modifica)
+            #endif
             Button("Togli questo dato") { stato.togliCampo(id, c.chiave) }
                 .disabled(stato.solaLettura)
         }

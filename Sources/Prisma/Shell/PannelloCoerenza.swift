@@ -42,7 +42,8 @@ struct PannelloCoerenza: View {
                         .foregroundColor(Colori.Analisi.kpiNota)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                HStack(alignment: .top, spacing: M.spazioColonne) {
+                // iPad stretto: emittenti e canali uno sotto l'altro (sul Mac sempre affiancati)
+                Affiancati(soglia: SoglieAffiancati.pannello, spazio: M.spazioColonne) {
                     emittenti(m).frame(maxWidth: .infinity, alignment: .leading)
                     canali(m).frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -218,6 +219,8 @@ struct PannelloCoerenza: View {
                 }
             }
             .contornoTabella()
+            // iPad stretto: la tabella scorre in orizzontale (sul Mac non cambia niente)
+            .scorreSeStretto()
         }
     }
 
