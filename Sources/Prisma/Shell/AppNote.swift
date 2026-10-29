@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import UniformTypeIdentifiers
 
 /// App Note: il taccuino personale. A sinistra l'indice con ricerca e filtro per cliente,
@@ -269,6 +273,7 @@ struct AppNote: View {
     }
 
     private func esporta(_ n: Nota) {
+        #if os(macOS)
         let pannello = NSSavePanel()
         pannello.allowedContentTypes = [.plainText]
         pannello.nameFieldStringValue = "\(n.titoloMostrato.replacingOccurrences(of: "/", with: "-")).txt"
@@ -277,6 +282,10 @@ struct AppNote: View {
         if pannello.runModal() == .OK, let url = pannello.url {
             try? Data(stato.testoEsportato(n).utf8).write(to: url)
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad la copia si salverà con `.fileExporter` o la condivisione (giro 2)
+        stato.mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 }
 
@@ -366,11 +375,20 @@ private struct CampiNota: View {
         .onChange(of: nota.testo) { nuovo in if nuovo != testo { testo = nuovo } }
         .onDisappear { scrittura.subito() }
         // Chiudendo Prisma entro l'attesa: si scrive e si salva di nuovo (niente, se non è cambiato nulla)
+        #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
             guard scrittura.inAttesa else { return }
             scrittura.subito()
             stato.salvaOra()
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad la chiusura non si annuncia: si scrive quando Prisma va in background
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            guard scrittura.inAttesa else { return }
+            scrittura.subito()
+            stato.salvaOra()
+        }
+        #endif
         HStack {
             Text("AGGIORNATA IL \(Formati.dataEstesa.string(from: nota.aggiornataIl).uppercased())").tracking(1)
             Spacer()

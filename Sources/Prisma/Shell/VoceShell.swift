@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import Foundation
 
 /// Parlare con Eve: il microfono, la risposta a voce e la conversazione che continua finché non le dici «basta».
@@ -156,7 +160,11 @@ extension StatoShell {
         guard dettaturaAttiva else { return }
         dettaturaAttiva = false
         DiagnosticaVoce.annota("Dettatura di macOS: chiusa")
+        #if os(macOS)
         NSApp?.keyWindow?.makeFirstResponder(nil)
+        #elseif os(iOS)
+        _ = UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #endif
     }
 
     /// «Avvia dettatura» non ha trovato un campo di testo: si spegne subito e lo si dice.
@@ -211,8 +219,7 @@ extension StatoShell {
         var testo = DiagnosticaVoce.riepilogo(dati.impostazioni.eve) + "\n\n" + DiagnosticaVoce.testo
         if let m = esitoProvaMicrofono { testo += "\n\nProva del microfono: " + m }
         if let r = esitoProvaRiconoscimento { testo += "\n\nProva del riconoscimento:\n" + r }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(testo, forType: .string)
+        Appunti.copia(testo)
         mostraAvviso("Diagnostica copiata: incollala nel messaggio")
     }
 

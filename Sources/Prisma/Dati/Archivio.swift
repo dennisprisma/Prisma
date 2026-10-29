@@ -26,7 +26,37 @@ enum Archivio {
         for c in [cartella, cartellaDocumenti, cartellaEve] {
             try fm.createDirectory(at: c, withIntermediateDirectories: true)
         }
+        #if os(macOS)
+        // Sul Mac nulla da aggiungere: l'archivio resta in ~/Library/Application Support/Prisma
+        #elseif os(iOS)
+        // Su iPhone e iPad: fuori dal backup iCloud del dispositivo (niente cloud) e illeggibile a dispositivo
+        // bloccato. Dopo un ripristino la cartella è nuova: si riapplica a ogni salvataggio (costa poco).
+        escludiDalBackup(cartella)
+        try? fm.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: cartella.path)
+        #endif
     }
+
+    /// Opzioni di scrittura dell'archivio: sul Mac solo `.atomic` (come sempre); su iPhone e iPad anche la
+    /// protezione completa dei file (dati illeggibili con il dispositivo bloccato).
+    static var opzioniScrittura: Data.WritingOptions {
+        #if os(macOS)
+        return [.atomic]
+        #elseif os(iOS)
+        return [.atomic, .completeFileProtection]
+        #endif
+    }
+
+    #if os(macOS)
+    // Sul Mac l'archivio segue le regole del sistema (Time Machine compreso): nessuna esclusione
+    #elseif os(iOS)
+    /// Esclude una cartella dal backup iCloud/computer del dispositivo: i dati dei clienti non vanno nel cloud.
+    static func escludiDalBackup(_ cartella: URL) {
+        var url = cartella
+        var valori = URLResourceValues()
+        valori.isExcludedFromBackup = true
+        try? url.setResourceValues(valori)
+    }
+    #endif
 
     static let codificatore = nuovoCodificatore()
 
@@ -112,7 +142,8 @@ enum Archivio {
             if diVersionePiuRecente(dati) { return (dati, avvisoPiuRecente, true, true) }
             // La copia d'avvio si scrive in background: l'avvio non la aspetta
             let copia = copiaAvvio
-            coda.async { try? grezzo.write(to: copia, options: .atomic) }
+            let opzioni = opzioniScrittura
+            coda.async { try? grezzo.write(to: copia, options: opzioni) }
             dati.versione = DatiPrisma.versioneAttuale
             return (dati, recuperato ? "Un ripristino era stato interrotto: ho rimesso l'archivio com'era prima." : nil, false, false)
         } catch {
@@ -137,7 +168,7 @@ enum Archivio {
     static func salva(_ dati: DatiPrisma) throws {
         try preparaCartelle()
         let data = try codificatore.encode(dati)
-        try data.write(to: file, options: .atomic)
+        try data.write(to: file, options: opzioniScrittura)
     }
 
     /// Scrive `dati` in `destinazione` con il codificatore dato (dalla coda dei salvataggi).
@@ -148,12 +179,16 @@ enum Archivio {
             try FileManager.default.createDirectory(at: destinazione.deletingLastPathComponent(), withIntermediateDirectories: true)
         }
         let data = try codificatore.encode(dati)
-        try data.write(to: destinazione, options: .atomic)
+        try data.write(to: destinazione, options: opzioniScrittura)
     }
 
-    /// Percorso leggibile, con ~ al posto della cartella Inizio.
+    /// Percorso leggibile, con ~ al posto della cartella Inizio (su iPhone e iPad: il contenitore dell'app).
     static func percorsoBreve(_ url: URL) -> String {
+        #if os(macOS)
         let casa = FileManager.default.homeDirectoryForCurrentUser.path
+        #elseif os(iOS)
+        let casa = NSHomeDirectory()
+        #endif
         let p = url.path
         return p.hasPrefix(casa) ? "~" + p.dropFirst(casa.count) : p
     }

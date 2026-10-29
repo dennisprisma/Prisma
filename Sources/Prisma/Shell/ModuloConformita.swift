@@ -117,7 +117,7 @@ struct ModuloConformita: View {
                     get: { bozza.consensi.privacy },
                     set: { bozza.consensi.privacy = $0; if $0, bozza.consensi.dataPrivacy == nil { bozza.consensi.dataPrivacy = oggi } }
                 ))
-                .toggleStyle(.checkbox)
+                .stileCasella()
             }
             CampoModulo(etichetta: "Firmata il") {
                 CampoDataFacoltativa(data: $bozza.consensi.dataPrivacy, predefinita: oggi)
@@ -127,7 +127,7 @@ struct ModuloConformita: View {
                     get: { bozza.consensi.marketing },
                     set: { bozza.consensi.marketing = $0; bozza.consensi.dataMarketing = oggi }
                 ))
-                .toggleStyle(.checkbox)
+                .stileCasella()
             }
             CampoModulo(etichetta: "Dato o tolto il") {
                 CampoDataFacoltativa(data: $bozza.consensi.dataMarketing, predefinita: oggi)
@@ -145,7 +145,7 @@ struct ModuloConformita: View {
                       alignment: .leading, spacing: m.spazioCampiModulo) {
                 ForEach(tipi, id: \.self) { t in
                     Toggle(TestiConformita.maiuscola(TestiConformita.nomeBreve(t)), isOn: nonRichiesta(t))
-                        .toggleStyle(.checkbox)
+                        .stileCasella()
                 }
             }
         }

@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 /// App Eve (.os-app-eve del tema): un solo contenitore in vetro, a sinistra il contesto (Eve, il cliente,
@@ -53,6 +55,7 @@ struct AppEve: View {
     /// dal contesto di testo in primo piano.
     private func accendiDettatura() async {
         guard stato.richiestaDettatura > 0, stato.dettaturaAttiva else { return }
+        #if os(macOS)
         campoAttivo = false
         for tentativo in 1...4 {
             try? await Task.sleep(nanoseconds: tentativo == 1 ? 100_000_000 : 300_000_000)
@@ -69,6 +72,11 @@ struct AppEve: View {
             DiagnosticaVoce.annota("Dettatura di macOS: il campo non ha il cursore (tentativo \(tentativo), primo risponditore \(primo))")
         }
         stato.dettaturaNonPartita()
+        #elseif os(iOS)
+        // Su iPhone e iPad la dettatura è il tasto microfono della tastiera: basta il cursore nel campo
+        campoAttivo = true
+        DiagnosticaVoce.annota("iPhone e iPad: cursore nel campo, la dettatura è il microfono della tastiera")
+        #endif
     }
 
     // MARK: - Contesto (colonna a sinistra)
@@ -756,8 +764,7 @@ struct NuvolaEve: View {
                         azione("＋ Nota del cliente", aggiungiNota)
                     }
                     azione("Copia") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString((messaggio.titolo.map { $0 + "\n\n" } ?? "") + messaggio.testo, forType: .string)
+                        Appunti.copia((messaggio.titolo.map { $0 + "\n\n" } ?? "") + messaggio.testo)
                     }
                 }
                 .padding(.top, m.spazioBolla / 2)

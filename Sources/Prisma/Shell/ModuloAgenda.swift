@@ -56,7 +56,7 @@ struct ModuloAppuntamento: View {
                         VStack(alignment: .leading, spacing: Misure.RiesamiAgenda.spazioRighe) {
                             DatePicker("", selection: $bozza.inizio, displayedComponents: [.date, .hourAndMinute])
                                 .labelsHidden()
-                                .datePickerStyle(.field)
+                                .stileDataCampo()
                                 .environment(\.locale, Formati.italiano)
                             avvisiOrario
                         }
@@ -73,7 +73,7 @@ struct ModuloAppuntamento: View {
                         CampoModulo(etichetta: "Stato") {
                             Toggle("Incontro concluso", isOn: Binding(get: { bozza.stato == .concluso },
                                                                       set: { bozza.stato = $0 ? .concluso : .pianificato }))
-                                .toggleStyle(.checkbox)
+                                .stileCasella()
                         }
                     }
                 }
@@ -206,7 +206,7 @@ struct ModuloAttivita: View {
                 CampoModulo(etichetta: "Scadenza") {
                     DatePicker("", selection: $bozza.scadenza, displayedComponents: .date)
                         .labelsHidden()
-                        .datePickerStyle(.field)
+                        .stileDataCampo()
                         .environment(\.locale, Formati.italiano)
                 }
                 CampoModulo(etichetta: "Priorità") {

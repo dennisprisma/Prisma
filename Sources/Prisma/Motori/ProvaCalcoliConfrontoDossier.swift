@@ -15,7 +15,12 @@ enum ProvaCalcoliConfrontoDossier {
         casiLimite(verifica)
         archivio(verifica)
         lordo(verifica)
+        #if os(macOS)
         stato(verifica)
+        #elseif os(iOS)
+        // DD25-DD26 provano lo stato della Shell del Mac (StatoShell con le sue finestre): su iPhone e iPad si
+        // provano i motori, lo stato mobile avrà le sue prove
+        #endif
     }
 
     // MARK: - Dati di prova comuni
@@ -644,6 +649,7 @@ enum ProvaCalcoliConfrontoDossier {
 
     // MARK: - DD25–DD26: lo stato (StatoConfrontoDossier)
 
+    #if os(macOS)
     private static func stato(_ verifica: VerificaCalcoli) {
         let etfId = "prodotto-etf-globale"
 
@@ -702,6 +708,7 @@ enum ProvaCalcoliConfrontoDossier {
             }
         }
     }
+    #endif
 
     private static func diProdotto(_ b: BersaglioConfronto) -> Bool {
         if case .prodotto = b { return true }

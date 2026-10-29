@@ -1,5 +1,7 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
+#endif
 
 /// App Ricerca in finestra: resta per compatibilità (spazi di lavoro e sessioni salvate con la Ricerca aperta).
 /// ⌘K, il dock, la barra e Eve aprono il pannello in alto come Spotlight (`RicercaSpotlight`).
@@ -57,7 +59,9 @@ struct AppRicerca: View {
         }
         .onDisappear {
             invio.subito()
+            #if os(macOS)
             if let t = tasti { NSEvent.removeMonitor(t) }
+            #endif
             tasti = nil
             FrecceRicerca.condivise.attiva = false
         }
@@ -190,9 +194,13 @@ struct AppRicerca: View {
             let totale = sezioni.reduce(0) { $0 + $1.risultati.count }
             selezione = min(max(selezione + passo, 0), max(0, totale - 1))
         }
+        #if os(macOS)
         tasti = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { evento in
             frecce.gestisci(evento.keyCode) ? nil : evento
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad niente monitor dei tasti di AppKit: le frecce della tastiera dell'iPad arriveranno dopo
+        #endif
     }
 }
 

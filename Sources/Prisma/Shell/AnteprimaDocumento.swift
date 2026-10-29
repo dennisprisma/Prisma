@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import PDFKit
 import SwiftUI
 
@@ -94,7 +98,7 @@ struct AnteprimaDocumento: View {
             }
             .disabled(pagina >= totale)
             if let url {
-                Button { NSWorkspace.shared.open(url) } label: {
+                Button { ApriFile.apri(url) } label: {
                     HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
                         Text("Apri in Anteprima")
                         Image(systemName: "arrow.up.right")
@@ -116,12 +120,12 @@ struct AnteprimaDocumento: View {
 /// Un'immagine (foto o scansione) ridotta con ImageIO, letta una volta per file.
 private struct ImmagineDocumento: View {
     let url: URL
-    @State private var immagine: NSImage?
+    @State private var immagine: ImmaginePiattaforma?
 
     var body: some View {
         Group {
             if let immagine {
-                Image(nsImage: immagine)
+                Image(piattaforma: immagine)
                     .resizable()
                     .scaledToFit()
                     .ombraTema(Tema.Ombra.Strumenti.foglio)
@@ -187,7 +191,10 @@ struct PaginaTestoDocumento: View {
 
 /// Il PDF vero, in PDFKit: pagine una sotto l'altra sul tavolo, salto alla pagina scelta e la riga del dato
 /// evidenziata (se il testo si trova: le pagine da scansione non hanno testo da cercare, e allora basta la pagina).
-struct VistaPDF: NSViewRepresentable {
+/// La stessa PDFView di PDFKit sul Mac (NSViewRepresentable) e su iPhone e iPad (UIViewRepresentable), sotto;
+/// `@MainActor` come lo rende la conformità (che qui sta nelle estensioni).
+@MainActor
+struct VistaPDF {
     let url: URL
     @Binding var pagina: Int
     /// La riga del documento da evidenziare (`CampoEstratto.estratto`).
@@ -229,7 +236,7 @@ struct VistaPDF: NSViewRepresentable {
                 trovata = doc.findString(String(e.prefix(40)), withOptions: .caseInsensitive).first { $0.pages.contains(pg) }
             }
             if let s = trovata {
-                s.color = NSColor(Tema.Colore.Documenti.evidenziaPDF)
+                s.color = ColorePiattaforma(Tema.Colore.Documenti.evidenziaPDF)
                 v.highlightedSelections = [s]
                 v.go(to: s)
             } else {
@@ -241,21 +248,20 @@ struct VistaPDF: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinatore { Coordinatore(pagina: $pagina) }
 
-    func makeNSView(context: Context) -> PDFView {
+    fileprivate func crea(_ coordinatore: Coordinatore) -> PDFView {
         let v = PDFView()
         v.autoScales = true
         v.displayMode = .singlePageContinuous
         v.displaysPageBreaks = true
         // Si vede il tavolo dell'app attorno ai fogli
         v.backgroundColor = .clear
-        context.coordinator.vista = v
-        NotificationCenter.default.addObserver(context.coordinator, selector: #selector(Coordinatore.paginaCambiata(_:)),
+        coordinatore.vista = v
+        NotificationCenter.default.addObserver(coordinatore, selector: #selector(Coordinatore.paginaCambiata(_:)),
                                                name: .PDFViewPageChanged, object: v)
         return v
     }
 
-    func updateNSView(_ v: PDFView, context: Context) {
-        let c = context.coordinator
+    fileprivate func aggiorna(_ v: PDFView, _ c: Coordinatore) {
         c.pagina = $pagina
         // Il documento si apre solo quando cambia il file: uno alla volta
         if c.url != url {
@@ -274,8 +280,22 @@ struct VistaPDF: NSViewRepresentable {
         }
     }
 
-    static func dismantleNSView(_ v: PDFView, coordinator: Coordinatore) {
+    fileprivate static func smonta(_ v: PDFView, _ coordinator: Coordinatore) {
         NotificationCenter.default.removeObserver(coordinator)
         v.document = nil
     }
 }
+
+#if os(macOS)
+extension VistaPDF: NSViewRepresentable {
+    func makeNSView(context: Context) -> PDFView { crea(context.coordinator) }
+    func updateNSView(_ v: PDFView, context: Context) { aggiorna(v, context.coordinator) }
+    static func dismantleNSView(_ v: PDFView, coordinator: Coordinatore) { smonta(v, coordinator) }
+}
+#elseif os(iOS)
+extension VistaPDF: UIViewRepresentable {
+    func makeUIView(context: Context) -> PDFView { crea(context.coordinator) }
+    func updateUIView(_ v: PDFView, context: Context) { aggiorna(v, context.coordinator) }
+    static func dismantleUIView(_ v: PDFView, coordinator: Coordinatore) { smonta(v, coordinator) }
+}
+#endif

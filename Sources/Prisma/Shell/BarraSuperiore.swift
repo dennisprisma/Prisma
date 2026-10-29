@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 /// Barra superiore (tema «Liquid Glass»): niente fondo, solo un velo che sfuma sotto; a sinistra il marchio
@@ -39,6 +41,7 @@ struct BarraSuperiore: View {
                 LinearGradient(colors: [Tema.Colore.veloBarra, Tema.Colore.veloBarra.opacity(0)], startPoint: .top, endPoint: .bottom)
                     .frame(height: Tema.Misura.barra + Tema.Misura.veloBarra)
                     .allowsHitTesting(false)
+                #if os(macOS)
                 if !modoIstantanea {
                     // Legge dove sono i pulsanti veri della finestra (invisibile, non prende il mouse)
                     LettoreSemafori { nuova in
@@ -48,6 +51,7 @@ struct BarraSuperiore: View {
                     .allowsHitTesting(false)
                     AreaTrascinamento().frame(height: Tema.Misura.barra)
                 }
+                #endif
             }
             .frame(maxHeight: .infinity, alignment: .top)
         }
@@ -312,6 +316,7 @@ struct SimboloLucchetto: Shape {
     }
 }
 
+#if os(macOS)
 /// Zona della barra che trascina la finestra macOS (doppio clic: ingrandisce, come la barra del titolo).
 struct AreaTrascinamento: NSViewRepresentable {
     final class Vista: NSView {
@@ -327,3 +332,4 @@ struct AreaTrascinamento: NSViewRepresentable {
     func makeNSView(context: Context) -> Vista { Vista() }
     func updateNSView(_ nsView: Vista, context: Context) {}
 }
+#endif

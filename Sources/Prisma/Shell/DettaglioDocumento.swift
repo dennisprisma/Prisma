@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 // MARK: - Dettaglio di un documento (app Documenti, giro 5)
@@ -397,7 +396,7 @@ struct DettaglioDocumento: View {
         let collegati = stato.bersagli(d)
         var voci: [VoceMenuAzioni] = [
             VoceMenuAzioni.azione("Apri in Anteprima", attiva: file != nil) {
-                if let file { NSWorkspace.shared.open(file) }
+                if let file { ApriFile.apri(file) }
             },
             VoceMenuAzioni.azione("Mostra nel Finder", attiva: file != nil) { stato.mostraNelFinder(documento) },
         ]

@@ -1,3 +1,5 @@
+#if os(macOS)
+// Solo Mac (AppKit): su iPhone e iPad questo file non si compila.
 import AppKit
 import SwiftUI
 
@@ -659,3 +661,4 @@ private struct RisultatiProvaGuidata: View {
         copiati = true
     }
 }
+#endif

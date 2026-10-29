@@ -62,7 +62,8 @@ enum ErroreBackup: LocalizedError {
 }
 
 /// Backup dell'intera cartella dell'archivio in file .zip, con rotazione.
-/// Usa /usr/bin/ditto, presente su ogni Mac: nessuna dipendenza esterna.
+/// Sul Mac usa /usr/bin/ditto, presente su ogni Mac: nessuna dipendenza esterna. Su iPhone e iPad (niente
+/// `Process`) lo zip si scrive con `ScrittoreZip` e si legge con `LettoreZip`, che aprono anche i backup di ditto.
 /// Con una password il backup è un «… .zip.cifrato» (vedi `CifraturaBackup`): lo zip in chiaro
 /// nasce solo nella cartella temporanea del Mac e si cancella subito.
 enum GestoreBackup {
@@ -87,6 +88,12 @@ enum GestoreBackup {
         let fm = FileManager.default
         if creaCartella {
             try fm.createDirectory(at: destinazione, withIntermediateDirectories: true)
+            #if os(macOS)
+            // Sul Mac nulla cambia: la cartella dei backup la sceglie l'utente (anche iCloud Drive)
+            #elseif os(iOS)
+            // Le copie di sicurezza del dispositivo non vanno nel backup iCloud del telefono (niente cloud)
+            Archivio.escludiDalBackup(destinazione)
+            #endif
         } else {
             var cartella: ObjCBool = false
             guard fm.fileExists(atPath: destinazione.path, isDirectory: &cartella), cartella.boolValue else {
@@ -109,10 +116,10 @@ enum GestoreBackup {
                 // backup (può essere iCloud Drive): si cifra da lì e si cancella subito
                 let chiaro = fm.temporaryDirectory.appendingPathComponent("Prisma-chiaro-\(UUID().uuidString).zip")
                 defer { try? fm.removeItem(at: chiaro) }
-                try ditto(["-c", "-k", "--sequesterRsrc", "--keepParent", sorgente.path, chiaro.path])
+                try comprimi(sorgente, in: chiaro)
                 try CifraturaBackup.cifra(chiaro, in: parziale, password: password, iterazioni: iterazioni)
             } else {
-                try ditto(["-c", "-k", "--sequesterRsrc", "--keepParent", sorgente.path, parziale.path])
+                try comprimi(sorgente, in: parziale)
             }
             try? fm.removeItem(at: finale)
             try fm.moveItem(at: parziale, to: finale)
@@ -172,7 +179,7 @@ enum GestoreBackup {
         let tmp = fm.temporaryDirectory.appendingPathComponent("Prisma-ripristino-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: tmp, withIntermediateDirectories: true)
         do {
-            try ditto(["-x", "-k", zip.path, tmp.path])
+            try decomprimi(zip, in: tmp)
             let candidati = [tmp.appendingPathComponent("Prisma", isDirectory: true), tmp]
             guard let radice = candidati.first(where: { fm.fileExists(atPath: $0.appendingPathComponent("archivio.json").path) }) else {
                 throw ErroreBackup.archivioMancante
@@ -256,7 +263,35 @@ enum GestoreBackup {
         return false
     }
 
-    private static func ditto(_ argomenti: [String]) throws {
+    /// Lo zip della cartella `sorgente` (la cartella stessa compresa, come `--keepParent`) nel file `zip`.
+    private static func comprimi(_ sorgente: URL, in zip: URL) throws {
+        #if os(macOS)
+        try ditto(["-c", "-k", "--sequesterRsrc", "--keepParent", sorgente.path, zip.path])
+        #elseif os(iOS)
+        do {
+            try ScrittoreZip.crea(da: sorgente, a: zip)
+        } catch let errore as ErroreZip {
+            throw ErroreBackup.comando(errore.localizedDescription)
+        }
+        #endif
+    }
+
+    /// Estrae lo zip `zip` nella cartella `cartella`.
+    private static func decomprimi(_ zip: URL, in cartella: URL) throws {
+        #if os(macOS)
+        try ditto(["-x", "-k", zip.path, cartella.path])
+        #elseif os(iOS)
+        do {
+            try LettoreZip.estrai(zip, in: cartella)
+        } catch let errore as ErroreZip {
+            throw ErroreBackup.archivioNonValido(errore.localizedDescription)
+        }
+        #endif
+    }
+
+    #if os(macOS)
+    /// /usr/bin/ditto con gli argomenti dati (anche per la prova di confronto con `LettoreZip`).
+    static func ditto(_ argomenti: [String]) throws {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
         p.arguments = argomenti
@@ -269,4 +304,5 @@ enum GestoreBackup {
             throw ErroreBackup.comando(testo.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
+    #endif
 }

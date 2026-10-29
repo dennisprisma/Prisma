@@ -301,7 +301,7 @@ struct PannelloAggiornaValori: View {
                         .foregroundColor(Tema.Colore.inchiostro)
                     DatePicker("", selection: $dataComune, displayedComponents: .date)
                         .labelsHidden()
-                        .datePickerStyle(.field)
+                        .stileDataCampo()
                         .environment(\.locale, Formati.italiano)
                         .frame(width: m.campoData)
                 }
@@ -501,7 +501,7 @@ struct PannelloAggiornaValori: View {
                     .foregroundColor(Tema.Colore.inchiostro)
                 DatePicker("", selection: $dataComune, displayedComponents: .date)
                     .labelsHidden()
-                    .datePickerStyle(.field)
+                    .stileDataCampo()
                     .environment(\.locale, Formati.italiano)
                     .frame(width: m.campoData)
             }

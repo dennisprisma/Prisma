@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // MARK: - Componenti dell'app Documenti (giro 5)
@@ -262,12 +266,48 @@ struct MenuAzioni<Etichetta: View>: View {
     @ViewBuilder let etichetta: () -> Etichetta
 
     var body: some View {
+        #if os(macOS)
         Button(action: apri) {
             etichetta()
         }
         .buttonStyle(StileVetro(margine: margine, taglia: taglia))
+        #elseif os(iOS)
+        // Su iPhone e iPad un `Menu` di sistema con le stesse voci: titoli disattivi, separatori e spunte
+        Menu {
+            let elenco = voci()
+            ForEach(Array(elenco.enumerated()), id: \.offset) { voce in
+                vocePerMenu(voce.element)
+            }
+        } label: {
+            etichetta()
+        }
+        .menuStyle(.button)
+        .buttonStyle(StileVetro(margine: margine, taglia: taglia))
+        #endif
     }
 
+    #if os(iOS)
+    /// Una voce del `Menu` di iPhone e iPad.
+    @ViewBuilder private func vocePerMenu(_ v: VoceMenuAzioni) -> some View {
+        switch v.genere {
+        case .separatore:
+            Divider()
+        case .titolo:
+            Text(verbatim: v.titolo)
+        case .azione(let fai):
+            Button(action: fai) {
+                if v.spuntata {
+                    Label(v.titolo, systemImage: "checkmark")
+                } else {
+                    Text(verbatim: v.titolo)
+                }
+            }
+            .disabled(!v.attiva)
+        }
+    }
+    #endif
+
+    #if os(macOS)
     /// Il menu del Mac: modale finché non si sceglie, quindi il bersaglio delle voci vive abbastanza.
     private func apri() {
         let elenco = voci()
@@ -298,13 +338,16 @@ struct MenuAzioni<Etichetta: View>: View {
             menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
         }
     }
+    #endif
 }
 
+#if os(macOS)
 private final class BersaglioMenuAzioni: NSObject {
     let scelto: (Int) -> Void
     init(_ scelto: @escaping (Int) -> Void) { self.scelto = scelto }
     @objc func scegli(_ voce: NSMenuItem) { scelto(voce.tag) }
 }
+#endif
 
 // MARK: - Vuoto iniziale e rilascio
 

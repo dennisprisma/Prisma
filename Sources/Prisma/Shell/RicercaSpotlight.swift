@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 // Il pannello ⌘K come Spotlight del Mac: in alto al centro, sopra tutto, non una finestra. Campo grande con la
@@ -65,6 +67,7 @@ final class TastiSpotlight: @unchecked Sendable {
     var inNome = false
     var esegui: (@MainActor (Tasto) -> Void)?
 
+    #if os(macOS)
     func gestisci(_ evento: NSEvent) -> Bool {
         // Con un modulo aperto sopra il pannello (`attivo` falso) i tasti restano al modulo
         guard attivo else { return false }
@@ -84,6 +87,7 @@ final class TastiSpotlight: @unchecked Sendable {
         Task { @MainActor in esegui?(tasto) }
         return true
     }
+    #endif
 }
 
 // MARK: - Pannello
@@ -132,7 +136,9 @@ struct RicercaSpotlight: View {
             DispatchQueue.main.async { fuoco = true }
         }
         .onDisappear {
+            #if os(macOS)
             if let monitor { NSEvent.removeMonitor(monitor) }
+            #endif
             monitor = nil
             tasti.attivo = false
             tasti.esegui = nil
@@ -558,9 +564,13 @@ struct RicercaSpotlight: View {
                 if motore.nomeDaSalvare != nil { motore.nomeDaSalvare = nil } else { chiudi() }
             }
         }
+        #if os(macOS)
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { evento in
             ponte.gestisci(evento) ? nil : evento
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad niente monitor dei tasti di AppKit: Invio sul campo apre lo stesso
+        #endif
     }
 
     private func aggiornaTasti() {

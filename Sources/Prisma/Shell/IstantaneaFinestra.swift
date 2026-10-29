@@ -1,3 +1,5 @@
+#if os(macOS)
+// Solo Mac (AppKit): su iPhone e iPad questo file non si compila.
 import AppKit
 import QuartzCore
 import SwiftUI
@@ -158,3 +160,4 @@ enum IstantaneaFinestra {
         return rep.cgImage
     }
 }
+#endif

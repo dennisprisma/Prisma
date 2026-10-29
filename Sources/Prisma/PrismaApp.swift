@@ -1,3 +1,5 @@
+#if os(macOS)
+// Solo Mac: su iPhone e iPad il punto d'ingresso è PrismaAppMobile (iOS/PrismaAppMobile.swift).
 import AppKit
 import SwiftUI
 
@@ -125,3 +127,4 @@ struct ComandiPrisma: Commands {
         }
     }
 }
+#endif

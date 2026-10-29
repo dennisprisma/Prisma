@@ -2,6 +2,7 @@ import Foundation
 
 /// Prova automatica di backup, rotazione e ripristino (`Prisma --prova-backup`).
 /// La esegue il workflow di build in cartelle temporanee: l'archivio vero non viene toccato.
+/// Gira uguale sul Mac (zip con ditto) e nel simulatore iOS (zip con ScrittoreZip e LettoreZip).
 enum ProvaBackup {
     static func esegui() -> Int32 {
         let fm = FileManager.default
@@ -359,7 +360,12 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
-            print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password e salvataggio in background verificati")
+            // Lettore e scrittore zip (iPhone e iPad), sul Mac anche contro ditto (ProvaBackupZip.swift)
+            if let errore = try provaZip(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password, salvataggio in background e lettore zip verificati")
             return 0
         } catch {
             print("ERRORE: \(error.localizedDescription)")

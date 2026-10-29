@@ -193,7 +193,7 @@ struct AppIncontri: View {
                 if si { x.temi.append(tema.0) }
                 b.wrappedValue = x
             }))
-            .toggleStyle(.checkbox)
+            .stileCasella()
             .font(Tipo.incontroOcchiello)
             .disabled(i.stato == .concluso)
             // Un tema non scelto resta una scheda piena: si attenuano solo i testi, sempre leggibili
@@ -474,14 +474,14 @@ struct AppIncontri: View {
                     x.prossimoIncontro = si ? (x.prossimoIncontro ?? Self.trentaGiorni) : nil
                     b.wrappedValue = x
                 }))
-                .toggleStyle(.checkbox)
+                .stileCasella()
                 .font(Tipo.incontroNota)
                 if i.prossimoIncontro != nil {
                     DatePicker("", selection: Binding(get: { i.prossimoIncontro ?? Self.trentaGiorni },
                                                       set: { b.wrappedValue.prossimoIncontro = $0 }),
                                displayedComponents: [.date, .hourAndMinute])
                         .labelsHidden()
-                        .datePickerStyle(.field)
+                        .stileDataCampo()
                         .environment(\.locale, Formati.italiano)
                 }
             }

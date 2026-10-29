@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import Foundation
 
 /// Che cosa creare da un documento (modulo «Crea…» e azione principale del dettaglio).
@@ -208,7 +210,12 @@ extension StatoShell {
             mostraAvviso("Il documento non ha un file sul Mac.")
             return
         }
+        #if os(macOS)
         NSWorkspace.shared.activateFileViewerSelecting([url])
+        #elseif os(iOS)
+        // Su iPhone e iPad il Finder non c'è
+        mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     /// Il nome di un dato nel corso di una frase: l'iniziale minuscola, le sigle restano («codice ISIN»).

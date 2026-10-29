@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // MARK: - Gettoni delle rifiniture dei documenti su carta (gruppo 4)

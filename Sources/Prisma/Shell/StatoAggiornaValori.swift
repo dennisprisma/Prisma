@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 /// Il pannello «Aggiorna i valori» in Posizioni (specifica 8): apertura, lettura del file o degli appunti,
@@ -33,6 +35,7 @@ extension StatoShell {
     /// NSOpenPanel con `tipiTabelle` (come importaPosizioniDaFile) → `ImportaClienti.righe(url)` → sessione.
     @MainActor
     func scegliFileValori() {
+        #if os(macOS)
         let pannello = NSOpenPanel()
         pannello.allowedContentTypes = Self.tipiTabelle
         pannello.allowsMultipleSelection = false
@@ -43,12 +46,16 @@ extension StatoShell {
             return
         }
         apriElencoValori(tabella: tabella, file: url.lastPathComponent)
+        #elseif os(iOS)
+        // Su iPhone e iPad il file si sceglierà con `.fileImporter` nella vista (giro 2)
+        mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     /// Appunti (come incollaDaExcel) → `ImportaClienti.righeCSV` → sessione.
     @MainActor
     func incollaValoriDaExcel() {
-        guard let testo = NSPasteboard.general.string(forType: .string), testo.contains("\n") || testo.contains("\t") else {
+        guard let testo = Appunti.testo, testo.contains("\n") || testo.contains("\t") else {
             mostraAvviso(TestiAggiornaValori.appuntiVuoti)
             return
         }

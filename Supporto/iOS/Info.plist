@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Info.plist di Prisma per iPhone e iPad (scritto a mano: niente Xcode, niente asset catalog).
+  Lo copia Supporto/iOS/assembla.sh nella radice di Prisma.app.
+  - MinimumOSVersion deve coincidere con .iOS(.v17) di Package.swift.
+  - CFBundleSupportedPlatforms: per ora solo il simulatore (nessuna firma); per un
+    dispositivo vero servirà iPhoneOS e un identificativo registrato.
+  - Le icone AppIcon*.png le genera assembla.sh da Design/Icone/AppIcon.png.
+  - Il tipo local.prisma.backup è il backup cifrato (.zip.cifrato) creato da Prisma sul Mac.
+  - Eve in rete locale (NSLocalNetworkUsageDescription, NSAllowsLocalNetworking) arriva in un giro successivo.
+-->
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>it</string>
+    <key>CFBundleName</key>
+    <string>Prisma</string>
+    <key>CFBundleDisplayName</key>
+    <string>Prisma</string>
+    <key>CFBundleExecutable</key>
+    <string>Prisma</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.prisma</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>iPhoneSimulator</string>
+    </array>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>MinimumOSVersion</key>
+    <string>17.0</string>
+    <key>UIDeviceFamily</key>
+    <array>
+        <integer>1</integer>
+        <integer>2</integer>
+    </array>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>CFBundleIcons</key>
+    <dict>
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconFiles</key>
+            <array>
+                <string>AppIcon60x60</string>
+            </array>
+        </dict>
+    </dict>
+    <key>CFBundleIcons~ipad</key>
+    <dict>
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconFiles</key>
+            <array>
+                <string>AppIcon60x60</string>
+                <string>AppIcon76x76</string>
+                <string>AppIcon83.5x83.5</string>
+            </array>
+        </dict>
+    </dict>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>local.prisma.backup</string>
+            <key>UTTypeDescription</key>
+            <string>Backup cifrato di Prisma</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>cifrato</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Backup cifrato di Prisma</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>local.prisma.backup</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Prisma usa il microfono solo per dettare le domande a Eve.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Prisma trascrive la voce sul dispositivo solo per le domande a Eve.</string>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <false/>
+    <key>UIFileSharingEnabled</key>
+    <false/>
+</dict>
+</plist>

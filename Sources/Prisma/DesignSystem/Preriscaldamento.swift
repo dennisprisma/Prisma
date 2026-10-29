@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import Foundation
 
 extension Misure {
@@ -19,7 +23,11 @@ enum Preriscaldamento {
             let programma = ProgrammaAcqua.condiviso
             DispatchQueue.main.async { programma.richiedi { _ in } }
         }
+        #if os(macOS)
         let scala = NSScreen.main?.backingScaleFactor ?? 2
+        #elseif os(iOS)
+        let scala = UIScreen.main.scale
+        #endif
         DispatchQueue.main.asyncAfter(deadline: .now() + Misure.Preparazione.attesaIcone) {
             Risorse.preparaNitide(Preriscaldamento.icone(scala: scala))
         }

@@ -363,6 +363,11 @@ final class AscoltoEve: ObservableObject {
 
     /// Passa nil se Eve può ascoltare, altrimenti il motivo con dove sistemarlo (sempre sul thread principale).
     static func permessi(_ esito: @escaping (String?) -> Void) {
+        #if os(iOS)
+        // Su iPhone e iPad la voce di Eve arriva più avanti (microfono e riconoscimento vanno dichiarati e provati):
+        // per ora niente richieste di permesso, si dice perché
+        DispatchQueue.main.async { esito("Su iPhone e iPad Eve non ascolta ancora: usa la conversazione a voce da Prisma sul Mac.") }
+        #elseif os(macOS)
         let microfono = "Eve non ha il permesso di usare il microfono: concedilo in Impostazioni di Sistema › Privacy e sicurezza › Microfono."
         SFSpeechRecognizer.requestAuthorization { parlato in
             guard parlato == .authorized else {
@@ -382,6 +387,7 @@ final class AscoltoEve: ObservableObject {
                 DispatchQueue.main.async { esito(microfono) }
             }
         }
+        #endif
     }
 }
 

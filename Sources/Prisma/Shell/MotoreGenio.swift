@@ -1,3 +1,5 @@
+#if os(macOS)
+// Solo Mac (AppKit): su iPhone e iPad questo file non si compila.
 import AppKit
 import QuartzCore
 import SwiftUI
@@ -513,3 +515,4 @@ final class MotoreGenio {
         return "Genio: le strisce di prova non si disegnano (in alto r=\(alto.r) b=\(alto.b), in basso r=\(basso.r) b=\(basso.b))"
     }
 }
+#endif

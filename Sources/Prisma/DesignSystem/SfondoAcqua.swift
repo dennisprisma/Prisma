@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import Metal
 import QuartzCore
 import CoreVideo
@@ -136,16 +140,23 @@ struct SfondoAcqua: View {
     @State private var senzaMetal = false
 
     var body: some View {
+        #if os(macOS)
         let conMetal = !modoIstantanea && !senzaMetal && ProgrammaAcqua.condiviso.device != nil
+        #elseif os(iOS)
+        // Su iPhone e iPad, per ora, solo il fermo-immagine: la tela animata (CADisplayLink) arriverà dopo
+        let conMetal = false
+        #endif
         ZStack {
             // Sotto c'è sempre il fermo-immagine: la tela Metal compare sopra alla prima immagine. Quando Metal disegna,
             // sotto restano solo cielo e luce, senza i cerchi: i cerchi disegnati a mano non coincidono con le onde
             // vere, e nella dissolvenza dell'apertura si vedevano trasformarsi in altri cerchi
             SfondoAcquaFermo(scuro: scuro, anelli: !conMetal)
+            #if os(macOS)
             if conMetal {
                 TelaAcquaMetal(animato: animato, intensita: intensita, scuro: scuro, rinuncia: { senzaMetal = true })
                     .allowsHitTesting(false)
             }
+            #endif
         }
         .accessibilityHidden(true)
     }
@@ -293,6 +304,9 @@ final class ProgrammaAcqua {
 }
 
 // MARK: - Tela Metal
+
+// La tela animata (NSView, CVDisplayLink, finestre e sonno del Mac) esiste solo sul Mac.
+#if os(macOS)
 
 /// La vista dell'acqua: un CAMetalLayer che non prende i clic. Avvisa quando entra o esce da una finestra e quando
 /// cambia misura; il drawable è a `Misure.Acqua.quotaRisoluzione` dei pixel dello schermo (il layer stira l'immagine).
@@ -882,3 +896,4 @@ final class RendererAcqua: NSObject {
         p[3] = 1
     }
 }
+#endif

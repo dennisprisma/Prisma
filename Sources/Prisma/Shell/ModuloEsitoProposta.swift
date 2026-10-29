@@ -106,7 +106,7 @@ struct FormEsitoProposta: View {
             CampoEsito(etichetta: "Decorrenza", compatto: compatto) {
                 DatePicker("", selection: $dati.decorrenza, displayedComponents: .date)
                     .labelsHidden()
-                    .datePickerStyle(.field)
+                    .stileDataCampo()
                     .environment(\.locale, Formati.italiano)
             }
             if finanziaria {
@@ -132,7 +132,7 @@ struct FormEsitoProposta: View {
                                                           set: { dati.primaAdesione = ValoriDaDocumento.mezzogiorno($0) }),
                                    displayedComponents: .date)
                             .labelsHidden()
-                            .datePickerStyle(.field)
+                            .stileDataCampo()
                             .environment(\.locale, Formati.italiano)
                         testoNota(TestiSeguito.notaPrimaAdesione)
                     }

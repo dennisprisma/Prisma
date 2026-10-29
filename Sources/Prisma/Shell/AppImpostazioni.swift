@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -619,7 +621,12 @@ struct AppImpostazioni: View {
                 }
                 RigaImpostazione(titolo: "Archivio di Prisma", sottotitolo: Archivio.percorsoBreve(Archivio.cartella), ultima: true) {
                     ValoreRiga(testo: "Mostra nel Finder") {
+                        #if os(macOS)
                         NSWorkspace.shared.activateFileViewerSelecting([Archivio.file])
+                        #elseif os(iOS)
+                        // Su iPhone e iPad il Finder non c'è
+                        stato.mostraAvviso(StatoShell.soloSulMacPerOra)
+                        #endif
                     }
                 }
             }
@@ -779,6 +786,7 @@ struct AppImpostazioni: View {
     }
 
     private func scegliCartella() {
+        #if os(macOS)
         let pannello = NSOpenPanel()
         pannello.canChooseDirectories = true
         pannello.canChooseFiles = false
@@ -789,9 +797,14 @@ struct AppImpostazioni: View {
         if pannello.runModal() == .OK, let url = pannello.url {
             stato.scegliCartellaBackup(url)
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad i backup non si creano: i dati arrivano dal backup del Mac
+        stato.mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     private func scegliFile() {
+        #if os(macOS)
         let pannello = NSOpenPanel()
         pannello.canChooseDirectories = false
         pannello.canChooseFiles = true
@@ -805,6 +818,10 @@ struct AppImpostazioni: View {
         if pannello.runModal() == .OK, let url = pannello.url {
             fileDaRipristinare = url
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad il backup si apre dalla schermata di apertura (AperturaBackup, con `.fileImporter`)
+        stato.mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     // MARK: Scorciatoie
@@ -856,6 +873,7 @@ extension StatoShell {
     @MainActor
     func riapri() {
         salvaOra()
+        #if os(macOS)
         let configurazione = NSWorkspace.OpenConfiguration()
         configurazione.createsNewApplicationInstance = true
         NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configurazione) { _, errore in
@@ -867,5 +885,9 @@ extension StatoShell {
                 }
             }
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad un'app non si riapre da sé: la nuova misura del testo vale alla prossima apertura
+        mostraAvviso("Dati salvati: chiudi Prisma dal selettore delle app e riaprila per applicare la modifica.")
+        #endif
     }
 }

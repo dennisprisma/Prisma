@@ -115,12 +115,12 @@ struct CampoDataFacoltativa: View {
     var body: some View {
         HStack(spacing: 10) {
             Toggle(etichetta, isOn: Binding(get: { data != nil }, set: { data = $0 ? (data ?? predefinita) : nil }))
-                .toggleStyle(.checkbox)
+                .stileCasella()
                 .font(font)
             if data != nil {
                 DatePicker("", selection: Binding(get: { data ?? predefinita }, set: { data = $0 }), displayedComponents: .date)
                     .labelsHidden()
-                    .datePickerStyle(.field)
+                    .stileDataCampo()
                     .environment(\.locale, Formati.italiano)
             }
         }
@@ -469,12 +469,12 @@ struct ModuloCliente: View {
                                 )) {
                                     EtichettaCanale(canale: canale, compatta: true)
                                 }
-                                .toggleStyle(.checkbox)
+                                .stileCasella()
                             }
                         }
                     }
                     CampoModulo(etichetta: "Preferito") {
-                        Toggle("Mostra tra i preferiti", isOn: $bozza.preferito).toggleStyle(.checkbox)
+                        Toggle("Mostra tra i preferiti", isOn: $bozza.preferito).stileCasella()
                     }
                 }
                 sezione("Profilo dell'investitore") {
@@ -530,7 +530,7 @@ struct ModuloCliente: View {
                             get: { bozza.consensi.privacy },
                             set: { bozza.consensi.privacy = $0; if $0, bozza.consensi.dataPrivacy == nil { bozza.consensi.dataPrivacy = Date() } }
                         ))
-                        .toggleStyle(.checkbox)
+                        .stileCasella()
                     }
                     CampoModulo(etichetta: "Commerciale") {
                         // La data a ogni cambio, a minuti interi come il resto dell'archivio (scadenze di conformità)
@@ -538,7 +538,7 @@ struct ModuloCliente: View {
                             get: { bozza.consensi.marketing },
                             set: { bozza.consensi.marketing = $0; bozza.consensi.dataMarketing = Appuntamento.alMinuto(Date()) }
                         ))
-                        .toggleStyle(.checkbox)
+                        .stileCasella()
                     }
                 }
             }
@@ -621,7 +621,7 @@ struct ModuloFamiliare: View {
                     CampoDataFacoltativa(data: $modifica.familiare.dataNascita, predefinita: Formati.dataPredefinitaNascita)
                 }
                 CampoModulo(etichetta: "A carico") {
-                    Toggle("Fiscalmente o economicamente a carico", isOn: $modifica.familiare.aCarico).toggleStyle(.checkbox)
+                    Toggle("Fiscalmente o economicamente a carico", isOn: $modifica.familiare.aCarico).stileCasella()
                 }
                 CampoModulo(etichetta: "Nota") {
                     TextField("", text: $modifica.familiare.nota).textFieldStyle(.roundedBorder)
@@ -639,7 +639,7 @@ struct ModuloFamiliare: View {
                         Toggle("Non autosufficiente o con disabilità: il sostegno serve per tutta la vita",
                                isOn: Binding(get: { modifica.familiare.nonAutosufficiente == true },
                                              set: { modifica.familiare.nonAutosufficiente = $0 ? true : nil }))
-                            .toggleStyle(.checkbox)
+                            .stileCasella()
                     }
                     CampoModulo(etichetta: "A carico fino a") {
                         CampoInteroFacoltativo(valore: $modifica.familiare.etaFineCarico, unita: "anni · se vuoto, 25 per i figli")

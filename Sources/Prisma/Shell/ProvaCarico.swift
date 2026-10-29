@@ -9,20 +9,28 @@ import PDFKit
 enum ProvaCarico {
     /// Copie dei clienti di prova: 40 copie dei 5 clienti = 200 clienti.
     static let copie = 40
+    #if os(macOS)
+    /// Sul Mac i limiti di tempo valgono come sono scritti.
+    nonisolated static let fattoreTempo = 1.0
+    #elseif os(iOS)
+    /// Nel simulatore di iPhone e iPad sul server di build (x86_64 su un Mac Intel) tutto è molto più lento:
+    /// i limiti di tempo si allargano dieci volte. La memoria resta com'è.
+    nonisolated static let fattoreTempo = 10.0
+    #endif
     // Limiti oltre i quali la prova fallisce (larghi: il server di build è più lento del Mac)
-    static let limiteArchivio = 3.0
+    static let limiteArchivio = 3.0 * fattoreTempo
     /// Tempo medio per cliente, e tetto per il cliente più lento (il server ha picchi isolati).
-    static let limitePerCliente = 0.1
-    static let limiteClientePiuLento = 2.0
-    static let limitePDF = 8.0
-    static let limiteRicerca = 1.0
-    static let limiteNotifiche = 0.1
-    static let limiteNotifichePrimaVolta = 1.0
+    static let limitePerCliente = 0.1 * fattoreTempo
+    static let limiteClientePiuLento = 2.0 * fattoreTempo
+    static let limitePDF = 8.0 * fattoreTempo
+    static let limiteRicerca = 1.0 * fattoreTempo
+    static let limiteNotifiche = 0.1 * fattoreTempo
+    static let limiteNotifichePrimaVolta = 1.0 * fattoreTempo
     static let limiteMemoriaMB = 1_200.0
     /// Il fascicolo e il portafoglio calcolati la prima volta, e poi ripresi dalla cache (DerivatiDati).
-    static let limiteFascicolo = 8.0
-    static let limitePortafoglio = 8.0
-    static let limiteCache = 0.05
+    static let limiteFascicolo = 8.0 * fattoreTempo
+    static let limitePortafoglio = 8.0 * fattoreTempo
+    static let limiteCache = 0.05 * fattoreTempo
 
     static func esegui() -> Int32 {
         var errori = 0
@@ -197,7 +205,7 @@ enum ProvaCarico {
         var riesamiMese: RiesamiDelMese?
         let riesamiTempo = tempo { riesamiMese = stato.riesamiDelMese(Date()) }
         print("INFO Riesami del mese: \(riesamiMese?.daFissare.count ?? 0) da fissare in \(secondi(riesamiTempo))")
-        controlla(riesamiTempo < 0.5, "Riesami del mese con \(stato.dati.clienti.count) clienti sotto 0,5 s")
+        controlla(riesamiTempo < 0.5 * fattoreTempo, "Riesami del mese con \(stato.dati.clienti.count) clienti sotto 0,5 s")
 
         // Memoria
         let mb = memoriaMB()

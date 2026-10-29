@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // MARK: - Gettoni della shell (barra, scrivania, widget, dock, finestre, benvenuto, app aperte)
@@ -39,12 +43,14 @@ extension Tema.Colore {
         /// Segni ✕ − + dei pallini: scuri e semitrasparenti, come macOS (uguali in chiaro e in scuro).
         static let segnoSemaforo = Color(r: 0, g: 0, b: 0, a: 0.5)
 
+        #if os(macOS)
         /// Fondo della finestra del Mac sotto lo sfondo d'acqua (il colore medio del cielo, chiaro o scuro).
         static var fondoFinestraMac: NSColor {
             let chiaro = NSColor(Tema.Colore.cieloChiaro[1])
             let scuro = NSColor(Tema.Colore.cieloScuro[1])
             return NSColor(name: nil) { aspetto in aspetto.prismaScuro ? scuro : chiaro }
         }
+        #endif
     }
 }
 
