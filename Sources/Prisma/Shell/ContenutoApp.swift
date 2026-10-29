@@ -152,6 +152,17 @@ struct AzioniPosizioni: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            // Un lavoro del consulente su più clienti: in modo cliente non c'è
+            if !stato.inModoCliente {
+                Button(TestiAggiornaValori.pulsante) {
+                    // Con un file aperto si torna al suo elenco, altrimenti alla griglia dei valori fermi
+                    let conFile = stato.aggiornaValori.map { !$0.righe.isEmpty } ?? false
+                    stato.apriAggiornaValori(scheda: conFile ? .elenco : .griglia)
+                }
+                .buttonStyle(StileVetro(margine: Tema.Misura.AggiornaValori.margineIngresso))
+                .disabled(stato.solaLettura)
+                .help(TestiAggiornaValori.aiutoPulsante)
+            }
             Button("Importa…") { stato.importaPosizioniDaFile() }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
                 .disabled(stato.solaLettura)

@@ -54,9 +54,26 @@ struct Documento: Identifiable, Codable, Hashable {
     /// Pagine lette con il riconoscimento del testo (scansioni).
     var pagineOCR = 0
     var campi: [CampoEstratto] = []
-    /// Scheda prodotto o posizione create da questo documento.
+    /// Scheda prodotto o posizione create da questo documento o collegate (confronto con il dossier, storico dei valori).
     var prodottoId: String?
     var posizioneId: String?
+    // Dalla versione 23 dell'archivio
+    /// Il gruppo scelto da Prisma alla lettura o dal consulente; nil = dal tipo (archivi di prima).
+    var categoria: CategoriaDocumento?
+    /// Le righe del confronto con il dossier che il consulente ha deciso di lasciare come sono in Prisma
+    /// (`RigaDossier.chiave`: voce e i due valori). nil = nessuna. Una chiave vale finché i due valori restano quelli.
+    var vociTenute: [String]?
+
+    /// La categoria che conta: prospetti e report sono sempre «di Prisma».
+    var genere: CategoriaDocumento {
+        tipo.creatoDaPrisma ? .prisma : (categoria ?? .da(tipo))
+    }
+    /// Appendice di polizza: una `.polizza` con «appendice» nel titolo o nel nome letto.
+    var appendice: Bool {
+        guard tipo == .polizza else { return false }
+        if titolo.localizedCaseInsensitiveContains("appendice") { return true }
+        return campo(.nomeProdotto)?.valore.localizedCaseInsensitiveContains("appendice") ?? false
+    }
 
     init(clienteId: String, titolo: String, tipo: Tipo) {
         self.clienteId = clienteId
@@ -66,6 +83,7 @@ struct Documento: Identifiable, Codable, Hashable {
 
     private enum CodingKeys: String, CodingKey {
         case id, clienteId, titolo, tipo, file, pagine, dimensione, importatoIl, lettura, pagineOCR, campi, prodottoId, posizioneId
+        case categoria, vociTenute
     }
 
     init(from decoder: Decoder) throws {
@@ -73,16 +91,20 @@ struct Documento: Identifiable, Codable, Hashable {
         id = try c.decode(String.self, forKey: .id)
         clienteId = try c.decode(String.self, forKey: .clienteId)
         titolo = try c.decodeIfPresent(String.self, forKey: .titolo) ?? "Documento"
-        tipo = try c.decodeIfPresent(Tipo.self, forKey: .tipo) ?? .altro
+        // Un tipo sconosciuto (archivio di una versione più nuova) non fa perdere il documento
+        tipo = (try? c.decodeIfPresent(Tipo.self, forKey: .tipo)) ?? .altro
         file = try c.decodeIfPresent(String.self, forKey: .file)
         pagine = try c.decodeIfPresent(Int.self, forKey: .pagine) ?? 0
         dimensione = try c.decodeIfPresent(Int64.self, forKey: .dimensione) ?? 0
         importatoIl = try c.decodeIfPresent(Date.self, forKey: .importatoIl) ?? Date()
         lettura = try c.decodeIfPresent(Lettura.self, forKey: .lettura) ?? .daLeggere
         pagineOCR = try c.decodeIfPresent(Int.self, forKey: .pagineOCR) ?? 0
-        campi = (try? c.decodeIfPresent([CampoEstratto].self, forKey: .campi)) ?? []
+        // Un dato con una chiave sconosciuta si salta, gli altri restano
+        campi = (try? c.decodeIfPresent(ElencoTollerante<CampoEstratto>.self, forKey: .campi))?.elementi ?? []
         prodottoId = try c.decodeIfPresent(String.self, forKey: .prodottoId)
         posizioneId = try c.decodeIfPresent(String.self, forKey: .posizioneId)
+        categoria = try? c.decodeIfPresent(CategoriaDocumento.self, forKey: .categoria)
+        vociTenute = try? c.decodeIfPresent([String].self, forKey: .vociTenute)
     }
 
     func campo(_ chiave: CampoDocumento) -> CampoEstratto? {
@@ -95,6 +117,81 @@ struct Documento: Identifiable, Codable, Hashable {
     }
 }
 
+/// I gruppi dell'elenco dei Documenti (dalla versione 23 dell'archivio). `Documento.Tipo` resta com'è perché lo
+/// usano Eve e i prospetti; la categoria lo affina: per Eve i documenti d'identità e i questionari sono `.altro`.
+enum CategoriaDocumento: String, Codable, CaseIterable, Identifiable {
+    case kid, contratto, estratto, identita, questionario, altro, prisma
+
+    var id: String { rawValue }
+
+    /// Titolo del gruppo nell'elenco e nella barra laterale.
+    var nome: String {
+        switch self {
+        case .kid: return "KID e documenti informativi"
+        case .contratto: return "Polizze e contratti"
+        case .estratto: return "Estratti conto"
+        case .identita: return "Documenti d'identità"
+        case .questionario: return "Questionari"
+        case .altro: return "Altri documenti"
+        case .prisma: return "Prospetti e report di Prisma"
+        }
+    }
+
+    /// Nell'elenco, nei menu e nella barra laterale.
+    var breve: String {
+        switch self {
+        case .kid: return "KID"
+        case .contratto: return "Polizza o contratto"
+        case .estratto: return "Estratto conto"
+        case .identita: return "Identità"
+        case .questionario: return "Questionario"
+        case .altro: return "Altro"
+        case .prisma: return "Di Prisma"
+        }
+    }
+
+    /// Simbolo SF (tutti disponibili da macOS 12).
+    var simbolo: String {
+        switch self {
+        case .kid: return "doc.text.magnifyingglass"
+        case .contratto: return "doc.richtext"
+        case .estratto: return "list.bullet.rectangle"
+        case .identita: return "person.text.rectangle"
+        case .questionario: return "checklist"
+        case .altro: return "doc"
+        case .prisma: return "doc.plaintext"
+        }
+    }
+
+    /// Si sceglie nel menu (prospetti e report li archivia Prisma).
+    var selezionabile: Bool { self != .prisma }
+
+    /// L'ordine dei gruppi nell'elenco.
+    static let ordine: [CategoriaDocumento] = [.kid, .contratto, .estratto, .identita, .questionario, .altro, .prisma]
+
+    /// La categoria di un documento senza categoria (archivi fino alla versione 22).
+    static func da(_ tipo: Documento.Tipo) -> CategoriaDocumento {
+        switch tipo {
+        case .kid: return .kid
+        case .polizza, .proposta: return .contratto
+        case .estrattoConto: return .estratto
+        case .prospetto, .report: return .prisma
+        case .altro: return .altro
+        }
+    }
+
+    /// Il tipo da dare al documento quando il consulente sceglie questa categoria.
+    func tipo(da attuale: Documento.Tipo) -> Documento.Tipo {
+        switch self {
+        case .kid: return .kid
+        case .contratto: return attuale == .proposta ? .proposta : .polizza
+        case .estratto: return .estrattoConto
+        case .identita, .questionario, .altro: return .altro
+        case .prisma: return attuale.creatoDaPrisma ? attuale : .prospetto
+        }
+    }
+}
+
 /// I dati che Prisma sa cercare nei documenti.
 enum CampoDocumento: String, Codable, CaseIterable, Identifiable {
     case nomeProdotto, emittente, tipologia, sri, periodoDetenzione, costoIngresso, costoUscita, costoAnnuo
@@ -102,6 +199,10 @@ enum CampoDocumento: String, Codable, CaseIterable, Identifiable {
     case decorrenza, scadenza, premio, capitaleAssicurato, controvalore
     // Dalla versione 19 dell'archivio: la data del valore e il versato degli estratti conto
     case dataValore, totaleVersato
+    // Dalla versione 23 dell'archivio: KID più completi, documenti d'identità e questionari
+    case isin, dataDocumento, rendimentoPrimaCosti
+    case numeroDocumento, intestatario, codiceFiscale, dataRilascio
+    case profiloRischio, orizzonte
 
     var id: String { rawValue }
 
@@ -128,19 +229,63 @@ enum CampoDocumento: String, Codable, CaseIterable, Identifiable {
         case .controvalore: return "Controvalore"
         case .dataValore: return "Data del valore"
         case .totaleVersato: return "Totale versato"
+        case .isin: return "Codice ISIN"
+        case .dataDocumento: return "Data del documento"
+        case .rendimentoPrimaCosti: return "Rendimento prima dei costi"
+        case .numeroDocumento: return "Numero del documento"
+        case .intestatario: return "Intestatario"
+        case .codiceFiscale: return "Codice fiscale"
+        case .dataRilascio: return "Data di rilascio"
+        case .profiloRischio: return "Profilo di rischio"
+        case .orizzonte: return "Orizzonte temporale"
         }
     }
 
     /// Unità mostrata accanto al valore.
     var unita: String {
         switch self {
-        case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato: return "%"
-        case .periodoDetenzione: return "anni"
+        case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti, .rendimentoModerato, .rendimentoPrimaCosti: return "%"
+        case .periodoDetenzione, .orizzonte: return "anni"
         case .premio, .capitaleAssicurato, .controvalore, .totaleVersato: return "€"
         case .sri: return "su 7"
         default: return ""
         }
     }
+}
+
+/// Le sezioni della scheda di un documento, in quest'ordine.
+enum SezioneDocumento: String, CaseIterable, Identifiable {
+    case chi, cosa, cifre, costi, rischio, scadenze
+
+    var id: String { rawValue }
+
+    var titolo: String {
+        switch self {
+        case .chi: return "Chi"
+        case .cosa: return "Che cosa"
+        case .cifre: return "Cifre chiave"
+        case .costi: return "Costi"
+        case .rischio: return "Rischio"
+        case .scadenze: return "Date e scadenze"
+        }
+    }
+}
+
+extension CampoDocumento {
+    /// La sezione della scheda (e l'ordine della tabella di confronto).
+    var sezione: SezioneDocumento {
+        switch self {
+        case .emittente, .contraente, .assicurato, .beneficiari, .intestatario, .codiceFiscale: return .chi
+        case .nomeProdotto, .tipologia, .numeroContratto, .isin, .numeroDocumento: return .cosa
+        case .premio, .capitaleAssicurato, .controvalore, .totaleVersato, .rendimentoModerato, .rendimentoPrimaCosti: return .cifre
+        case .costoIngresso, .costoUscita, .costoAnnuo, .incidenzaCosti: return .costi
+        case .sri, .periodoDetenzione, .profiloRischio, .orizzonte: return .rischio
+        case .decorrenza, .scadenza, .dataValore, .dataDocumento, .dataRilascio: return .scadenze
+        }
+    }
+
+    /// I dati che sono date (per la formattazione e i controlli).
+    var data: Bool { [.decorrenza, .scadenza, .dataValore, .dataDocumento, .dataRilascio].contains(self) }
 }
 
 /// Un dato trovato in un documento, con la pagina da cui viene.

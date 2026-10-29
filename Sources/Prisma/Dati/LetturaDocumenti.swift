@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ImageIO
 import PDFKit
 import Vision
 
@@ -64,5 +65,15 @@ enum LetturaDocumenti {
 
     static func numeroPagine(_ url: URL) -> Int {
         url.pathExtension.lowercased() == "pdf" ? (PDFDocument(url: url)?.pageCount ?? 0) : 1
+    }
+
+    /// Immagine ridotta per l'anteprima (lato massimo in pixel), letta con ImageIO senza decodificare l'originale.
+    static func anteprima(_ url: URL, lato: Int = 2400) -> NSImage? {
+        guard let sorgente = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let opzioni: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                        kCGImageSourceCreateThumbnailWithTransform: true,
+                                        kCGImageSourceThumbnailMaxPixelSize: lato]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(sorgente, 0, opzioni as CFDictionary) else { return nil }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
     }
 }

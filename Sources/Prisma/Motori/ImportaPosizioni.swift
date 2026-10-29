@@ -25,6 +25,8 @@ struct ImportazionePosizioni: Identifiable {
     let file: String
     let colonne: [ImportaPosizioni.Colonna]
     var posizioni: [PosizioneImportata]
+    /// La tabella letta (intestazione compresa): per «Aggiorna i loro valori» e per le prove.
+    var righe: [[String]] = []
 }
 
 /// Legge le posizioni da un CSV (elenchi di polizze, portafogli esportati da Excel): le abbina ai clienti
@@ -33,6 +35,7 @@ enum ImportaPosizioni {
     enum Colonna: String, CaseIterable {
         case cliente, nome, cognome, codiceFiscale, prodotto, numeroContratto, emittente, tipologia, decorrenza, scadenza
         case premio, frequenza, controvalore, dataValore, versato, capitale, canale, area, stato
+        case valoreGestione            // in fondo: l'ordine dei casi non conta per il riconoscimento
 
         var nome: String {
             switch self {
@@ -55,6 +58,7 @@ enum ImportaPosizioni {
             case .canale: return "Canale"
             case .area: return "Area"
             case .stato: return "Stato"
+            case .valoreGestione: return "Di cui in gestione separata"
             }
         }
 
@@ -64,6 +68,10 @@ enum ImportaPosizioni {
             // Prima le più specifiche: "data valore" prima di "valore", "premi versati" prima di "premio"
             let regole: [(Colonna, [String])] = [
                 (.codiceFiscale, ["codice fiscale", "cod. fiscale", "cod fiscale", "c.f.", "cf", "cf contraente", "codice fiscale contraente"]),
+                // Prima di «valore» e «data valore»: per prefisso «valore gestione separata» sarebbe il controvalore
+                // (niente «ramo i»: per prefisso coglierebbe anche «valore ramo iii»)
+                (.valoreGestione, ["valore gestione separata", "controvalore gestione separata", "di cui gestione separata",
+                                   "valore in gestione separata", "parte in gestione separata", "gestione separata"]),
                 (.dataValore, ["data valore", "data del valore", "valore al", "data di riferimento", "data riferimento", "aggiornato al", "data valorizzazione"]),
                 (.versato, ["versato", "totale versato", "premi versati", "cumulo premi", "totale premi", "capitale versato", "importo versato"]),
                 (.capitale, ["capitale assicurato", "somma assicurata", "capitale caso morte", "massimale"]),
@@ -93,18 +101,31 @@ enum ImportaPosizioni {
     static func leggi(_ url: URL, clienti: [Cliente], posizioni: [Posizione], prodotti: [Prodotto] = [],
                       canale: Canale = .alleanza) -> ImportazionePosizioni? {
         guard let righe = ImportaClienti.righe(url) else { return nil }
-        return importazione(daRighe(righe, clienti: clienti, posizioni: posizioni, prodotti: prodotti, canale: canale), file: url.lastPathComponent)
+        return importazione(daRighe(righe, clienti: clienti, posizioni: posizioni, prodotti: prodotti, canale: canale),
+                            file: url.lastPathComponent, righe: righe)
     }
 
     /// Righe copiate da Excel o Numbers (testo a tabulazioni negli appunti), con l'intestazione nella prima.
     static func incollate(_ testo: String, clienti: [Cliente], posizioni: [Posizione], prodotti: [Prodotto] = [],
                           canale: Canale = .alleanza) -> ImportazionePosizioni? {
-        importazione(daCSV(testo, clienti: clienti, posizioni: posizioni, prodotti: prodotti, canale: canale), file: "appunti")
+        let righe = ImportaClienti.righeCSV(testo)
+        return importazione(daRighe(righe, clienti: clienti, posizioni: posizioni, prodotti: prodotti, canale: canale),
+                            file: "appunti", righe: righe)
     }
 
-    private static func importazione(_ letto: (colonne: [Colonna], posizioni: [PosizioneImportata]), file: String) -> ImportazionePosizioni? {
+    private static func importazione(_ letto: (colonne: [Colonna], posizioni: [PosizioneImportata]), file: String,
+                                     righe: [[String]]) -> ImportazionePosizioni? {
         guard !letto.posizioni.isEmpty else { return nil }
-        return ImportazionePosizioni(file: file, colonne: letto.colonne, posizioni: letto.posizioni)
+        return ImportazionePosizioni(file: file, colonne: letto.colonne, posizioni: letto.posizioni, righe: righe)
+    }
+
+    /// Il problema delle righe di posizioni che Prisma ha già (stesso cliente e numero o nome).
+    static let giaPresente = "già in Posizioni"
+
+    /// Prisma propone l'aggiornamento dei valori quando il file ha i valori e più di metà delle righe
+    /// sono di posizioni che ha già.
+    static func propostoAggiornamento(_ i: ImportazionePosizioni) -> Bool {
+        i.colonne.contains(.controvalore) && i.posizioni.filter { $0.problema == giaPresente }.count * 2 > i.posizioni.count
     }
 
     /// Una tabella sembra di posizioni (e non di contatti) se ha il prodotto, il contratto o un importo.
@@ -175,6 +196,11 @@ enum ImportaPosizioni {
                 // Dopo l'area: con l'area e la tipologia si sa se è una multiramo (regime della polizza)
                 applica(scheda, a: &p)
             }
+            // La parte in gestione separata di una multiramo, dal valore del file (dopo la scheda: la tipologia è nota)
+            if let g = EstrattoreDocumento.numero(v(.valoreGestione)), p.multiramo, let valore = p.controvalore,
+               let q = AggiornaValori.quotaGestione(valore: valore, gestione: g) {
+                p.quotaGestioneSeparata = q
+            }
 
             var x = PosizioneImportata(posizione: p, clienteNelFile: nomeCliente.isEmpty ? cf : nomeCliente, cliente: cliente,
                                        canaleDalFile: canaleLetto != nil || scheda != nil, areaDalFile: areaLetta != nil || scheda != nil)
@@ -194,7 +220,7 @@ enum ImportaPosizioni {
                     e.clienteId == c.id && (p.numeroContratto.isEmpty ? e.nome.lowercased() == p.nome.lowercased()
                                                                       : compatto(e.numeroContratto) == compatto(p.numeroContratto))
                 }) {
-                    x.problema = "già in Posizioni"
+                    x.problema = giaPresente
                 } else if viste.contains(chiave) {
                     x.problema = "ripetuta nel file"
                 }

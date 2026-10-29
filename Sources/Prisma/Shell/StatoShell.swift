@@ -91,6 +91,8 @@ final class StatoShell: ObservableObject {
     @Published var importazione: ImportazioneClienti?
     /// Posizioni lette da un file, in attesa di conferma in Posizioni.
     @Published var importazionePosizioni: ImportazionePosizioni?
+    /// Il pannello «Aggiorna i valori» in Posizioni (elenco della compagnia o griglia dei valori fermi).
+    @Published var aggiornaValori: AggiornaValori.Sessione?
 
     // Agenda e Attività (stato delle viste, non salvato)
     /// Giornata aperta in agenda.
@@ -167,6 +169,8 @@ final class StatoShell: ObservableObject {
 
     // Documenti
     @Published var documentoSelezionato: String?
+    /// Raccolta, filtri, scheda e pagina dell'anteprima dell'app Documenti.
+    @Published var vistaDocumenti = VistaDocumenti()
     @Published var documentiInLettura: Set<String> = []
 
     // Prospetti e report
@@ -660,10 +664,14 @@ final class StatoShell: ObservableObject {
         return pagine
     }
 
-    private func aggiornaDocumento(_ id: String, _ cambia: (inout Documento) -> Void) {
+    func aggiornaDocumento(_ id: String, _ cambia: (inout Documento) -> Void) {
         guard let i = dati.documenti.firstIndex(where: { $0.id == id }) else { return }
         cambia(&dati.documenti[i])
     }
+
+    /// Il testo di un documento senza file (documenti di prova delle istantanee e delle prove): resta nella memoria dei
+    /// testi come quelli letti dal disco.
+    func memorizzaTesto(_ id: String, _ pagine: [String]) { testiDocumenti[id] = pagine }
 
     /// Copia i file nella cartella Documenti del cliente e li legge.
     func importaDocumenti(_ urls: [URL]) {
@@ -731,7 +739,13 @@ final class StatoShell: ObservableObject {
                     x.pagine = esito.pagine.count
                     x.pagineOCR = esito.pagineOCR
                     x.lettura = esito.pagine.joined().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .illeggibile : .letto
-                    if x.tipo == .altro { x.tipo = EstrattoreDocumento.tipoProbabile(esito.pagine) }
+                    let categoria = MotoreDocumenti.categoriaProbabile(esito.pagine, tipo: x.tipo)
+                    // Identità e questionari restano `.altro` per Eve; gli altri prendono il tipo dal testo
+                    if x.tipo == .altro, categoria != .identita, categoria != .questionario {
+                        x.tipo = EstrattoreDocumento.tipoProbabile(esito.pagine)
+                    }
+                    // Rileggendo, la categoria scelta dal consulente resta
+                    if x.categoria == nil { x.categoria = categoria }
                     // Rileggendo, i dati già confermati (e corretti a mano) restano
                     x.campi = EstrattoreDocumento.unisci(x.campi.filter(\.confermato), campi)
                 }
@@ -1184,10 +1198,19 @@ final class StatoShell: ObservableObject {
         p.costoAnnuo = EstrattoreDocumento.numero(d.confermato(.costoAnnuo))
         p.incidenzaCostiKID = EstrattoreDocumento.numero(d.confermato(.incidenzaCosti))
         p.periodoRaccomandato = Self.anniDaDocumento(d.confermato(.periodoDetenzione))
-        p.rendimentoAtteso = EstrattoreDocumento.numero(d.confermato(.rendimentoModerato))
         p.fonte = "\(d.titolo) (\(d.tipo.breve), importato il \(Formati.dataBreve.string(from: d.importatoIl)))"
         p.verificatoIl = Calendar.current.startOfDay(for: Date())
         if let anni = d.confermato(.periodoDetenzione) { p.note = "Periodo di detenzione raccomandato: \(anni) anni." }
+        // Il rendimento atteso di Prisma è lordo: lo scenario moderato del KID è netto (i costi si conterebbero due volte)
+        if let lordo = MotoreConfrontoDossier.rendimentoLordo(d, soloConfermati: true) {
+            p.rendimentoAtteso = (lordo.valore * 100).rounded() / 100
+            if lordo.fonte == .stima {
+                p.note = (p.note + " Rendimento lordo stimato da Prisma dallo scenario moderato del KID (netto).")
+                    .trimmingCharacters(in: .whitespaces)
+            }
+        } else {
+            p.rendimentoAtteso = nil
+        }
         salvaProdotto(p)
         aggiornaDocumento(id) { $0.prodottoId = p.id }
         mostraAvviso("Scheda prodotto creata: \(p.nome)")
@@ -2568,6 +2591,43 @@ final class StatoShell: ObservableObject {
             return q
         })
         return ids.count
+    }
+
+    /// Esegue `operazione` dopo un backup di sicurezza (come l'importazione); senza archivio la esegue subito.
+    /// Restituisce false se non è partita (backup in corso, password mancante).
+    @discardableResult
+    func dopoUnBackup(nota: String, annullata: String, _ operazione: @escaping (_ conBackup: Bool) -> Void) -> Bool {
+        guard persistente else {
+            operazione(false)
+            return true
+        }
+        guard !backupInCorso else { return false }
+        let password: String?
+        do {
+            password = try passwordPerBackup()
+        } catch {
+            annullaSenzaPassword(error, annullata)
+            return false
+        }
+        salvaOra()
+        backupInCorso = true
+        let destinazione = cartellaBackup
+        let creaCartella = cartellaBackupPredefinita
+        DispatchQueue.global(qos: .userInitiated).async {
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: nota,
+                                                        creaCartella: creaCartella, password: password) }
+            DispatchQueue.main.async {
+                self.backupInCorso = false
+                switch esito {
+                case .success:
+                    operazione(true)
+                    self.aggiornaElencoBackup()
+                case .failure(let e):
+                    self.mostraAvviso(TestiAggiornaValori.annullato(e.localizedDescription))
+                }
+            }
+        }
+        return true
     }
 
     /// La parte senza backup (usata anche dalle prove): ogni cliente con la sua tinta, il primo in primo piano.

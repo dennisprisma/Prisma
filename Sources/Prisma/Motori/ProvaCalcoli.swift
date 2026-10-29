@@ -1199,6 +1199,10 @@ enum ProvaCalcoli {
         ProvaCalcoliAdeguatezza.esegui(verificaEsterna)
         ProvaCalcoliConformita.esegui(verificaEsterna)
         ProvaCalcoliOccasioni.esegui(verificaEsterna)
+        // Giro 5: app Documenti, documento contro dossier, aggiornamento dei valori in blocco
+        ProvaCalcoliDocumenti.esegui(verificaEsterna)
+        ProvaCalcoliConfrontoDossier.esegui(verificaEsterna)
+        ProvaCalcoliAggiornaValori.esegui(verificaEsterna)
 
         if errori == 0 {
             print("OK: motori di calcolo verificati")

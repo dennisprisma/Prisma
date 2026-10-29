@@ -52,7 +52,10 @@ struct DatiPrisma: Codable, Equatable {
     /// 20: multiramo a due parti (rendimento, costi e rischio della gestione separata e dei fondi, ribilanciamento) nelle posizioni e nelle schede prodotto; dati di rischio delle parti nelle condizioni.
     /// 21: seguito delle proposte (esito «rimandata», giorni del seguito); dati non pertinenti per la completezza; orari di lavoro dell'agenda; esperienza per tipo di prodotto e capacità di sostenere perdite.
     /// 22: schede di adeguatezza delle proposte e documenti da consegnare per canale; scadenze di conformità dei clienti e regole di validità; impostazioni del calendario delle occasioni e promemoria delle occasioni.
-    static let versioneAttuale = 22
+    /// 23: categoria dei documenti e dati letti nuovi (ISIN, data del documento, rendimento prima dei costi, documenti
+    ///     d'identità e questionari); confronto dei documenti con il dossier: voci lasciate come in Prisma e storico dei
+    ///     dati aggiornati nelle posizioni e nelle schede prodotto.
+    static let versioneAttuale = 23
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
