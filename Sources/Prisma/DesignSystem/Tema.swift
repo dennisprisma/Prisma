@@ -294,9 +294,6 @@ enum Tema {
         /// Margine interno e spazio tra le icone, in frazione del lato dell'icona.
         static let dockMargineQuota: CGFloat = 0.14
         static let dockSpazioQuota: CGFloat = 0.12
-        static let dockIngrandimento: CGFloat = 1.55
-        /// Raggio d'azione dell'ingrandimento, in lati d'icona.
-        static let dockPortata: CGFloat = 2.7
         static let puntinoDock: CGFloat = 4
 
         // Controlli

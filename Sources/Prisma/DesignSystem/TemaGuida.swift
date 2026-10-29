@@ -60,9 +60,6 @@ extension Tema.Misura {
         static let spazioVuoto: CGFloat = 14
         static let vuotoMargine: CGFloat = 24
         static let canaliSpazio: CGFloat = 8
-        // Dock
-        static let descrizioneDockMassima: CGFloat = 240
-        static let descrizioneDockSpazio: CGFloat = 2
     }
 }
 
@@ -94,14 +91,11 @@ extension Tema.Testo {
         static let titoloPassoVuoto = Tema.Testo.sf(13, .semibold)
         static let testoPassoVuoto = Tema.Testo.sf(13)
         static let iconaVuoto = Font.system(size: Tema.Misura.Guida.iconaVuoto * Tipo.fattore, weight: .medium)
-        // Dock (fuori dalle app la scala resta quella di oggi)
-        static let descrizioneDock = Tema.Testo.sfFisso(11.5)
     }
 }
 
 extension Tema.Raggio {
     enum Guida {
-        static let suggerimentoDock: CGFloat = 14
         static let esempio: CGFloat = 12
         static let rigaElenco: CGFloat = 10
     }

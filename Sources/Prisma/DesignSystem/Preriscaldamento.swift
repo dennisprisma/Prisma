@@ -25,16 +25,15 @@ enum Preriscaldamento {
         }
     }
 
-    /// Le icone con le misure con cui le disegnano il dock (con la riserva d'ingrandimento), le finestre e «app aperte».
+    /// Le icone con le misure con cui le disegnano il dock, le finestre e «app aperte».
     private static func icone(scala: CGFloat) -> [(percorso: String, misura: CGSize, scala: CGFloat)] {
         func quadrato(_ lato: CGFloat) -> CGSize { CGSize(width: lato, height: lato) }
         let dock = quadrato(Tema.Misura.dockIcona)
-        let scalaDock = scala * Tema.Misura.dockIngrandimento
         var elenco: [(percorso: String, misura: CGSize, scala: CGFloat)] = [
-            (percorso: "Icone/Prisma.png", misura: dock, scala: scalaDock),
+            (percorso: "Icone/Prisma.png", misura: dock, scala: scala),
         ]
         let misure: [(misura: CGSize, scala: CGFloat)] = [
-            (misura: dock, scala: scalaDock),
+            (misura: dock, scala: scala),
             (misura: quadrato(Tema.Misura.iconaFinestra), scala: scala),
             (misura: quadrato(Tema.Misura.iconaAppAperte), scala: scala),
         ]
