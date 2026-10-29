@@ -37,6 +37,17 @@ enum DatiDemo {
         func nascita(_ anno: Int, _ mese: Int, _ giorno: Int) -> Date? {
             Calendar(identifier: .gregorian).date(from: DateComponents(year: anno, month: mese, day: giorno))
         }
+        // Esperienza per tipo di prodotto (versione 21): una voce per tipo, nil = non indicato
+        func griglia(_ voci: [VoceEsperienza], capacita: CapacitaPerdite?, il giorno: Date) -> EsperienzaProdotti {
+            var e = EsperienzaProdotti()
+            for v in voci { e.imposta(v) }
+            e.capacitaPerdite = capacita
+            e.aggiornataIl = giorno
+            return e
+        }
+        func voce(_ t: TipoProdotto, _ conosce: Bool?, _ haAvuto: Bool?, _ haCapito: Bool?) -> VoceEsperienza {
+            VoceEsperienza(tipo: t, conosce: conosce, haAvuto: haAvuto, haCapito: haCapito)
+        }
         let anno = Calendar(identifier: .gregorian).component(.year, from: Date())
         for i in elenco.indices {
             var c = elenco[i]
@@ -63,6 +74,12 @@ enum DatiDemo {
                 c.profilo.orizzonteAnni = 10
                 c.profilo.esperienza = .base
                 c.profilo.obiettivi = "Anticipo per la nuova casa entro il 2029 e un margine di serenità."
+                // Non conosce multiramo e previdenza (la proposta del PIP lo segnala), unit linked da spiegare
+                c.profilo.esperienzaProdotti = griglia([
+                    voce(.ramoI, true, true, true), voce(.ramoIII, true, false, false), voce(.multiramo, false, nil, nil),
+                    voce(.fondiETF, true, nil, true), voce(.titoli, true, false, true), voce(.previdenza, false, false, nil),
+                    voce(.protezione, true, true, true),
+                ], capacita: .limitata, il: c.creatoIl)
                 c.bisogni.imposta(ValutazioneBisogno(area: .casa, importanza: .alta, orizzonte: .presto))
                 c.bisogni.imposta(ValutazioneBisogno(area: .pensione, importanza: .media, orizzonte: .lungo))
                 c.bisogni.imposta(ValutazioneBisogno(area: .salute, importanza: .bassa, orizzonte: .medio))
@@ -126,6 +143,9 @@ enum DatiDemo {
                 c.profilo.propensione = .prudente
                 c.profilo.esperienza = .nessuna
                 c.profilo.obiettivi = "Da definire al primo incontro."
+                // Primo incontro: non conosce il Ramo I che gli si propone, conosce la protezione
+                c.profilo.esperienzaProdotti = griglia([voce(.ramoI, false, false, nil), voce(.protezione, true, false, true)],
+                                                       capacita: .nessuna, il: c.creatoIl)
                 c.profilo.lavoro = DatiLavoro(tipo: .dipendente, crescitaReddito: 1.5, anniContributi: 5,
                                               annoPrimoContributo: 2020, etaPensione: 67)
             case "sofia":
@@ -146,6 +166,12 @@ enum DatiDemo {
                 c.profilo.orizzonteAnni = 12
                 c.profilo.esperienza = .elevata
                 c.profilo.obiettivi = "Un viaggio da ricordare e una pensione serena."
+                // Griglia piena: esperienza ampia, capacità di perdita media
+                c.profilo.esperienzaProdotti = griglia([
+                    voce(.ramoI, true, true, true), voce(.ramoIII, true, false, true), voce(.multiramo, true, false, nil),
+                    voce(.fondiETF, true, true, true), voce(.titoli, true, true, true), voce(.previdenza, true, false, true),
+                    voce(.protezione, true, true, true),
+                ], capacita: .media, il: c.creatoIl)
             default:
                 break
             }

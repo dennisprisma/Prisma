@@ -42,7 +42,7 @@ enum StatoPosizione: String, Codable, CaseIterable, Identifiable {
 
 /// Avanzamento di una proposta.
 enum EsitoProposta: String, Codable, CaseIterable, Identifiable {
-    case bozza, presentata, accettata, rifiutata
+    case bozza, presentata, accettata, rifiutata, rimandata   // rimandata: dalla versione 21 dell'archivio
 
     var id: String { rawValue }
     var nome: String { rawValue.capitalized }
@@ -182,6 +182,8 @@ struct Posizione: Identifiable, Codable, Hashable {
     var garanzie = ""
     var note = ""
     var esito: EsitoProposta?
+    /// Seguito della proposta: presentazione, esito con data e motivo, ripresa (dalla versione 21 dell'archivio).
+    var seguito: SeguitoProposta?
     /// Scheda prodotto da cui nasce (dalla versione 9 dell'archivio).
     var prodottoId: String?
     var creataIl = Date()

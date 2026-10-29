@@ -1190,6 +1190,11 @@ enum ProvaCalcoli {
         ProvaCalcoliRischio.esegui(verificaEsterna)
         ProvaCalcoliFamiglia.esegui(verificaEsterna)
         ProvaCalcoliMultiramo.esegui(verificaEsterna)
+        // Giro 3: completezza dei dati, seguito delle proposte, esperienza per tipo di prodotto, riesami in Agenda
+        ProvaCalcoliCompletezza.esegui(verificaEsterna)
+        ProvaCalcoliSeguito.esegui(verificaEsterna)
+        ProvaCalcoliEsperienza.esegui(verificaEsterna)
+        ProvaCalcoliAgenda.esegui(verificaEsterna)
 
         if errori == 0 {
             print("OK: motori di calcolo verificati")

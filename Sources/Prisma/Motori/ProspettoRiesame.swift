@@ -123,6 +123,29 @@ extension CompositoreProspetti {
                 })))
         }
 
+        // Completezza dei dati: quali analisi del riesame girano su dati mancanti, stimati o vecchi
+        let k = MotoreCompletezza.calcola(f)
+        let daCompletare = k.daCompletare
+        sezione("Dati per l'analisi")
+        if daCompletare.isEmpty {
+            b.append(.testo(TestiCompletezza.tuttoCompleto))
+        } else {
+            b.append(.avviso("Completi al \(k.percentuale)%: " + TestiCompletezza.riepilogo(k) + "."))
+            let mostrate = daCompletare.prefix(MotoreCompletezza.massimoProspetto)
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Dato", peso: 2), ColonnaProspetto(titolo: "Stato", peso: 0.9),
+                          ColonnaProspetto(titolo: "Cosa usa l'analisi", peso: 3.9), ColonnaProspetto(titolo: "Canale", peso: 0.9)],
+                righe: mostrate.map { v -> [CellaProspetto] in
+                    let stato: CellaProspetto = v.stato == .mancante ? CellaProspetto.f(v.stato.nome) : CellaProspetto.t(v.stato.nome)
+                    let ipotesi: String = v.ipotesi.isEmpty ? "—" : v.ipotesi
+                    let canale: CellaProspetto = v.canale.map { CellaProspetto.c($0) } ?? CellaProspetto.n("—")
+                    return [CellaProspetto.f(v.titolo), stato, CellaProspetto.t(ipotesi), canale]
+                })))
+            if daCompletare.count > mostrate.count {
+                b.append(.testo("…e altre \(daCompletare.count - mostrate.count): l'elenco completo è nella Panoramica del cliente."))
+            }
+        }
+
         sezione("Domande da fare")
         b.append(.testo(r.domande.map { "• \($0)" }.joined(separator: "\n")))
 

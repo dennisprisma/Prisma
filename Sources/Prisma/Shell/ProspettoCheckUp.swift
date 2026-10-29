@@ -5,8 +5,11 @@ private typealias D = Misure.Documento
 
 /// Il prospetto del check-up del primo incontro: A4 verticale, per il consulente.
 enum ProspettoCheckUp {
-    static func pagine(_ t: TestiCheckUp) -> [AnyView] {
-        let pagine: [AnyView] = [AnyView(PaginaChiE(t: t)), AnyView(PaginaSemaforo(t: t))]
+    /// `ipotesi`: i dati da completare del cliente; se ci sono, una pagina in fondo li dichiara
+    /// (prima della numerazione, così «pag. x di y» la conta). `percentuale`: la completezza dei dati.
+    static func pagine(_ t: TestiCheckUp, ipotesi: [VoceCompletezza] = [], percentuale: Int? = nil) -> [AnyView] {
+        var pagine: [AnyView] = [AnyView(PaginaChiE(t: t)), AnyView(PaginaSemaforo(t: t))]
+        if !ipotesi.isEmpty { pagine.append(AnyView(PaginaIpotesiStimate(voci: ipotesi, percentuale: percentuale))) }
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiCheckUp.avvertenza, numero: i + 1, totale: pagine.count) { p })
         }

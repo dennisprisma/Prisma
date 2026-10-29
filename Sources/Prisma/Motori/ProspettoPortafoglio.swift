@@ -122,11 +122,30 @@ extension CompositoreProspetti {
                 totale: [.f("Totale"), .t(""), .f(euro(fine.reduce(0) { $0 + $1.spazio })), .f(euro(fine.reduce(0) { $0 + $1.risparmioPossibile }))])))
         }
 
+        // Il seguito delle proposte: presentate e ferme senza un appuntamento in agenda, o rimandate e da riprendere
+        sezione("Proposte da riprendere")
+        let giorniSeguito = dati.impostazioni.giorniSeguitoProposte
+        let ferme = MotoreSeguitoProposte.inSospeso(posizioni: dati.posizioni, clienti: dati.clienti, appuntamenti: dati.appuntamenti,
+                                                    attivita: dati.attivita, adesso: data, soglia: giorniSeguito)
+        if ferme.isEmpty {
+            b.append(.testo(TestiSeguito.prospettoVuoto(giorni: giorniSeguito)))
+        } else {
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Cliente", peso: 1.6), ColonnaProspetto(titolo: "Proposta", peso: 1.8),
+                          ColonnaProspetto(titolo: "Canale", peso: 1.1), ColonnaProspetto(titolo: "Da quando", peso: 1),
+                          ColonnaProspetto(titolo: "Giorni", peso: 0.7, destra: true)],
+                righe: ferme.map { s -> [CellaProspetto] in
+                    let giorni: CellaProspetto = s.urgente ? CellaProspetto.f("\(s.giorni)") : CellaProspetto.t("\(s.giorni)")
+                    return [CellaProspetto.f(s.cliente.nome), CellaProspetto.t(s.posizione.nome), CellaProspetto.c(s.posizione.canale),
+                            CellaProspetto.t(Formati.dataBreve.string(from: s.dal)), giorni]
+                })))
+        }
+
         sezione("Proposte per esito")
         b.append(.voci(EsitoProposta.allCases.map { CampoVoce(etichetta: $0.nome, valore: "\(p.esiti[$0] ?? 0)") }
                        + [CampoVoce(etichetta: "Tasso di accettazione", valore: p.tassoAccettazione.map { "\(quota($0)) delle proposte decise" } ?? "nessuna proposta decisa")]))
 
-        b.append(.nota("Metodo: valori delle posizioni in essere come registrati in Posizioni (controvalore o, se manca, versato). Le quote per canale e per cliente sono sulle attività in essere, debiti esclusi; la concentrazione per emittente esclude anche gli immobili. Le scadenze comprendono le posizioni in essere che scadono entro \(Portafoglio.mesiScadenze) mesi: il valore è quello di oggi, prima delle imposte. Il tasso di accettazione conta solo le proposte già decise (accettate o rifiutate). Da ricontattare: clienti con posizioni, senza incontri o appuntamenti negli ultimi \(Portafoglio.mesiSenzaContatto) mesi e senza appuntamenti in agenda. Documento ad uso del consulente, non da consegnare ai clienti."))
+        b.append(.nota("Metodo: valori delle posizioni in essere come registrati in Posizioni (controvalore o, se manca, versato). Le quote per canale e per cliente sono sulle attività in essere, debiti esclusi; la concentrazione per emittente esclude anche gli immobili. Le scadenze comprendono le posizioni in essere che scadono entro \(Portafoglio.mesiScadenze) mesi: il valore è quello di oggi, prima delle imposte. Il tasso di accettazione conta solo le proposte già decise (accettate o rifiutate). Da ricontattare: clienti con posizioni, senza incontri o appuntamenti negli ultimi \(Portafoglio.mesiSenzaContatto) mesi e senza appuntamenti in agenda. \(TestiSeguito.metodo(giorni: giorniSeguito)) Documento ad uso del consulente, non da consegnare ai clienti."))
 
         return ContenutoProspetto(occhiello: "Prospetto di dettaglio · Portafoglio del consulente", titolo: titoloPortafoglio,
                                   sottotitolo: "Tutti i clienti · \(dati.impostazioni.nomeUtente) · situazione al \(Formati.dataEstesa.string(from: data))",

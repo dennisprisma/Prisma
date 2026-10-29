@@ -7,11 +7,14 @@ private typealias D = Misure.Documento
 /// caso morte, invalidità e riserva, poi persona per persona, mappa dei rischi, coperture per canale,
 /// costi e detrazione dei premi.
 enum ProspettoProtezione {
-    static func pagine(_ t: TestiProtezione) -> [AnyView] {
+    /// `ipotesi`: i dati da completare del cliente; se ci sono, una pagina in fondo li dichiara
+    /// (prima della numerazione, così «pag. x di y» la conta). `percentuale`: la completezza dei dati.
+    static func pagine(_ t: TestiProtezione, ipotesi: [VoceCompletezza] = [], percentuale: Int? = nil) -> [AnyView] {
         var pagine: [AnyView] = [AnyView(PaginaFabbisogno(t: t))]
         // Per ogni persona che porta reddito: caso morte, invalidità e non autosufficienza
         if !t.e.persone.isEmpty { pagine.append(AnyView(PaginaPersone(t: t))) }
         pagine += [AnyView(PaginaMappa(t: t)), AnyView(PaginaCostiProtezione(t: t))]
+        if !ipotesi.isEmpty { pagine.append(AnyView(PaginaIpotesiStimate(voci: ipotesi, percentuale: percentuale))) }
         return pagine.enumerated().map { i, p in
             AnyView(FoglioProspetto(piede: t.piede, avvertenza: TestiProtezione.avvertenza, numero: i + 1, totale: pagine.count) { p })
         }

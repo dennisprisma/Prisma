@@ -48,6 +48,23 @@ struct AppIncontri: View {
         } message: {
             Text("Appunti e decisioni verranno tolti dal dossier. Attività e appuntamenti già creati restano. Se serve, potrai recuperarlo da un backup.")
         }
+        // L'esito della proposta dopo «Archivia l'incontro»: solo le richieste di Incontri, così Posizioni aperto
+        // insieme non lo presenta una seconda volta
+        .sheet(item: richiestaEsitoIncontri) { r in
+            ModuloEsitoProposta(richiesta: r)
+                .environmentObject(stato)
+        }
+    }
+
+    /// La richiesta dell'esito solo se viene da Incontri (le altre le presenta Posizioni).
+    private var richiestaEsitoIncontri: Binding<RichiestaEsito?> {
+        Binding<RichiestaEsito?>(
+            get: {
+                guard let r = stato.richiestaEsito, r.origine == .incontri else { return nil }
+                return r
+            },
+            set: { stato.richiestaEsito = $0 }
+        )
     }
 
     @ViewBuilder private func fase(_ i: Incontro, area: CGSize) -> some View {
@@ -529,6 +546,14 @@ struct AppIncontri: View {
                     }
                 }
                 HStack(spacing: 8) {
+                    // La proposta presentata all'incontro aspetta ancora l'esito
+                    if let a = stato.appuntamento(i.appuntamentoId), let p = stato.propostaDaChiudere(a) {
+                        Button("Esito della proposta «\(p.nome)»") {
+                            stato.apriEsito(p, passo: MotoreSeguitoProposte.passoIniziale(a), origine: .incontri, appuntamentoId: a.id)
+                        }
+                        .buttonStyle(StileBlu())
+                        .lineLimit(1)
+                    }
                     if let t = i.attivitaCreataId, stato.attivita.contains(where: { $0.id == t }) {
                         Button("Attività concordata ↗") {
                             stato.attivitaSelezionata = t

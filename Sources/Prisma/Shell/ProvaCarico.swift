@@ -181,6 +181,14 @@ enum ProvaCarico {
 
         // Promemoria del Mac: date e testi (calcolo puro, senza il Centro notifiche di macOS)
         for (ok, descrizione) in ProvaPromemoria.verifiche() { controlla(ok, descrizione) }
+        // Seguito delle proposte: esito, proposte ferme, notifiche e cache (il prefisso «Seguito: » è già dentro)
+        for (ok, descrizione) in ProvaSeguito.verifiche() { controlla(ok, descrizione) }
+        // Riesami in Agenda: striscia del mese, «Pianifica» e spazio libero (prefisso «Riesami in Agenda: » già dentro)
+        for (ok, descrizione) in ProvaRiesamiAgenda.verifiche() { controlla(ok, descrizione) }
+        var riesamiMese: RiesamiDelMese?
+        let riesamiTempo = tempo { riesamiMese = stato.riesamiDelMese(Date()) }
+        print("INFO Riesami del mese: \(riesamiMese?.daFissare.count ?? 0) da fissare in \(secondi(riesamiTempo))")
+        controlla(riesamiTempo < 0.5, "Riesami del mese con \(stato.dati.clienti.count) clienti sotto 0,5 s")
 
         // Memoria
         let mb = memoriaMB()

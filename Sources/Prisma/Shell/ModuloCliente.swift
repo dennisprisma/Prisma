@@ -6,6 +6,8 @@ struct CorniceModulo<Contenuto: View, Piede: View>: View {
     let titolo: String
     @ViewBuilder let contenuto: () -> Contenuto
     @ViewBuilder let piede: () -> Piede
+    /// Il campo su cui si apre il modulo (completezza dei dati): portato in vista all'apertura.
+    @Environment(\.fuocoModulo) private var fuoco
 
     var body: some View {
         let m = Tema.Misura.PannelliShell.self
@@ -16,10 +18,21 @@ struct CorniceModulo<Contenuto: View, Piede: View>: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: m.testaModulo)
                 .bordoBasso(Tema.Colore.separatore)
-            ScrollView {
-                contenuto()
-                    .padding(m.margineModulo)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    contenuto()
+                        .padding(m.margineModulo)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .onAppear {
+                    // Il tempo che la sezione ripiegabile del campo si apra; se il campo non c'è non succede niente
+                    guard fuoco != nil else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.ritardoFuoco) {
+                        withAnimation(Tema.Moto.sezioneRipiegabile) {
+                            proxy.scrollTo(FuocoModulo.idCampo, anchor: .center)
+                        }
+                    }
+                }
             }
             .background(Tema.Colore.scheda)
             HStack(spacing: m.spazioPiedeModulo) {
@@ -35,11 +48,29 @@ struct CorniceModulo<Contenuto: View, Piede: View>: View {
 }
 
 /// Riga di un modulo: etichetta a sinistra, controllo a destra.
+/// Se il modulo si apre su questo campo (`fuocoModulo`), la riga è evidenziata e si porta in vista.
 struct CampoModulo<Controllo: View>: View {
     let etichetta: String
     @ViewBuilder let controllo: () -> Controllo
+    @Environment(\.fuocoModulo) private var fuoco
 
-    var body: some View {
+    @ViewBuilder var body: some View {
+        if fuoco?.campo == etichetta {
+            // Il riquadro sta dietro la riga e ne esce del margine: la riga non si sposta
+            let forma = RoundedRectangle(cornerRadius: Tema.Raggio.Completezza.evidenza, style: .continuous)
+            let margine = -Tema.Misura.Completezza.margineEvidenza
+            riga
+                .background(forma.fill(Tema.Colore.Completezza.evidenzaCampo).padding(margine))
+                .overlay(forma.strokeBorder(Tema.Colore.Completezza.bordoEvidenza, lineWidth: Tema.Misura.filo)
+                    .padding(margine)
+                    .allowsHitTesting(false))
+                .id(FuocoModulo.idCampo)
+        } else {
+            riga
+        }
+    }
+
+    private var riga: some View {
         HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.PannelliShell.spazioCampoModulo) {
             Text(etichetta)
                 .font(Tipo.campoEtichetta)
@@ -48,6 +79,28 @@ struct CampoModulo<Controllo: View>: View {
             controllo()
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+/// Il campo su cui si apre un modulo (completezza dei dati): evidenziato e portato in vista.
+/// `campo` è l'etichetta di `CampoModulo`; `sezione` il titolo della `SezioneRipiegabile` da aprire (nil: nessuna).
+struct FuocoModulo: Equatable {
+    let campo: String
+    var sezione: String? = nil
+
+    /// L'id della riga evidenziata, per `ScrollViewReader`.
+    static let idCampo = "fuoco-modulo"
+}
+
+private struct ChiaveFuocoModulo: EnvironmentKey {
+    static let defaultValue: FuocoModulo? = nil
+}
+
+extension EnvironmentValues {
+    /// Il campo su cui si apre il modulo (nil: nessuno).
+    var fuocoModulo: FuocoModulo? {
+        get { self[ChiaveFuocoModulo.self] }
+        set { self[ChiaveFuocoModulo.self] = newValue }
     }
 }
 
@@ -84,6 +137,8 @@ struct SezioneRipiegabile<Contenuto: View>: View {
     let nota: String?
     let contenuto: () -> Contenuto
     @State private var aperta: Bool
+    /// Il campo su cui si apre il modulo: se sta in questa sezione, la sezione si apre da sola.
+    @Environment(\.fuocoModulo) private var fuoco
 
     init(_ titolo: String, nota: String? = nil, aperta: Bool = false, @ViewBuilder contenuto: @escaping () -> Contenuto) {
         self.titolo = titolo
@@ -133,6 +188,9 @@ struct SezioneRipiegabile<Contenuto: View>: View {
                         .strokeBorder(Tema.Colore.Inserimento.bordoSezione, lineWidth: Tema.Misura.filo)
                 )
             }
+        }
+        .onAppear {
+            if fuoco?.sezione == titolo, !aperta { aperta = true }
         }
     }
 }
@@ -450,7 +508,7 @@ struct ModuloCliente: View {
                         TextField("", text: $bozza.profilo.obiettivi).textFieldStyle(.roundedBorder)
                     }
                 }
-                SezioneRipiegabile("Dati per l'analisi · reddito, lavoro e pensione", nota: DatiPerAnalisi.nota(datiAnalisi)) {
+                SezioneRipiegabile(CampoCliente.sezioneAnalisi, nota: DatiPerAnalisi.nota(datiAnalisi)) {
                     Text("Facoltativi: servono alla pensione pubblica stimata e alla protezione di ogni persona della famiglia. Lascia vuoto quello che non sai.")
                         .font(Tema.Testo.Inserimento.nota).foregroundColor(Tema.Colore.Inserimento.nota)
                         .fixedSize(horizontal: false, vertical: true)

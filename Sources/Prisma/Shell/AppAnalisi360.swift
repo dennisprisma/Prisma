@@ -34,7 +34,11 @@ struct AppAnalisi360: View {
                 panoramica
             }
         }
-        .onChange(of: stato.areaAnalisi) { _ in scheda = .sintesi }
+        .onChange(of: stato.areaAnalisi) { nuova in
+            scheda = .sintesi
+            // Il campo evidenziato dalla completezza dei dati vale solo nella sua area
+            if let f = stato.fuocoAnalisi, f.area != nuova { stato.fuocoAnalisi = nil }
+        }
         .alert("Ripartire dalle posizioni?", isPresented: $confermaRicalcolo) {
             Button("Annulla", role: .cancel) {}
             Button("Riparti") { stato.ricalcolaAnalisi(cliente) }
@@ -93,6 +97,9 @@ struct AppAnalisi360: View {
             VStack(alignment: .leading, spacing: 14) {
                 TitoloStrumento(occhiello: "Quattro prospettive. Una persona.", titolo: "Il percorso di \(nome).",
                                 testo: "Apri un'area, rivedi le ipotesi e costruisci la traccia dell'incontro.")
+                if let k = stato.completezzaCliente(cliente) {
+                    rigaCompletezza(k)
+                }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     schedaArea(.previdenza, valore: "\(Formati.euro(prev.divarioResiduo))/mese",
                                nota: prev.divario > 0 ? "divario dopo l'integrazione dei piani" : "nessun divario con le ipotesi inserite")
@@ -120,12 +127,46 @@ struct AppAnalisi360: View {
         }
     }
 
+    /// I dati per l'analisi del cliente: quanto sono completi e quante ipotesi sono stimate, con il passaggio
+    /// alla scheda del cliente per completarli.
+    private func rigaCompletezza(_ k: CompletezzaCliente) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(TestiCompletezza.rigaAnalisi(k))
+                .font(Tipo.schedaAreaNota)
+                .foregroundColor(Tema.Colore.Completezza.livello(k.livello))
+                .help(TestiCompletezza.metodo)
+            Spacer(minLength: 0)
+            // La Panoramica con il riquadro dei dati è del consulente: in modalità cliente non c'è
+            if !k.daCompletare.isEmpty && !stato.inModoCliente {
+                Button(TestiCompletezza.completaNellaScheda) { stato.apriCliente(cliente) }
+                    .buttonStyle(StileVetro(margine: Tema.Misura.Completezza.marginePulsante))
+            }
+        }
+    }
+
     private func schedaArea(_ area: AreaAnalisi, valore: String, nota: String) -> some View {
         let elenco = contratti(area)
         let inEssere = elenco.filter { $0.stato == .inEssere }
         let proposte = elenco.count - inEssere.count
         let canali = Set(inEssere.map(\.canale))
         let confermata = analisi.wrappedValue.confermate.contains(area)
+        // Area non confermata con dati da completare: quante ipotesi sono stimate
+        var stimate = 0
+        if !confermata, let k = stato.completezzaCliente(cliente) {
+            stimate = k.voci(per: MotoreCompletezza.analisi(perArea: area)).count
+        }
+        let testoStato: String
+        let coloreStato: Color
+        if stimate > 0 {
+            testoStato = TestiCompletezza.ipotesiArea(stimate)
+            coloreStato = Tema.Colore.Completezza.stimato
+        } else if confermata {
+            testoStato = "Dati confermati"
+            coloreStato = Colori.Strumenti.rischioPresenteTesto
+        } else {
+            testoStato = "Ipotesi da verificare"
+            coloreStato = Colori.Strumenti.schedaNumero
+        }
         let prioritarie = stato.cliente(cliente).map { c in
             MotoreBisogni.priorita(stato.bisogniRilevati(c.id), profilo: c.bisogni).prefix(3).map(\.areaAnalisi)
         } ?? []
@@ -140,9 +181,9 @@ struct AppAnalisi360: View {
                             .help("Dalla ruota dei bisogni nella scheda del cliente")
                     }
                     Spacer()
-                    Text(confermata ? "Dati confermati" : "Ipotesi da verificare")
+                    Text(testoStato)
                         .font(Tipo.chip)
-                        .foregroundColor(confermata ? Colori.Strumenti.rischioPresenteTesto : Colori.Strumenti.schedaNumero)
+                        .foregroundColor(coloreStato)
                 }
                 Text(area.nome).font(Tipo.schedaAreaTitolo).foregroundColor(Colori.Strumenti.schedaTitolo)
                 Text(valore).font(Tipo.schedaAreaValore).foregroundColor(Colori.Strumenti.schedaValore)
@@ -179,7 +220,7 @@ struct AppAnalisi360: View {
                 SchedeRisultati(opzioni: schede(area), selezione: $scheda) {
                     if area == .investimenti || area == .risparmio {
                         Button("Apri nel simulatore") { simula(area) }
-                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                            .buttonStyle(StileVetro(margine: Tema.Misura.Completezza.marginePulsante))
                     }
                 }
                 ScrollView {
@@ -233,8 +274,27 @@ struct AppAnalisi360: View {
 
     // MARK: - Ipotesi
 
+    /// Completezza dei dati: l'ipotesi usata al posto del dato, se la voce è ancora da completare (nil se no).
+    private func stimata(_ voce: String) -> String? {
+        stato.completezzaCliente(cliente)?.daCompletare.first { $0.id == voce }?.ipotesi
+    }
+
+    /// Completezza dei dati: il campo dell'area su cui si è aperta l'analisi.
+    private func evidenziato(_ etichetta: String, _ area: AreaAnalisi) -> Bool {
+        stato.fuocoAnalisi.map { $0.area == area && $0.campo == etichetta } ?? false
+    }
+
+    /// Porta in vista il campo evidenziato, se è di quest'area.
+    private func portaInVista(_ proxy: ScrollViewProxy, _ area: AreaAnalisi) {
+        guard stato.fuocoAnalisi?.area == area else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.ritardoFuoco) {
+            withAnimation(Tema.Moto.sezioneRipiegabile) { proxy.scrollTo(FuocoAnalisi.idCampo, anchor: .center) }
+        }
+    }
+
     private func pannelloIpotesi(_ area: AreaAnalisi) -> some View {
         let a = analisi
+        let T = TestiCompletezza.self
         return VStack(spacing: 0) {
             HStack {
                 Text("Dati e ipotesi").font(Tipo.ipotesiTitolo)
@@ -243,55 +303,63 @@ struct AppAnalisi360: View {
             }
             .foregroundColor(Colori.ColonneStrumento.testata)
             .testataColonna()
-            ScrollView {
-                VStack(spacing: 0) {
-                    switch area {
-                    case .previdenza:
-                        CampoIpotesiIntero(etichetta: "Età attuale", valore: a.previdenza.eta, intervallo: 18...85)
-                        CampoIpotesiIntero(etichetta: "Età di pensione", valore: a.previdenza.etaPensione, intervallo: 50...75)
-                        CampoIpotesi(etichetta: "Reddito desiderato", valore: a.previdenza.redditoDesiderato, unita: "€/mese",
-                                     nota: "netto, in euro di oggi")
-                        CampoIpotesi(etichetta: "Pensione pubblica", valore: a.previdenza.pensionePubblica, unita: "€/mese",
-                                     nota: "netta: dall'estratto INPS o dalla stima contributiva")
-                        CampoIpotesi(etichetta: "Montante dei piani", valore: a.previdenza.capitale, nota: "valore attuale")
-                        CampoIpotesi(etichetta: "Versamento", valore: a.previdenza.versamentoMensile, unita: "€/mese")
-                        CampoIpotesi(etichetta: "Rendimento netto reale", valore: a.previdenza.rendimentoReale, unita: "%",
-                                     nota: "già al netto di costi e inflazione", intervallo: -20...20)
-                        CampoIpotesiIntero(etichetta: "Anni di integrazione", valore: a.previdenza.anniIntegrazione, intervallo: 1...50)
-                    case .protezione:
-                        CampoIpotesi(etichetta: "Fabbisogno della famiglia", valore: a.protezione.fabbisognoMensile, unita: "€/mese")
-                        CampoIpotesiIntero(etichetta: "Anni di sostegno", valore: a.protezione.anniSostegno, intervallo: 0...50)
-                        CampoIpotesi(etichetta: "Debiti da estinguere", valore: a.protezione.debiti, nota: "dalle posizioni: mutui e prestiti")
-                        CampoIpotesi(etichetta: "Spese immediate", valore: a.protezione.speseImmediate)
-                        CampoIpotesi(etichetta: "Capitale ai superstiti", valore: a.protezione.capitaleDisponibile,
-                                     nota: "liquidità già destinata")
-                        CampoIpotesi(etichetta: "Entrate sostitutive", valore: a.protezione.entrateSostitutive, unita: "€/mese",
-                                     nota: "in caso di invalidità o malattia")
-                        CampoIpotesiIntero(etichetta: "Mesi di riserva", valore: a.protezione.mesiRiserva, unita: "mesi", intervallo: 1...120)
-                        CampoIpotesi(etichetta: "Riserva disponibile", valore: a.protezione.riserva)
-                    case .investimenti:
-                        CampoIpotesi(etichetta: "Capitale", valore: a.investimenti.capitale, nota: "dalle posizioni di investimento")
-                        CampoIpotesi(etichetta: "Versamento", valore: a.investimenti.versamentoMensile, unita: "€/mese")
-                        CampoIpotesiIntero(etichetta: "Orizzonte", valore: a.investimenti.anni, intervallo: 1...50)
-                        CampoIpotesi(etichetta: "Rendimento lordo", valore: a.investimenti.rendimento, unita: "%", intervallo: -30...30)
-                        CampoIpotesi(etichetta: "Costo d'ingresso", valore: a.investimenti.costoIngresso, unita: "%", intervallo: 0...50)
-                        CampoIpotesi(etichetta: "Costo annuo", valore: a.investimenti.costoAnnuo, unita: "%", intervallo: 0...20)
-                        CampoIpotesi(etichetta: "Imposte sul guadagno", valore: a.investimenti.aliquota, unita: "%", intervallo: 0...60)
-                        CampoIpotesi(etichetta: "Inflazione", valore: a.investimenti.inflazione, unita: "%", intervallo: 0...20)
-                        CampoIpotesi(etichetta: "Calo da mettere alla prova", valore: a.investimenti.calo, unita: "%", intervallo: 0...100)
-                    case .risparmio:
-                        CampoIpotesi(etichetta: "Obiettivo", valore: a.risparmio.obiettivo, nota: "in euro di oggi")
-                        CampoIpotesi(etichetta: "Capitale già da parte", valore: a.risparmio.capitale)
-                        CampoIpotesi(etichetta: "Versamento", valore: a.risparmio.versamentoMensile, unita: "€/mese")
-                        CampoIpotesiIntero(etichetta: "Anni", valore: a.risparmio.anni, intervallo: 1...50)
-                        CampoIpotesi(etichetta: "Rendimento lordo", valore: a.risparmio.rendimento, unita: "%", intervallo: -30...30)
-                        CampoIpotesi(etichetta: "Costo d'ingresso", valore: a.risparmio.costoIngresso, unita: "%", intervallo: 0...50)
-                        CampoIpotesi(etichetta: "Costo annuo", valore: a.risparmio.costoAnnuo, unita: "%", intervallo: 0...20)
-                        CampoIpotesi(etichetta: "Imposte sul guadagno", valore: a.risparmio.aliquota, unita: "%", intervallo: 0...60)
-                        CampoIpotesi(etichetta: "Inflazione", valore: a.risparmio.inflazione, unita: "%", intervallo: 0...20)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        switch area {
+                        case .previdenza:
+                            CampoIpotesiIntero(etichetta: T.campoEta, valore: a.previdenza.eta, intervallo: 18...85,
+                                               stimata: stimata("nascita"), evidenziato: evidenziato(T.campoEta, area))
+                            CampoIpotesiIntero(etichetta: "Età di pensione", valore: a.previdenza.etaPensione, intervallo: 50...75)
+                            CampoIpotesi(etichetta: T.campoRedditoDesiderato, valore: a.previdenza.redditoDesiderato, unita: "€/mese",
+                                         nota: "netto, in euro di oggi",
+                                         stimata: stimata("redditoDesiderato"), evidenziato: evidenziato(T.campoRedditoDesiderato, area))
+                            CampoIpotesi(etichetta: T.campoPensionePubblica, valore: a.previdenza.pensionePubblica, unita: "€/mese",
+                                         nota: "netta: dall'estratto INPS o dalla stima contributiva",
+                                         stimata: stimata("pensionePubblica"), evidenziato: evidenziato(T.campoPensionePubblica, area))
+                            CampoIpotesi(etichetta: "Montante dei piani", valore: a.previdenza.capitale, nota: "valore attuale")
+                            CampoIpotesi(etichetta: "Versamento", valore: a.previdenza.versamentoMensile, unita: "€/mese")
+                            CampoIpotesi(etichetta: "Rendimento netto reale", valore: a.previdenza.rendimentoReale, unita: "%",
+                                         nota: "già al netto di costi e inflazione", intervallo: -20...20)
+                            CampoIpotesiIntero(etichetta: "Anni di integrazione", valore: a.previdenza.anniIntegrazione, intervallo: 1...50)
+                        case .protezione:
+                            CampoIpotesi(etichetta: T.campoFabbisogno, valore: a.protezione.fabbisognoMensile, unita: "€/mese",
+                                         stimata: stimata("fabbisogno"), evidenziato: evidenziato(T.campoFabbisogno, area))
+                            CampoIpotesiIntero(etichetta: "Anni di sostegno", valore: a.protezione.anniSostegno, intervallo: 0...50)
+                            CampoIpotesi(etichetta: "Debiti da estinguere", valore: a.protezione.debiti, nota: "dalle posizioni: mutui e prestiti")
+                            CampoIpotesi(etichetta: "Spese immediate", valore: a.protezione.speseImmediate)
+                            CampoIpotesi(etichetta: "Capitale ai superstiti", valore: a.protezione.capitaleDisponibile,
+                                         nota: "liquidità già destinata")
+                            CampoIpotesi(etichetta: "Entrate sostitutive", valore: a.protezione.entrateSostitutive, unita: "€/mese",
+                                         nota: "in caso di invalidità o malattia")
+                            CampoIpotesiIntero(etichetta: "Mesi di riserva", valore: a.protezione.mesiRiserva, unita: "mesi", intervallo: 1...120)
+                            CampoIpotesi(etichetta: "Riserva disponibile", valore: a.protezione.riserva)
+                        case .investimenti:
+                            CampoIpotesi(etichetta: "Capitale", valore: a.investimenti.capitale, nota: "dalle posizioni di investimento")
+                            CampoIpotesi(etichetta: "Versamento", valore: a.investimenti.versamentoMensile, unita: "€/mese")
+                            CampoIpotesiIntero(etichetta: "Orizzonte", valore: a.investimenti.anni, intervallo: 1...50)
+                            CampoIpotesi(etichetta: "Rendimento lordo", valore: a.investimenti.rendimento, unita: "%", intervallo: -30...30)
+                            CampoIpotesi(etichetta: "Costo d'ingresso", valore: a.investimenti.costoIngresso, unita: "%", intervallo: 0...50)
+                            CampoIpotesi(etichetta: "Costo annuo", valore: a.investimenti.costoAnnuo, unita: "%", intervallo: 0...20)
+                            CampoIpotesi(etichetta: "Imposte sul guadagno", valore: a.investimenti.aliquota, unita: "%", intervallo: 0...60)
+                            CampoIpotesi(etichetta: "Inflazione", valore: a.investimenti.inflazione, unita: "%", intervallo: 0...20)
+                            CampoIpotesi(etichetta: "Calo da mettere alla prova", valore: a.investimenti.calo, unita: "%", intervallo: 0...100)
+                        case .risparmio:
+                            CampoIpotesi(etichetta: "Obiettivo", valore: a.risparmio.obiettivo, nota: "in euro di oggi")
+                            CampoIpotesi(etichetta: "Capitale già da parte", valore: a.risparmio.capitale)
+                            CampoIpotesi(etichetta: "Versamento", valore: a.risparmio.versamentoMensile, unita: "€/mese")
+                            CampoIpotesiIntero(etichetta: "Anni", valore: a.risparmio.anni, intervallo: 1...50)
+                            CampoIpotesi(etichetta: "Rendimento lordo", valore: a.risparmio.rendimento, unita: "%", intervallo: -30...30)
+                            CampoIpotesi(etichetta: "Costo d'ingresso", valore: a.risparmio.costoIngresso, unita: "%", intervallo: 0...50)
+                            CampoIpotesi(etichetta: "Costo annuo", valore: a.risparmio.costoAnnuo, unita: "%", intervallo: 0...20)
+                            CampoIpotesi(etichetta: "Imposte sul guadagno", valore: a.risparmio.aliquota, unita: "%", intervallo: 0...60)
+                            CampoIpotesi(etichetta: "Inflazione", valore: a.risparmio.inflazione, unita: "%", intervallo: 0...20)
+                        }
                     }
+                    .padding(.horizontal, 12)
                 }
-                .padding(.horizontal, 12)
+                .onAppear { portaInVista(proxy, area) }
+                .onChange(of: stato.fuocoAnalisi) { _ in portaInVista(proxy, area) }
             }
             HStack {
                 Toggle("Confermati con il cliente", isOn: Binding(

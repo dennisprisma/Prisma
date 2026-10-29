@@ -7,6 +7,10 @@ struct AppAgenda: View {
     @EnvironmentObject var stato: StatoShell
     @State var modulo: Appuntamento?
     @State var moduloAttivita: Attivita?
+    /// La striscia «Riesami del mese» ridotta a una riga (dura quanto la sessione, non va nell'archivio).
+    @State var riesamiRidotti = false
+    /// La riga in testa al modulo dopo «Pianifica» (nil per le altre aperture del modulo).
+    @State var spiegazioneModulo: String?
 
     private var cal: Calendar { CalendarioAgenda.cal }
     private var giorno: Date { stato.giornoAgenda }
@@ -16,8 +20,15 @@ struct AppAgenda: View {
             // Finestra stretta o bassa: la fascia diventa una riga sola e lascia spazio a calendario e dettaglio
             let compatta = geo.size.width < Misure.AgendaImpaginazione.sogliaFasciaLarghezza
                 || geo.size.height < Misure.AgendaImpaginazione.sogliaFasciaAltezza
+            // I riesami del mese mostrato: in un mese passato la striscia non compare
+            let riesami = stato.riesamiDelMese(giorno)
+            let mesePassato = giorno < (cal.dateInterval(of: .month, for: Date())?.start ?? giorno)
             VStack(spacing: 0) {
                 fasciaCuoio(compatta: compatta)
+                if !riesami.vuota && !mesePassato {
+                    striscia(riesami, compatta: geo.size.height < Misure.RiesamiAgenda.sogliaAltezzaPiena)
+                        .padding(.top, Tema.Misura.Dossier.spazioAgenda)
+                }
                 libro
                     .padding(.top, Tema.Misura.Dossier.spazioAgenda)
             }
@@ -28,7 +39,8 @@ struct AppAgenda: View {
                 bozza: a,
                 nuovo: !stato.appuntamenti.contains { $0.id == a.id },
                 salva: { stato.salvaAppuntamento($0) },
-                elimina: { stato.eliminaAppuntamento(a.id) }
+                elimina: { stato.eliminaAppuntamento(a.id) },
+                spiegazione: spiegazioneModulo
             )
             .environmentObject(stato)
         }
@@ -40,7 +52,67 @@ struct AppAgenda: View {
     }
 
     private func nuovoAppuntamento() {
+        spiegazioneModulo = nil
         modulo = Appuntamento.nuovo(clienteId: stato.filtroClienteAgenda ?? stato.clienteAttivoId, giorno: giorno)
+    }
+
+    // MARK: - Riesami del mese
+
+    private func striscia(_ r: RiesamiDelMese, compatta: Bool) -> some View {
+        let oggi = Date()
+        let massimo = Misure.RiesamiAgenda.massimoSchede
+        // Le schede si calcolano solo per i clienti mostrati (il riesame di ognuno è in memoria per un'ora)
+        let voci = r.daFissare.prefix(massimo).map { voceRiesame($0, oggi: oggi) }
+        return StrisciaRiesami(
+            titoloMese: Formati.meseAnno.string(from: giorno).capitalized,
+            voci: voci,
+            altri: max(0, r.daFissare.count - massimo),
+            fissati: r.fissati.count,
+            compatta: compatta,
+            solaLettura: stato.solaLettura,
+            ridotta: $riesamiRidotti,
+            prepara: { id in
+                stato.clienteAttivoId = id
+                stato.apriProspetto(.riesame)
+            },
+            pianifica: { id in pianifica(id) },
+            apriPortafoglio: {
+                stato.portafoglio = true
+                stato.apri(.posizioni)
+            }
+        )
+    }
+
+    /// La scheda di un riesame da fissare: stato, punti dell'ordine del giorno e canali delle posizioni.
+    private func voceRiesame(_ d: RiesameDovuto, oggi: Date) -> VoceRiesameAgenda {
+        let testo: String
+        if let dal = d.dovutoDal {
+            // L'anno solo se non è quello di oggi
+            let stessoAnno = cal.component(.year, from: dal) == cal.component(.year, from: oggi)
+            let data = stessoAnno ? Formati.giornoMese.string(from: dal) : Formati.dataEstesa.string(from: dal)
+            testo = d.scaduto(oggi) ? "Scaduto dal \(data)" : "Dovuto dal \(data)"
+        } else {
+            testo = "Mai incontrato in Prisma"
+        }
+        let r = stato.riesameCliente(d.id)
+        return VoceRiesameAgenda(
+            id: d.id,
+            nome: d.cliente.nome,
+            iniziali: d.cliente.iniziali,
+            tinta: d.cliente.tinta.colori,
+            stato: testo,
+            scaduto: d.scaduto(oggi),
+            punti: r?.punti.count,
+            alta: r?.punti.filter { $0.priorita == .alta }.count ?? 0,
+            canali: MotorePianificazione.canali(stato.posizioniCliente(d.id))
+        )
+    }
+
+    /// Il riesame nel primo spazio libero negli orari di lavoro, da completare nel modulo.
+    private func pianifica(_ id: String) {
+        guard let p = stato.pianificaRiesame(id, mese: giorno) else { return }
+        spiegazioneModulo = p.spiegazione(orari: stato.dati.impostazioni.orari)
+        modulo = p.appuntamento
     }
 
     // MARK: - Cuoio
@@ -330,7 +402,10 @@ struct AppAgenda: View {
             if let e = eventoSelezionato(indice.appuntamenti(giorno)) {
                 DettaglioAppuntamento(
                     evento: e,
-                    modifica: { modulo = e },
+                    modifica: {
+                        spiegazioneModulo = nil
+                        modulo = e
+                    },
                     nuovaAttivita: {
                         var t = Attivita.nuova(clienteId: e.clienteId, scadenza: e.inizio)
                         t.titolo = "Preparare: \(e.titolo)"
@@ -624,6 +699,13 @@ struct DettaglioAppuntamento: View {
                     }
                     .padding(.bottom, 7)
 
+                    // Appuntamento concluso con una proposta da chiudere: l'esito si chiede subito, qui
+                    if let p = stato.propostaDaChiudere(evento) {
+                        RiquadroEsitoProposta(appuntamento: evento, posizione: p,
+                                              passoIniziale: MotoreSeguitoProposte.passoIniziale(evento))
+                            .padding(.bottom, Misure.RiesamiAgenda.sottoEsito)
+                    }
+
                     VoceDettaglio(etichetta: "Quando") {
                         Text("\(Formati.dataLunga.string(from: evento.inizio))\n\(Formati.ora.string(from: evento.inizio)) – \(Formati.ora.string(from: evento.fine))")
                             .font(Tipo.voceValore)
@@ -788,6 +870,13 @@ struct DettaglioAppuntamento: View {
                     .filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(Tipo.voceEtichetta)
                 .foregroundColor(Colori.Agenda.voceEtichetta)
+            // La proposta ha già un esito: presentata, accettata, rifiutata o rimandata
+            if let e = p.esito, e != .bozza {
+                Text(TestiSeguito.esito(p, adesso: Date()))
+                    .font(Tipo.voceEtichetta)
+                    .foregroundColor(Colori.Agenda.voceEtichetta)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Button("Analizza in Posizioni ›") { stato.apriPosizione(p) }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 9, bottom: 4, trailing: 9)))
                 .padding(.top, 2)

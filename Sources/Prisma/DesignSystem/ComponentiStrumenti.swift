@@ -241,21 +241,47 @@ struct SchedeRisultati<Valore: Hashable, Destra: View>: View {
 // MARK: - Campi delle ipotesi
 
 /// Riga del pannello delle ipotesi: etichetta, campo numerico in pozzetto, unità.
+/// Completezza dei dati: `stimata` mostra la pillola «stimato» con l'ipotesi nell'aiuto; `evidenziato` mette
+/// la riga in evidenza (il campo su cui si è aperta l'analisi) e le dà l'id per portarla in vista.
 struct CampoIpotesi: View {
     let etichetta: String
     @Binding var valore: Double
     var unita = "€"
     var nota: String? = nil
     var intervallo: ClosedRange<Double> = 0...1_000_000_000
+    var stimata: String? = nil
+    var evidenziato = false
 
     private static let formato = FloatingPointFormatStyle<Double>.number.locale(Formati.localeImporti).precision(.fractionLength(0...2))
 
-    var body: some View {
+    @ViewBuilder var body: some View {
+        if evidenziato {
+            // Il riquadro sta dietro la riga e ne esce del margine: la riga non si sposta
+            let forma = RoundedRectangle(cornerRadius: Tema.Raggio.Completezza.evidenza, style: .continuous)
+            let margine = -Tema.Misura.Completezza.margineEvidenza
+            riga
+                .background(forma.fill(Tema.Colore.Completezza.evidenzaCampo).padding(margine))
+                .overlay(forma.strokeBorder(Tema.Colore.Completezza.bordoEvidenza, lineWidth: Tema.Misura.filo)
+                    .padding(margine)
+                    .allowsHitTesting(false))
+                .id(FuocoAnalisi.idCampo)
+        } else {
+            riga
+        }
+    }
+
+    private var riga: some View {
         let m = Tema.Misura.Componenti.self
         let forma = FormaVetro.arrotondata(Tema.Raggio.miniatura)
-        HStack(alignment: .center, spacing: 8) {
+        return HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(etichetta).font(Tema.Testo.corpo).foregroundColor(Tema.Colore.inchiostro)
+                HStack(spacing: Tema.Misura.Completezza.spazioRiga) {
+                    Text(etichetta).font(Tema.Testo.corpo).foregroundColor(Tema.Colore.inchiostro)
+                    if let stimata {
+                        Pillola(testo: TestiCompletezza.stimato, tono: .attenzione)
+                            .help(stimata)
+                    }
+                }
                 if let nota {
                     Text(nota).font(Tema.Testo.didascalia).foregroundColor(Tema.Colore.inchiostroSecondario)
                 }
@@ -293,13 +319,16 @@ struct CampoIpotesiIntero: View {
     var unita = "anni"
     var nota: String? = nil
     var intervallo: ClosedRange<Int> = 0...100
+    var stimata: String? = nil
+    var evidenziato = false
 
     var body: some View {
         CampoIpotesi(etichetta: etichetta,
                      valore: Binding(get: { Double(valore) },
                                      set: { valore = min(max(Int($0.rounded()), intervallo.lowerBound), intervallo.upperBound) }),
                      unita: unita, nota: nota,
-                     intervallo: Double(intervallo.lowerBound)...Double(intervallo.upperBound))
+                     intervallo: Double(intervallo.lowerBound)...Double(intervallo.upperBound),
+                     stimata: stimata, evidenziato: evidenziato)
     }
 }
 

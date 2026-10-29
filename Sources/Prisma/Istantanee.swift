@@ -545,6 +545,115 @@ enum Istantanee {
             s.apri(.posizioni)
             s.ancoraPosizioni = "dettaglio-composizione"
         }),
+        // Giro 3 · completezza dei dati per l'analisi (specifica 7)
+        ("110-clienti-completezza", { s in
+            // Andrea (primo incontro): dati per l'analisi al 77%, l'orizzonte manca, fabbisogno e pensione stimati
+            s.clienteAttivoId = "andrea"
+            s.schedaCliente = .panoramica
+            s.apri(.clienti)
+        }),
+        ("111-analisi360-ipotesi-stimate", { s in
+            // La pensione pubblica evidenziata, «stimato» accanto alle ipotesi predefinite
+            s.clienteAttivoId = "andrea"
+            s.fuocoAnalisi = FuocoAnalisi(area: .previdenza, campo: TestiCompletezza.campoPensionePubblica)
+            s.areaAnalisi = .previdenza
+            s.apri(.analisi360)
+        }),
+        ("112-prospetto-ipotesi-stimate", { s in
+            // Check-up di Andrea: l'ultima pagina, i dati mancanti e le ipotesi stimate
+            s.clienteAttivoId = "andrea"
+            // `0..<max(0, n − 1)`: con `1..<n` un documento vuoto farebbe un intervallo non valido
+            if let d = s.documentoProspetto(.checkUp(report: false)) {
+                s.presenta(d)
+                for _ in 0..<max(0, d.pagine.count - 1) { s.paginaSeguente() }
+            }
+        }),
+        ("113-report-ipotesi-stimate", { s in
+            // Report del check-up: la slide «Le ipotesi da confermare insieme» (prima della sintesi)
+            s.clienteAttivoId = "andrea"
+            if let d = s.documentoProspetto(.checkUp(report: true)) {
+                s.presenta(d)
+                for _ in 0..<max(0, d.pagine.count - 2) { s.paginaSeguente() }
+            }
+        }),
+        // Giro 3 · seguito delle proposte (specifica 5)
+        ("114-agenda-esito-proposta", { s in
+            // Laura: la proposta presentata ieri, il riquadro «Com'è andata…» con le quattro scelte
+            Istantanee.concludiIeri(s, "event-laura", ore: 10)
+            s.apri(.agenda)
+        }),
+        ("115-agenda-firma-decorrenza", { s in
+            // Giulia: la firma del PIP ieri, il passo «Accettata» con decorrenza, versato e primo valore
+            if let i = s.dati.appuntamenti.firstIndex(where: { $0.id == "event-giulia-previdenza" }) {
+                s.dati.appuntamenti[i].tipo = .firma
+            }
+            Istantanee.concludiIeri(s, "event-giulia-previdenza", ore: 18)
+            s.apri(.agenda)
+        }),
+        ("116-portafoglio-seguito", { s in
+            // «Proposte da riprendere»: Sofia 34 giorni, Giulia 25, Andrea da riprendere; motivi e tempo medio
+            Istantanee.preparaSeguito(s)
+            s.portafoglio = true
+            s.ancoraPosizioni = "seguito"
+            s.apri(.posizioni)
+        }),
+        ("117-notifiche-seguito", { s in
+            // «3 proposte aspettano una risposta» in DA RECUPERARE
+            Istantanee.preparaSeguito(s)
+            s.alternaNotifiche()
+        }),
+        ("118-scrivania-seguito", { s in
+            // La riga «3 proposte aspettano una risposta» nel giorno del widget Agenda
+            Istantanee.preparaSeguito(s)
+        }),
+        ("119-posizioni-esito-rimandata", { s in
+            // Andrea: «Esito della proposta: Rimandata · da riprendere il …» e i pulsanti dell'esito
+            Istantanee.preparaSeguito(s)
+            s.clienteAttivoId = "andrea"
+            s.posizioneInDettaglio = "pos-andrea-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+        }),
+        // Giro 3 · esperienza per tipo di prodotto (specifica 2)
+        ("120-clienti-esperienza", { s in
+            // Giulia: la griglia per tipo, la capacità «fino al 10%», il suggerimento sui fondi e l'esperienza suggerita
+            s.clienteAttivoId = "giulia"
+            s.schedaCliente = .profilo
+            s.apri(.clienti)
+        }),
+        ("121-posizioni-proposta-esperienza", { s in
+            // Andrea: la proposta di Ramo I che non conosce, con la pillola «Esperienza» e l'etichetta blu Alleanza
+            s.clienteAttivoId = "andrea"
+            s.posizioneInDettaglio = "pos-andrea-piano-di-risparmio-rivalutabile"
+            s.apri(.posizioni)
+        }),
+        ("122-posizioni-coerenza-esperienza", { s in
+            // Giulia: «Coerenza con il profilo» con l'esperienza sul PIP tra i punti da rivedere
+            s.clienteAttivoId = "giulia"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "coerenza"
+        }),
+        // Giro 3 · riesami del mese in Agenda (specifica 6)
+        ("124-agenda-riesami-mese", { s in
+            // La striscia «Riesami del mese»: Sofia mai incontrata, Laura e Marco scaduti
+            ProvaRiesamiAgenda.prepara(s)
+            s.apri(.agenda)
+        }),
+        ("125-agenda-riesame-pianificato", { s in
+            // «Pianifica» per Laura: il riesame nel primo spazio libero, con canale e ordine del giorno
+            ProvaRiesamiAgenda.prepara(s)
+            if let p = s.pianificaRiesame("laura") { s.salvaAppuntamento(p.appuntamento) }
+            s.apri(.agenda)
+        }),
+        ("126-impostazioni-orari", { s in
+            // Il gruppo «Orari di lavoro» nella scheda Esperienza
+            s.schedaImpostazioni = .esperienza
+            s.apri(.impostazioni)
+        }),
+        ("127-agenda-riesami-schermo-basso", { s in
+            // Finestra bassa (1280×760): fascia e striscia compatte su una riga
+            ProvaRiesamiAgenda.prepara(s)
+            s.apri(.agenda)
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
         ("53-ricerca-scuro", { s in
             s.apri(.posizioni)
@@ -562,6 +671,30 @@ enum Istantanee {
             s.posizioneInDettaglio = "pos-marco-polizza-multiramo"
             s.apri(.posizioni)
             s.ancoraPosizioni = "dettaglio-composizione"
+        }),
+        ("110-clienti-completezza-scuro", { s in
+            s.clienteAttivoId = "andrea"
+            s.schedaCliente = .panoramica
+            s.apri(.clienti)
+        }),
+        ("114-agenda-esito-proposta-scuro", { s in
+            Istantanee.concludiIeri(s, "event-laura", ore: 10)
+            s.apri(.agenda)
+        }),
+        ("116-portafoglio-seguito-scuro", { s in
+            Istantanee.preparaSeguito(s)
+            s.portafoglio = true
+            s.ancoraPosizioni = "seguito"
+            s.apri(.posizioni)
+        }),
+        ("120-clienti-esperienza-scuro", { s in
+            s.clienteAttivoId = "giulia"
+            s.schedaCliente = .profilo
+            s.apri(.clienti)
+        }),
+        ("124-agenda-riesami-mese-scuro", { s in
+            ProvaRiesamiAgenda.prepara(s)
+            s.apri(.agenda)
         }),
         ("1-scrivania-scuro", { _ in }),
         ("2-posizioni-scuro", { $0.apri(.posizioni) }),
@@ -585,6 +718,57 @@ enum Istantanee {
             s.schedaImpostazioni = .esperienza
         }),
     ]
+
+    /// Seguito delle proposte (scene 114 e 115): l'appuntamento spostato a ieri all'ora data e concluso, come
+    /// dall'agenda; il giorno e l'appuntamento restano aperti nel dettaglio.
+    nonisolated private static func concludiIeri(_ s: StatoShell, _ id: String, ore: Int) {
+        let cal = Calendar.current
+        let ieri = cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: Date())) ?? Date()
+        guard let i = s.dati.appuntamenti.firstIndex(where: { $0.id == id }) else { return }
+        s.dati.appuntamenti[i].inizio = cal.date(bySettingHour: ore, minute: 0, second: 0, of: ieri) ?? ieri
+        s.dati.appuntamenti[i].stato = .pianificato
+        s.alternaConcluso(id)
+        s.giornoAgenda = ieri
+        s.appuntamentoSelezionato = id
+    }
+
+    /// Seguito delle proposte (scene 116–119): proposte ferme, una rimandata, una rifiutata e una accettata,
+    /// con date relative a oggi (riproducibili a qualunque ora del server).
+    nonisolated private static func preparaSeguito(_ s: StatoShell) {
+        let cal = Calendar.current
+        let oggi = cal.startOfDay(for: Date())
+        func g(_ n: Int) -> Date { ValoriDaDocumento.mezzogiorno(cal.date(byAdding: .day, value: n, to: oggi) ?? oggi) }
+        var d = s.dati
+        // Nessun appuntamento futuro di Giulia, Sofia e Andrea: le loro proposte sono ferme
+        let clienti: Set<String> = ["giulia", "sofia", "andrea"]
+        d.appuntamenti.removeAll { clienti.contains($0.clienteId) && $0.inizio >= oggi }
+        func cambia(_ id: String, _ modifica: (inout Posizione, inout SeguitoProposta) -> Void) {
+            guard let i = d.posizioni.firstIndex(where: { $0.id == id }) else { return }
+            var seguito = d.posizioni[i].seguito ?? SeguitoProposta()
+            modifica(&d.posizioni[i], &seguito)
+            d.posizioni[i].seguito = seguito
+        }
+        cambia("pos-sofia-obbligazionario-a-scadenza-2030") { _, sg in sg.presentataIl = g(-34) }
+        cambia("pos-giulia-piano-previdenziale-integrativo") { _, sg in sg.presentataIl = g(-25) }
+        cambia("pos-andrea-piano-di-risparmio-rivalutabile") { p, sg in
+            p.esito = .rimandata
+            sg.esitoIl = g(-95)
+            sg.riprendereIl = g(-5)
+            sg.motivo = .liquidita
+        }
+        cambia("pos-andrea-temporanea-caso-morte") { p, sg in
+            p.esito = .rifiutata
+            sg.motivo = .costo
+            sg.presentataIl = g(-30)
+            sg.esitoIl = g(-10)
+        }
+        cambia("pos-giulia-etf-azionario-globale") { p, sg in
+            p.esito = .accettata
+            sg.presentataIl = g(-60)
+            sg.esitoIl = g(-40)
+        }
+        s.dati = d
+    }
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:
     /// - "finestra": NSHostingView in una finestra fuori schermo + cacheDisplay (senza Metal)

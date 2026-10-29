@@ -2,7 +2,8 @@ import SwiftUI
 
 /// La coerenza delle posizioni con il profilo del cliente nel dossier Posizioni: rischio medio e quota
 /// azionaria contro i limiti della propensione, la crisi del passato peggiore, la concentrazione per
-/// emittente e per canale, e l'elenco dei punti da rivedere (anche quelli che nascono dalle proposte).
+/// emittente e per canale, e l'elenco dei punti da rivedere (anche quelli che nascono dalle proposte:
+/// SRI, orizzonte, esperienza per tipo di prodotto e capacità di sostenere perdite).
 struct PannelloCoerenza: View {
     let esito: EsitoCoerenza
     @State private var mostraMetodo = false
@@ -45,6 +46,7 @@ struct PannelloCoerenza: View {
                     canali(m).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 elenco
+                esperienza
                 if esito.propensione == nil {
                     Text("Indica la propensione al rischio nel profilo del cliente: senza, Prisma controlla solo la concentrazione.")
                         .font(Tipo.kpiNota)
@@ -216,6 +218,47 @@ struct PannelloCoerenza: View {
             }
             .contornoTabella()
         }
+    }
+
+    // MARK: Esperienza per tipo di prodotto
+
+    /// Solo con proposte aperte da controllare: cosa manca nella griglia del profilo, oppure che è tutto a posto.
+    /// Le incoerenze di esperienza e perdite stanno già nell'elenco dei punti da rivedere.
+    @ViewBuilder private var esperienza: some View {
+        if let x = esito.esperienza, !x.verifiche.isEmpty {
+            if !x.compilata {
+                notaEsperienza("Esperienza per tipo di prodotto non indicata: compilala in Clienti › Profilo, così Prisma controlla che il cliente conosca i prodotti che gli proponi.",
+                               colore: Colori.Analisi.attenzioneTesto)
+            } else {
+                let daChiedere = x.daChiedere
+                if !daChiedere.isEmpty {
+                    let nomi: [String] = daChiedere.map { v in "\(v.posizione.nome) (\(v.classificazione.tipo.nome))" }
+                    notaEsperienza("Esperienza da chiedere per: \(nomi.joined(separator: ", ")).", colore: Colori.Analisi.attenzioneTesto)
+                }
+                if x.capacitaDaChiedere {
+                    notaEsperienza("Capacità di sostenere perdite non indicata: le proposte non si confrontano con la perdita possibile.",
+                                   colore: Colori.Analisi.kpiNota)
+                }
+                if daChiedere.isEmpty && !x.capacitaDaChiedere && !incoerenzeEsperienza {
+                    notaEsperienza("Esperienza e capacità di perdita: le proposte aperte sono di tipi che il cliente conosce.",
+                                   colore: Colori.Analisi.okTesto)
+                }
+            }
+        }
+    }
+
+    /// Tra i punti da rivedere c'è già un'incoerenza di esperienza o di perdita (fuori dal ViewBuilder: tipi leggeri).
+    private var incoerenzeEsperienza: Bool {
+        esito.incoerenze.contains { (i: Incoerenza) -> Bool in
+            i.tipo == Incoerenza.Tipo.esperienza || i.tipo == Incoerenza.Tipo.perdite
+        }
+    }
+
+    private func notaEsperienza(_ testo: String, colore: Color) -> some View {
+        Text(testo)
+            .font(Tipo.kpiNota)
+            .foregroundColor(colore)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func notaCanali(_ m: MisureCoerenza) -> String {

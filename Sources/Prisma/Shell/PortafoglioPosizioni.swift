@@ -49,6 +49,11 @@ struct CorpoPortafoglio: View, Equatable {
         let p = stato.riepilogoPortafoglio(canale: chiave.canale, area: chiave.area)
         let comune = stato.portafoglioComune()
         let r = p.riepilogo
+        // Le proposte ferme (cache oraria) e i giorni del seguito scelti in Impostazioni
+        let ferme = stato.proposteInSospeso
+        let giorniSeguito = stato.dati.impostazioni.giorniSeguitoProposte
+        // Motivi e tempi delle decisioni, con gli stessi filtri di canale e area del riepilogo
+        let statistiche = statisticheEsiti()
         return VStack(alignment: .leading, spacing: 18) {
             FasciaKPI {
                 KPI(titolo: "Patrimonio seguito", valore: Formati.euro(r.attivita)) {
@@ -65,6 +70,7 @@ struct CorpoPortafoglio: View, Equatable {
                 KPI(titolo: "Proposte aperte", valore: "\(r.proposteAperte)", ultimo: true) {
                     Text("per \(Formati.euro(r.valoreProposte))")
                     if let t = p.tassoAccettazione { Chip(testo: "accettate \(Formati.percentuale((t * 100).rounded()))") }
+                    if !ferme.isEmpty { Chip(testo: TestiSeguito.ferme(ferme.count)) }
                 }
             }
 
@@ -82,6 +88,12 @@ struct CorpoPortafoglio: View, Equatable {
             PannelloAnalisi(titolo: "Per cliente", nota: "Dal più seguito · tocca una riga per aprire le sue posizioni") { EmptyView() } contenuto: {
                 tabellaClienti(p.clienti)
             }
+
+            // Il seguito delle proposte: non dipende dai filtri di canale e area, come chi ricontattare
+            PannelloAnalisi(titolo: TestiSeguito.titoloPannello, nota: TestiSeguito.notaPannello(giorni: giorniSeguito)) { EmptyView() } contenuto: {
+                seguito(ferme, giorni: giorniSeguito)
+            }
+            .id("seguito")
 
             // Il calendario delle revisioni: non dipende dai filtri di canale e area
             let dovuti = comune.dovuti
@@ -118,7 +130,7 @@ struct CorpoPortafoglio: View, Equatable {
                         ricontattare(p.daRicontattare)
                     }
                     PannelloAnalisi(titolo: "Proposte", nota: "Per esito") { EmptyView() } contenuto: {
-                        esiti(p)
+                        esiti(p, statistiche: statistiche)
                     }
                 }
                 .frame(width: Misure.Portafoglio.emittenti, alignment: .leading)
@@ -405,9 +417,22 @@ struct CorpoPortafoglio: View, Equatable {
         }
     }
 
-    private func esiti(_ p: Portafoglio) -> some View {
+    /// Le statistiche degli esiti sulle posizioni filtrate per canale e area (fuori dal corpo: controllo dei tipi leggero).
+    private func statisticheEsiti() -> StatisticheEsiti {
+        let canale: Canale? = chiave.canale
+        let area: AreaPosizione? = chiave.area
+        let filtrate: [Posizione] = stato.posizioni.filter { p in
+            let canaleOk = canale.map { $0 == p.canale } ?? true
+            let areaOk = area.map { $0 == p.area } ?? true
+            return canaleOk && areaOk
+        }
+        return MotoreSeguitoProposte.statistiche(filtrate)
+    }
+
+    private func esiti(_ p: Portafoglio, statistiche: StatisticheEsiti) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
+            // Cinque esiti con «Rimandata»: vanno a capo se la colonna è stretta
+            DisposizioneAcapoRicerca(spazio: 6) {
                 ForEach(EsitoProposta.allCases) { e in
                     Pillola(testo: "\(e.nome) \(p.esiti[e] ?? 0)",
                             tono: e == .accettata ? .ok : e == .rifiutata ? .errore : e == .presentata ? .attenzione : .neutro)
@@ -416,6 +441,71 @@ struct CorpoPortafoglio: View, Equatable {
             Text(p.tassoAccettazione.map { "Accettate \(Formati.percentuale(($0 * 100).rounded())) delle proposte decise." }
                  ?? "Nessuna proposta ancora decisa.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+            // Motivi di rifiuto e di rinvio, tempo medio di decisione (seguito delle proposte)
+            ForEach(TestiSeguito.statistiche(statistiche), id: \.self) { riga in
+                Text(riga)
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // MARK: - Proposte da riprendere
+
+    /// Le proposte ferme, dalla più ferma: un clic apre la proposta, «Fissa» la telefonata di seguito, «Esito» la chiude.
+    private func seguito(_ elenco: [PropostaInSospeso], giorni: Int) -> some View {
+        let m = Misure.Seguito.self
+        return VStack(alignment: .leading, spacing: 0) {
+            if elenco.isEmpty {
+                Text(TestiSeguito.pannelloVuoto(giorni: giorni))
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(elenco.prefix(m.righePortafoglio)) { s in
+                let pos = s.posizione
+                // Le coperture con il premio annuo, il resto con il valore (fuori dal Text: tipi leggeri)
+                let importo: String = pos.area == .protezione ? Formati.euro(pos.premioAnnuo) + " l'anno" : Formati.euro(pos.valore)
+                Button { stato.apriPosizione(pos) } label: {
+                    HStack(spacing: m.spazio) {
+                        Pillola(testo: TestiSeguito.giorni(s.giorni), tono: s.urgente ? .errore : .attenzione)
+                            .frame(width: m.colonnaGiorni, alignment: .leading)
+                        HStack(spacing: m.spazio) {
+                            AvatarCliente(iniziali: s.cliente.iniziali, tinta: s.cliente.tinta.colori, lato: Misure.Portafoglio.avatar)
+                            Text(s.cliente.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
+                        }
+                        .frame(width: Misure.Portafoglio.colonnaCliente, alignment: .leading)
+                        VStack(alignment: .leading, spacing: m.spazioCampo) {
+                            HStack(spacing: m.spazioCampo) {
+                                Text(pos.nome).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
+                                EtichettaCanale(canale: pos.canale, compatta: true)
+                            }
+                            Text(TestiSeguito.riga(s)).font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                        Text(importo)
+                            .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
+                            .lineLimit(1)
+                            .frame(width: m.colonnaValore, alignment: .trailing)
+                        Button("Fissa") { moduloAppuntamento = stato.bozzaSeguito(s) }
+                            .buttonStyle(StileVetro(margine: m.pulsante))
+                            .fixedSize()
+                            .disabled(chiave.solaLettura)
+                            .help("Fissa una telefonata di seguito in agenda: la proposta esce dall'elenco")
+                        Button("Esito") { stato.apriEsito(pos, passo: .scelta, origine: .posizioni) }
+                            .buttonStyle(StileVetro(margine: m.pulsante))
+                            .fixedSize()
+                            .help("Accettata, rifiutata, rimandata o ancora in attesa")
+                    }
+                    .padding(.vertical, m.spazioCampo)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(StileSemplice())
+                .bordoBasso(Colori.Analisi.tabellaRiga)
+            }
+            if elenco.count > m.righePortafoglio {
+                Text(TestiSeguito.altre(elenco.count - m.righePortafoglio))
+                    .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).padding(.top, m.spazioCampo)
+            }
         }
     }
 

@@ -7,6 +7,8 @@ struct AppClienti: View {
     @State var soloPreferiti = false
     @State var modulo: Cliente?
     @State var familiare: ModificaFamiliare?
+    /// Il campo su cui si apre il modulo del cliente o del familiare (completezza dei dati).
+    @State var fuoco: FuocoModulo?
 
     private var elenco: [Cliente] {
         let testo = ricerca.trimmingCharacters(in: .whitespaces).lowercased()
@@ -30,23 +32,53 @@ struct AppClienti: View {
         }
         .clipShape(FormaVetro.arrotondata(Tema.Raggio.scheda))
         .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
-        .sheet(item: $modulo) { c in
+        .sheet(item: $modulo, onDismiss: { fuoco = nil }) { c in
             ModuloCliente(
                 bozza: c,
                 nuovo: !stato.clienti.contains { $0.id == c.id },
                 salva: { stato.salvaCliente($0) },
                 elimina: { stato.eliminaCliente(c.id) }
             )
+            .environment(\.fuocoModulo, fuoco)
         }
         .sheet(item: $stato.importazione) { i in
             ModuloImportaClienti(importazione: i)
                 .environmentObject(stato)
         }
-        .sheet(item: $familiare) { m in
+        .sheet(item: $familiare, onDismiss: { fuoco = nil }) { m in
             ModuloFamiliare(modifica: m, salva: salvaFamiliare, elimina: eliminaFamiliare)
+                .environment(\.fuocoModulo, fuoco)
         }
-        .onAppear { controllaRichiesta(stato.richiestaNuovoCliente) }
+        .onAppear {
+            controllaRichiesta(stato.richiestaNuovoCliente)
+            controllaCompletamento(stato.richiestaCompletamento)
+        }
         .onChange(of: stato.richiestaNuovoCliente) { controllaRichiesta($0) }
+        .onChange(of: stato.richiestaCompletamento) { controllaCompletamento($0) }
+    }
+
+    /// Completezza dei dati: apre il modulo del cliente o del familiare sul campo da completare. Legge solo le
+    /// richieste per il cliente attivo che riguardano Clienti (le altre sono di Posizioni) e le consuma.
+    private func controllaCompletamento(_ richiesta: RichiestaCompletamento?) {
+        guard let r = richiesta, r.clienteId == stato.clienteAttivoId else { return }
+        switch r.destinazione {
+        case .cliente(let campo):
+            // La nota «Da ricordare» in attesa entra prima nella scheda: il modulo la salverebbe com'era
+            TestiRinviati.scriviOra()
+            if let c = stato.cliente(r.clienteId) {
+                fuoco = FuocoModulo(campo: campo.etichetta, sezione: campo.sezione)
+                modulo = c
+            }
+        case .familiare(let id):
+            TestiRinviati.scriviOra()
+            if let c = stato.cliente(r.clienteId), let f = c.famiglia.first(where: { $0.id == id }) {
+                fuoco = FuocoModulo(campo: CampoCliente.dataNascita.etichetta)
+                familiare = ModificaFamiliare(clienteId: c.id, familiare: f, nuovo: false)
+            }
+        case .analisi360, .posizione, .dettaglioPosizione:
+            return
+        }
+        stato.richiestaCompletamento = nil
     }
 
     private func controllaRichiesta(_ richiesta: Bool) {
@@ -224,6 +256,7 @@ struct AppClienti: View {
                 RigaCampo(etichetta: "Reddito lordo annuo", valore: c.profilo.redditoLordoAnnuo.map { Formati.euro($0) } ?? "")
                 RigaCampo(etichetta: "Obiettivi principali", valore: c.profilo.obiettivi)
             }
+            EsperienzaCliente(cliente: c)
             VStack(alignment: .leading, spacing: 4) {
                 OcchielloSezione(titolo: "Canali")
                 HStack(spacing: 8) {
@@ -504,6 +537,7 @@ struct PanoramicaCliente: View {
                       nota: prossimo.map { "Prossimo incontro \(Formati.giorno.string(from: $0.inizio)) \(Formati.meseBreve.string(from: $0.inizio)), \(Formati.ora.string(from: $0.inizio))" }
                           ?? "Nessun incontro in programma"),
             ])
+            completezza
             if !cliente.nota.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     OcchielloSezione(titolo: "Da ricordare")
@@ -527,6 +561,26 @@ struct PanoramicaCliente: View {
                 collegamento(.presentazioni, "Prospetti in PDF")
                 collegamento(.eve, "Ragiona su questo cliente")
             }
+        }
+    }
+
+    /// I dati per l'analisi: cosa manca, cosa è stimato o vecchio, e un clic per completarlo. Strumento del
+    /// consulente: in modalità cliente non compare.
+    @ViewBuilder private var completezza: some View {
+        if !stato.inModoCliente, let k = stato.completezzaCliente(cliente.id) {
+            let id = cliente.id
+            let nome = cliente.nome
+            RiquadroCompletezza(
+                completezza: k,
+                completa: { stato.apriCompletamento($0, cliente: id) },
+                escludi: { v in
+                    stato.segnaDatoNonPertinente(v.id, cliente: id)
+                    stato.mostraAvviso(TestiCompletezza.avvisoEsclusa(v.titolo, nome: nome))
+                },
+                ripristina: { stato.ripristinaDatiNonPertinenti(id) }
+            )
+            // Un altro cliente riparte con le voci raccolte
+            .id(id)
         }
     }
 

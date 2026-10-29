@@ -1,11 +1,12 @@
 import Foundation
 
 /// Un punto in cui le posizioni del cliente non sono coerenti con il suo profilo: troppo rischio per la
-/// propensione dichiarata, una proposta oltre il profilo o l'orizzonte, troppo patrimonio su un emittente
-/// o su un canale.
+/// propensione dichiarata, una proposta oltre il profilo o l'orizzonte, di un tipo che il cliente non conosce
+/// o che perderebbe più di quanto può sostenere, troppo patrimonio su un emittente o su un canale.
 struct Incoerenza: Identifiable {
     enum Tipo: Int, CaseIterable {
-        case rischioMedio, azioni, crisi, proposta, orizzonte, emittente, canale
+        // I tipi nuovi vanno in fondo: il numero entra nell'`id` delle incoerenze
+        case rischioMedio, azioni, crisi, proposta, orizzonte, emittente, canale, esperienza, perdite
 
         var nome: String {
             switch self {
@@ -16,6 +17,18 @@ struct Incoerenza: Identifiable {
             case .orizzonte: return "Orizzonte"
             case .emittente: return "Emittente"
             case .canale: return "Canale"
+            case .esperienza: return "Esperienza"
+            case .perdite: return "Perdite"
+            }
+        }
+
+        /// Il testo della pillola nel dettaglio della proposta.
+        var pillola: String {
+            switch self {
+            case .orizzonte: return "Orizzonte più lungo"
+            case .esperienza: return "Esperienza"
+            case .perdite: return "Perdita possibile"
+            default: return "Oltre il profilo"
             }
         }
 
@@ -74,8 +87,10 @@ struct EsitoCoerenza {
     let oggi: MisureCoerenza
     /// Le stesse misure contando anche le proposte aperte (nil se non ce ne sono).
     let conProposte: MisureCoerenza?
-    /// Prima i controlli sul rischio, poi le proposte, poi la concentrazione.
+    /// Prima i controlli sul rischio, poi le proposte (SRI, orizzonte, esperienza, perdite), poi la concentrazione.
     let incoerenze: [Incoerenza]
+    /// Esperienza per tipo di prodotto e capacità di sostenere perdite sulle proposte aperte.
+    var esperienza: EsitoEsperienza? = nil
 
     var coerente: Bool { incoerenze.isEmpty }
     var rischio: [Incoerenza] { incoerenze.filter { !$0.tipo.concentrazione } }
@@ -232,6 +247,9 @@ enum MotoreCoerenza {
                                          posizione: p, valore: Double(periodo), soglia: Double(anni), dopoLeProposte: true))
             }
         }
+        // Esperienza per tipo di prodotto e capacità di sostenere perdite (solo con la griglia compilata)
+        let esperienza = MotoreEsperienza.calcola(cliente: c, proposte: proposte, prodotti: prodotti)
+        elenco += esperienza.incoerenze
         let concentrazioni = concentrazione(oggi, dopoLeProposte: false)
         elenco += concentrazioni
         if let cp = conProposte {
@@ -239,7 +257,9 @@ enum MotoreCoerenza {
             let nuove = concentrazione(cp, dopoLeProposte: true).filter { !giaSegnalati.contains($0.tipo.rawValue) }
             elenco += nuove
         }
-        return EsitoCoerenza(propensione: profilo.propensione, oggi: oggi, conProposte: conProposte, incoerenze: elenco)
+        var esito = EsitoCoerenza(propensione: profilo.propensione, oggi: oggi, conProposte: conProposte, incoerenze: elenco)
+        esito.esperienza = esperienza
+        return esito
     }
 
     /// Rischio medio, azioni e crisi del passato rispetto alla propensione.
@@ -305,7 +325,7 @@ enum MotoreCoerenza {
     static var metodo: [String] {
         [
             "Rischio rispetto al profilo: SRI medio ponderato sul valore (liquidità e capitale garantito senza SRI contano 1; per le multiramo con i dati separati l'SRI della combinazione, dal KID o stimato) entro prudente 2, moderata 3, dinamica 5; azioni entro prudente 20%, moderata 50%, dinamica 80% del patrimonio finanziario; nelle crisi vere del 2008, 2020 e 2022 la perdita peggiore non oltre un quarto sopra quella sopportabile (prudente 5%, moderata 10%, dinamica 20%, aggressiva 30%).",
-            "Proposte: si segnalano quelle con un SRI oltre il profilo o un periodo raccomandato più lungo dell'orizzonte del cliente, e ciò che cambierebbe con le proposte aperte (contate per il versamento iniziale più un anno di premi).",
+            "Proposte: si segnalano quelle con un SRI oltre il profilo o un periodo raccomandato più lungo dell'orizzonte del cliente, quelle di un tipo di prodotto che il cliente dice di non conoscere o di non aver capito, quelle che nella crisi peggiore del passato perderebbero più di quanto può sostenere, e ciò che cambierebbe con le proposte aperte (contate per il versamento iniziale più un anno di premi).",
             "Concentrazione: oltre il \(CifreDoc.percento(sogliaEmittente, decimali: 0)) del patrimonio finanziario presso un solo emittente (da \(CifreDoc.euro(minimoConcentrazione)) in su; i conti esclusi), oppure oltre l'\(CifreDoc.percento(sogliaCanale, decimali: 0)) investito nel canale Alleanza, che colloca i prodotti di una sola compagnia.",
         ]
     }

@@ -6,10 +6,14 @@ private typealias D = Misure.Documento
 /// Il report della protezione della famiglia: A4 orizzontale, per il cliente. La famiglia, se ti
 /// succedesse qualcosa, se non potessi lavorare, la mappa delle tutele, quanto costa, la sintesi.
 enum ReportProtezione {
-    static func pagine(_ t: TestiProtezione, commento: String? = nil) -> [AnyView] {
+    /// `ipotesi`: i dati da completare del cliente; quelli con il testo per il cliente vanno nella slide
+    /// «Le ipotesi da confermare insieme», subito prima della sintesi.
+    static func pagine(_ t: TestiProtezione, commento: String? = nil, ipotesi: [VoceCompletezza] = []) -> [AnyView] {
         var slide: [AnyView] = [AnyView(SlideFamiglia(t: t)), AnyView(SlideMorte(t: t)), AnyView(SlideLavoro(t: t))]
         if !t.e.persone.isEmpty { slide.append(AnyView(SlidePersone(t: t))) }
-        slide += [AnyView(SlideMappaTutele(t: t)), AnyView(SlideCostoTutele(t: t)), AnyView(SlideSintesiProtezione(t: t))]
+        slide += [AnyView(SlideMappaTutele(t: t)), AnyView(SlideCostoTutele(t: t))]
+        slide += SlideIpotesiStimate.slide(ipotesi)
+        slide.append(AnyView(SlideSintesiProtezione(t: t)))
         return ImpaginaReport.pagine(copertina: AnyView(copertina(t)), interne: slide, intestazione: "\(TestiProtezione.titolo) · \(t.cliente)",
                                      lettera: commento.map { LetteraConsulente(testo: $0, ruolo: t.ruoloConsulente, data: t.data) })
     }

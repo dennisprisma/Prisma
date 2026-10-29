@@ -110,6 +110,8 @@ struct AppImpostazioni: View {
         VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
             gruppoAspetto
             gruppoProfilo
+            gruppoOrari
+            gruppoSeguito
             gruppoPromemoria
             gruppoEve
             gruppoVoce
@@ -139,6 +141,113 @@ struct AppImpostazioni: View {
                     .fixedSize()
                     .disabled(!stato.dati.impostazioni.sfondoAnimato)
                     .opacity(stato.dati.impostazioni.sfondoAnimato ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
+            }
+        }
+    }
+
+    /// Gli orari di lavoro: dove «Pianifica» (Agenda, Portafoglio, Prospetti) cerca lo spazio libero.
+    private var gruppoOrari: some View {
+        let orari = stato.dati.impostazioni.orari
+        return GruppoImpostazioni(titolo: "Orari di lavoro") {
+            RigaImpostazione(titolo: "Giorni di lavoro", sottotitolo: "«Pianifica» cerca lo spazio solo in questi giorni") {
+                SceltaGiorniLavoro(giorni: $stato.dati.impostazioni.orari.giorni)
+            }
+            RigaImpostazione(titolo: "Mattina", sottotitolo: "Inizio e fine della prima fascia (anche orario continuato)") {
+                sceltaFascia($stato.dati.impostazioni.orari.mattina)
+            }
+            RigaImpostazione(titolo: "Pomeriggio",
+                             sottotitolo: orari.pomeriggioAttivo ? "Dopo la pausa pranzo" : "Spento: si lavora solo nella fascia del mattino") {
+                HStack(spacing: Misure.RiesamiAgenda.spazioTesta) {
+                    sceltaFascia($stato.dati.impostazioni.orari.pomeriggio)
+                        .disabled(!orari.pomeriggioAttivo)
+                        .opacity(orari.pomeriggioAttivo ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
+                    Toggle("", isOn: $stato.dati.impostazioni.orari.pomeriggioAttivo)
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+            }
+            RigaImpostazione(titolo: "Margine tra gli appuntamenti", sottotitolo: "Tempo libero lasciato prima e dopo ogni appuntamento") {
+                ControlloSegmenti(opzioni: AppImpostazioni.opzioniMargini,
+                                  selezione: $stato.dati.impostazioni.orari.margineMinuti)
+                    .fixedSize()
+            }
+            RigaImpostazione(titolo: "Riesami al giorno", sottotitolo: "Oltre, il riesame va al giorno dopo: ognuno chiede la sua preparazione") {
+                ControlloSegmenti(opzioni: AppImpostazioni.opzioniRiesami,
+                                  selezione: $stato.dati.impostazioni.orari.riesamiAlGiorno)
+                    .fixedSize()
+            }
+            RigaImpostazione(titolo: "Festività nazionali",
+                             sottotitolo: "Capodanno, Epifania, Pasqua e Pasquetta, 25 aprile, 1° maggio, 2 giugno, Ferragosto, 4 ottobre, Ognissanti, Immacolata, Natale e Santo Stefano",
+                             ultima: true) {
+                Toggle("", isOn: $stato.dati.impostazioni.orari.festivi)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
+        }
+    }
+
+    /// Inizio e fine di una fascia oraria (ogni mezz'ora dalle 7:00 alle 21:00). Se l'inizio va oltre la fine,
+    /// la fine diventa inizio + 60 minuti, tagliata alle 21:00; la fine propone solo le ore dopo l'inizio.
+    private func sceltaFascia(_ fascia: Binding<FasciaOraria>) -> some View {
+        let ore = OrariLavoro.orariScelta
+        let ultima = ore.last ?? 21 * 60
+        let inizio = Binding<Int>(
+            get: { fascia.wrappedValue.inizio },
+            set: { nuovo in
+                var f = fascia.wrappedValue
+                f.inizio = nuovo
+                if f.fine <= nuovo { f.fine = min(nuovo + 60, ultima) }
+                fascia.wrappedValue = f
+            }
+        )
+        // L'ultima ora resta solo come fine: una fascia ha sempre almeno mezz'ora
+        let inizi = AppImpostazioni.opzioniOre(Array(ore.dropLast()), con: fascia.wrappedValue.inizio)
+        let fini = AppImpostazioni.opzioniOre(ore.filter { $0 > fascia.wrappedValue.inizio }, con: fascia.wrappedValue.fine)
+        return HStack(spacing: Misure.RiesamiAgenda.spazioOre) {
+            MenuTendina(selezione: inizio, opzioni: inizi, larghezza: Misure.RiesamiAgenda.menuOra)
+            Text("–")
+                .font(Tema.Testo.corpo)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+            MenuTendina(selezione: fascia.fine, opzioni: fini, larghezza: Misure.RiesamiAgenda.menuOra)
+        }
+    }
+
+    /// Le scelte del margine tra gli appuntamenti: «Nessuno», «10 min»…
+    private static var opzioniMargini: [(Int, String)] {
+        OrariLavoro.margini.map { m -> (Int, String) in
+            let testo: String = m == 0 ? "Nessuno" : "\(m) min"
+            return (m, testo)
+        }
+    }
+
+    /// Le scelte dei riesami al giorno: «1», «2», «3», «Senza limite».
+    private static var opzioniRiesami: [(Int, String)] {
+        OrariLavoro.limitiRiesami.map { n -> (Int, String) in
+            let testo: String = n == 0 ? "Senza limite" : String(n)
+            return (n, testo)
+        }
+    }
+
+    /// Le scelte dei giorni del seguito: «14 giorni», «21 giorni»…
+    private static var opzioniGiorniSeguito: [(Int, String)] {
+        Impostazioni.sceltaGiorniSeguito.map { g -> (Int, String) in (g, "\(g) giorni") }
+    }
+
+    /// Le ore del menu, con quella salvata anche se non è tra le scelte (un archivio scritto a mano): il menu
+    /// mostra sempre il valore vero.
+    private static func opzioniOre(_ ore: [Int], con attuale: Int) -> [(Int, String)] {
+        let tutte = ore.contains(attuale) ? ore : (ore + [attuale]).sorted()
+        return tutte.map { o -> (Int, String) in (o, OrariLavoro.testoOra(o)) }
+    }
+
+    /// Il seguito delle proposte: dopo quanti giorni una proposta presentata senza appuntamento torna da recuperare.
+    private var gruppoSeguito: some View {
+        GruppoImpostazioni(titolo: "Seguito delle proposte") {
+            RigaImpostazione(titolo: "Proposte senza risposta",
+                             sottotitolo: "Dopo quanti giorni una proposta presentata, senza appuntamento in agenda, torna tra le cose da recuperare (notifiche, scrivania, Portafoglio). Non è una regola di legge: è il tuo ritmo",
+                             ultima: true) {
+                MenuTendina(selezione: $stato.dati.impostazioni.giorniSeguitoProposte,
+                            opzioni: AppImpostazioni.opzioniGiorniSeguito)
             }
         }
     }
