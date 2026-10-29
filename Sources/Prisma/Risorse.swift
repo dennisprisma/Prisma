@@ -62,18 +62,17 @@ enum Risorse {
             print("ERRORE: icona \(app.icona) mancante")
             return 1
         }
-        // Le icone ridotte ai pixel di uno schermo Retina con il dock ingrandito (fino a 1,55 volte) devono uscire intere
+        // Le icone del dock ridotte ai pixel di uno schermo Retina devono uscire intere
         let latoIcona = Tema.Misura.dockIcona
-        let ingrandimento = Tema.Misura.dockIngrandimento
         let latoDock = CGSize(width: latoIcona, height: latoIcona)
-        let pixelAttesi = Int((latoIcona * 2 * ingrandimento).rounded())
+        let pixelAttesi = Int((latoIcona * 2).rounded())
         for app in AppPrisma.allCases {
             // La bitmap vera (cgImage(forProposedRect:) ridisegnerebbe l'immagine ai punti dello schermo del server)
-            guard let img = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * ingrandimento),
+            guard let img = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2),
                   let rep = img.representations.first,
                   rep.pixelsWide == pixelAttesi, rep.pixelsHigh == pixelAttesi,
                   abs(img.size.width - latoIcona) < 0.5 else {
-                let trovato = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2 * ingrandimento)
+                let trovato = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2)
                 print("ERRORE: icona \(app.icona) non ridotta ai pixel dello schermo (attesi \(pixelAttesi) px, trovati \(trovato?.representations.first?.pixelsWide ?? -1) px, \(trovato?.size.width ?? -1) pt)")
                 return 1
             }
@@ -120,8 +119,7 @@ extension Risorse {
     ///
     /// - misura: lo spazio in punti in cui deve stare, mantenendo le proporzioni; una dimensione
     ///   infinita o zero non vincola (es. logo: solo l'altezza)
-    /// - scala: `displayScale` dello schermo (1 o 2), moltiplicata se serve per una riserva
-    ///   d'ingrandimento (1,13 nel dock) così l'icona resta nitida anche ingrandita
+    /// - scala: `displayScale` dello schermo (1 o 2)
     static func immagineNitida(_ percorso: String, in misura: CGSize, scala: CGFloat) -> NSImage? {
         let scala = max(1, scala)
         let larghezza = vincolo(misura.width, scala)
@@ -193,7 +191,7 @@ extension Risorse {
         return riduci(sorgente, a: pixel)
     }
 
-    /// Punti = pixel del riquadro / scala dello schermo (la riserva d'ingrandimento resta nei pixel).
+    /// Punti = pixel del riquadro / scala dello schermo.
     /// Rappresentazione bitmap esplicita: NSImage(cgImage:size:) dichiara i pixel pari ai punti
     /// e perderebbe la densità; la bitmap invece porta i 118 px veri sotto i 52 pt.
     private static func nitida(_ ridotta: CGImage, scala: CGFloat) -> NSImage {
@@ -256,14 +254,11 @@ struct ImmagineNitida: View {
     let percorso: String
     /// Spazio in punti; l'immagine vi si adatta mantenendo le proporzioni (`.infinity` = libero).
     let misura: CGSize
-    /// Riserva per gli ingrandimenti animati (`scaleEffect`): 1,55 nel dock.
-    var riservaIngrandimento: CGFloat = 1
     @Environment(\.displayScale) private var scala
 
-    init(percorso: String, lato: CGFloat, riservaIngrandimento: CGFloat = 1) {
+    init(percorso: String, lato: CGFloat) {
         self.percorso = percorso
         misura = CGSize(width: lato, height: lato)
-        self.riservaIngrandimento = riservaIngrandimento
     }
 
     init(percorso: String, altezza: CGFloat) {
@@ -272,9 +267,8 @@ struct ImmagineNitida: View {
     }
 
     var body: some View {
-        if let img = Risorse.immagineNitida(percorso, in: misura, scala: scala * riservaIngrandimento) {
-            // Non resizable: SwiftUI la disegna ai suoi punti; la riserva d'ingrandimento (≤ 2:1)
-            // è l'unica riduzione che resta a CoreAnimation, e il filtro lineare la fa bene
+        if let img = Risorse.immagineNitida(percorso, in: misura, scala: scala) {
+            // Non resizable: SwiftUI la disegna ai suoi punti, pixel per pixel: nessuna riduzione resta a CoreAnimation
             Image(nsImage: img)
                 .interpolation(.high)
                 .frame(width: img.size.width, height: img.size.height)

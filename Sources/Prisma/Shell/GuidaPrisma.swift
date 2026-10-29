@@ -40,7 +40,7 @@ enum SchedaGuida: Hashable, CaseIterable {
 struct AiutoApp {
     /// Una frase sola, senza gergo.
     let aCosaServe: String
-    /// Una riga breve (al massimo 60 caratteri) per il suggerimento del dock.
+    /// Una riga breve (al massimo 60 caratteri) per l'elenco della guida e, nel dock, per VoiceOver.
     let inBreve: String
     /// Esattamente tre passi, con i nomi dei pulsanti veri tra «» (senza glifi: ETICHETTE di GRUPPI.md).
     let passi: [String]

@@ -59,21 +59,7 @@ extension Tema.Misura {
         static let cerchioVuoto: CGFloat = 64
         static let spazioVuoto: CGFloat = 14
         static let vuotoMargine: CGFloat = 24
-        // Schermata di benvenuto
-        static let descrizioneBenvenutoMassima: CGFloat = 440
-        /// Sotto questa altezza della finestra la schermata lascia le capsule dei canali (resta il nome dello studio).
-        static let altezzaBenvenutoCompleta: CGFloat = 760
-        static let studioSpazio: CGFloat = 8
-        static let marchioStudio: CGFloat = 14
-        /// Spazio tra la nota e l'invito del primo avvio.
-        static let invitoBenvenuto: CGFloat = 16
-        static let invitoMargine = EdgeInsets(top: 12, leading: 18, bottom: 12, trailing: 18)
-        static let invitoMassimo: CGFloat = 460
-        static let invitoSpazio: CGFloat = 10
         static let canaliSpazio: CGFloat = 8
-        // Dock
-        static let descrizioneDockMassima: CGFloat = 240
-        static let descrizioneDockSpazio: CGFloat = 2
     }
 }
 
@@ -105,22 +91,11 @@ extension Tema.Testo {
         static let titoloPassoVuoto = Tema.Testo.sf(13, .semibold)
         static let testoPassoVuoto = Tema.Testo.sf(13)
         static let iconaVuoto = Font.system(size: Tema.Misura.Guida.iconaVuoto * Tipo.fattore, weight: .medium)
-        // Schermata di benvenuto (testi nuovi pensati grandi: scala leggibile)
-        static let descrizioneBenvenuto = Tema.Testo.sf(14)
-        static let studioBenvenuto = Tema.Testo.sf(15, .semibold)
-        static let entraBenvenuto = Tema.Testo.sf(14)
-        static let notaBenvenuto = Tema.Testo.sf(12)
-        static let invitoTitolo = Tema.Testo.sf(14, .semibold)
-        static let invitoTesto = Tema.Testo.sf(13)
-        // Dock (fuori dalle app la scala resta quella di oggi)
-        static let descrizioneDock = Tema.Testo.sfFisso(11.5)
     }
 }
 
 extension Tema.Raggio {
     enum Guida {
-        static let invito: CGFloat = 18
-        static let suggerimentoDock: CGFloat = 14
         static let esempio: CGFloat = 12
         static let rigaElenco: CGFloat = 10
     }

@@ -131,6 +131,9 @@ final class FisicaAcqua {
     private static let partenza: [(Float, Float, Float, Float)] = [
         (0.22, 0.62, 3.4, 0.7), (0.74, 0.30, 1.8, 0.9), (0.50, 0.90, 5.5, 0.6), (0.92, 0.78, 0.9, 0.5),
     ]
+    /// Alla partenza la pioggia è già in corso: mezza goccia già «maturata», così la prima nuova goccia
+    /// cade dopo pochi secondi (con la pioggia leggera ~3,5 s) e non dopo un'attesa intera da acqua vuota.
+    private static let gocciaMaturata: Float = 0.5
 
     private let tab = TabelleAcqua.condivise
     private let nr = TabelleAcqua.nr
@@ -179,14 +182,26 @@ final class FisicaAcqua {
 
     /// Misure della superficie in punti; alla prima volta mette qualche cerchio già nell'acqua,
     /// così anche da ferma l'immagine non è vuota.
+    /// Finché l'acqua non si è mossa (tempo 0) i cerchi di partenza seguono la misura: se la prima immagine è nata a
+    /// una misura provvisoria della finestra, non restano ammucchiati in un angolo.
     func misura(larghezza w: Float, altezza h: Float) {
+        let cambiata = w != larghezza || h != altezza
         larghezza = w
         altezza = h
-        guard !avviata, w > 0, h > 0 else { return }
-        avviata = true
-        for q in FisicaAcqua.partenza {
-            impatta(x: w * q.0, y: h * q.1, a: 4.5 + q.3 * 2, pendenza: FisicaAcqua.ampOnde, getto: 3 + q.3 * 2.5, vita: 12)
-            impatti[impatti.count - 1].t = q.2
+        guard w > 0, h > 0 else { return }
+        if !avviata {
+            avviata = true
+            daCreare = FisicaAcqua.gocciaMaturata
+            for q in FisicaAcqua.partenza {
+                impatta(x: w * q.0, y: h * q.1, a: 4.5 + q.3 * 2, pendenza: FisicaAcqua.ampOnde, getto: 3 + q.3 * 2.5, vita: 12)
+                impatti[impatti.count - 1].t = q.2
+            }
+            return
+        }
+        guard cambiata && tempo == 0 else { return }
+        for (i, q) in FisicaAcqua.partenza.enumerated() where i < impatti.count {
+            impatti[i].x = w * q.0
+            impatti[i].y = h * q.1
         }
     }
 

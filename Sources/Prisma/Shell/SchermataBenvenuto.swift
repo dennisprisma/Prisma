@@ -1,13 +1,13 @@
 import SwiftUI
 import AppKit
 
-/// Schermata di benvenuto (il lucchetto in alto): sullo sfondo d'acqua restano la data, l'ora grande,
-/// il logo e il cursore «scorri per entrare», per esempio quando ci si allontana dalla scrivania con un
-/// cliente in studio. Lo sfondo è quello della scrivania (ShellView nasconde il resto sotto).
-/// Si entra facendo scorrere il cursore, con un clic o con Invio. È una schermata di cortesia:
-/// non protegge i dati (per quello c'è il blocco del Mac). Prisma si apre sempre qui: la schermata dice che
-/// cosa fa Prisma, di chi è lo studio con i suoi due canali e, al primo avvio, che entrando parte l'introduzione.
-/// Non osserva lo stato: a ogni cambiamento si ridisegnano solo il cursore, il pulsante e l'invito (sottoviste).
+/// Schermata di benvenuto (il lucchetto in alto), composta come il blocco di macOS: sullo sfondo d'acqua
+/// restano solo la data e l'ora grande in alto, il logo con «Prisma» e il cursore «scorri per entrare» in
+/// basso. Nessun altro testo. Serve per esempio quando ci si allontana dalla scrivania con un cliente in
+/// studio. Lo sfondo è quello della scrivania (ShellView nasconde il resto sotto).
+/// Si entra facendo scorrere il cursore, con un clic sul cursore o con Invio. È una schermata di cortesia:
+/// non protegge i dati (per quello c'è il blocco del Mac). Al primo avvio l'introduzione parte da sola dopo
+/// lo sblocco (`StatoShell.dopoSblocco`). Non osserva lo stato: a ogni cambiamento si ridisegna solo il cursore.
 struct SchermataBenvenuto: View {
     /// Entrata e uscita della schermata sopra la scrivania (la usa ShellView). Entra appena più grande e
     /// dissolvendosi, con la curva del blocco (quella della transazione, nessuna nelle istantanee); esce
@@ -30,15 +30,11 @@ struct SchermataBenvenuto: View {
             let m = Tema.Misura.Shell.self
             // L'ora segue la larghezza della finestra (clamp(96px, 16vw, 188px) del tema)
             let corpoOra = min(max(geo.size.width * m.oraQuota, m.oraMinima), m.oraMassima)
-            // Nelle finestre basse le capsule dei canali lasciano il posto al solo nome dello studio
-            let compatta = geo.size.height < Tema.Misura.Guida.altezzaBenvenutoCompleta
             VStack(spacing: 0) {
                 orologio(corpoOra)
                 Spacer(minLength: 0)
                 marchio
-                StudioBenvenuto(conCanali: !compatta)
-                    .padding(.top, Tema.Misura.Guida.marchioStudio)
-                sblocco
+                CursoreSblocco()
                     .padding(.top, m.marchioSblocco)
             }
             .foregroundColor(Tema.Colore.inchiostroBenvenuto)
@@ -52,9 +48,10 @@ struct SchermataBenvenuto: View {
         .onAppear { NSApp.keyWindow?.makeFirstResponder(nil) }
     }
 
+    /// La data piccola sopra l'ora grande, come sul blocco di macOS.
     private func orologio(_ corpo: CGFloat) -> some View {
         TimelineView(.everyMinute) { contesto in
-            VStack(spacing: 0) {
+            VStack(spacing: Tema.Misura.Shell.dataOraSpazio) {
                 Text(SchermataBenvenuto.data(contesto.date))
                     .font(Tema.Testo.Shell.dataBenvenuto)
                     .ombraTema(Tema.Ombra.Shell.dataBenvenuto)
@@ -76,100 +73,22 @@ struct SchermataBenvenuto: View {
         return testo.prefix(1).uppercased() + testo.dropFirst()
     }
 
-    /// Il logo di Prisma con il nome e il motto.
+    /// Il logo di Prisma con il nome piccolo sotto (il posto dell'utente sul blocco di macOS).
     private var marchio: some View {
         let m = Tema.Misura.Shell.self
         return VStack(spacing: m.marchioBenvenutoSpazio) {
             LogoPrisma(colore: Tema.Colore.logo)
                 .frame(height: m.logoBenvenuto)
-            VStack(spacing: m.rigaTestoSpazio) {
-                Text("Prisma")
-                    .font(Tema.Testo.Shell.nomeBenvenuto)
-                Text("Il tuo mondo. Al tuo ritmo.")
-                    .font(Tema.Testo.Shell.mottoBenvenuto)
-                    .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
-            }
-            // Che cosa fa Prisma, in una riga, per chi lo apre la prima volta
-            Text("Analisi di clienti, risparmi, investimenti, previdenza e protezione. Tutto resta su questo Mac.")
-                .font(Tema.Testo.Guida.descrizioneBenvenuto)
-                .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: Tema.Misura.Guida.descrizioneBenvenutoMassima)
+            Text("Prisma")
+                .font(Tema.Testo.Shell.nomeBenvenuto)
         }
-    }
-
-    private var sblocco: some View {
-        let m = Tema.Misura.Shell.self
-        return VStack(spacing: m.sbloccoSpazio) {
-            CursoreSblocco()
-            EntraConUnClic()
-            Text("Schermata di cortesia: per proteggere i dati blocca il Mac (⌃⌘Q).")
-                .font(Tema.Testo.Guida.notaBenvenuto)
-                .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
-                .multilineTextAlignment(.center)
-            InvitoIntroduzione()
-                .padding(.top, Tema.Misura.Guida.invitoBenvenuto - m.sbloccoSpazio)
-        }
-    }
-}
-
-/// Chi è il consulente: «Lo studio di Denis Vicenzoni» e, sotto, le due capsule dei canali (blu Alleanza, cuoio
-/// indipendente), riconoscibili fin dal primo istante.
-private struct StudioBenvenuto: View {
-    /// false nelle finestre basse: solo il nome dello studio.
-    let conCanali: Bool
-
-    var body: some View {
-        let m = Tema.Misura.Guida.self
-        VStack(spacing: m.studioSpazio) {
-            Text("Lo studio di \(TestiValutazione.consulente)")
-                .font(Tema.Testo.Guida.studioBenvenuto)
-                .foregroundColor(Tema.Colore.inchiostroBenvenuto)
-            if conCanali {
-                HStack(spacing: m.canaliSpazio) {
-                    EtichettaCanale(canale: .alleanza)
-                    EtichettaCanale(canale: .indipendente)
-                }
-            }
-        }
-    }
-}
-
-/// Al primo avvio: «Prima volta su Prisma?» e che cosa succede entrando. Nessun pulsante: l'introduzione
-/// parte da sola dopo lo sblocco (`StatoShell.dopoSblocco`). Osserva lo stato in una vista sua.
-private struct InvitoIntroduzione: View {
-    @EnvironmentObject var stato: StatoShell
-
-    var body: some View {
-        if !stato.dati.impostazioni.introduzioneVista && !stato.solaLettura {
-            let m = Tema.Misura.Guida.self
-            HStack(alignment: .top, spacing: m.invitoSpazio) {
-                Image(systemName: "sparkles")
-                    .font(Tema.Testo.Guida.invitoTitolo)
-                    .foregroundColor(Tema.Colore.accento)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: m.spazioTermine) {
-                    Text("Prima volta su Prisma?")
-                        .font(Tema.Testo.Guida.invitoTitolo)
-                        .foregroundColor(Tema.Colore.inchiostro)
-                    Text("Entrando ti mostro in 5 pagine che cosa fa e come si usa. Puoi saltarle e rivederle quando vuoi dal menu Aiuto.")
-                        .font(Tema.Testo.Guida.invitoTesto)
-                        .foregroundColor(Tema.Colore.inchiostroSecondario)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(m.invitoMargine)
-            .frame(maxWidth: m.invitoMassimo)
-            .vetro(.leggero, forma: .arrotondata(Tema.Raggio.Guida.invito))
-            .accessibilityElement(children: .combine)
-        }
+        .accessibilityElement(children: .combine)
     }
 }
 
 /// Il cursore «scorri per entrare». La manopola segue il dito (oltre i bordi con una resistenza elastica);
 /// al rilascio oltre la soglia, o con un colpo rapido, finisce la corsa e si entra, altrimenti torna indietro.
+/// Un clic sul cursore (sulla manopola o sulla capsula) e Invio fanno la corsa da soli e si entra.
 /// Le molle partono con la velocità del gesto. Sta in una vista sua: a ogni movimento del mouse si
 /// ridisegna solo lei, e lo stato di Prisma non si tocca finché non si entra.
 private struct CursoreSblocco: View {
@@ -204,6 +123,22 @@ private struct CursoreSblocco: View {
         .padding(m.cursoreMargine)
         .frame(width: m.cursoreBenvenuto.width, height: m.cursoreBenvenuto.height)
         .vetro(.leggero, forma: .capsula)
+        .contentShape(Capsule(style: .continuous))
+        // Il clic sulla capsula (la manopola ha il suo gesto: il clic lì lo riconosce `rilascia`)
+        .onTapGesture { entra() }
+        // Invio: un pulsante senza scritta e senza misura, solo per il tasto
+        .background {
+            Button("") { entra() }
+                .buttonStyle(StileSemplice())
+                .keyboardShortcut(.defaultAction)
+                .frame(width: 0, height: 0)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Scorri per entrare")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { entra() }
         .onChange(of: premuto) { ancora in
             // Gesto interrotto senza rilascio: la manopola torna al suo posto
             guard !ancora, inCorso else { return }
@@ -228,6 +163,12 @@ private struct CursoreSblocco: View {
         inCorso = false
         let s = Tema.Moto.Sblocco.self
         let traslazione = g.translation.width
+        // Premuta e lasciata quasi senza muoverla: è un clic, si entra
+        let clic = Tema.Misura.Shell.clicManopola
+        if abs(traslazione) <= clic && abs(g.translation.height) <= clic {
+            entra()
+            return
+        }
         let prevista = g.predictedEndTranslation.width
         let partenza = Movimenti.elastico(traslazione, massimo: corsaMassima)
         let colpoRapido = prevista >= corsaMassima && traslazione >= corsaMassima * s.quotaColpoRapido
@@ -241,6 +182,17 @@ private struct CursoreSblocco: View {
         withAnimation(Movimenti.curva(s.completa(velocita: v))) { corsa = corsaMassima }
         let st = stato
         DispatchQueue.main.asyncAfter(deadline: .now() + s.attesaPrimaDiEntrare) { st.sblocca(velocita: v) }
+    }
+
+    /// Clic o Invio: la manopola fa la corsa da sola, poi si entra (una volta sola).
+    private func entra() {
+        guard !entrata else { return }
+        let s = Tema.Moto.Sblocco.self
+        inCorso = false
+        entrata = true
+        withAnimation(Movimenti.curva(s.completa())) { corsa = corsaMassima }
+        let st = stato
+        DispatchQueue.main.asyncAfter(deadline: .now() + s.attesaPrimaDiEntrare) { st.sblocca() }
     }
 
     /// La manopola: capsula chiara con la freccia. Premuta si allarga verso destra con una scala (niente
@@ -296,20 +248,6 @@ private struct ScrittaScorri: View {
     static func fase(_ data: Date) -> Double {
         let periodo = Tema.Moto.Sblocco.periodoLuccichio
         return data.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: periodo) / periodo
-    }
-}
-
-/// «Oppure fai clic qui (o premi Invio)»: dice anche il tasto.
-private struct EntraConUnClic: View {
-    @EnvironmentObject var stato: StatoShell
-
-    var body: some View {
-        Button { stato.sblocca() } label: {
-            Text("Oppure fai clic qui (o premi Invio)").underline()
-        }
-        .buttonStyle(StileSemplice())
-        .font(Tema.Testo.Guida.entraBenvenuto)
-        .keyboardShortcut(.defaultAction)
     }
 }
 

@@ -192,8 +192,8 @@ extension Tema.Moto {
         static let mostra = Tema.Moto.uscita(0.2)
         static let nascondi = Animation.easeIn(duration: 0.16)
         static let ritardoNascondi: Double = 0.35
-        /// Il suggerimento sopra l'icona cresce dal basso (tema :562).
-        static let scalaSuggerimento: CGFloat = 0.95
+        /// Il fumetto con il nome sopra l'icona: compare e scompare subito, con una dissolvenza brevissima.
+        static let suggerimento = Animation.easeOut(duration: 0.08)
     }
 
     enum Controlli {

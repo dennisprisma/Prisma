@@ -57,8 +57,11 @@ extension Misure {
         /// così nextDrawable non fa aspettare la coda del disegno.
         static let drawable = 3
         static let fotogrammiInVolo = 2
-        /// Passo di tempo massimo (s): la fisica segue il tempo vero; il limite serve solo per i risvegli.
-        static let passoMassimo: Double = 0.25
+        /// Passo di tempo massimo (s): la fisica segue il tempo vero, anche con un fotogramma saltato (1/15 s a 30
+        /// al secondo, 1/10 s a 20). Oltre (un intoppo lungo, tipico dei primi istanti dopo l'apertura) l'acqua
+        /// rallenta un attimo invece di saltare in avanti: al rallentatore un salto di 1/4 s si vede (la caduta di
+        /// una goccia dura 0,42 s). Le pause vere (riposo, finestra nascosta) ripartono già senza recupero.
+        static let passoMassimo: Double = 0.1
         /// Un battito dello schermo vale come puntuale se arriva entro questa quota del periodo dello schermo.
         static let tolleranzaBattito: Double = 0.5
         /// Lo stesso, in quota dell'intervallo, per il timer di ripiego (senza CVDisplayLink).
@@ -69,6 +72,11 @@ extension Misure {
         static let quotaRisoluzione: CGFloat = 0.75
         /// Dissolvenza della prima immagine disegnata sopra il fermo-immagine (s).
         static let comparsa: Double = 0.4
+        /// La prima immagine aspetta che la misura dello sfondo resti ferma per questo tempo (s): all'apertura la finestra
+        /// passa per misure provvisorie, e un'immagine disegnata lì verrebbe stirata o metterebbe le onde fuori posto.
+        static let attesaMisura: Double = 0.15
+        /// La dissolvenza parte quando la prima immagine è sullo schermo; se il Mac non lo dice, parte comunque dopo (s).
+        static let riservaComparsa: Double = 0.3
 
         /// Direzione del gradiente CSS a 160° (sin, −cos) e posizione del tono di mezzo.
         static let direzioneGradiente = CGVector(dx: 0.342, dy: 0.940)
@@ -124,12 +132,18 @@ struct SfondoAcqua: View {
         self.scuro = scuro
     }
 
+    /// Lo shader non si è compilato (o mancano i buffer): resta il fermo-immagine completo.
+    @State private var senzaMetal = false
+
     var body: some View {
+        let conMetal = !modoIstantanea && !senzaMetal && ProgrammaAcqua.condiviso.device != nil
         ZStack {
-            // sotto c'è sempre il fermo-immagine: la tela Metal compare sopra alla prima immagine
-            SfondoAcquaFermo(scuro: scuro)
-            if !modoIstantanea && ProgrammaAcqua.condiviso.device != nil {
-                TelaAcquaMetal(animato: animato, intensita: intensita, scuro: scuro)
+            // Sotto c'è sempre il fermo-immagine: la tela Metal compare sopra alla prima immagine. Quando Metal disegna,
+            // sotto restano solo cielo e luce, senza i cerchi: i cerchi disegnati a mano non coincidono con le onde
+            // vere, e nella dissolvenza dell'apertura si vedevano trasformarsi in altri cerchi
+            SfondoAcquaFermo(scuro: scuro, anelli: !conMetal)
+            if conMetal {
+                TelaAcquaMetal(animato: animato, intensita: intensita, scuro: scuro, rinuncia: { senzaMetal = true })
                     .allowsHitTesting(false)
             }
         }
@@ -142,9 +156,12 @@ struct SfondoAcqua: View {
 /// Va bene per le istantanee PNG e come ripiego.
 struct SfondoAcquaFermo: View {
     let scuro: Bool
+    /// false: solo cielo e luce (sotto l'acqua animata, che porta da sé i suoi cerchi).
+    let anelli: Bool
 
-    init(scuro: Bool) {
+    init(scuro: Bool, anelli: Bool = true) {
         self.scuro = scuro
+        self.anelli = anelli
     }
 
     var body: some View {
@@ -154,8 +171,10 @@ struct SfondoAcquaFermo: View {
             ZStack(alignment: .topLeading) {
                 gradiente(w: w, h: h)
                 lampada(w: w, h: h)
-                ForEach(Misure.Acqua.anelli.indices, id: \.self) { i in
-                    anello(Misure.Acqua.anelli[i], w: w, h: h)
+                if anelli {
+                    ForEach(Misure.Acqua.anelli.indices, id: \.self) { i in
+                        anello(Misure.Acqua.anelli[i], w: w, h: h)
+                    }
                 }
             }
             .frame(width: w, height: h)
@@ -333,11 +352,14 @@ private struct TelaAcquaMetal: NSViewRepresentable {
     let animato: Bool
     let intensita: Double
     let scuro: Bool
+    /// Metal non può disegnare: SfondoAcqua torna al fermo-immagine completo (thread principale).
+    let rinuncia: () -> Void
 
     func makeCoordinator() -> RendererAcqua { RendererAcqua() }
 
     func makeNSView(context: Context) -> TelaAcqua {
         let v = TelaAcqua(frame: .zero)
+        context.coordinator.rinuncia = rinuncia
         context.coordinator.configura(v, animato: animato, intensita: intensita, scuro: scuro)
         return v
     }
@@ -376,6 +398,8 @@ final class RendererAcqua: NSObject {
         var fermoInCoda = false
         /// Istante (orologio dello schermo) dell'ultimo fotogramma accodato.
         var ultimoBattito: CFTimeInterval = 0
+        /// Istante (stesso orologio) dell'ultimo cambio di misura: la prima immagine aspetta che la misura si fermi.
+        var istanteMisura: CFTimeInterval = 0
         /// Secondi fra due fotogrammi in moto (1/30, o 1/20 con il risparmio energetico).
         var intervallo: Double = 1.0 / Double(Misure.Acqua.fotogrammiAlSecondo)
     }
@@ -394,6 +418,10 @@ final class RendererAcqua: NSObject {
 
     // Solo thread principale
     private weak var vista: TelaAcqua?
+    /// Chiamata se Metal non può disegnare (shader non compilato, buffer mancanti).
+    var rinuncia: (() -> Void)?
+    /// La dissolvenza della prima immagine è partita.
+    private var comparsaAvviata = false
     private var animato = true
     private var scuro = false
     private var inMoto = false
@@ -502,13 +530,21 @@ final class RendererAcqua: NSObject {
     }
 
     private func pronto(_ stato: MTLRenderPipelineState?) {
-        guard !staccato, let stato, let device = ProgrammaAcqua.condiviso.device,
-              let comandi = device.makeCommandQueue() else { return }   // resta il fermo-immagine
+        guard !staccato else { return }
+        // senza programma, coda o buffer resta il fermo-immagine completo, con i suoi cerchi
+        guard let stato, let device = ProgrammaAcqua.condiviso.device,
+              let comandi = device.makeCommandQueue() else {
+            avvisaRinuncia()
+            return
+        }
         let lunghezza = ShaderAcqua.maxImpatti * TabelleAcqua.nr * 2 * MemoryLayout<Float>.stride
         var buffer: [MTLBuffer] = []
         for _ in 0..<Misure.Acqua.fotogrammiInVolo {
             guard let b = device.makeBuffer(length: lunghezza, options: [.storageModeShared, .cpuCacheModeWriteCombined])
-            else { return }
+            else {
+                avvisaRinuncia()
+                return
+            }
             buffer.append(b)
         }
         let nuova = FisicaAcqua()
@@ -526,6 +562,15 @@ final class RendererAcqua: NSObject {
         chiediFermo()   // la prima immagine sopra il fermo-immagine, anche se l'acqua resta ferma
     }
 
+    /// Avvisa SfondoAcqua che resta il fermo-immagine; sempre a giro finito, perché la risposta del programma può
+    /// arrivare dentro makeNSView, cioè durante l'aggiornamento della vista.
+    private func avvisaRinuncia() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.staccato else { return }
+            self.rinuncia?()
+        }
+    }
+
     // MARK: Quando muoversi (thread principale)
 
     private func misura(lato: CGSize, pixel: CGSize) {
@@ -533,6 +578,7 @@ final class RendererAcqua: NSObject {
         let cambiata = condiviso.lato != lato || condiviso.pixel != pixel
         condiviso.lato = lato
         condiviso.pixel = pixel
+        if cambiata { condiviso.istanteMisura = CACurrentMediaTime() }
         serratura.unlock()
         // in moto ci pensa il prossimo fotogramma
         if cambiata && !inMoto { chiediFermo() }
@@ -733,6 +779,9 @@ final class RendererAcqua: NSObject {
         let lato = c.lato
         let px = c.pixel
         guard lato.width >= 1, lato.height >= 1, px.width >= 1, px.height >= 1 else { return false }
+        // Prima immagine: solo a misura ferma (all'apertura la finestra passa per misure provvisorie). Un'immagine ferma
+        // si riprova; in moto si salta il battito, e con `ultimo` ancora a 0 il primo passo resta senza recupero
+        if !mostrata && ora - c.istanteMisura < Misure.Acqua.attesaMisura { return !moto }
         guard semaforo.wait(timeout: .now()) == .success else { return !moto }
 
         if strato.drawableSize != px {
@@ -798,23 +847,27 @@ final class RendererAcqua: NSObject {
         enc.setFragmentBuffer(buffer, offset: 0, index: 1)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
+        if !mostrata {
+            // La dissolvenza parte quando questa immagine è davvero sullo schermo, non sopra un layer ancora vuoto
+            mostrata = true
+            drawable.addPresentedHandler { [weak self] _ in
+                DispatchQueue.main.async { [weak self] in self?.mostra() }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Misure.Acqua.riservaComparsa) { [weak self] in self?.mostra() }
+        }
         comandi.present(drawable)
         let s = semaforo
         comandi.addCompletedHandler { _ in s.signal() }
         comandi.commit()
         // La prova guidata della fluidità conta i fotogrammi d'acqua in moto (contatore sicuro da ogni thread)
         if moto { MisuratoreFluidita.segnaFotogrammaAcqua() }
-
-        if !mostrata {
-            mostrata = true
-            DispatchQueue.main.async { [weak self] in self?.mostra() }
-        }
         return false
     }
 
     /// Dissolvenza della prima immagine sopra il fermo-immagine (thread principale).
     private func mostra() {
-        guard !staccato, let v = vista else { return }
+        guard !staccato, !comparsaAvviata, let v = vista else { return }
+        comparsaAvviata = true
         NSAnimationContext.runAnimationGroup({ contesto in
             contesto.duration = Misure.Acqua.comparsa
             v.animator().alphaValue = 1

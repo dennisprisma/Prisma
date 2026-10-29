@@ -16,6 +16,13 @@ extension Tema.Colore {
         static let passaggioVetro = Color(r: 255, g: 255, b: 255, a: 0.14)
         /// Puntino dell'app aperta nel dock (--wall-ink all'80%).
         static let puntinoDock: Color = Tema.Colore.inchiostroSfondo.opacity(0.8)
+        /// Fumetto con il nome sopra l'icona del dock, come quello del Dock del Mac: grigio quasi nero, testo bianco;
+        /// in chiaro un filo scuro appena visibile, in scuro un filo chiaro che lo stacca dallo sfondo.
+        static let fondoFumettoDock = Color.dinamico(chiaro: Color(r: 36, g: 36, b: 38, a: 0.92),
+                                                     scuro: Color(r: 40, g: 40, b: 42, a: 0.94))
+        static let filoFumettoDock = Color.dinamico(chiaro: Color(r: 0, g: 0, b: 0, a: 0.22),
+                                                    scuro: Color(r: 255, g: 255, b: 255, a: 0.2))
+        static let testoFumettoDock = Color.white
         /// Velo della scrivania coperta dal benvenuto o dalle app aperte.
         static let veloPannello = Tema.Colore.velo
         /// Ora del benvenuto: riempimento dall'inchiostro pieno (96%) a metà (52%).
@@ -116,12 +123,14 @@ extension Tema.Misura {
         static let etichettaDock: CGFloat = 13
         static let etichettaSpazio: CGFloat = 2
         static let puntinoSpazio: CGFloat = 3
-        static let suggerimentoMargine = EdgeInsets(top: 5, leading: 11, bottom: 5, trailing: 11)
-        static let suggerimentoDistanza: CGFloat = 10
+        /// Fumetto con il nome sopra l'icona (come il Dock del Mac): margini del testo, punta in basso al centro
+        /// e distanza della punta dall'icona (sopra la capsula del dock, che ha `dockMargineQuota` di margine).
+        static let suggerimentoMargine = EdgeInsets(top: 3, leading: 9, bottom: 4, trailing: 9)
+        static let fumettoPuntaLarghezza: CGFloat = 12
+        static let fumettoPuntaAltezza: CGFloat = 6
+        static let suggerimentoDistanza: CGFloat = 14
         /// Luminosità dell'icona premuta (brightness .82).
         static let premutoDock: Double = -0.18
-        /// Passaggi per far coincidere l'icona ingrandita con il puntatore.
-        static let passiIngrandimento = 3
 
         // Finestre interne
         /// Pallini (semafori) come macOS: cerchi da 12 pt, 20 pt fra i centri.
@@ -157,15 +166,19 @@ extension Tema.Misura {
         static let oraMinima: CGFloat = 96
         static let oraMassima: CGFloat = 188
         static let oraQuota: CGFloat = 0.16
-        static let logoBenvenuto: CGFloat = 52
+        /// Il logo in basso, come l'immagine dell'utente sul blocco di macOS, con il nome piccolo sotto.
+        static let logoBenvenuto: CGFloat = 44
         static let marchioBenvenutoSpazio: CGFloat = 8
+        /// Data e ora: la data piccola appena sopra l'ora grande.
+        static let dataOraSpazio: CGFloat = 2
         static let cursoreBenvenuto = CGSize(width: 340, height: 60)
         static let cursoreMargine: CGFloat = 5
         static let manopola: CGFloat = 50
         static let manopolaTrascinata: CGFloat = 58
         static let frecciaManopola: CGFloat = 16
-        static let sbloccoSpazio: CGFloat = 12
-        static let marchioSblocco: CGFloat = 28
+        static let marchioSblocco: CGFloat = 22
+        /// Fino a questo spostamento (in punti) la pressione sulla manopola è un clic: si entra.
+        static let clicManopola: CGFloat = 4
         /// Oltre questa parte della corsa il cursore apre.
         static let sogliaBenvenuto: CGFloat = 0.8
 
@@ -214,7 +227,8 @@ extension Tema.Testo {
         static let secondarioRiga = Tema.Testo.sfFisso(12)
         // Dock
         static let etichettaDock = Tema.Testo.sfFisso(10, .medium)
-        static let suggerimentoDock = Tema.Testo.sfFisso(12, .semibold)
+        /// Il nome nel fumetto sopra l'icona: 13 pt normale, come il Dock del Mac.
+        static let suggerimentoDock = Tema.Testo.sfFisso(13)
         // Finestre
         static let contestoFinestra = Tema.Testo.sfFisso(12, .medium)
         // App aperte
@@ -222,12 +236,11 @@ extension Tema.Testo {
         static let contestoAppAperta = Tema.Testo.sfFisso(12)
         static let statoAppAperta = Tema.Testo.sfFisso(11.5)
         // Benvenuto
-        static let dataBenvenuto = Tema.Testo.sfFisso(22, .semibold)
-        static let nomeBenvenuto = Tema.Testo.sfFisso(20, .bold)
-        static let mottoBenvenuto = Tema.Testo.sfFisso(13)
+        /// La data sopra l'ora, piccola come sul blocco di macOS.
+        static let dataBenvenuto = Tema.Testo.sfFisso(20, .semibold)
+        /// «Prisma» sotto il logo, piccolo come il nome dell'utente sul blocco di macOS.
+        static let nomeBenvenuto = Tema.Testo.sfFisso(14, .semibold)
         static let scorriBenvenuto = Tema.Testo.sfFisso(15, .medium)
-        static let entraBenvenuto = Tema.Testo.sfFisso(13)
-        static let notaBenvenuto = Tema.Testo.sfFisso(11.5)
         static let frecciaManopola = Font.system(size: Tema.Misura.Shell.frecciaManopola, weight: .semibold)
         /// L'ora grande del benvenuto: segue la larghezza della finestra (clamp del tema), arrotondata.
         static func oraBenvenuto(_ corpo: CGFloat) -> Font {
@@ -244,14 +257,22 @@ extension Tema.Ombra {
         static let dataBenvenuto = StratoOmbra(colore: Color(r: 0, g: 0, b: 0, a: 0.18), y: 1, sfocatura: 14)
         static let oraBenvenuto = StratoOmbra(colore: Color(r: 30, g: 20, b: 90, a: 0.22), y: 2, sfocatura: 18)
         static let appAperte = StratoOmbra(colore: Color(r: 0, g: 0, b: 0, a: 0.28), y: 20, sfocatura: 50)
+        /// Ombra leggera sotto il fumetto del dock.
+        static let fumettoDock = StratoOmbra(colore: Color(r: 0, g: 0, b: 0, a: 0.25), y: 1, sfocatura: 4)
+    }
+}
+
+extension Tema.Raggio {
+    /// Raggi della shell.
+    enum Shell {
+        /// Angoli del fumetto con il nome sopra l'icona del dock.
+        static let fumettoDock: CGFloat = 7
     }
 }
 
 extension Tema.Moto {
     /// Animazioni della shell.
     enum Shell {
-        /// Il dock torna alla misura normale quando il puntatore se ne va (.2 s --out).
-        static let ritornoDock = Tema.Moto.uscita(0.2)
         /// Luccichio della scritta «scorri per entrare».
         static let luccichio = Animation.linear(duration: 3.2).repeatForever(autoreverses: false)
         /// La manopola del benvenuto torna indietro.

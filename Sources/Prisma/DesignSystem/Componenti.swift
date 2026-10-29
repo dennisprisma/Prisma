@@ -774,15 +774,13 @@ struct EtichettaCanaleStampa: View {
 struct IconaApp: View {
     let app: AppPrisma
     let lato: CGFloat
-    /// Più di 1 nel dock: l'icona resta nitida anche ingrandita al passaggio del mouse.
-    var riservaIngrandimento: CGFloat = 1
 
     var body: some View {
         Group {
             if app == .agenda {
-                IconaAgenda(lato: lato, riservaIngrandimento: riservaIngrandimento)
+                IconaAgenda(lato: lato)
             } else {
-                ImmagineNitida(percorso: "Icone/\(app.icona).png", lato: lato, riservaIngrandimento: riservaIngrandimento)
+                ImmagineNitida(percorso: "Icone/\(app.icona).png", lato: lato)
             }
         }
         .frame(width: lato, height: lato)
@@ -793,7 +791,6 @@ struct IconaApp: View {
 /// Posizioni e proporzioni dal tema (vedi Design/Icone/LEGGIMI.txt).
 struct IconaAgenda: View {
     let lato: CGFloat
-    var riservaIngrandimento: CGFloat = 1
 
     var body: some View {
         TimelineView(.everyMinute) { contesto in
@@ -801,7 +798,7 @@ struct IconaAgenda: View {
             let u = lato / 256
             let m = Tema.Misura.Componenti.self
             ZStack {
-                ImmagineNitida(percorso: "Icone/Agenda_base.png", lato: lato, riservaIngrandimento: riservaIngrandimento)
+                ImmagineNitida(percorso: "Icone/Agenda_base.png", lato: lato)
                 Text(Formati.meseBreve.string(from: oggi).uppercased())
                     .font(Tema.Testo.Componenti.meseIconaAgenda(lato))
                     .tracking(lato * m.spaziaturaMeseIconaAgenda)
@@ -816,7 +813,7 @@ struct IconaAgenda: View {
                             radius: lato * m.ombraIconaAgendaRaggio, x: 0, y: lato * m.ombraIconaAgendaY)
                     .fixedSize()
                     .position(x: m.giornoIconaAgenda.x * u, y: m.giornoIconaAgenda.y * u)
-                ImmagineNitida(percorso: "Icone/Agenda_vetro.png", lato: lato, riservaIngrandimento: riservaIngrandimento)
+                ImmagineNitida(percorso: "Icone/Agenda_vetro.png", lato: lato)
             }
             .frame(width: lato, height: lato)
         }
