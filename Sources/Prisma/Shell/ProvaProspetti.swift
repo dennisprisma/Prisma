@@ -624,6 +624,8 @@ enum ProvaProspetti {
         ProvaProspettiCompletezza.esegui(verifica, cartella: cartella)
         // Scheda di adeguatezza della proposta: Sofia (indipendente) e Andrea (Alleanza), due pagine A4
         ProvaAdeguatezza.provaProspetti(verifica, cartella: cartella)
+        // Giro 6: TFR in azienda o nel fondo (prospetto 2 pagine, report 4 o 5)
+        ProvaProspettiTFR.esegui(verifica, cartella: cartella)
 
         if errori == 0 {
             print("OK: prospetti verificati")

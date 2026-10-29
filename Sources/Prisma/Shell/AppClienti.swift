@@ -146,6 +146,7 @@ struct AppClienti: View {
                         case .profilo: profilo(c)
                         case .inRegola: InRegolaCliente(cliente: c)
                         case .note: note(c)
+                        case .riesami: CronologiaRiesami(cliente: c)
                         }
                     }
                     .padding(Misure.Rubrica.margineContenuto)
@@ -608,6 +609,7 @@ struct PanoramicaCliente: View {
                         }
                         .buttonStyle(StileCuoioChiaro())
                     }
+                    RigaMemoriaPanoramica(clienteId: cliente.id)
                 }
             }
         }

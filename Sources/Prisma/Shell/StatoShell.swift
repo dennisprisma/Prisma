@@ -7,7 +7,7 @@ enum VistaAgenda: Hashable { case settimana, mese, occasioni }
 
 enum FiltroAttivita: Hashable { case aperte, completate, tutte }
 
-enum SchedaSimulazioni: Hashable { case simulatore, scenari }
+enum SchedaSimulazioni: Hashable { case simulatore, scenari, tfr }
 
 enum SchedaIncontro: Hashable { case preparazione, ascolto, passi }
 
@@ -421,6 +421,8 @@ final class StatoShell: ObservableObject {
         dati.obiettivi.removeAll { $0.clienteId == id }
         dati.valutazioni.removeAll { $0.clienteId == id }
         dati.schedeAdeguatezza.removeAll { $0.clienteId == id }
+        dati.fotografie.removeAll { $0.clienteId == id }
+        dati.confrontiTFR[id] = nil
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
         if modoCliente == id { modoCliente = nil }
@@ -1070,7 +1072,7 @@ final class StatoShell: ObservableObject {
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
-        if case .riesame = scelta { return fonteEve(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId)) } }
+        if case .riesame = scelta { return fonteEve(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId)) } }
         return CompositoreProspetti.componi(scelta, dati: dati, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
     }
 
@@ -1483,6 +1485,8 @@ final class StatoShell: ObservableObject {
             segnaConclusione(dati.appuntamenti[k].id, origine: .incontri)
         }
         i.stato = .concluso
+        // Riesame con memoria: l'incontro di riesame concluso salva la fotografia delle cifre chiave
+        if incontroDiRiesame(i) { fotografaRiesame(i.clienteId, origine: .incontro, avviso: false) }
         salvaIncontro(i)
         proposteIncontro[id] = nil
         mostraAvviso("Incontro archiviato: profilo, attività e agenda aggiornati")
@@ -2044,6 +2048,9 @@ final class StatoShell: ObservableObject {
         dati.appuntamenti[i].stato = dati.appuntamenti[i].stato == .concluso ? .pianificato : .concluso
         // Seguito delle proposte: la proposta presentata e l'eventuale ripresa completata
         if dati.appuntamenti[i].stato == .concluso { segnaConclusione(id) }
+        // Riesame con memoria: un riesame già avvenuto, segnato concluso, salva la fotografia
+        let a = dati.appuntamenti[i]
+        if a.stato == .concluso, a.tipo == .revisione, a.inizio <= Date() { fotografaRiesame(a.clienteId, origine: .appuntamento) }
     }
 
     // MARK: - Attività
@@ -2757,10 +2764,14 @@ final class StatoShell: ObservableObject {
 
 enum SchedaImpostazioni: Hashable {
     case esperienza, proposte, archivio, scorciatoie
+    /// Metri di confronto dei rendimenti (dalla versione 24 dell'archivio).
+    case riferimenti
 }
 
 enum SchedaCliente: String, CaseIterable, Hashable {
     case panoramica, bisogni, anagrafica, famiglia, profilo, inRegola, note
+    /// Cronologia delle fotografie dei riesami (dalla versione 24 dell'archivio).
+    case riesami
 
     var titolo: String {
         switch self {
@@ -2771,6 +2782,7 @@ enum SchedaCliente: String, CaseIterable, Hashable {
         case .profilo: return "Profilo"
         case .inRegola: return "In regola"
         case .note: return "Note"
+        case .riesami: return "Riesami"
         }
     }
 }

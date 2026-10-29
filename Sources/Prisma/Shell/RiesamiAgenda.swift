@@ -101,6 +101,11 @@ extension StatoShell {
         a.note = MotorePianificazione.noteRiesame(punti: r.punti, canali: MotorePianificazione.canali(f.posizioni),
                                                   canale: a.canale, ultimoContatto: r.ultimoContatto,
                                                   dovutoDal: dovuto, oggi: oggi)
+        // Memoria del riesame: l'ordine del giorno si apre con le variazioni dal riesame precedente
+        // (senza fotografie del cliente le note restano com'erano e la memoria non si calcola)
+        if dati.fotografie.contains(where: { $0.clienteId == clienteId }) {
+            a.note = MotoreMemoria.apriConVariazioni(a.note, memoria: memoriaRiesame(clienteId))
+        }
         return RiesamePianificato(appuntamento: a, spazio: spazio)
     }
 }

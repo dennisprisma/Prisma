@@ -1203,6 +1203,10 @@ enum ProvaCalcoli {
         ProvaCalcoliDocumenti.esegui(verificaEsterna)
         ProvaCalcoliConfrontoDossier.esegui(verificaEsterna)
         ProvaCalcoliAggiornaValori.esegui(verificaEsterna)
+        // Giro 6: rendimento contro un riferimento, TFR in azienda o nel fondo, riesame con memoria
+        ProvaCalcoliRiferimenti.esegui(verificaEsterna)
+        ProvaCalcoliTFR.esegui(verificaEsterna)
+        ProvaCalcoliMemoria.esegui(verificaEsterna)
 
         if errori == 0 {
             print("OK: motori di calcolo verificati")

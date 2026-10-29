@@ -71,6 +71,7 @@ struct DettaglioPosizione: View {
                         }
                         if let a = andamentoPosizione {
                             andamento(a, voce: voce).id("dettaglio-andamento")
+                            PannelloRiferimento(posizione: p, andamento: a, voce: voce).id("dettaglio-riferimento")
                         }
                         if let r = riscatto, !r.righe.isEmpty {
                             PannelloRiscatto(esito: r).id("dettaglio-riscatto")

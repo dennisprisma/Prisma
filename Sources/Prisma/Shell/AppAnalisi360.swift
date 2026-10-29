@@ -428,6 +428,13 @@ struct AppAnalisi360: View {
             }
             PannelloFiscoPrevidenza(deducibilita: DeducibilitaPrevidenza(piani: posizioni),
                                     reddito: stato.cliente(cliente)?.profilo.redditoLordoAnnuo)
+            // Giro 6: il confronto del TFR futuro, in azienda o nel fondo, in Simulazioni
+            Button("TFR in azienda o nel fondo? →") {
+                stato.schedaSimulazioni = .tfr
+                stato.apri(.simulazioni)
+            }
+            .buttonStyle(StileVetro(margine: Tema.Misura.TFR.marginePulsante))
+            .fixedSize()
             NotaMetodo(testo: "Il divario usa la pensione pubblica inserita nelle ipotesi; la stima contributiva è un aiuto da verificare sull'estratto conto INPS. Contributi del datore e TFR conferito non entrano in questa proiezione semplificata: li considera il prospetto della previdenza.")
         }
     }

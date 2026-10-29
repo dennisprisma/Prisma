@@ -5,6 +5,8 @@ import SwiftUI
 /// Stesse scale, griglia e colori del grafico della proiezione (griglia e assi dal tema, linee dai colori dell'analisi).
 struct GraficoAndamento: View {
     let punti: [AndamentoPosizione.Punto]
+    /// Colore della linea sottile (`atteso`): l'atteso netto o, nel pannello del riferimento, il ritmo del metro.
+    var coloreAtteso: Color = Colori.Analisi.lineaAtteso
 
     var body: some View {
         GeometryReader { geo in
@@ -66,7 +68,7 @@ struct GraficoAndamento: View {
                         if i == 0 { p.move(to: q) } else { p.addLine(to: q) }
                     }
                 }
-                .stroke(Colori.Analisi.lineaAtteso, style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
+                .stroke(coloreAtteso, style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
                 // Valore rilevato, con un punto a ogni rilevazione
                 Path { p in
                     for (i, pt) in punti.enumerated() {

@@ -192,6 +192,8 @@ enum ProvaCarico {
         for (ok, descrizione) in ProvaRiesamiAgenda.verifiche() { controlla(ok, descrizione) }
         // Scheda di adeguatezza: scheda di Sofia e di Andrea, PDF, firma, notifiche, elenco dei documenti, tempi
         for (ok, d) in ProvaAdeguatezza.verifiche() { controlla(ok, "Adeguatezza: " + d) }
+        // Riesame con memoria: fotografie, variazioni, agganci e cache (prefisso «Memoria del riesame: » già dentro)
+        for (ok, descrizione) in ProvaMemoriaRiesame.verifiche() { controlla(ok, descrizione) }
         var riesamiMese: RiesamiDelMese?
         let riesamiTempo = tempo { riesamiMese = stato.riesamiDelMese(Date()) }
         print("INFO Riesami del mese: \(riesamiMese?.daFissare.count ?? 0) da fissare in \(secondi(riesamiTempo))")

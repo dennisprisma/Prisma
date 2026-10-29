@@ -67,6 +67,8 @@ final class DerivatiDati {
     var fisco: [String: FiscoPolizzeCliente] = [:]
     var chiaveRiesami: ChiaveRiesame?
     var riesami: [String: Riesame?] = [:]
+    /// La memoria del riesame (fotografie e variazioni), per cliente (StatoMemoriaRiesame.swift).
+    var memorie: [String: MemoriaRiesame] = [:]
     var portafoglioComune: (ora: Int, valore: PortafoglioComune)?
     var portafoglio: (chiave: ChiavePortafoglio, valore: Portafoglio)?
     var documento: (chiave: ChiaveDocumento, valore: DocumentoStampabile?)?
@@ -107,6 +109,7 @@ final class DerivatiDati {
         fisco = [:]
         chiaveRiesami = nil
         riesami = [:]
+        memorie = [:]
         portafoglioComune = nil
         portafoglio = nil
         documento = nil
@@ -314,6 +317,8 @@ extension DatiPrisma {
         // Le schede di adeguatezza e l'elenco dei documenti da consegnare non entrano in nessun calcolo in cache
         a.schedeAdeguatezza = []; b.schedeAdeguatezza = []
         b.impostazioni.consegna = a.impostazioni.consegna
+        // Il confronto «TFR in azienda o nel fondo» si calcola nella vista, senza cache
+        a.confrontiTFR = [:]; b.confrontiTFR = [:]
         return a == b
     }
 }

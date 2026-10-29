@@ -276,6 +276,7 @@ struct AppProspetti: View {
                 Text(r.ultimoContatto.map { "Ultimo incontro il \(Formati.dataEstesa.string(from: $0))" + (r.dovuto ? ": il riesame è dovuto." : ".") }
                      ?? "Nessun incontro registrato in Prisma.")
                     .font(Tipo.strumentoTesto).foregroundColor(Colori.Analisi.tabellaTesto).fixedSize(horizontal: false, vertical: true)
+                RiepilogoMemoria(clienteId: cliente)
                 VStack(alignment: .leading, spacing: 7) {
                     ForEach(Array(r.punti.prefix(6).enumerated()), id: \.offset) { i, p in
                         HStack(alignment: .top, spacing: 7) {
@@ -690,7 +691,11 @@ struct AppProspetti: View {
             }
             // Il portafoglio parla di tutti i clienti: non si mostra a un cliente
             if scelta.tipo != .portafoglio {
-                Button("▶ Presenta") { stato.presenta(d) }
+                Button("▶ Presenta") {
+                    // Presentare il prospetto del riesame salva la fotografia di oggi (memoria del riesame)
+                    if case .riesame = scelta { stato.fotografaRiesame(stato.clienteAttivoId, origine: .prospetto) }
+                    stato.presenta(d)
+                }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                     .fixedSize()
                     .help("Mostra il documento a tutto schermo, una pagina alla volta (← → per sfogliare, esc per uscire), in modalità cliente")
@@ -723,6 +728,8 @@ struct AppProspetti: View {
     private func pdf(_ d: DocumentoStampabile) -> Data? {
         guard !modoIstantanea else { return nil }
         let dati = StampaCarta.pdf(d)
+        // Stampa, archiviazione e salvataggio del prospetto del riesame salvano la fotografia di oggi
+        if dati != nil, case .riesame = scelta { stato.fotografaRiesame(stato.clienteAttivoId, origine: .prospetto) }
         if dati == nil { stato.mostraAvviso("Non sono riuscito a creare il PDF.") }
         return dati
     }

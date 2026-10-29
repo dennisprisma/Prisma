@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// App Impostazioni: Esperienza, Proposte (documenti da consegnare), Archivio (backup e ripristino), Scorciatoie.
+/// App Impostazioni: Esperienza, Proposte (documenti da consegnare), Archivio (backup e ripristino), Riferimenti
+/// (metri di confronto dei rendimenti), Scorciatoie.
 struct AppImpostazioni: View {
     @EnvironmentObject var stato: StatoShell
     @State var daRipristinare: VoceBackup?
@@ -21,7 +22,8 @@ struct AppImpostazioni: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SchedeApp(opzioni: [(SchedaImpostazioni.esperienza, "Esperienza"), (SchedaImpostazioni.proposte, "Proposte"),
-                                (SchedaImpostazioni.archivio, "Archivio"), (SchedaImpostazioni.scorciatoie, "Scorciatoie")],
+                                (SchedaImpostazioni.archivio, "Archivio"), (SchedaImpostazioni.riferimenti, "Riferimenti"),
+                                (SchedaImpostazioni.scorciatoie, "Scorciatoie")],
                       selezione: $stato.schedaImpostazioni)
                 .padding(.bottom, 7)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -36,6 +38,7 @@ struct AppImpostazioni: View {
                                 case .esperienza: esperienza
                                 case .proposte: ImpostazioniProposte()
                                 case .archivio: archivio
+                                case .riferimenti: ImpostazioniRiferimenti()
                                 case .scorciatoie: scorciatoie
                                 }
                             }

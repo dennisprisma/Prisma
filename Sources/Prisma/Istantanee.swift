@@ -914,6 +914,93 @@ enum Istantanee {
             s.vistaDocumenti.scheda = .confronto
             s.apri(.documenti)
         }),
+        // Giro 6 · rendimento contro un riferimento e «TFR in azienda o nel fondo» (200–206)
+        ("200-posizioni-riferimento-tfr", { s in
+            // Il PIP di Marco contro la rivalutazione del TFR: gettoni «inserito da te» e «stimato», linea verde-acqua
+            s.clienteAttivoId = "marco"
+            Istantanee.riferimentiDiProva(s)
+            s.posizioneInDettaglio = "pos-marco-piano-individuale-pensionistico"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-riferimento"
+        }),
+        ("201-posizioni-riferimento-inflazione", { s in
+            // L'ETF di Giulia contro l'inflazione (FOI): rendimento reale e pillola
+            s.clienteAttivoId = "giulia"
+            Istantanee.riferimentiDiProva(s)
+            s.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-riferimento"
+        }),
+        ("202-posizioni-riferimento-da-aggiornare", { s in
+            // Senza valori dal 2024: avviso «arrivano al 2023» e «Apri i riferimenti»
+            s.clienteAttivoId = "giulia"
+            s.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-riferimento"
+        }),
+        ("203-impostazioni-riferimenti", { s in
+            Istantanee.riferimentiDiProva(s)
+            s.schedaImpostazioni = .riferimenti
+            s.apri(.impostazioni)
+        }),
+        ("204-simulazioni-tfr", { s in
+            Istantanee.preparaTFR(s)
+            s.schedaSimulazioni = .tfr
+            s.apri(.simulazioni)
+        }),
+        ("205-tfr-prospetto", { s in
+            Istantanee.preparaTFR(s)
+            if let d = s.documentoTFR(report: false) { s.presenta(d) }
+        }),
+        ("206-tfr-report", { s in
+            // La slide «Due strade per lo stesso TFR»
+            Istantanee.preparaTFR(s)
+            if let d = s.documentoTFR(report: true) {
+                s.presenta(d)
+                s.paginaSeguente()
+            }
+        }),
+        // Giro 6 · riesame con memoria (210–215)
+        ("210-clienti-riesami", { s in
+            DatiMemoriaDemo.prepara(s)
+            s.clienteAttivoId = "giulia"
+            s.schedaCliente = .riesami
+            s.apri(.clienti)
+        }),
+        ("211-riesame-prospetto-variazioni", { s in
+            // Prima pagina: sottotitolo con il riesame precedente e tabella «Cosa è cambiato»
+            DatiMemoriaDemo.prepara(s)
+            s.clienteAttivoId = "giulia"
+            if let d = s.documentoProspetto(.riesame) { s.presenta(d) }
+        }),
+        ("212-riesame-prospetto-cronologia", { s in
+            // Ultima pagina: «Cronologia dei riesami» con la riga «Oggi» e le domande nuove
+            DatiMemoriaDemo.prepara(s)
+            s.clienteAttivoId = "giulia"
+            if let d = s.documentoProspetto(.riesame) {
+                s.presenta(d)
+                for _ in 0..<max(0, d.pagine.count - 1) { s.paginaSeguente() }
+            }
+        }),
+        ("213-agenda-riesame-memoria", { s in
+            // Le note dell'appuntamento si aprono con «Cosa è cambiato dal riesame del …»
+            DatiMemoriaDemo.prepara(s)
+            if let a = s.bozzaRiesame("giulia") { s.salvaAppuntamento(a) }
+            s.apri(.agenda)
+        }),
+        ("214-clienti-riesami-primo", { s in
+            // Marco non ha fotografie: stato vuoto
+            s.clienteAttivoId = "marco"
+            s.schedaCliente = .riesami
+            s.apri(.clienti)
+        }),
+        ("215-incontri-cambiato", { s in
+            DatiMemoriaDemo.prepara(s)
+            s.clienteAttivoId = "giulia"
+            s.incontroAperto = "incontro-giulia-casa"
+            s.schedaIncontro = .preparazione
+            s.apri(.incontri)
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
         ("53-ricerca-scuro", { s in
             s.apri(.posizioni)
@@ -1004,6 +1091,24 @@ enum Istantanee {
             s.documentoSelezionato = DatiConfrontoDemo.idKIDETF
             s.vistaDocumenti.scheda = .confronto
             s.apri(.documenti)
+        }),
+        ("200-posizioni-riferimento-tfr-scuro", { s in
+            s.clienteAttivoId = "marco"
+            Istantanee.riferimentiDiProva(s)
+            s.posizioneInDettaglio = "pos-marco-piano-individuale-pensionistico"
+            s.apri(.posizioni)
+            s.ancoraPosizioni = "dettaglio-riferimento"
+        }),
+        ("204-simulazioni-tfr-scuro", { s in
+            Istantanee.preparaTFR(s)
+            s.schedaSimulazioni = .tfr
+            s.apri(.simulazioni)
+        }),
+        ("210-clienti-riesami-scuro", { s in
+            DatiMemoriaDemo.prepara(s)
+            s.clienteAttivoId = "giulia"
+            s.schedaCliente = .riesami
+            s.apri(.clienti)
         }),
         ("1-scrivania-scuro", { _ in }),
         ("2-posizioni-scuro", { $0.apri(.posizioni) }),
@@ -1101,6 +1206,29 @@ enum Istantanee {
            let f = s.dati.clienti[c].famiglia.firstIndex(where: { $0.nome == "Anna Bianchi" }) {
             s.dati.clienti[c].famiglia[f].dataNascita = questaSettimana(3, anni: 18)
         }
+    }
+
+    /// Valori di prova per le istantanee (non sono statistiche ufficiali): l'inflazione del 2024 e del 2025, così il
+    /// confronto copre lo storico di prova degli ultimi 12 mesi, e un indice con due anni.
+    nonisolated static func riferimentiDiProva(_ s: StatoShell) {
+        s.dati.impostazioni.riferimenti.valori = [
+            ValoreRiferimento(serie: SerieRiferimento.idInflazione, anno: 2024, valore: 1.0),
+            ValoreRiferimento(serie: SerieRiferimento.idInflazione, anno: 2025, valore: 2.0),
+            ValoreRiferimento(serie: "indice-prova", anno: 2024, valore: 20.0),
+            ValoreRiferimento(serie: "indice-prova", anno: 2025, valore: 8.0),
+        ]
+        s.dati.impostazioni.riferimenti.indici = [IndiceRiferimento(id: "indice-prova", nome: "Azionario globale", fonte: "Valori di prova")]
+    }
+
+    /// Il confronto del TFR di Marco (scene 204–206): contributi del lavoratore e del datore in un fondo negoziale.
+    nonisolated private static func preparaTFR(_ s: StatoShell) {
+        s.clienteAttivoId = "marco"
+        var i = s.ipotesiTFR("marco")
+        i.contributoLavoratore = 1.2
+        i.contributoDatore = 1.6
+        i.canale = .indipendente
+        i.nomeFondo = "Fondo negoziale di categoria"
+        s.salvaIpotesiTFR("marco", i)
     }
 
     /// Metodi di disegno, in ordine di preferenza sul server di build:
