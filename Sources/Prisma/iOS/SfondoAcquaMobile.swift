@@ -463,7 +463,8 @@ final class RendererAcquaMobile: NSObject {
         enc.endEncoding()
         if !mostrata {
             mostrata = true
-            drawable.addPresentedHandler { [weak self] _ in
+            // Sul simulatore iOS `addPresentedHandler` del drawable non c'è: basta il completamento del comando
+            comandi.addCompletedHandler { [weak self] (_: MTLCommandBuffer) in
                 DispatchQueue.main.async { [weak self] in self?.mostra() }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + Misure.Acqua.riservaComparsa) { [weak self] in self?.mostra() }
