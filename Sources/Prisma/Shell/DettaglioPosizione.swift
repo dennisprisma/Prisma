@@ -89,9 +89,9 @@ struct DettaglioPosizione: View {
                             Button {
                                 confermaEliminazione = true
                             } label: {
-                                Text("Elimina la posizione…").foregroundColor(Colori.Analisi.erroreTesto)
+                                Label("Elimina la posizione…", systemImage: "trash").foregroundColor(Colori.Analisi.erroreTesto)
                             }
-                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                            .buttonStyle(StileVetro())
                         }
                     }
                     .padding(EdgeInsets(top: 14, leading: 16, bottom: 18, trailing: 16))
@@ -141,51 +141,64 @@ struct DettaglioPosizione: View {
     // MARK: - Barra
 
     private var barraNavigazione: some View {
-        HStack(spacing: 10) {
-            Button { stato.posizioneInDettaglio = nil } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left").font(.system(size: 10, weight: .bold))
-                    Text("Posizioni")
-                }
-            }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 10)))
-            Spacer()
-            if posizione.area.proiettabile {
-                Button("Simula") { stato.simula(posizione) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .help("Porta le ipotesi di questa posizione nel simulatore")
-                Button("Confronta") { stato.confronta(posizione) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .help(posizione.stato == .proposta ? "Confronta la proposta con la posizione in essere" : "Confronta con una proposta o un'altra posizione")
-            }
-            if posizione.stato == .proposta {
-                // L'esito della proposta passa dal modulo: decorrenza, primo valore e versato veri (seguito delle proposte)
-                Button("Segna come in essere") { stato.apriEsito(posizione, passo: .accettata, origine: .posizioni) }
-                    .buttonStyle(StileBlu())
-                    .help("Chiede decorrenza, primo valore e versato prima di passarla in essere")
-                Button("Esito…") { stato.apriEsito(posizione, passo: .scelta, origine: .posizioni) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .help("Rifiutata, rimandata o ancora in attesa")
-            }
-            if posizione.stato == .proposta, stato.prodotto(posizione.prodottoId)?.condizioni != nil {
-                Button("Valutazione") { stato.valutaPosizione(posizione) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .help("Prospetto e report di riscatto: incassi netti anno per anno in tre scenari")
-            }
-            if MotoreAdeguatezza.pertinente(posizione, scheda: stato.schedaAdeguatezza(posizione.id)) {
-                Button("Adeguatezza") { stato.ancoraPosizioni = "dettaglio-adeguatezza" }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .help("La scheda di adeguatezza: controlli a semaforo, documenti da consegnare, PDF da firmare")
-            }
-            Button("Prospetto") { stato.apriProspetto(.posizione(posizione.id)) }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                .help("Il prospetto di dettaglio in PDF: contratto, costi, proiezione anno per anno, fonti")
-            Button("Modifica", action: modifica)
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+        // Prima le etichette intere; se la finestra è stretta, i secondari restano con la sola icona
+        // (il suggerimento dice che cosa fanno). Il blu tiene sempre la scritta.
+        ViewThatFits(in: .horizontal) {
+            rigaNavigazione(soloIcona: false)
+            rigaNavigazione(soloIcona: true)
         }
         .padding(.horizontal, 12)
-        .frame(height: 40)
+        .frame(minHeight: 40)
         .bordoBasso(Colori.Analisi.tabellaRiga)
+    }
+
+    private func rigaNavigazione(soloIcona: Bool) -> some View {
+        HStack(spacing: 10) {
+            Button { stato.posizioneInDettaglio = nil } label: {
+                Label("Posizioni", systemImage: "chevron.left")
+            }
+            .buttonStyle(StileVetro())
+            .help("Torna all'elenco delle posizioni")
+            Spacer()
+            Group {
+                if posizione.area.proiettabile {
+                    Button { stato.simula(posizione) } label: { Label("Simula", systemImage: "slider.horizontal.3") }
+                        .buttonStyle(StileVetro())
+                        .help("Porta le ipotesi di questa posizione nel simulatore")
+                    Button { stato.confronta(posizione) } label: { Label("Confronta", systemImage: "arrow.left.arrow.right") }
+                        .buttonStyle(StileVetro())
+                        .help(posizione.stato == .proposta ? "Confronta la proposta con la posizione in essere" : "Confronta con una proposta o un'altra posizione")
+                }
+                if posizione.stato == .proposta {
+                    // L'esito della proposta passa dal modulo: decorrenza, primo valore e versato veri (seguito delle proposte)
+                    Button { stato.apriEsito(posizione, passo: .accettata, origine: .posizioni) } label: {
+                        Label("Segna come in essere", systemImage: "checkmark")
+                    }
+                    .buttonStyle(StileBlu())
+                    .help("Chiede decorrenza, primo valore e versato prima di passarla in essere")
+                    Button { stato.apriEsito(posizione, passo: .scelta, origine: .posizioni) } label: { Label("Esito…", systemImage: "flag") }
+                        .buttonStyle(StileVetro())
+                        .help("Rifiutata, rimandata o ancora in attesa")
+                }
+                if posizione.stato == .proposta, stato.prodotto(posizione.prodottoId)?.condizioni != nil {
+                    Button { stato.valutaPosizione(posizione) } label: { Label("Valutazione", systemImage: "chart.line.uptrend.xyaxis") }
+                        .buttonStyle(StileVetro())
+                        .help("Prospetto e report di riscatto: incassi netti anno per anno in tre scenari")
+                }
+                if MotoreAdeguatezza.pertinente(posizione, scheda: stato.schedaAdeguatezza(posizione.id)) {
+                    Button { stato.ancoraPosizioni = "dettaglio-adeguatezza" } label: { Label("Adeguatezza", systemImage: "checkmark.shield") }
+                        .buttonStyle(StileVetro())
+                        .help("La scheda di adeguatezza: controlli a semaforo, documenti da consegnare, PDF da firmare")
+                }
+                Button { stato.apriProspetto(.posizione(posizione.id)) } label: { Label("Prospetto", systemImage: "doc.text") }
+                    .buttonStyle(StileVetro())
+                    .help("Il prospetto di dettaglio in PDF: contratto, costi, proiezione anno per anno, fonti")
+                Button(action: modifica) { Label("Modifica", systemImage: "pencil") }
+                    .buttonStyle(StileVetro())
+                    .help("Modifica i dati della posizione")
+            }
+            .environment(\.pulsantiSoloIcona, soloIcona)
+        }
     }
 
     /// Dove vanno l'etichetta del canale e la pillola dello stato nella testata.
@@ -424,10 +437,8 @@ struct DettaglioPosizione: View {
         // Il valore attuale è nello storico solo se ha una data (del valore, della decorrenza o di oggi)
         let attuale = posizione.controvalore != nil && (posizione.dataValore ?? posizione.decorrenza) != nil || (posizione.controvalore != nil && !(posizione.rilevazioni ?? []).isEmpty)
         return PannelloAnalisi(titolo: "Storico dei valori") {
-            Button("＋ Valore passato") { moduloRilevazione = true }
-                .buttonStyle(StileSemplice())
-                .font(Tipo.colonnaCollegamento)
-                .foregroundColor(Colori.Colonna.collegamento)
+            Button { moduloRilevazione = true } label: { Label("Valore passato", systemImage: "plus") }
+                .buttonStyle(StileCollegamento())
                 .disabled(stato.solaLettura)
         } contenuto: {
             VStack(alignment: .leading, spacing: 0) {
@@ -436,11 +447,10 @@ struct DettaglioPosizione: View {
                         RigaDato(Formati.dataBreve.string(from: r.data),
                                  Formati.euro(r.controvalore) + (r.versato.map { " · versato \(Formati.euro($0))" } ?? ""), larghezza: 118)
                         if !(i == 0 && attuale) && !stato.solaLettura {
-                            Button("✕") { stato.eliminaRilevazione(r.data, da: posizione.id) }
-                                .buttonStyle(StileSemplice())
-                                .font(Tipo.kpiNota)
-                                .foregroundColor(Colori.Analisi.kpiNota)
-                                .help("Togli questo valore dallo storico")
+                            PulsanteIcona(simbolo: "xmark", aiuto: "Togli questo valore dallo storico",
+                                          taglia: .compatta, vetro: false) {
+                                stato.eliminaRilevazione(r.data, da: posizione.id)
+                            }
                         }
                     }
                 }
@@ -583,10 +593,11 @@ struct DettaglioPosizione: View {
             titolo: "Proiezione a \(parametri.anni) \(parametri.anni == 1 ? "anno" : "anni")",
             nota: nota
         ) {
-            Button(mostraMetodo ? "Nascondi il metodo" : "Come viene calcolato?") { mostraMetodo.toggle() }
-                .buttonStyle(StileSemplice())
-                .font(Tipo.colonnaCollegamento)
-                .foregroundColor(Colori.Colonna.collegamento)
+            Button { mostraMetodo.toggle() } label: {
+                Label(mostraMetodo ? "Nascondi il metodo" : "Come viene calcolato?",
+                      systemImage: mostraMetodo ? "chevron.up" : "questionmark.circle")
+            }
+            .buttonStyle(StileCollegamento())
         } contenuto: {
             VStack(alignment: .leading, spacing: 14) {
                 GraficoProiezione(serie: serie)
@@ -750,9 +761,8 @@ struct RigaDato: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(etichetta)
-                .font(Tipo.campoEtichetta)
-                .foregroundColor(Colori.Analisi.kpiNota)
+            // Con la «i» del glossario sulle parole tecniche (Rischio (SRI), Riscatto, Trattenuto…)
+            EtichettaConTermine(testo: etichetta, font: Tipo.campoEtichetta, colore: Colori.Analisi.kpiNota)
                 .frame(width: larghezza, alignment: .leading)
             HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.MotoriPosizioni.spazioPillola) {
                 Text(valore.isEmpty ? "—" : valore)

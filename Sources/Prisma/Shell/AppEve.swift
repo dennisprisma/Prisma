@@ -162,8 +162,9 @@ struct AppEve: View {
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
                 if !pronto {
-                    Button("Verifica") { stato.verificaMotoreLocale() }
+                    Button { stato.verificaMotoreLocale() } label: { Label("Verifica", systemImage: "arrow.clockwise") }
                         .buttonStyle(StileVetro(margine: m.margineVerifica))
+                        .fixedSize()
                         .help("Chiede di nuovo a Ollama se Qwen è pronto")
                         .padding(.top, m.spazioSaluto)
                 }
@@ -344,16 +345,17 @@ struct AppEve: View {
             Spacer(minLength: m.spazioSezione)
             statoVoce(compatta: compatta)
             if compatta {
-                Button { stato.nuovaConversazione() } label: { Image(systemName: "square.and.pencil") }
-                    .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
+                PulsanteIcona(simbolo: "square.and.pencil", aiuto: "Nuova conversazione") { stato.nuovaConversazione() }
                     .disabled(messaggi.isEmpty)
                     .fixedSize()
-                    .help("Nuova conversazione")
             } else {
-                Button("Nuova conversazione") { stato.nuovaConversazione() }
-                    .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
-                    .disabled(messaggi.isEmpty)
-                    .fixedSize()
+                Button { stato.nuovaConversazione() } label: {
+                    Label("Nuova conversazione", systemImage: "square.and.pencil")
+                }
+                .buttonStyle(StileVetro())
+                .disabled(messaggi.isEmpty)
+                .fixedSize()
+                .help("Comincia da capo: la conversazione di adesso si chiude")
             }
         }
     }
@@ -401,9 +403,10 @@ struct AppEve: View {
                 .background { FormaVetro.capsula.fill(c.statoVoce) }
                 .help(scritta)
                 if v.parla {
-                    Button("Interrompi") { stato.voceEve.zitta() }
-                        .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
+                    Button { stato.voceEve.zitta() } label: { Label("Interrompi", systemImage: "speaker.slash") }
+                        .buttonStyle(StileVetro())
                         .fixedSize()
+                        .help("Eve smette di parlare")
                 }
                 if stato.conversazioneAVoce {
                     Button { stato.fermaVoce() } label: {
@@ -413,7 +416,7 @@ struct AppEve: View {
                             Label("Chiudi la conversazione a voce", systemImage: "stop.fill")
                         }
                     }
-                    .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
+                    .buttonStyle(StileVetro())
                     .fixedSize()
                     .help(compatta ? "Chiudi la conversazione a voce · oppure di' a Eve «basta così»" : "Oppure di' a Eve «basta così»")
                 }

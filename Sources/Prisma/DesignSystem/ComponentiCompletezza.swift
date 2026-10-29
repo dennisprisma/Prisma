@@ -188,7 +188,8 @@ struct RigaVoceCompletezza: View {
             Text(voce.titolo)
                 .font(Tema.Testo.corpo)
                 .foregroundColor(Tema.Colore.inchiostro)
-                .lineLimit(1)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             if !voce.ipotesi.isEmpty {
                 Text(voce.ipotesi)
                     .font(Tema.Testo.didascalia)
@@ -218,17 +219,14 @@ struct RigaVoceCompletezza: View {
             if let canale = voce.canale {
                 EtichettaCanale(canale: canale, compatta: true)
             }
-            Button(TestiCompletezza.completa, action: completa)
-                .buttonStyle(StileVetro(margine: m.marginePulsante))
-                .help(TestiCompletezza.aiutoCompleta)
-            Button(action: escludi) {
-                Image(systemName: "xmark")
-                    .font(Tema.Testo.Completezza.croce)
-                    .foregroundColor(Tema.Colore.inchiostroTerziario)
+            Button(action: completa) {
+                Label(TestiCompletezza.completa, systemImage: "pencil")
             }
-            .buttonStyle(StileSemplice())
-            .help(TestiCompletezza.aiutoNonPertinente)
-            .accessibilityLabel(TestiCompletezza.nonPertinente)
+            .buttonStyle(StileVetro(margine: m.marginePulsante))
+            .help(TestiCompletezza.aiutoCompleta)
+            // La croce «non pertinente»: un bersaglio vero da 28 pt, non più il solo glifo
+            PulsanteIcona(simbolo: "xmark", aiuto: TestiCompletezza.aiutoNonPertinente, taglia: .compatta,
+                          vetro: false, azione: escludi)
         }
         .fixedSize()
     }

@@ -41,13 +41,13 @@ extension Misure {
 }
 
 extension Tipo {
-    static let notificheOcchiello = Tema.Testo.sf(11.5, .semibold)
-    static let notificheChiudi = Tema.Testo.sf(17)
-    static let notificheTitolo = Tema.Testo.sf(17, .bold)
-    static let notificheSottotitolo = Tema.Testo.sf(12)
-    static let notificheGruppo = Tema.Testo.sf(11.5, .semibold)
-    static let notificaTitolo = Tema.Testo.sf(13, .semibold)
-    static let notificaDettaglio = Tema.Testo.sf(12.5)
-    static let notificaFreccia = Tema.Testo.sf(15)
-    static let notifichePiede = Tema.Testo.sf(11.5)
+    static let notificheOcchiello = Tema.Testo.sfFisso(11.5, .semibold)
+    static let notificheChiudi = Tema.Testo.sfFisso(17)
+    static let notificheTitolo = Tema.Testo.sfFisso(17, .bold)
+    static let notificheSottotitolo = Tema.Testo.sfFisso(12)
+    static let notificheGruppo = Tema.Testo.sfFisso(11.5, .semibold)
+    static let notificaTitolo = Tema.Testo.sfFisso(13, .semibold)
+    static let notificaDettaglio = Tema.Testo.sfFisso(12.5)
+    static let notificaFreccia = Tema.Testo.sfFisso(15)
+    static let notifichePiede = Tema.Testo.sfFisso(11.5)
 }

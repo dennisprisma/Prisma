@@ -1,8 +1,8 @@
 import SwiftUI
 
 extension Tema.Misura.Componenti {
-    /// Pulsanti delle azioni del dettaglio.
-    static let margineAzione = EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
+    /// Pulsanti delle azioni del dettaglio: solo il margine laterale, l'altezza la dà la taglia.
+    static let margineAzione = EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
 }
 
 extension Tema.Testo.Componenti {
@@ -156,7 +156,10 @@ struct EtichettaStato: View {
     }
 }
 
-/// Pulsante che riempie la sua cella (azioni del dettaglio): principale o di vetro.
+/// Pulsante che riempie la sua cella (azioni del dettaglio), in vetro da 32 pt con l'icona davanti.
+/// `principale`: l'azione consigliata, in vetro con il colore dell'accento (il blu resta uno per finestra,
+/// nell'intestazione o nella barra). Un glifo davanti al titolo («＋ », «✦ », «✓ ») diventa l'icona SF
+/// corrispondente e una freccia in coda (« →») si toglie: il titolo resta lo stesso, senza il glifo.
 struct PulsanteAzione: View {
     let titolo: String
     var principale = false
@@ -164,21 +167,39 @@ struct PulsanteAzione: View {
     var simbolo: String? = nil
     let azione: () -> Void
 
-    var body: some View {
-        if principale {
-            Button(action: azione) {
-                Text(titolo).lineLimit(1).frame(maxWidth: .infinity)
-            }
-            .buttonStyle(StileBlu())
-        } else {
-            Button(action: azione) {
-                HStack(spacing: Misure.Agenda.spazioSimbolo) {
-                    if let simbolo { Image(systemName: simbolo) }
-                    Text(titolo).lineLimit(1)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(StileVetro(margine: Tema.Misura.Componenti.margineAzione))
+    /// I glifi di testo che diventano icone SF (davanti al titolo).
+    static let glifi: [(String, String)] = [("＋", "plus"), ("+", "plus"), ("✦", "sparkles"), ("✓", "checkmark"),
+                                             ("▶", "play.fill")]
+
+    /// Titolo senza glifi e simbolo da mettere davanti (quello dato, o quello del glifo).
+    static func separa(_ titolo: String, simbolo: String?) -> (titolo: String, simbolo: String?) {
+        var testo = titolo.trimmingCharacters(in: .whitespaces)
+        var icona = simbolo
+        for (glifo, nome) in glifi where testo.hasPrefix(glifo + " ") {
+            testo = String(testo.dropFirst(glifo.count)).trimmingCharacters(in: .whitespaces)
+            if icona == nil { icona = nome }
+            break
         }
+        for coda in [" →", " ›"] where testo.hasSuffix(coda) {
+            testo = String(testo.dropLast(coda.count)).trimmingCharacters(in: .whitespaces)
+            break
+        }
+        return (testo, icona)
+    }
+
+    var body: some View {
+        let parti = PulsanteAzione.separa(titolo, simbolo: simbolo)
+        Button(action: azione) {
+            Group {
+                if let icona = parti.simbolo {
+                    Label(parti.titolo, systemImage: icona)
+                } else {
+                    Text(parti.titolo)
+                }
+            }
+            .lineLimit(1)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(StileVetro(margine: Tema.Misura.Componenti.margineAzione, taglia: .normale, accento: principale))
     }
 }

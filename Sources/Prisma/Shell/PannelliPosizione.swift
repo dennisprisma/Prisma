@@ -43,10 +43,11 @@ struct PannelloRiscatto: View {
         ) {
             HStack(spacing: 8) {
                 pillola
-                Button(mostraMetodo ? "Nascondi il metodo" : "Come si calcola?") { mostraMetodo.toggle() }
-                    .buttonStyle(StileSemplice())
-                    .font(Tipo.colonnaCollegamento)
-                    .foregroundColor(Colori.Colonna.collegamento)
+                Button { mostraMetodo.toggle() } label: {
+                    Label(mostraMetodo ? "Nascondi il metodo" : "Come si calcola?",
+                          systemImage: mostraMetodo ? "chevron.up" : "questionmark.circle")
+                }
+                .buttonStyle(StileCollegamento())
             }
         } contenuto: {
             VStack(alignment: .leading, spacing: M.spazioSezioni) {
@@ -58,10 +59,10 @@ struct PannelloRiscatto: View {
                 }
                 tabella
                 if esito.righe.count > M.righeRiscatto + 1 {
-                    Button(titoloTutti) { tutti.toggle() }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.colonnaCollegamento)
-                        .foregroundColor(Colori.Colonna.collegamento)
+                    Button { tutti.toggle() } label: {
+                        Label(titoloTutti, systemImage: tutti ? "chevron.up" : "chevron.down")
+                    }
+                    .buttonStyle(StileCollegamento())
                 }
                 Text(frase)
                     .font(Tipo.kpiNota)
@@ -387,7 +388,7 @@ struct PannelloComposizione: View {
                         nota("Oggi Prisma calcola questa polizza come un comparto unico: indica i rendimenti della gestione separata e dei fondi per calcoli separati.",
                              colore: C.avviso)
                         if let completa {
-                            Button("Completa i dati") { completa() }
+                            Button { completa() } label: { Label("Completa i dati", systemImage: "pencil") }
                                 .buttonStyle(StileVetro(margine: M.margineAzione))
                                 .help("Apre il modulo della posizione: i dati delle due parti sono nella sezione «Composizione»")
                         }

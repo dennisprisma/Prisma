@@ -102,8 +102,10 @@ struct AppIncontri: View {
                     .truncationMode(.tail)
             }
             Spacer()
-            Button("＋ Nuovo incontro") { stato.nuovoIncontro(cliente: cliente) }
+            // Il blu della finestra
+            Button { stato.nuovoIncontro(cliente: cliente) } label: { Label("Nuovo incontro", systemImage: "plus") }
                 .buttonStyle(StileBlu())
+                .fixedSize()
         }
     }
 
@@ -116,8 +118,12 @@ struct AppIncontri: View {
                 .foregroundColor(Colori.Incontri.secondario)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 460)
-            Button("Prepara il primo incontro") { stato.nuovoIncontro(cliente: cliente) }
-                .buttonStyle(StileBlu())
+            // L'azione unica del vuoto, grande; il blu resta «Nuovo incontro» in alto
+            Button { stato.nuovoIncontro(cliente: cliente) } label: {
+                Label("Prepara il primo incontro", systemImage: "list.bullet.rectangle")
+            }
+            .buttonStyle(StileVetro(taglia: .grande, accento: true))
+            .fixedSize()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -204,13 +210,16 @@ struct AppIncontri: View {
                     .foregroundColor(confermata ? Colori.Incontri.concluso : Colori.Incontri.secondario)
                     .lineLimit(1)
                 Spacer(minLength: Misure.IncontriImpaginazione.staccoNota)
-                Button("Apri l'analisi ↗") {
+                Button {
                     stato.areaAnalisi = tema.0
                     stato.apri(.analisi360)
+                } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("Apri l'analisi")
+                        Image(systemName: "arrow.up.right")
+                    }
                 }
-                .buttonStyle(StileSemplice())
-                .font(Tipo.incontroNota)
-                .foregroundColor(Colori.Colonna.collegamento)
+                .buttonStyle(StileCollegamento())
                 .fixedSize()
             }
             .padding(.top, 5)
@@ -274,11 +283,12 @@ struct AppIncontri: View {
             }
             Spacer(minLength: Misure.IncontriImpaginazione.staccoPulsanti)
             VStack(spacing: 6) {
-                PulsanteAzione(titolo: "✦ Prepara con Eve") {
+                // Prima l'azione che porta avanti l'incontro, poi Eve
+                PulsanteAzione(titolo: "Inizia l'ascolto", principale: true, simbolo: "ear") { stato.schedaIncontro = .ascolto }
+                PulsanteAzione(titolo: "Prepara con Eve", simbolo: "sparkles") {
                     stato.apri(.eve)
                     stato.chiediEve(SpuntoEve.incontro.domanda, spunto: .incontro)
                 }
-                PulsanteAzione(titolo: "Inizia l'ascolto →", principale: true) { stato.schedaIncontro = .ascolto }
             }
         }
         .padding(Misure.IncontriImpaginazione.margine)
@@ -352,13 +362,17 @@ struct AppIncontri: View {
                 if !solaLettura {
                     HStack {
                         Spacer()
-                        Button("Ai prossimi passi →") {
+                        Button {
                             // Gli appunti appena scritti entrano nell'archivio prima di ricavarne le proposte
                             TestiRinviati.scriviOra()
                             stato.schedaIncontro = .passi
                             if let x = stato.incontro(i.id) { stato.estraiProposte(x) }
+                        } label: {
+                            Label("Ai prossimi passi", systemImage: "arrow.right.circle")
                         }
-                        .buttonStyle(StileBlu())
+                        // Il blu resta «Nuovo incontro»: qui l'azione consigliata in vetro dell'accento
+                        .buttonStyle(StileVetro(accento: true))
+                        .fixedSize()
                     }
                 }
             }
@@ -420,9 +434,12 @@ struct AppIncontri: View {
             TitoloStrumento(occhiello: "Dalle parole al dossier", titolo: "Cosa ho capito dall'incontro",
                             testo: "Proposte ricavate dalle risposte e dagli appunti. Spunta quelle giuste: alla chiusura entrano nel profilo dei bisogni e nelle attività.")
             HStack(spacing: 8) {
-                Button(proposte == nil ? "Leggi gli appunti" : "Rileggi gli appunti") { stato.estraiProposte(i) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .disabled(i.vuoto || stato.estrazioneInCorso)
+                Button { stato.estraiProposte(i) } label: {
+                    Label(proposte == nil ? "Leggi gli appunti" : "Rileggi gli appunti", systemImage: "text.magnifyingglass")
+                }
+                .buttonStyle(StileVetro())
+                .fixedSize()
+                .disabled(i.vuoto || stato.estrazioneInCorso)
                 if stato.estrazioneInCorso {
                     ProgressView().controlSize(.small)
                     Text("Anche Qwen sta leggendo…").font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
@@ -474,7 +491,7 @@ struct AppIncontri: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, Misure.IncontriImpaginazione.staccoNota)
                 .bordoAlto(Colori.Incontri.filo)
-            PulsanteAzione(titolo: "Chiudi e archivia l'incontro", principale: true) { stato.chiudiIncontro(i.id) }
+            PulsanteAzione(titolo: "Chiudi e archivia l'incontro", principale: true, simbolo: "archivebox") { stato.chiudiIncontro(i.id) }
         }
         .padding(Misure.IncontriImpaginazione.margine)
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -549,6 +566,43 @@ struct AppIncontri: View {
 
     // MARK: - Incontro concluso
 
+    /// Esito della proposta, attività, prossimo incontro e profilo dei bisogni dopo la chiusura.
+    @ViewBuilder private func seguiti(_ i: Incontro) -> some View {
+        // La proposta presentata all'incontro aspetta ancora l'esito
+        if let a = stato.appuntamento(i.appuntamentoId), let p = stato.propostaDaChiudere(a) {
+            Button {
+                stato.apriEsito(p, passo: MotoreSeguitoProposte.passoIniziale(a), origine: .incontri, appuntamentoId: a.id)
+            } label: {
+                Label("Esito della proposta «\(p.nome)»", systemImage: "checkmark.seal")
+            }
+            .buttonStyle(StileVetro(accento: true))
+            .lineLimit(1)
+        }
+        if let t = i.attivitaCreataId, stato.attivita.contains(where: { $0.id == t }) {
+            Button {
+                stato.attivitaSelezionata = t
+                stato.apri(.attivita)
+            } label: {
+                Label("Attività concordata", systemImage: "checklist")
+            }
+            .buttonStyle(StileVetro())
+            .fixedSize()
+        }
+        if let a = stato.appuntamento(i.appuntamentoCreatoId) {
+            Button { stato.mostraInAgenda(a) } label: { Label("Prossimo incontro", systemImage: "calendar") }
+                .buttonStyle(StileVetro())
+                .fixedSize()
+        }
+        Button {
+            stato.schedaCliente = .bisogni
+            stato.apri(.clienti)
+        } label: {
+            Label("Profilo dei bisogni", systemImage: "person.crop.rectangle")
+        }
+        .buttonStyle(StileVetro())
+        .fixedSize()
+    }
+
     private func concluso(_ i: Incontro) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -560,31 +614,10 @@ struct AppIncontri: View {
                             .font(Tipo.incontroTesto).foregroundColor(Colori.Incontri.secondario)
                     }
                 }
-                HStack(spacing: 8) {
-                    // La proposta presentata all'incontro aspetta ancora l'esito
-                    if let a = stato.appuntamento(i.appuntamentoId), let p = stato.propostaDaChiudere(a) {
-                        Button("Esito della proposta «\(p.nome)»") {
-                            stato.apriEsito(p, passo: MotoreSeguitoProposte.passoIniziale(a), origine: .incontri, appuntamentoId: a.id)
-                        }
-                        .buttonStyle(StileBlu())
-                        .lineLimit(1)
-                    }
-                    if let t = i.attivitaCreataId, stato.attivita.contains(where: { $0.id == t }) {
-                        Button("Attività concordata ↗") {
-                            stato.attivitaSelezionata = t
-                            stato.apri(.attivita)
-                        }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    }
-                    if let a = stato.appuntamento(i.appuntamentoCreatoId) {
-                        Button("Prossimo incontro ↗") { stato.mostraInAgenda(a) }
-                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    }
-                    Button("Profilo dei bisogni ↗") {
-                        stato.schedaCliente = .bisogni
-                        stato.apri(.clienti)
-                    }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                // I seguiti dell'incontro: in fila se c'è posto, altrimenti uno sotto l'altro (mai tagliati)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { seguiti(i) }
+                    VStack(alignment: .leading, spacing: 8) { seguiti(i) }
                 }
                 ForEach([("Cosa la preoccupa", i.preoccupazioni), ("I suoi progetti", i.progetti), ("La sua esperienza", i.esperienza),
                          ("Appunti", i.appunti), ("Decisioni condivise", i.decisioni)].filter { !$0.1.isEmpty }, id: \.0) { voce in

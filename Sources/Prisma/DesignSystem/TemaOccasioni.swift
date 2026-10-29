@@ -24,7 +24,8 @@ extension Misure {
         /// L'anello sotto il giorno (settimana e mese): lato e bordo.
         static let anello: CGFloat = 5
         static let bordoAnello: CGFloat = 1.5
-        /// Il selettore Settimana · Mese · Occasioni.
+        /// Il selettore Settimana · Mese · Occasioni. Non più usato (29 ottobre 2026): i segmenti prendono la
+        /// larghezza del loro testo (`ControlloSegmenti(...).fixedSize()`); si toglie quando nessuno lo usa più.
         static let segmentiVista: CGFloat = 250
         /// Il filtro per gruppo della vista «Occasioni».
         static let menuGruppo: CGFloat = 170

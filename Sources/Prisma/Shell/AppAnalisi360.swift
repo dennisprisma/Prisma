@@ -68,8 +68,10 @@ struct AppAnalisi360: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 3)
         if stato.analisiSalvata(cliente) {
-            Button("Riparti dalle posizioni") { confermaRicalcolo = true }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            Button { confermaRicalcolo = true } label: {
+                Label("Riparti dalle posizioni", systemImage: "arrow.counterclockwise")
+            }
+            .buttonStyle(StileVetro())
                 .padding(.top, 2)
         }
         CollegatiRail(app: [.posizioni, .simulazioni, .confronti])
@@ -116,9 +118,12 @@ struct AppAnalisi360: View {
                         .foregroundColor(Colori.Strumenti.schedaNota)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
-                    Button("Prepara incontro →") {
+                    // L'unico blu della finestra: dopo l'analisi, l'incontro con il cliente
+                    Button {
                         stato.filtroClienteAgenda = cliente
                         stato.apri(.agenda)
+                    } label: {
+                        Label("Prepara l'incontro", systemImage: "list.bullet.rectangle")
                     }
                     .buttonStyle(StileBlu())
                 }
@@ -138,8 +143,13 @@ struct AppAnalisi360: View {
             Spacer(minLength: 0)
             // La Panoramica con il riquadro dei dati è del consulente: in modalità cliente non c'è
             if !k.daCompletare.isEmpty && !stato.inModoCliente {
-                Button(TestiCompletezza.completaNellaScheda) { stato.apriCliente(cliente) }
-                    .buttonStyle(StileVetro(margine: Tema.Misura.Completezza.marginePulsante))
+                Button { stato.apriCliente(cliente) } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text(TestiCompletezza.completaNellaScheda)
+                        Image(systemName: "chevron.right")
+                    }
+                }
+                .buttonStyle(StileCollegamento())
             }
         }
     }
@@ -226,7 +236,7 @@ struct AppAnalisi360: View {
             Text(testo).lineLimit(1)
             ForEach(Canale.allCases.filter { canali.contains($0) }) { c in EtichettaCanale(canale: c, compatta: true) }
             Spacer(minLength: 4)
-            Text("↗").font(Tipo.ipotesiTitolo)
+            Image(systemName: "arrow.up.right").font(Tipo.ipotesiTitolo)
         }
     }
 
@@ -240,7 +250,7 @@ struct AppAnalisi360: View {
             VStack(spacing: 0) {
                 SchedeRisultati(opzioni: schede(area), selezione: $scheda) {
                     if area == .investimenti || area == .risparmio {
-                        Button("Apri nel simulatore") { simula(area) }
+                        Button { simula(area) } label: { Label("Apri nel simulatore", systemImage: "slider.horizontal.3") }
                             .buttonStyle(StileVetro(margine: Tema.Misura.Completezza.marginePulsante))
                     }
                 }
@@ -451,11 +461,17 @@ struct AppAnalisi360: View {
             PannelloFiscoPrevidenza(deducibilita: DeducibilitaPrevidenza(piani: posizioni),
                                     reddito: stato.cliente(cliente)?.profilo.redditoLordoAnnuo)
             // Giro 6: il confronto del TFR futuro, in azienda o nel fondo, in Simulazioni
-            Button("TFR in azienda o nel fondo? →") {
+            Button {
                 stato.schedaSimulazioni = .tfr
                 stato.apri(.simulazioni)
+            } label: {
+                HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                    Text("TFR in azienda o nel fondo?")
+                    Image(systemName: "arrow.right")
+                        .font(Tema.Testo.Componenti.simboloPulsante)
+                }
             }
-            .buttonStyle(StileVetro(margine: Tema.Misura.TFR.marginePulsante))
+            .buttonStyle(StileVetro())
             .fixedSize()
             NotaMetodo(testo: "Il divario usa la pensione pubblica inserita nelle ipotesi; la stima contributiva è un aiuto da verificare sull'estratto conto INPS. Contributi del datore e TFR conferito non entrano in questa proiezione semplificata: li considera il prospetto della previdenza.")
         }

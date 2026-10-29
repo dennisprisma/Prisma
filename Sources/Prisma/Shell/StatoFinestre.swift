@@ -19,6 +19,8 @@ final class StatoFinestre: ObservableObject {
     @Published var pannelloNotifiche = false
     /// Il pannello di ricerca (⌘K, come Spotlight) è aperto: sta sopra tutto, non è una finestra.
     @Published var pannelloRicerca = false
+    /// Il pannello «Guida di Prisma» aperto, con la sua pagina (nil = chiuso). Lo osservano solo la shell e il pannello.
+    @Published var guida: PaginaGuida? = nil
     /// Finestre appena aperte che aspettano il giro dopo per animarsi (G1).
     @Published var inArrivo: Set<AppPrisma> = []
     /// FLIP in corso: cornice di partenza e progresso (G1).
@@ -27,6 +29,15 @@ final class StatoFinestre: ObservableObject {
     @Published var coperte: Set<AppPrisma> = []
     /// Finestre ridotte nel dock a genio finito: i loro controlli sono spenti (i tasti non ci finiscono).
     @Published var spente: Set<AppPrisma> = []
+    /// Finestre coperte dalla loro istantanea durante un effetto di Core Animation (genio, chiusura: MotoreGenio):
+    /// si disegnano a opacità 0, di colpo, e non ricevono clic. Con il vetro di Apple la finestra viva non si
+    /// può deformare né sfumare senza fantasmi: si muove la sua istantanea.
+    @Published var nascoste: Set<AppPrisma> = []
+    /// App il cui genio è in corso: il dock resta in vista anche se dovrebbe essere nascosto (come macOS con
+    /// il dock nascosto, che lo mostra durante la riduzione), così il genio va in un'icona che si vede.
+    @Published var dockPerEffetti: Set<AppPrisma> = []
+    /// Finestre chiuse che si tolgono al giro dopo (prima si nascondono, così escono senza transizione): non pubblicato.
+    var inChiusura: Set<AppPrisma> = []
     /// Da dove si apre ogni app (coordinate `ShellView.spazioShell`): non pubblicato, si legge all'apertura.
     /// Riducendo un'app vale il centro della sua icona nel dock, dove va il «genio».
     var origini: [AppPrisma: CGPoint] = [:]

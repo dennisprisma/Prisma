@@ -86,7 +86,7 @@ struct AppSimulazioni: View {
         EtichettaRail(testo: "Parti da una posizione")
         let posizioni = stato.posizioniCliente(cliente).filter { $0.area.proiettabile && $0.stato != .chiusa }
         if posizioni.isEmpty {
-            Text("Nessun investimento, piano di risparmio o di previdenza nel dossier.")
+            Text("Nessun investimento, piano di risparmio o di previdenza nel dossier: puoi partire da «Nuova ipotesi».")
                 .font(Tipo.kpiNota)
                 .foregroundColor(Colori.Analisi.kpiNota)
                 .padding(.horizontal, 3)
@@ -129,19 +129,23 @@ struct AppSimulazioni: View {
             }
             Spacer()
             if stato.schedaSimulazioni == .simulatore {
-                Button("Nuova ipotesi") {
+                Button {
                     stato.bozzaSimulazione = Self.nuova(per: cliente, stato: stato)
+                } label: {
+                    Label("Nuova ipotesi", systemImage: "plus")
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .buttonStyle(StileVetro())
                 if let c = caricato, c.stesseIpotesi(b) {
-                    Button("Confronta") {
+                    Button {
                         stato.confrontoA = .simulazione(c.id)
                         if stato.confrontoB == stato.confrontoA { stato.confrontoB = nil }
                         stato.apri(.confronti)
+                    } label: {
+                        Label("Confronta", systemImage: "arrow.left.arrow.right")
                     }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .buttonStyle(StileVetro())
                 }
-                Button("Salva scenario") {
+                Button {
                     var s = b
                     s.id = "sim-\(UUID().uuidString.prefix(8).lowercased())"
                     s.creataIl = Appuntamento.alMinuto(Date())
@@ -149,6 +153,8 @@ struct AppSimulazioni: View {
                         s.titolo = "Piano \(s.anni) \(s.anni == 1 ? "anno" : "anni") · \(Formati.percentuale(s.rendimento))"
                     }
                     salvataggio = s
+                } label: {
+                    Label("Salva scenario", systemImage: "square.and.arrow.down")
                 }
                 .buttonStyle(StileBlu())
             }
@@ -198,10 +204,11 @@ struct AppSimulazioni: View {
                         LegendaLinea(colore: Colori.Analisi.linea, testo: "Capitale ipotetico (prima delle imposte)")
                         LegendaLinea(colore: Colori.Analisi.lineaTratteggiata, testo: "Totale versato", tratteggio: true)
                         Spacer()
-                        Button(mostraMetodo ? "Nascondi il metodo" : "Come viene calcolato?") { mostraMetodo.toggle() }
-                            .buttonStyle(StileSemplice())
-                            .font(Tipo.colonnaCollegamento)
-                            .foregroundColor(Colori.Colonna.collegamento)
+                        Button { mostraMetodo.toggle() } label: {
+                            Label(mostraMetodo ? "Nascondi il metodo" : "Come viene calcolato?",
+                                  systemImage: mostraMetodo ? "chevron.up" : "questionmark.circle")
+                        }
+                        .buttonStyle(StileCollegamento())
                     }
                     if mostraMetodo {
                         NotaMetodo(testo: "Il rendimento è annuo effettivo e diventa mensile equivalente: (1 + r)^(1/12) − 1. I versamenti entrano a inizio mese al netto del costo d'ingresso, che si applica anche al capitale iniziale; ogni mese si paga la quota del costo annuo. Alla fine le imposte si applicano alla sola parte che supera il versato, e il valore in euro di oggi divide il netto per l'inflazione cumulata. Rendimento costante: niente volatilità né probabilità. È lo stesso motore delle Posizioni.",
@@ -291,14 +298,22 @@ struct AppSimulazioni: View {
 
     @ViewBuilder private var scenari: some View {
         if salvate.isEmpty {
-            VStack(spacing: 10) {
-                Text("∿").font(Tipo.risultatoGrande).foregroundColor(Colori.Analisi.lineaTratteggiata)
-                Text("Il primo scenario è ancora da scrivere").font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
-                Text("Imposta capitale, versamenti e tempo nel simulatore, poi salva la tua ipotesi.")
-                    .font(Tipo.strumentoTesto).foregroundColor(Colori.Analisi.kpiNota)
-                Button("Apri il simulatore") { stato.schedaSimulazioni = .simulatore }
-                    .buttonStyle(StileBlu())
-            }
+            // Il vuoto che spiega a che cosa serve una simulazione e come si comincia
+            VuotoGuidato(
+                icona: "waveform.path.ecg",
+                titolo: "Niente da simulare, per ora",
+                perche: "Una simulazione risponde a «e se…?»: quanto diventa un capitale con un certo rendimento, costi e tasse, in euro di oggi.",
+                passi: [
+                    ("Scegli «Nuova ipotesi»", "Oppure parti da una posizione del cliente, a sinistra."),
+                    ("Cambia i numeri", "Importi, anni e rendimento."),
+                    ("«Salva scenario»", "E confrontalo con altri due."),
+                ],
+                pulsante: "Nuova ipotesi",
+                azione: {
+                    stato.bozzaSimulazione = Self.nuova(per: cliente, stato: stato)
+                    stato.schedaSimulazioni = .simulatore
+                }
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             let confrontati = scelti
@@ -437,7 +452,7 @@ struct ModuloScenario: View {
         } piede: {
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button("Salva scenario") {
                 var s = bozza

@@ -78,20 +78,27 @@ struct AppObiettivi: View {
                 }
             }
         }
-        Button("＋ Nuovo obiettivo") { nuovo() }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+        Button { nuovo() } label: { Label("Nuovo obiettivo", systemImage: "plus") }
+            .buttonStyle(StileVetro())
             .padding(.top, 4)
         CollegatiRail(app: [.simulazioni, .analisi360, .posizioni])
     }
 
     private var vuoto: some View {
         VStack(spacing: 10) {
-            Text("◎").font(Tipo.risultatoGrande).foregroundColor(Colori.Analisi.lineaTratteggiata)
-            Text("Nessun obiettivo, per ora").font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
-            Text("Dai un nome e una data ai progetti del cliente: la casa, gli studi dei figli, la pensione, un margine di serenità.")
-                .font(Tipo.strumentoTesto).foregroundColor(Colori.Analisi.kpiNota)
-                .multilineTextAlignment(.center).frame(maxWidth: 460)
-            Button("＋ Nuovo obiettivo") { nuovo() }.buttonStyle(StileBlu())
+            // Il vuoto che spiega che cos'è un obiettivo e come si comincia
+            VuotoGuidato(
+                icona: "target",
+                titolo: "Nessun obiettivo, per ora",
+                perche: "Un obiettivo è un progetto con un importo e una data: la casa, gli studi dei figli, la pensione anticipata. Prisma calcola quanto manca e quanto mettere da parte ogni mese.",
+                passi: [
+                    ("Dagli un nome e una data", "Con «Nuovo obiettivo», qui sotto."),
+                    ("Collega le posizioni che servono", "Quelle che già lavorano per quel progetto."),
+                    ("Guarda il versamento mensile", "Prisma dice quanto serve ogni mese."),
+                ],
+                pulsante: "Nuovo obiettivo",
+                azione: { nuovo() }
+            )
             suggerimenti.frame(maxWidth: 520)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -151,7 +158,7 @@ struct AppObiettivi: View {
                     HStack {
                         Text("\(p.0) · \(String(p.2))").font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
                         Spacer()
-                        Button("Crea l'obiettivo") { nuovo(p.0, area: p.1, anno: p.2) }
+                        Button { nuovo(p.0, area: p.1, anno: p.2) } label: { Label("Crea l'obiettivo", systemImage: "plus") }
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
                     }
                     .padding(.vertical, 4)
@@ -246,21 +253,25 @@ struct AppObiettivi: View {
                     NotaMetodo(testo: "Con i versamenti attivi mancano \(Formati.euro(v - a.versamentiAttivi)) al mese: si può allungare la data, ridurre l'importo o aggiungere un piano. Il simulatore parte già da questi numeri.")
                 }
                 VStack(spacing: 6) {
-                    PulsanteAzione(titolo: "Simula il piano", principale: true) { stato.simula(o) }
+                    PulsanteAzione(titolo: "Simula il piano", principale: true, simbolo: "slider.horizontal.3") { stato.simula(o) }
                     HStack(spacing: 6) {
-                        PulsanteAzione(titolo: "Modifica") { modulo = o }
-                        PulsanteAzione(titolo: "＋ Attività") {
+                        PulsanteAzione(titolo: "Modifica", simbolo: "pencil") { modulo = o }
+                        PulsanteAzione(titolo: "Attività", simbolo: "plus") {
                             var t = Attivita.nuova(clienteId: o.clienteId, scadenza: Calendar.current.date(byAdding: .day, value: 14, to: Date()) ?? Date())
                             t.titolo = "Verificare il piano per: \(o.titolo)"
                             stato.salvaAttivita(t)
                             stato.mostraAvviso("Attività aggiunta: \(t.titolo)")
                         }
                     }
-                    PulsanteAzione(titolo: "Prospetto e report") { stato.apriProspetto(.obiettivo(o.id, report: false)) }
-                    Button("Elimina l'obiettivo…") { confermaEliminazione = true }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.kpiNota)
-                        .foregroundColor(Colori.Analisi.erroreTesto)
+                    PulsanteAzione(titolo: "Prospetto e report", simbolo: "doc.text") { stato.apriProspetto(.obiettivo(o.id, report: false)) }
+                    Button { confermaEliminazione = true } label: {
+                        Label("Elimina l'obiettivo…", systemImage: "trash")
+                            .font(Tema.Testo.pulsantePiccolo)
+                            .foregroundColor(Colori.Analisi.erroreTesto)
+                            .frame(minHeight: Tema.Misura.Componenti.areaClicMinima)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(StileSemplice())
                         .padding(.top, 2)
                 }
                 .padding(.top, 6)
@@ -332,7 +343,7 @@ struct ModuloObiettivo: View {
         } piede: {
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(nuovo ? "Aggiungi" : "Salva") {
                 var o = bozza

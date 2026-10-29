@@ -5,7 +5,7 @@ extension Tema.Misura.Componenti {
     static let margineAqua = EdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14)
     static let marginePiccolo = EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)
     /// Barra delle schede del dossier.
-    static let barraSchedeDossier: CGFloat = 44
+    static let barraSchedeDossier: CGFloat = 48
     static let margineSchedeDossier: CGFloat = 17
     /// Fila delle metriche e riga etichetta/valore.
     static let etichettaCampo: CGFloat = 150
@@ -15,22 +15,24 @@ extension Tema.Misura.Componenti {
     static let contatoreScheda: CGFloat = 20
 }
 
-/// Pulsante principale dell'intestazione ("Nuovo cliente"): capsula piena dell'accento.
+/// Pulsante principale dell'intestazione ("Nuovo cliente"): capsula piena dell'accento, taglia normale (32 pt).
 struct StileAqua: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         CorpoPulsante(etichetta: configuration.label, aspetto: .principale, premuto: configuration.isPressed,
-                      margine: Tema.Misura.Componenti.margineAqua, altezza: Misure.Pulsante.altezzaAqua)
+                      margine: Tema.Misura.Componenti.margineAqua, taglia: .normale, altezza: Misure.Pulsante.altezzaAqua)
     }
 }
 
-/// Pulsante piccolo ("Modifica" del dossier): capsula di vetro.
+/// Pulsante di vetro del dossier ("Modifica"): compatto (28 pt), normale (32 pt) se gli si dà un'altezza
+/// per affiancarlo a un pulsante principale.
 struct StileCuoioChiaro: ButtonStyle {
-    /// Altezza fissa, per affiancarlo a un pulsante principale (nil: quanto il testo più il margine).
+    /// Altezza, per affiancarlo a un pulsante principale (nil: la taglia compatta).
     var altezza: CGFloat? = nil
 
     func makeBody(configuration: Configuration) -> some View {
         CorpoPulsante(etichetta: configuration.label, aspetto: .vetro, premuto: configuration.isPressed,
-                      margine: Tema.Misura.Componenti.marginePiccolo, altezza: altezza)
+                      margine: Tema.Misura.Componenti.marginePiccolo, taglia: altezza == nil ? .compatta : .normale,
+                      altezza: altezza)
     }
 }
 
@@ -72,9 +74,8 @@ struct OcchielloSezione: View {
 
     var body: some View {
         HStack {
-            Text(titolo)
-                .font(Tema.Testo.occhiello)
-                .foregroundColor(Tema.Colore.inchiostroSecondario)
+            // La «i» accanto alle parole tecniche la mette da sé l'etichetta
+            EtichettaConTermine(testo: titolo, font: Tema.Testo.occhiello, colore: Tema.Colore.inchiostroSecondario)
             Spacer()
             if let nota {
                 Text(nota).font(Tema.Testo.didascalia).foregroundColor(Tema.Colore.inchiostroTerziario)

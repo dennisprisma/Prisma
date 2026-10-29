@@ -105,7 +105,10 @@ struct AppRicerca: View {
                     Image(systemName: "xmark.circle.fill").foregroundColor(Colori.Ricerca.lente)
                 }
                 .buttonStyle(StileSemplice())
+                // Area di clic di 28 pt senza alzare il campo
+                .contentShape(Rectangle().inset(by: -Tema.Misura.Componenti.allargamentoClic))
                 .help("Cancella la ricerca")
+                .accessibilityLabel("Cancella la ricerca")
             }
             Text("⌘ K").font(Tipo.ricercaTasto).foregroundColor(Colori.Ricerca.tasto)
         }

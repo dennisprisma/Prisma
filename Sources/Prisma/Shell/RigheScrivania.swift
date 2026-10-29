@@ -61,7 +61,7 @@ struct RigaAttivita: View {
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 4) {
                 Text(attivita.titolo)
-                    .font(Tipo.contenuto(12, .medium))
+                    .font(Tipo.fisso(12, .medium))
                     .foregroundColor(Colori.Colonna.rigaNome)
                     .lineLimit(2)
                 Text([cliente?.nome, scadenza].compactMap { $0 }.joined(separator: " · "))

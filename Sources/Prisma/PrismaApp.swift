@@ -109,7 +109,17 @@ struct ComandiPrisma: Commands {
                 .disabled(menu.bloccato)
         }
         CommandGroup(replacing: .newItem) {}
-        CommandGroup(after: .help) {
+        // Menu Aiuto: la guida di Prisma al posto della voce di sistema «L'aiuto non è disponibile».
+        // Con la schermata di benvenuto davanti le voci restano attive: apriGuida sblocca e poi apre.
+        CommandGroup(replacing: .help) {
+            Group {
+                Button("Guida di Prisma") { stato.apriGuida(.app(stato.appAttiva ?? .clienti)) }
+                    .keyboardShortcut("?", modifiers: .command)
+                Button("Come funziona Prisma (introduzione)") { stato.apriGuida(.introduzione(0)) }
+                Button("Le parole della finanza") { stato.apriGuida(.glossario(nil)) }
+            }
+            .disabled(menu.inPresentazione)
+            Divider()
             // Prova guidata sul Mac (Shell/ProvaGuidata.swift); scelta di nuovo durante la prova, la interrompe
             Button("Prova la fluidità…") { ProvaGuidata.condivisa.avvia(stato: stato) }
         }

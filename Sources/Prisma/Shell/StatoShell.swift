@@ -273,6 +273,10 @@ final class StatoShell: ObservableObject {
             let avvio = AvvioArchivio.attendi()
             let caricati = avvio.esito
             dati = caricati.dati
+            // Prisma si apre sempre sulla schermata di benvenuto (mai nelle istantanee e nelle prove):
+            // prima del primo disegno e prima di collegaMenu, così il menu Vai nasce già spento
+            sistema.bloccato = true
+            sistema.bloccatoStabile = true
             // Prima di disegnare qualcosa: i caratteri dell'interfaccia nascono con questa misura
             Tipo.fattore = caricati.dati.impostazioni.dimensioneTesto.fattore
             salvataggioSospeso = caricati.solaLettura

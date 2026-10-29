@@ -80,14 +80,17 @@ struct BisogniCliente: View {
                             .font(Tipo.bisognoTesto)
                             .foregroundColor(Colori.Rubrica.secondario)
                             .fixedSize(horizontal: false, vertical: true)
-                        Button("Analizza in Analisi 360 · \(a.areaAnalisi.nome) ›") {
+                        Button {
                             stato.clienteAttivoId = cliente.id
                             stato.areaAnalisi = a.areaAnalisi
                             stato.apri(.analisi360)
+                        } label: {
+                            HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                                Text("Analizza in Analisi 360 · \(a.areaAnalisi.nome)")
+                                Image(systemName: "chevron.right")
+                            }
                         }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.bisognoNota)
-                        .foregroundColor(Colori.Colonna.collegamento)
+                        .buttonStyle(StileCollegamento())
                     }
                 }
             }
@@ -151,7 +154,7 @@ struct BisogniCliente: View {
             Spacer(minLength: 8)
             if confermato {
                 HStack(spacing: 6) {
-                    Text("✓ Confermato").font(Tipo.bisognoNota).foregroundColor(Colori.Bisogni.confermato)
+                    Label("Confermato", systemImage: "checkmark").font(Tipo.bisognoNota).foregroundColor(Colori.Bisogni.confermato)
                     Button("Annulla") { stato.aggiornaBisogni(cliente.id) { $0.esiti[b.id] = nil } }
                         .buttonStyle(StileSemplice())
                         .font(Tipo.bisognoNota)
@@ -159,10 +162,15 @@ struct BisogniCliente: View {
                 }
             } else {
                 HStack(spacing: 6) {
-                    Button("Scarta") { stato.aggiornaBisogni(cliente.id) { $0.esiti[b.id] = false } }
-                        .buttonStyle(StileCuoioChiaro(altezza: Misure.Pulsante.altezzaAqua))
-                    Button("Conferma") { stato.aggiornaBisogni(cliente.id) { $0.esiti[b.id] = true } }
-                        .buttonStyle(StileAqua())
+                    // Il blu dell'app è «Nuovo cliente»: qui la conferma è il vetro d'accento, non un altro blu
+                    Button { stato.aggiornaBisogni(cliente.id) { $0.esiti[b.id] = false } } label: {
+                        Label("Scarta", systemImage: "xmark")
+                    }
+                    .buttonStyle(StileVetro(taglia: .compatta))
+                    Button { stato.aggiornaBisogni(cliente.id) { $0.esiti[b.id] = true } } label: {
+                        Label("Conferma", systemImage: "checkmark")
+                    }
+                    .buttonStyle(StileVetro(taglia: .compatta, accento: true))
                 }
             }
         }
@@ -182,7 +190,7 @@ struct BisogniCliente: View {
                     Button {
                         stato.aggiornaBisogni(cliente.id) { $0.eventi.append(EventoVita(tipo: t, anno: anno + 1)) }
                     } label: {
-                        Text("＋ \(t.nome)")
+                        Label(t.nome, systemImage: "plus")
                             .font(Tipo.bisognoTesto)
                             .foregroundColor(Colori.Bisogni.chipTesto)
                             .lineLimit(1)

@@ -146,6 +146,8 @@ struct Impostazioni: Codable, Equatable {
     var pdf = ImpostazioniPDF()
     /// La guida «Comincia con i tuoi dati» nascosta dalla scrivania.
     var guidaNascosta = false
+    /// L'introduzione «Come funziona Prisma» è stata vista (dopo il primo sblocco parte da sola finché non lo è).
+    var introduzioneVista = false
     /// Dimensione dei testi dell'interfaccia (si applica all'avvio).
     var dimensioneTesto = DimensioneTesto.normale
     /// Aspetto dell'interfaccia: segue il Mac, sempre chiaro o sempre scuro (i PDF restano chiari).
@@ -176,7 +178,7 @@ struct Impostazioni: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
+        case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, introduzioneVista, dimensioneTesto, aspetto, sfondoAnimato, pioggia
         case promemoria, ricercheSalvate, giorniSeguitoProposte, orari
         case consegna, conformita, occasioni
         case riferimenti
@@ -192,6 +194,8 @@ struct Impostazioni: Codable, Equatable {
         eve = (try? c.decodeIfPresent(ImpostazioniEve.self, forKey: .eve)) ?? ImpostazioniEve()
         pdf = (try? c.decodeIfPresent(ImpostazioniPDF.self, forKey: .pdf)) ?? ImpostazioniPDF()
         guidaNascosta = (try? c.decodeIfPresent(Bool.self, forKey: .guidaNascosta)) ?? false
+        // L'introduzione: gli archivi di prima non la hanno (Denis la vede una volta, poi dal menu Aiuto)
+        introduzioneVista = (try? c.decodeIfPresent(Bool.self, forKey: .introduzioneVista)) ?? false
         dimensioneTesto = (try? c.decodeIfPresent(DimensioneTesto.self, forKey: .dimensioneTesto)) ?? .normale
         // Impostazioni del tema: gli archivi di prima non le hanno
         aspetto = (try? c.decodeIfPresent(AspettoInterfaccia.self, forKey: .aspetto)) ?? .automatico

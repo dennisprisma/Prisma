@@ -53,6 +53,8 @@ extension StatoShell {
             presentazione?.haAccesoModoCliente = inModoCliente
         }
         if pannelloNotifiche { pannelloNotifiche = false }
+        // La guida resterebbe sotto la sala con il suo Esc: si chiude (l'introduzione non si segna come vista)
+        if sistema.guida != nil { sistema.guida = nil }
         // Nessun campo sotto il velo deve ricevere i tasti: il commento o la chat di Eve resterebbero scrivibili
         if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
         guard let finestra = schermoIntero else { return }
@@ -121,6 +123,8 @@ extension StatoShell {
         Movimenti.anima(Tema.Moto.Pannelli.presentazione, durata: Tema.Moto.Pannelli.durataPresentazione, animato: persistente) {
             presentazione = nil
         }
+        // Un genio o una chiusura in corso sotto la sala finiscono di colpo (dopo il cambio animato)
+        annullaEffetti()
         if p.haAccesoModoCliente { esciModoCliente() }
         if p.haAccesoSchermoIntero, let finestra = p.finestra ?? NSApp.keyWindow, finestra.styleMask.contains(.fullScreen) {
             finestra.toggleFullScreen(nil)

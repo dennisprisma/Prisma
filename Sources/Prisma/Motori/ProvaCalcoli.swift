@@ -1208,6 +1208,22 @@ enum ProvaCalcoli {
         ProvaCalcoliTFR.esegui(verificaEsterna)
         ProvaCalcoliMemoria.esegui(verificaEsterna)
 
+        // Giro 7: glossario e guida. Ogni chiave ha la sua voce, le etichette puntano a voci vere, ogni app ha 3 passi
+        verifica("Glossario: voci per ogni chiave", Double(VoceGlossario.Chiave.allCases.filter { Glossario.voce($0) == nil }.count), 0)
+        verifica("Glossario: chiavi senza doppioni", Double(Glossario.voci.count), Double(Set(Glossario.voci.map(\.chiave)).count))
+        verifica("Glossario: etichette senza voce", Double(Glossario.etichette.values.filter { Glossario.voce($0) == nil }.count), 0)
+        verifica("Glossario: riga breve entro 110 caratteri", Double(Glossario.voci.filter { $0.breve.count > 110 }.count), 0)
+        verifica("Glossario: «SRI» trovato cercando «sri»", Glossario.cerca("sri", categoria: nil).first?.chiave == .sri ? 1 : 0, 1)
+        verifica("Glossario: ricerca senza accenti («liquidita» trova «Riserva di liquidità»)",
+                 Glossario.cerca("liquidita", categoria: nil).contains { $0.chiave == .riservaLiquidita } ? 1 : 0, 1)
+        verifica("Guida: app senza 3 passi", Double(AppPrisma.allCases.filter { $0.aiuto.passi.count != 3 }.count), 0)
+        verifica("Guida: riga del dock entro 60 caratteri", Double(AppPrisma.allCases.filter { $0.aiuto.inBreve.count > 60 }.count), 0)
+        verifica("Guida: nessun glifo nei passi",
+                 Double(AppPrisma.allCases.flatMap { $0.aiuto.passi }.filter { $0.contains("＋") || $0.contains("→") }.count), 0)
+        verifica("Guida: parole delle app nel glossario",
+                 Double(AppPrisma.allCases.flatMap { $0.aiuto.parole }.filter { Glossario.voce($0) == nil }.count), 0)
+        verifica("Guida: introduzione in 5 pagine", Double(PaginaIntroduzione.pagine.count), 5)
+
         if errori == 0 {
             print("OK: motori di calcolo verificati")
             return 0

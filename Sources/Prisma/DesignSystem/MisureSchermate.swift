@@ -12,8 +12,8 @@ extension Misure.Rubrica {
 }
 
 extension Misure.Pulsante {
-    /// Altezza del pulsante principale dell'intestazione (pulsante piccolo del tema); anche quello che gli sta accanto.
-    static let altezzaAqua: CGFloat = Tema.Misura.pulsantePiccolo
+    /// Altezza del pulsante principale dell'intestazione (pulsante normale del tema, 32); anche quello che gli sta accanto.
+    static let altezzaAqua: CGFloat = Tema.Misura.pulsante
 }
 
 extension Misure.Strumenti {
@@ -24,8 +24,8 @@ extension Misure.Strumenti {
 }
 
 extension Misure.Agenda {
-    /// Spazio tra il simbolo e il titolo dei pulsanti d'azione del dettaglio.
-    static let spazioSimbolo: CGFloat = 4
+    /// Spazio tra il simbolo e il titolo dei pulsanti d'azione del dettaglio (come i pulsanti del tema).
+    static let spazioSimbolo: CGFloat = Tema.Misura.Componenti.spazioSimboloPulsante
 }
 
 extension Misure {

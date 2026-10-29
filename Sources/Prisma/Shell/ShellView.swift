@@ -71,6 +71,15 @@ struct CorpoShell: View {
                     .opacity(salaCoprente ? 0 : 1)
                     .allowsHitTesting(!sistema.bloccato)
 
+                // Lo strato degli effetti (genio e chiusura in Core Animation, MotoreGenio): sopra finestre, dock e
+                // pannelli, sotto la presentazione e il benvenuto. Mai nelle istantanee e nelle prove
+                if !modoIstantanea {
+                    StratoEffettiVista()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+
                 if let p = stato.presentazione {
                     VistaPresentazione(p: p)
                         .frame(width: geo.size.width, height: geo.size.height)
@@ -171,7 +180,8 @@ struct CorpoShell: View {
     /// Scrivania, finestre, dock, pannelli e barra superiore, nell'ordine in cui si sovrappongono.
     private func livelliScrivania(_ misura: CGSize, area: CGRect) -> some View {
         let nascosti = sistema.bloccato
-        let dockGiu = dockNascosto && !dockRichiamato
+        // Durante un genio il dock si vede sempre (come macOS con il dock nascosto): la finestra va nella sua icona
+        let dockGiu = dockNascosto && !dockRichiamato && sistema.dockPerEffetti.isEmpty
         return ZStack(alignment: .topLeading) {
             Scrivania()
                 .frame(width: misura.width, height: max(0, misura.height - Misure.Barra.altezza - Misure.Dock.riservato))
@@ -252,6 +262,18 @@ struct CorpoShell: View {
             }
             .animation(curvaPannello(sistema.pannelloRicerca, Tema.Moto.Spotlight.entrata, Tema.Moto.Spotlight.uscita),
                        value: sistema.pannelloRicerca)
+            .opacity(nascosti ? 0 : 1)
+
+            // La guida di Prisma: sopra tutto, come «Le tue app aperte». Cambiare pagina non anima il contenitore
+            ZStack {
+                if sistema.guida != nil {
+                    PannelloGuida()
+                        .frame(width: misura.width, height: misura.height)
+                        .transition(transizionePannello)
+                }
+            }
+            .animation(curvaPannello(sistema.guida != nil, Tema.Moto.Guida.entrata, Tema.Moto.Guida.uscita),
+                       value: sistema.guida != nil)
             .opacity(nascosti ? 0 : 1)
         }
     }
@@ -360,41 +382,55 @@ struct CorpoShell: View {
     }
 
     /// Una finestra con i suoi movimenti, tutti trasformazioni e opacità sopra una cornice ferma:
-    /// FLIP (ingrandisci, affianca, spazi), genio (riduci e ripristina), apertura, chiusura (transizione).
-    /// Il contenuto dell'app non si rifà durante i movimenti: cambiano solo i valori dei modificatori.
+    /// FLIP (ingrandisci, affianca, spazi), apertura (scala dall'icona), ripiego del genio, chiusura (transizione).
+    /// Il genio vero e la chiusura con l'istantanea li fa MotoreGenio: intanto la finestra è `nascosta` (opacità 0,
+    /// di colpo). Il contenuto dell'app non si rifà durante i movimenti: cambiano solo i valori dei modificatori.
     private func finestra(_ f: StatoShell.Finestra, z: Int, attiva: Bool, area: CGRect, calmo: Bool) -> some View {
         let c = stato.cornice(di: f, in: area)
         let w = max(c.width, 1)
         let h = max(c.height, 1)
-        // L'icona del dock dove va il genio, nelle coordinate della finestra; senza, il bordo in basso della shell
-        let bersaglio = sistema.origini[f.app].map { p in
+        let origine = sistema.origini[f.app]
+        // L'icona del dock (per il ripiego del genio), nelle coordinate della finestra; senza, il bordo in basso della shell
+        let bersaglio = origine.map { p in
             CGPoint(x: p.x - area.minX - c.minX, y: p.y - area.minY - c.minY)
         } ?? CGPoint(x: c.width / 2, y: sistema.misura.height - area.minY - c.minY)
         let arrivo = sistema.inArrivo.contains(f.app)
         let coperta = sistema.coperte.contains(f.app)
+        let nascosta = sistema.nascoste.contains(f.app)
         let flip = sistema.flip[f.app]
         let genio: CGFloat = f.ridotta ? 1 : 0
-        // L'apertura come macOS: al suo posto, appena più piccola e trasparente
-        let scalaArrivo: CGFloat = calmo ? 1 : Tema.Moto.Finestre.scalaApertura
+        // L'apertura come macOS: dall'icona (o dal punto da cui si apre) cresce fino al suo posto; senza origine,
+        // al suo posto, appena più piccola
+        let ancoraArrivo = origine.map { p in
+            UnitPoint(x: (p.x - area.minX - c.minX) / w, y: (p.y - area.minY - c.minY) / h)
+        } ?? .center
+        let scalaArrivo: CGFloat = calmo ? 1
+            : (origine == nil ? Tema.Moto.Finestre.scalaAperturaSulPosto : Tema.Moto.Finestre.scalaApertura)
         // Il centro visibile della finestra (la transizione sta dopo lo spostamento)
         let centro = UnitPoint(x: c.midX / w, y: c.midY / h)
+        // Chiusa dal motore (istantanea o di colpo): la finestra se ne va senza transizione
+        let uscita: AnyTransition = modoIstantanea || nascosta ? AnyTransition.identity
+            : AnyTransition.chiusuraFinestra(ancora: centro)
         return FinestraInterna(finestra: f, attiva: attiva, area: area)
             .frame(width: c.width, height: c.height, alignment: .topLeading)
             .modifier(EffettoCornice(progresso: flip?.progresso ?? 1, da: flip?.da ?? c, a: c))
-            .modifier(EffettoGenio(progresso: genio, bersaglio: bersaglio, lato: Tema.Misura.dockIcona, calmo: calmo))
+            // Ripiego senza istantanea: solo una scala verso l'icona (con il motore la finestra è già nascosta)
+            .modifier(RiduzioneSemplice(progresso: genio, ancora: bersaglio, calmo: calmo))
             .modifier(OpacitaGenio(progresso: genio, calmo: calmo))
-            .modifier(EffettoFinestra(scala: arrivo ? scalaArrivo : 1, ancora: .center,
-                                      y: 0, opacita: arrivo ? 0 : 1))
+            // L'opacità dell'apertura ha la sua curva breve (prima della scala: la sua animazione tocca solo lei)
+            .modifier(OpacitaApertura(visibile: !arrivo))
+            .modifier(EffettoFinestra(scala: arrivo ? scalaArrivo : 1, ancora: ancoraArrivo, y: 0, opacita: 1))
             .offset(x: c.minX, y: c.minY)
-            // Coperta da una finestra ingrandita (a transizione finita): resta montata ma non si disegna
-            .opacity(coperta ? 0 : 1)
-            .allowsHitTesting(!f.ridotta && !coperta)
+            // Coperta da una finestra ingrandita (a transizione finita): resta montata ma non si disegna.
+            // Nascosta sotto la sua istantanea durante un effetto: di colpo, nessun fantasma
+            .opacity(coperta || nascosta ? 0 : 1)
+            .allowsHitTesting(!f.ridotta && !coperta && !nascosta)
             // Ridotta nel dock resta montata (si riapre subito), ma i suoi comandi da tastiera tacciono: a genio
             // finito (`spente`), perché spegnere i controlli ridisegna tutta l'app e non deve cadere nel movimento
             .disabled(f.ridotta && (modoIstantanea || sistema.spente.contains(f.app)))
             .accessibilityHidden(f.ridotta || coperta)
             .zIndex(Double(z))
-            .transition(modoIstantanea ? AnyTransition.identity : AnyTransition.chiusuraFinestra(ancora: centro))
+            .transition(uscita)
     }
 }
 

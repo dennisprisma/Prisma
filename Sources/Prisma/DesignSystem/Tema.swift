@@ -304,15 +304,15 @@ enum Tema {
         static let pulsantePiccolo: CGFloat = 28
         static let pulsanteVetro: CGFloat = 34
         static let pulsanteVetroPiccolo: CGFloat = 30
-        static let chip: CGFloat = 22
-        static let chipPiccolo: CGFloat = 20
+        static let chip: CGFloat = 24
+        static let chipPiccolo: CGFloat = 22
         static let pallinoCanale: CGFloat = 7
         static let simboloAlleanza: CGFloat = 12
         static let spazioChip: CGFloat = 6
         /// Margini laterali del chip (sinistro, destro) e del chip piccolo.
-        static let chipMargini: (sinistro: CGFloat, destro: CGFloat) = (8, 9)
-        static let chipPiccoloMargini: (sinistro: CGFloat, destro: CGFloat) = (7, 8)
-        static let pill: CGFloat = 20
+        static let chipMargini: (sinistro: CGFloat, destro: CGFloat) = (9, 10)
+        static let chipPiccoloMargini: (sinistro: CGFloat, destro: CGFloat) = (8, 9)
+        static let pill: CGFloat = 22
         static let campo: CGFloat = 32
         static let campoGrande: CGFloat = 44
         static let interruttore = CGSize(width: 44, height: 26)
@@ -343,8 +343,27 @@ enum Tema {
     // MARK: Caratteri (SF)
 
     enum Testo {
-        /// SF alla dimensione del tema, moltiplicata per Impostazioni → Dimensione del testo.
+        /// Il testo più piccolo ammesso dentro le app (scala leggibile del 29 ottobre 2026).
+        static let minimoLeggibile: CGFloat = 12
+
+        /// Scala leggibile (29 ottobre 2026): sotto 18 pt la dimensione diventa (5d + 18) / 6, mai sotto 12
+        /// (11 → 12,2 · 12 → 13 · 13 → 13,8 · 14 → 14,7 · 16 → 16,3); da 18 in su resta com'era.
+        /// Continua e crescente: due gettoni diversi restano diversi. Le eccezioni (badge, tessere data,
+        /// assi, dock, barra superiore, scrivania) usano `sfFisso` / `Tipo.fisso`.
+        static func leggibile(_ d: CGFloat) -> CGFloat {
+            guard d < 18 else { return d }
+            return max(minimoLeggibile, (5 * d + 18) / 6)
+        }
+
+        /// SF alla dimensione del tema sulla scala leggibile, moltiplicata per Impostazioni → Dimensione del testo.
         static func sf(_ dimensione: CGFloat, _ peso: Font.Weight = .regular, arrotondato: Bool = false) -> Font {
+            let disegno: Font.Design = arrotondato ? .rounded : .default
+            return Font.system(size: leggibile(dimensione) * Tipo.fattore, weight: peso, design: disegno)
+        }
+
+        /// Come prima della scala leggibile (solo la Dimensione del testo): numeri dei badge, mese delle tessere,
+        /// assi dei grafici, dock, barra superiore, scrivania e widget.
+        static func sfFisso(_ dimensione: CGFloat, _ peso: Font.Weight = .regular, arrotondato: Bool = false) -> Font {
             let disegno: Font.Design = arrotondato ? .rounded : .default
             return Font.system(size: dimensione * Tipo.fattore, weight: peso, design: disegno)
         }
@@ -360,7 +379,7 @@ enum Tema {
         static let didascalia = sf(11.5)
         static let saluto = sf(34, .bold)
         static let spaziaturaSaluto = spaziatura(-0.024, 34)
-        static let sottotitoloSaluto = sf(15)
+        static let sottotitoloSaluto = sfFisso(15)
         static let sezione = sf(19, .bold)
         static let spaziaturaSezione = spaziatura(-0.012, 19)
         static let titoloApp = sf(26, .bold)
@@ -375,17 +394,25 @@ enum Tema {
         static let nomeCliente = sf(18, .bold)
         static let valoreKpi = sf(16, .semibold)
         static let valoreTessera = sf(18, .semibold)
+        /// Testo dei pulsanti: taglia normale (32 pt) e compatta (28 pt).
         static let pulsante = sf(13, .medium)
         static let pulsantePiccolo = sf(12.5, .medium)
+        /// Taglia grande (36 pt): l'azione unica di uno stato vuoto o di una guida.
+        static let pulsanteGrande = sf(15, .semibold)
+        /// Il blu (primario) in semibold, normale e compatto.
+        static let pulsantePrimario = sf(13, .semibold)
+        static let pulsantePrimarioPiccolo = sf(12.5, .semibold)
+        /// Azione terziaria: il collegamento con la freccia («Scheda cliente», «Nel Portafoglio»).
+        static let collegamento = sf(13, .semibold)
         static let chip = sf(11.5, .semibold)
         static let chipPiccolo = sf(11, .semibold)
         static let pill = sf(11, .semibold)
-        static let badge = sf(9.5, .bold)
-        static let marchio = sf(13, .bold)
-        static let barra = sf(13, .medium)
+        static let badge = sfFisso(9.5, .bold)
+        static let marchio = sfFisso(13, .bold)
+        static let barra = sfFisso(13, .medium)
         static let tasto = sf(11, .medium)
         static let ricerca = sf(21)
-        static let meseTessera = sf(9.5, .bold)
+        static let meseTessera = sfFisso(9.5, .bold)
         static let giornoTessera = sf(17, .semibold, arrotondato: true)
         static let importo = sf(13, .semibold).monospacedDigit()
         /// Iniziali degli avatar: 37% del lato, arrotondate.

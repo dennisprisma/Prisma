@@ -59,7 +59,9 @@ private struct FilaDock: View, Equatable {
         let numero = voci.count + 1
         DisposizioneFilaDock(ingrandimenti: ingrandimenti.count == numero ? ingrandimenti : [],
                              spazio: DisposizioneDock.spazio) {
-            ElementoDock(titolo: "Scrivania", etichetta: "Scrivania", ingrandimento: ingrandimento(0, di: numero),
+            ElementoDock(titolo: "Scrivania", etichetta: "Scrivania",
+                         descrizione: "Torna alla scrivania: la tua giornata e i widget",
+                         ingrandimento: ingrandimento(0, di: numero),
                          suggerimento: sopra == 0, attivo: scrivaniaAttiva, inEsecuzione: false) {
                 mostraScrivania()
             } icona: {
@@ -72,6 +74,8 @@ private struct FilaDock: View, Equatable {
                     titolo: voce.app.titolo,
                     etichetta: voce.app.nomeDock,
                     scorciatoia: Dock.scorciatoia(voce.app),
+                    // Che cosa fa l'app, in una riga: chi non conosce Prisma lo legge passando sopra l'icona
+                    descrizione: voce.app.aiuto.inBreve,
                     ingrandimento: ingrandimento(indice + 1, di: numero),
                     suggerimento: sopra == indice + 1,
                     attivo: voce.attiva,
@@ -257,12 +261,14 @@ struct DivisoreDock: View {
 }
 
 /// Elemento del dock: l'icona che si ingrandisce dal basso, il nome sotto, il puntino se l'app è aperta,
-/// il suggerimento con la scorciatoia quando il puntatore è sopra (lo decide la fila).
+/// il suggerimento con la scorciatoia e che cosa fa l'app quando il puntatore è sopra (lo decide la fila).
 struct ElementoDock<Icona: View>: View {
     let titolo: String
     /// Il nome breve sotto l'icona.
     let etichetta: String
     var scorciatoia: String? = nil
+    /// La seconda riga del suggerimento: a che cosa serve (nil: solo il nome).
+    var descrizione: String? = nil
     var ingrandimento: CGFloat = 1
     /// Il puntatore è sopra: compare il suggerimento.
     var suggerimento = false
@@ -303,7 +309,7 @@ struct ElementoDock<Icona: View>: View {
         .buttonStyle(StileIconaDock())
         .overlay(alignment: .top) {
             if suggerimento {
-                SuggerimentoDock(testo: titolo, scorciatoia: scorciatoia)
+                SuggerimentoDock(testo: titolo, scorciatoia: scorciatoia, descrizione: descrizione)
                     .fixedSize()
                     // Il fondo del suggerimento sta sopra l'icona ingrandita
                     .alignmentGuide(VerticalAlignment.top) { d in
@@ -336,21 +342,35 @@ private struct StileIconaDock: ButtonStyle {
     }
 }
 
-/// Suggerimento sopra l'icona: capsula di vetro sottile con il nome e la scorciatoia.
+/// Suggerimento sopra l'icona: vetro sottile con il nome e la scorciatoia e, se c'è, una seconda riga che dice
+/// a che cosa serve l'app (allora è un rettangolo arrotondato largo `descrizioneDockMassima`, non una capsula).
 struct SuggerimentoDock: View {
     let testo: String
     let scorciatoia: String?
+    var descrizione: String? = nil
 
     var body: some View {
-        HStack(spacing: Tema.Misura.Shell.pulsanteBarraSpazio) {
-            Text(testo)
-                .font(Tema.Testo.Shell.suggerimentoDock)
-                .foregroundColor(Tema.Colore.inchiostro)
-            if let s = scorciatoia {
-                TastoBarra(testo: s)
+        let g = Tema.Misura.Guida.self
+        VStack(alignment: .leading, spacing: g.descrizioneDockSpazio) {
+            HStack(spacing: Tema.Misura.Shell.pulsanteBarraSpazio) {
+                Text(testo)
+                    .font(Tema.Testo.Shell.suggerimentoDock)
+                    .foregroundColor(Tema.Colore.inchiostro)
+                if let s = scorciatoia {
+                    TastoBarra(testo: s)
+                }
+            }
+            if let d = descrizione {
+                Text(d)
+                    .font(Tema.Testo.Guida.descrizioneDock)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        // Con la descrizione la larghezza è fissa: il testo va a capo invece di allungare il suggerimento
+        .frame(width: descrizione == nil ? nil : g.descrizioneDockMassima, alignment: .leading)
         .padding(Tema.Misura.Shell.suggerimentoMargine)
-        .vetro(.leggero, forma: .capsula)
+        .vetro(.leggero, forma: descrizione == nil ? .capsula : .arrotondata(Tema.Raggio.Guida.suggerimentoDock))
     }
 }

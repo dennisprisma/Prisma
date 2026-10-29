@@ -29,6 +29,8 @@ final class ProvaGuidata {
         let appAperte: Bool
         let finestre: Int
         let memoria: Double
+        /// L'introduzione già vista: durante la prova lo sblocco non deve aprirla (StatoShell.dopoSblocco).
+        let introduzioneVista: Bool
     }
 
     private typealias M = Misure.Fluidita
@@ -105,6 +107,7 @@ final class ProvaGuidata {
     private func impedimento(_ stato: StatoShell) -> String? {
         if !stato.persistente { return "La prova gira solo nell'app vera." }
         if stato.bloccato { return "Togli prima la schermata di benvenuto, poi riprova." }
+        if stato.guida != nil { return "Chiudi prima la guida di Prisma, poi riprova." }
         if stato.modoCliente != nil { return "Esci prima dalla modalità cliente: la prova apre app che lì restano chiuse." }
         if stato.presentazione != nil { return "Chiudi prima la presentazione, poi riprova." }
         if stato.menu.conversazioneAVoce {
@@ -159,7 +162,10 @@ final class ProvaGuidata {
     private func corri(stato: StatoShell, app: [AppPrisma], passi: [Passo], finestra: NSWindow?) async {
         let inizio = Inizio(clienteAttivoId: stato.clienteAttivoId, notifiche: stato.pannelloNotifiche,
                             spazi: stato.pannelloSpazi, appAperte: stato.pannelloAppAperte,
-                            finestre: stato.finestre.count, memoria: MisuratoreFluidita.improntaMB())
+                            finestre: stato.finestre.count, memoria: MisuratoreFluidita.improntaMB(),
+                            introduzioneVista: stato.dati.impostazioni.introduzioneVista)
+        // Lo sblocco della prova non apre l'introduzione del primo avvio (si rimette com'era alla fine)
+        if !inizio.introduzioneVista { stato.dati.impostazioni.introduzioneVista = true }
         let calmo = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         // Con il risparmio energetico l'acqua resta in moto (a ritmo ridotto): il giudizio confronta i ritmi in proporzione
         let acquaInMoto = stato.dati.impostazioni.sfondoAnimato && !calmo
@@ -225,6 +231,9 @@ final class ProvaGuidata {
         if inizio.spazi && !stato.pannelloSpazi { stato.pannelloSpazi = true }
         if inizio.appAperte && !stato.pannelloAppAperte { stato.pannelloAppAperte = true }
         if stato.clienteAttivoId != inizio.clienteAttivoId { stato.clienteAttivoId = inizio.clienteAttivoId }
+        if !inizio.introduzioneVista && stato.dati.impostazioni.introduzioneVista {
+            stato.dati.impostazioni.introduzioneVista = false
+        }
     }
 
     /// Il giudizio di ogni azione. Il ritmo dell'acqua si confronta con quello a riposo (o il migliore misurato),
@@ -310,6 +319,10 @@ final class ProvaGuidata {
             VoceContesto(etichetta: "Archivio", valore: "\(stato.dati.clienti.count) clienti, \(stato.dati.posizioni.count) posizioni"),
             VoceContesto(etichetta: "App della prova", valore: app.map(\.titolo).joined(separator: ", ")),
             VoceContesto(etichetta: "Finestre già aperte", valore: inizio.finestre == 0 ? "nessuna" : "\(inizio.finestre)"),
+            // Il genio usa l'istantanea della finestra: se la cattura è lenta (o vuota) si vede il ripiego
+            VoceContesto(etichetta: "Istantanea del genio",
+                         valore: "ultima in \(Int((IstantaneaFinestra.ultimaDurata * 1000).rounded())) ms"
+                            + (IstantaneaFinestra.lenta ? " (lenta o vuota: ripiego)" : "")),
         ]
     }
 

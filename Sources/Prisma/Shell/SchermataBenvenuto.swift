@@ -5,8 +5,9 @@ import AppKit
 /// il logo e il cursore «scorri per entrare», per esempio quando ci si allontana dalla scrivania con un
 /// cliente in studio. Lo sfondo è quello della scrivania (ShellView nasconde il resto sotto).
 /// Si entra facendo scorrere il cursore, con un clic o con Invio. È una schermata di cortesia:
-/// non protegge i dati (per quello c'è il blocco del Mac).
-/// Non osserva lo stato: a ogni cambiamento si ridisegnano solo il cursore e il pulsante (sottoviste).
+/// non protegge i dati (per quello c'è il blocco del Mac). Prisma si apre sempre qui: la schermata dice che
+/// cosa fa Prisma, di chi è lo studio con i suoi due canali e, al primo avvio, che entrando parte l'introduzione.
+/// Non osserva lo stato: a ogni cambiamento si ridisegnano solo il cursore, il pulsante e l'invito (sottoviste).
 struct SchermataBenvenuto: View {
     /// Entrata e uscita della schermata sopra la scrivania (la usa ShellView). Entra appena più grande e
     /// dissolvendosi, con la curva del blocco (quella della transazione, nessuna nelle istantanee); esce
@@ -29,10 +30,14 @@ struct SchermataBenvenuto: View {
             let m = Tema.Misura.Shell.self
             // L'ora segue la larghezza della finestra (clamp(96px, 16vw, 188px) del tema)
             let corpoOra = min(max(geo.size.width * m.oraQuota, m.oraMinima), m.oraMassima)
+            // Nelle finestre basse le capsule dei canali lasciano il posto al solo nome dello studio
+            let compatta = geo.size.height < Tema.Misura.Guida.altezzaBenvenutoCompleta
             VStack(spacing: 0) {
                 orologio(corpoOra)
                 Spacer(minLength: 0)
                 marchio
+                StudioBenvenuto(conCanali: !compatta)
+                    .padding(.top, Tema.Misura.Guida.marchioStudio)
                 sblocco
                     .padding(.top, m.marchioSblocco)
             }
@@ -84,6 +89,14 @@ struct SchermataBenvenuto: View {
                     .font(Tema.Testo.Shell.mottoBenvenuto)
                     .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
             }
+            // Che cosa fa Prisma, in una riga, per chi lo apre la prima volta
+            Text("Analisi di clienti, risparmi, investimenti, previdenza e protezione. Tutto resta su questo Mac.")
+                .font(Tema.Testo.Guida.descrizioneBenvenuto)
+                .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: Tema.Misura.Guida.descrizioneBenvenutoMassima)
         }
     }
 
@@ -92,9 +105,65 @@ struct SchermataBenvenuto: View {
         return VStack(spacing: m.sbloccoSpazio) {
             CursoreSblocco()
             EntraConUnClic()
-            Text("Schermata di cortesia: non protegge i dati.")
-                .font(Tema.Testo.Shell.notaBenvenuto)
+            Text("Schermata di cortesia: per proteggere i dati blocca il Mac (⌃⌘Q).")
+                .font(Tema.Testo.Guida.notaBenvenuto)
                 .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
+                .multilineTextAlignment(.center)
+            InvitoIntroduzione()
+                .padding(.top, Tema.Misura.Guida.invitoBenvenuto - m.sbloccoSpazio)
+        }
+    }
+}
+
+/// Chi è il consulente: «Lo studio di Denis Vicenzoni» e, sotto, le due capsule dei canali (blu Alleanza, cuoio
+/// indipendente), riconoscibili fin dal primo istante.
+private struct StudioBenvenuto: View {
+    /// false nelle finestre basse: solo il nome dello studio.
+    let conCanali: Bool
+
+    var body: some View {
+        let m = Tema.Misura.Guida.self
+        VStack(spacing: m.studioSpazio) {
+            Text("Lo studio di \(TestiValutazione.consulente)")
+                .font(Tema.Testo.Guida.studioBenvenuto)
+                .foregroundColor(Tema.Colore.inchiostroBenvenuto)
+            if conCanali {
+                HStack(spacing: m.canaliSpazio) {
+                    EtichettaCanale(canale: .alleanza)
+                    EtichettaCanale(canale: .indipendente)
+                }
+            }
+        }
+    }
+}
+
+/// Al primo avvio: «Prima volta su Prisma?» e che cosa succede entrando. Nessun pulsante: l'introduzione
+/// parte da sola dopo lo sblocco (`StatoShell.dopoSblocco`). Osserva lo stato in una vista sua.
+private struct InvitoIntroduzione: View {
+    @EnvironmentObject var stato: StatoShell
+
+    var body: some View {
+        if !stato.dati.impostazioni.introduzioneVista && !stato.solaLettura {
+            let m = Tema.Misura.Guida.self
+            HStack(alignment: .top, spacing: m.invitoSpazio) {
+                Image(systemName: "sparkles")
+                    .font(Tema.Testo.Guida.invitoTitolo)
+                    .foregroundColor(Tema.Colore.accento)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: m.spazioTermine) {
+                    Text("Prima volta su Prisma?")
+                        .font(Tema.Testo.Guida.invitoTitolo)
+                        .foregroundColor(Tema.Colore.inchiostro)
+                    Text("Entrando ti mostro in 5 pagine che cosa fa e come si usa. Puoi saltarle e rivederle quando vuoi dal menu Aiuto.")
+                        .font(Tema.Testo.Guida.invitoTesto)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(m.invitoMargine)
+            .frame(maxWidth: m.invitoMassimo)
+            .vetro(.leggero, forma: .arrotondata(Tema.Raggio.Guida.invito))
+            .accessibilityElement(children: .combine)
         }
     }
 }
@@ -230,16 +299,16 @@ private struct ScrittaScorri: View {
     }
 }
 
-/// «Oppure entra con un clic» (anche con Invio).
+/// «Oppure fai clic qui (o premi Invio)»: dice anche il tasto.
 private struct EntraConUnClic: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
         Button { stato.sblocca() } label: {
-            Text("Oppure entra con un clic").underline()
+            Text("Oppure fai clic qui (o premi Invio)").underline()
         }
         .buttonStyle(StileSemplice())
-        .font(Tema.Testo.Shell.entraBenvenuto)
+        .font(Tema.Testo.Guida.entraBenvenuto)
         .keyboardShortcut(.defaultAction)
     }
 }

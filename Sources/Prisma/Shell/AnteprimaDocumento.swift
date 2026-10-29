@@ -80,31 +80,29 @@ struct AnteprimaDocumento: View {
     private func barraPagine(pagina: Int, totale: Int, url: URL?) -> some View {
         let m = Tema.Misura.Documenti.self
         return HStack(spacing: m.spazioPagine) {
-            Button { stato.vistaDocumenti.pagina = pagina - 1 } label: {
-                Image(systemName: "chevron.left")
-                    .foregroundColor(pagina <= 1 ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro)
+            PulsanteIcona(simbolo: "chevron.left", aiuto: "Pagina precedente", taglia: .compatta, vetro: false) {
+                stato.vistaDocumenti.pagina = pagina - 1
             }
-            .buttonStyle(StileSemplice())
             .disabled(pagina <= 1)
-            .help("Pagina precedente")
             Text("Pagina \(pagina) di \(totale)")
                 .font(Tema.Testo.didascalia)
                 .monospacedDigit()
                 .foregroundColor(Tema.Colore.inchiostro)
                 .lineLimit(1)
-            Button { stato.vistaDocumenti.pagina = pagina + 1 } label: {
-                Image(systemName: "chevron.right")
-                    .foregroundColor(pagina >= totale ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro)
+            PulsanteIcona(simbolo: "chevron.right", aiuto: "Pagina successiva", taglia: .compatta, vetro: false) {
+                stato.vistaDocumenti.pagina = pagina + 1
             }
-            .buttonStyle(StileSemplice())
             .disabled(pagina >= totale)
-            .help("Pagina successiva")
             if let url {
-                Button("Apri in Anteprima") { NSWorkspace.shared.open(url) }
-                    .buttonStyle(StileSemplice())
-                    .font(Tema.Testo.didascalia)
-                    .foregroundColor(Colori.Colonna.collegamento)
-                    .help("Apre il file nell'app Anteprima del Mac")
+                Button { NSWorkspace.shared.open(url) } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("Apri in Anteprima")
+                        Image(systemName: "arrow.up.right")
+                    }
+                }
+                .buttonStyle(StileCollegamento())
+                .fixedSize()
+                .help("Apre il file nell'app Anteprima del Mac")
             }
         }
         .padding(.horizontal, m.marginePagine)

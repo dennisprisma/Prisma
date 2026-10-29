@@ -1,6 +1,6 @@
 import CoreGraphics
 
-/// L'imbuto dell'«effetto genio» (EffettoGenio, Movimento.swift), nelle coordinate della finestra:
+/// L'imbuto dell'«effetto genio» (CurveGenio e Shell/MotoreGenio.swift), nelle coordinate della finestra:
 /// i due lati vanno dagli angoli in alto della finestra (y = 0) ai lati dell'icona del dock (y = `collo`,
 /// la cima dell'icona) con una curva a S: dritti in alto, piegati nel mezzo, di nuovo dritti sull'icona.
 /// `piega` dice quanto l'imbuto è formato: 0 = lati dritti (la finestra com'è), 1 = imbuto pieno.

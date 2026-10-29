@@ -74,8 +74,10 @@ struct ConfrontoDossierVista: View {
                 HStack(spacing: m.spazio) {
                     MenuTendina(selezione: Binding(get: { scelta }, set: { sceltaCollegamento = $0 }), opzioni: opzioni,
                                 larghezza: m.menu)
-                    Button(TestiConfrontoDossier.collega) {
+                    Button {
                         if let b = candidate.first(where: { Self.chiave($0.0) == scelta })?.0 { collega(d.id, b) }
+                    } label: {
+                        Label(TestiConfrontoDossier.collega, systemImage: "link")
                     }
                     .buttonStyle(StileVetro(margine: m.pulsante))
                     .disabled(scelta.isEmpty || stato.solaLettura)
@@ -204,10 +206,8 @@ struct ConfrontoDossierVista: View {
                     bersaglio = nil
                 } label: {
                     Text(TestiConfrontoDossier.scollega)
-                        .font(Tipo.kpiNota)
-                        .foregroundColor(Colori.ConfrontoDossier.collegamento)
                 }
-                .buttonStyle(StileSemplice())
+                .buttonStyle(StileCollegamento())
                 .disabled(stato.solaLettura)
                 if segmenti.count == 2 {
                     SegmentiAnalisi(opzioni: segmenti, selezione: Binding(get: { b }, set: { bersaglio = $0 }))
@@ -391,10 +391,8 @@ struct ConfrontoDossierVista: View {
                     scelte = aggiornabili
                 } label: {
                     Text(TestiConfrontoDossier.scegliTutte)
-                        .font(Tipo.kpiNota)
-                        .foregroundColor(Colori.ConfrontoDossier.collegamento)
                 }
-                .buttonStyle(StileSemplice())
+                .buttonStyle(StileCollegamento())
                 .disabled(aggiornabili.isEmpty || stato.solaLettura)
                 Spacer(minLength: 0)
             }
@@ -461,8 +459,10 @@ private struct ImpattoNuovoKID: View {
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.ConfrontoDossier.vuoto)
                     .fixedSize(horizontal: false, vertical: true)
-                Button(TestiConfrontoDossier.creaAttivita) {
+                Button {
                     stato.creaAttivitaImpatto(esito, prodotto: prodotto, il: Posizione.oggiArrotondato)
+                } label: {
+                    Label(TestiConfrontoDossier.creaAttivita, systemImage: "plus")
                 }
                 .buttonStyle(StileVetro(margine: m.pulsante))
                 .disabled(stato.solaLettura)
@@ -593,10 +593,8 @@ struct ElencoVariazioni: View {
                         if ripristinabile(v) {
                             Button { ripristina(v) } label: {
                                 Text(TestiConfrontoDossier.ripristina)
-                                    .font(Tipo.kpiNota)
-                                    .foregroundColor(colori.collegamento)
                             }
-                            .buttonStyle(StileSemplice())
+                            .buttonStyle(StileCollegamento())
                             .disabled(stato.solaLettura)
                         }
                     }
@@ -604,10 +602,8 @@ struct ElencoVariazioni: View {
                 if !tutte, mostrate.count < variazioni.count {
                     Button { tutte = true } label: {
                         Text(TestiConfrontoDossier.mostraTutti(variazioni.count))
-                            .font(Tipo.kpiNota)
-                            .foregroundColor(colori.collegamento)
                     }
-                    .buttonStyle(StileSemplice())
+                    .buttonStyle(StileCollegamento())
                 }
             }
         }

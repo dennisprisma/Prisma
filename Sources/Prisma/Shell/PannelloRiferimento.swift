@@ -49,9 +49,7 @@ struct PannelloRiferimento: View {
                 HStack(spacing: M.spazioTestata) {
                     if famiglia == .previdenza && !stato.inModoCliente {
                         Button(T.apriTFR) { apriTFR() }
-                            .buttonStyle(StileSemplice())
-                            .font(F.collegamento)
-                            .foregroundColor(K.collegamento)
+                            .buttonStyle(StileCollegamento())
                     }
                     Spacer(minLength: 0)
                     Button(mostraMetodo ? T.nascondiMetodo : T.mostraMetodo) { mostraMetodo.toggle() }
@@ -209,9 +207,7 @@ struct PannelloRiferimento: View {
             stato.schedaImpostazioni = .riferimenti
             stato.apri(.impostazioni)
         }
-        .buttonStyle(StileSemplice())
-        .font(F.collegamento)
-        .foregroundColor(K.collegamento)
+        .buttonStyle(StileCollegamento())
     }
 
     private func apriTFR() {

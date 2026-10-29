@@ -9,7 +9,10 @@ extension Misure {
         static let margineCompatta = EdgeInsets(top: 6, leading: 14, bottom: 6, trailing: 14)
         static let margineScheda = EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10)
         static let pulsante = EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)
-        static let larghezzaScheda: CGFloat = 248
+        /// Larga abbastanza per «Prepara» e «Pianifica» con l'icona sulla scala leggibile.
+        static let larghezzaScheda: CGFloat = 264
+        /// Fra la scritta e la freccia del collegamento «Nel Portafoglio».
+        static let spazioFreccia: CGFloat = 4
         static let spazioSchede: CGFloat = 8
         static let spazioRighe: CGFloat = 5
         static let avatar: CGFloat = 26

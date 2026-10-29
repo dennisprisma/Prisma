@@ -48,14 +48,28 @@ extension Tema.Colore {
 extension Tema.Misura {
     /// Misure dei componenti di base.
     enum Componenti {
-        /// Altezza minima dei pulsanti in capsula, anche con margini stretti.
-        static let pulsanteMinimo: CGFloat = 26
-        /// Margine laterale minimo del testo dentro una capsula.
+        /// Le tre taglie dei pulsanti in capsula (l'altezza la decide la taglia, non i margini):
+        /// compatta 28 (.btn.sm, dentro le righe), normale 32 (.btn), grande 36 (stati vuoti e guide).
+        static let pulsanteMinimo: CGFloat = 28
+        static let pulsanteNormale: CGFloat = 32
+        static let pulsanteGrande: CGFloat = 36
+        /// Margine laterale minimo del testo dentro una capsula, per taglia (`margineCapsula` = compatta).
         static let margineCapsula: CGFloat = 12
+        static let margineLatoCompatto: CGFloat = 12
+        static let margineLatoNormale: CGFloat = 14
+        static let margineLatoGrande: CGFloat = 18
+        /// Spazio fra l'icona e la scritta di un pulsante (gap 7 del .btn del tema).
+        static let spazioSimboloPulsante: CGFloat = 7
+        /// Il bersaglio più piccolo ammesso (anche croci e «i»), e il lato dei pulsanti solo icona.
+        static let areaClicMinima: CGFloat = 28
+        static let pulsanteIcona: CGFloat = 32
+        /// Quanto si allarga l'area di clic di un'icona da 22 pt dentro una riga densa (22 + 2 × 3 = 28),
+        /// senza alzare la riga: `.contentShape(Rectangle().inset(by: -allargamentoClic))`.
+        static let allargamentoClic: CGFloat = 3
         /// Controllo a segmenti (.segc): altezza, margine delle voci (normale e compatto) e del cursore.
-        static let segmenti: CGFloat = 30
-        static let margineSegmento: CGFloat = 12
-        static let margineSegmentoCompatto: CGFloat = 8
+        static let segmenti: CGFloat = 32
+        static let margineSegmento: CGFloat = 14
+        static let margineSegmentoCompatto: CGFloat = 9
         static let margineCursore: CGFloat = 2
         /// Badge sulle icone (quello della barra è `Tema.Misura.badge`).
         static let badgeGrande: CGFloat = 18
@@ -67,8 +81,8 @@ extension Tema.Misura {
         static let avviso = EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
         /// Campo di testo (.field): margine laterale, altezza minima e margine verticale.
         static let margineCampo: CGFloat = 12
-        static let campoPiccolo: CGFloat = 30
-        static let margineCampoVerticale: CGFloat = 6
+        static let campoPiccolo: CGFloat = 32
+        static let margineCampoVerticale: CGFloat = 7
         /// Icona Agenda, in 256esimi del lato: centro del mese e del giorno.
         static let meseIconaAgenda = CGPoint(x: 128, y: 68.9)
         static let giornoIconaAgenda = CGPoint(x: 128, y: 151.6)
@@ -91,11 +105,14 @@ extension Tema.Misura {
 extension Tema.Testo {
     /// Caratteri dei componenti di base.
     enum Componenti {
-        static let segmento = Tema.Testo.sf(12.5, .medium)
-        static let segmentoAttivo = Tema.Testo.sf(12.5, .semibold)
-        static let segmentoCompatto = Tema.Testo.sf(12, .medium)
-        static let segmentoCompattoAttivo = Tema.Testo.sf(12, .semibold)
-        static let badgeGrande = Tema.Testo.sf(11, .bold)
+        static let segmento = Tema.Testo.sf(13, .medium)
+        static let segmentoAttivo = Tema.Testo.sf(13, .semibold)
+        static let segmentoCompatto = Tema.Testo.sf(12.5, .medium)
+        static let segmentoCompattoAttivo = Tema.Testo.sf(12.5, .semibold)
+        /// Numero dentro il badge da 18 pt: resta fuori dalla scala leggibile.
+        static let badgeGrande = Tema.Testo.sfFisso(11, .bold)
+        /// Icona SF dei pulsanti (davanti alla scritta, o da sola).
+        static let simboloPulsante = Font.system(size: 13 * Tipo.fattore, weight: .semibold)
         static let avviso = Tema.Testo.sf(13, .medium)
         /// Mese e giorno sull'icona Agenda, in proporzione al lato.
         static func meseIconaAgenda(_ lato: CGFloat) -> Font { .system(size: lato * 0.1538, weight: .bold) }
@@ -164,53 +181,134 @@ extension View {
 
 // MARK: - Pulsanti
 
+/// Le tre misure dei pulsanti in capsula: l'altezza la decide la taglia, non i margini.
+enum TagliaPulsante {
+    /// 36 pt: l'azione unica di uno stato vuoto o di una guida («Scegli i file…», «Comincia»).
+    case grande
+    /// 32 pt (.btn del tema): intestazioni, barre, dettagli.
+    case normale
+    /// 28 pt (.btn.sm): dentro le righe di elenchi e tabelle («Completa», «Fissa»).
+    case compatta
+
+    var altezza: CGFloat {
+        switch self {
+        case .grande: return Tema.Misura.Componenti.pulsanteGrande
+        case .normale: return Tema.Misura.Componenti.pulsanteNormale
+        case .compatta: return Tema.Misura.Componenti.pulsanteMinimo
+        }
+    }
+
+    var margineLato: CGFloat {
+        switch self {
+        case .grande: return Tema.Misura.Componenti.margineLatoGrande
+        case .normale: return Tema.Misura.Componenti.margineLatoNormale
+        case .compatta: return Tema.Misura.Componenti.margineLatoCompatto
+        }
+    }
+
+    /// Il carattere della scritta: il primario (blu o rosso) in semibold.
+    func carattere(primario: Bool) -> Font {
+        switch self {
+        case .grande: return Tema.Testo.pulsanteGrande
+        case .normale: return primario ? Tema.Testo.pulsantePrimario : Tema.Testo.pulsante
+        case .compatta: return primario ? Tema.Testo.pulsantePrimarioPiccolo : Tema.Testo.pulsantePiccolo
+        }
+    }
+}
+
 /// Aspetto dei pulsanti in capsula del tema.
 enum AspettoPulsante {
     /// `.btn`: capsula di vetro chiaro, testo inchiostro.
     case vetro
-    /// `.btn.primary`: capsula piena dell'accento, testo bianco.
+    /// Vetro con testo e icona del colore dei collegamenti: l'azione consigliata di un pannello, senza un secondo blu.
+    case vetroAccento
+    /// `.btn.primary`: capsula piena dell'accento, testo bianco. Uno solo per finestra.
     case principale
     /// Capsula piena rossa (il microfono di Eve mentre ascolta).
     case rosso
 }
 
+private struct ChiavePulsantiSoloIcona: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Nelle barre strette i pulsanti di vetro mostrano solo l'icona delle loro `Label` (il blu tiene sempre
+    /// la scritta). Chi mette una `Label` in una barra che si può stringere aggiunge `.help("…")`.
+    var pulsantiSoloIcona: Bool {
+        get { self[ChiavePulsantiSoloIcona.self] }
+        set { self[ChiavePulsantiSoloIcona.self] = newValue }
+    }
+}
+
+/// Icona SF e scritta dei pulsanti (gap 7 del tema). Una `Label` dentro un pulsante di Prisma prende questo stile.
+///
+///     Button { nuova() } label: { Label("Nuova attività", systemImage: "plus") }.buttonStyle(StileBlu())
+struct EtichettaPulsante: LabelStyle {
+    var soloIcona = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+            configuration.icon
+                .font(Tema.Testo.Componenti.simboloPulsante)
+                .imageScale(.medium)
+            if !soloIcona {
+                configuration.title
+            }
+        }
+    }
+}
+
 /// Il corpo comune dei pulsanti in capsula: riempimento, passaggio del mouse e pressione a molla.
+/// L'altezza è quella della taglia (o `altezza`, se più alta); i margini verticali non contano più.
 struct CorpoPulsante<Etichetta: View>: View {
     let etichetta: Etichetta
     let aspetto: AspettoPulsante
     let premuto: Bool
     let margine: EdgeInsets
-    /// Altezza fissa (nil: quanto il testo con i margini, almeno `pulsanteMinimo`).
+    let taglia: TagliaPulsante
+    /// Altezza minima in più rispetto alla taglia (nil: quella della taglia).
     let altezza: CGFloat?
     @State private var sopra = false
     @Environment(\.isEnabled) private var abilitato
     @Environment(\.chipDelTema) private var chipDelTema
+    @Environment(\.pulsantiSoloIcona) private var soloIcona
 
-    init(etichetta: Etichetta, aspetto: AspettoPulsante, premuto: Bool, margine: EdgeInsets, altezza: CGFloat? = nil) {
+    init(etichetta: Etichetta, aspetto: AspettoPulsante, premuto: Bool, margine: EdgeInsets,
+         taglia: TagliaPulsante = .compatta, altezza: CGFloat? = nil) {
         self.etichetta = etichetta
         self.aspetto = aspetto
         self.premuto = premuto
         self.margine = margine
+        self.taglia = taglia
         self.altezza = altezza
     }
 
+    private var primario: Bool { aspetto == .principale || aspetto == .rosso }
+
+    private var coloreTesto: Color {
+        switch aspetto {
+        case .vetro: return Tema.Colore.inchiostro
+        case .vetroAccento: return Tema.Colore.link
+        case .principale, .rosso: return Tema.Colore.Componenti.testoSuColore
+        }
+    }
+
     var body: some View {
-        let m = Tema.Misura.Componenti.self
         // Una riga sola e mai più stretta del testo: nessun pulsante va a capo lettera per lettera.
         // Chi riempie la sua cella (`.frame(maxWidth: .infinity)` nell'etichetta) continua a riempirla.
         let base = LarghezzaAlmenoIdeale().callAsFunction { etichetta.lineLimit(1) }
-            .font(Tema.Testo.pulsantePiccolo)
-            .foregroundColor(aspetto == .vetro ? Tema.Colore.inchiostro : Tema.Colore.Componenti.testoSuColore)
-            .padding(.leading, max(margine.leading, m.margineCapsula))
-            .padding(.trailing, max(margine.trailing, m.margineCapsula))
-            .padding(.top, altezza == nil ? margine.top : 0)
-            .padding(.bottom, altezza == nil ? margine.bottom : 0)
-            .frame(minHeight: altezza == nil ? m.pulsanteMinimo : nil)
-            .frame(height: altezza)
+            .labelStyle(EtichettaPulsante(soloIcona: soloIcona && !primario))
+            .font(taglia.carattere(primario: primario))
+            .foregroundColor(coloreTesto)
+            .padding(.leading, max(margine.leading, taglia.margineLato))
+            .padding(.trailing, max(margine.trailing, taglia.margineLato))
+            // Con «Molto grande» il testo cresce e il pulsante con lui: minHeight, mai un'altezza fissa
+            .frame(minHeight: max(taglia.altezza, altezza ?? 0))
         let alPassaggio: Color = chipDelTema ? Tema.Colore.chipSopra : Tema.Colore.chipControlloSopra
         Group {
             switch aspetto {
-            case .vetro:
+            case .vetro, .vetroAccento:
                 base.vetro(.chip, forma: .capsula, riempimento: sopra ? alPassaggio : nil, interattivo: true)
             case .principale, .rosso:
                 base.background { pieno }
@@ -257,19 +355,40 @@ struct LarghezzaAlmenoIdeale: Layout {
 }
 
 /// Pulsante di vetro (.btn del tema): capsula chiara traslucida, più chiara al passaggio, molla alla pressione.
+/// `accento`: testo e icona del colore dei collegamenti, per l'azione consigliata di un pannello (mai un secondo blu).
 struct StileVetro: ButtonStyle {
-    var margine = Misure.Pulsante.vetroMargine
+    var margine: EdgeInsets
+    var taglia: TagliaPulsante
+    var accento: Bool
+
+    /// Pulsante di vetro normale (32 pt).
+    init(taglia: TagliaPulsante = .normale, accento: Bool = false) {
+        self.margine = Misure.Pulsante.vetroMargine
+        self.taglia = taglia
+        self.accento = accento
+    }
+
+    /// Con margini propri: compatto (28 pt) se non si dice altro. Dei margini contano solo quelli laterali.
+    init(margine: EdgeInsets, taglia: TagliaPulsante = .compatta, accento: Bool = false) {
+        self.margine = margine
+        self.taglia = taglia
+        self.accento = accento
+    }
 
     func makeBody(configuration: Configuration) -> some View {
-        CorpoPulsante(etichetta: configuration.label, aspetto: .vetro, premuto: configuration.isPressed, margine: margine)
+        CorpoPulsante(etichetta: configuration.label, aspetto: accento ? .vetroAccento : .vetro,
+                      premuto: configuration.isPressed, margine: margine, taglia: taglia)
     }
 }
 
-/// Pulsante principale (.btn.primary): capsula piena del colore d'accento, testo bianco.
+/// Pulsante principale (.btn.primary): capsula piena del colore d'accento, testo bianco semibold.
+/// Uno solo per finestra: «il blu è la cosa da fare qui».
 struct StileBlu: ButtonStyle {
+    var taglia: TagliaPulsante = .normale
+
     func makeBody(configuration: Configuration) -> some View {
         CorpoPulsante(etichetta: configuration.label, aspetto: .principale, premuto: configuration.isPressed,
-                      margine: Misure.Pulsante.bluMargine)
+                      margine: Misure.Pulsante.bluMargine, taglia: taglia)
     }
 }
 
@@ -279,7 +398,93 @@ struct StileMicrofono: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         CorpoPulsante(etichetta: configuration.label, aspetto: acceso ? .rosso : .principale,
-                      premuto: configuration.isPressed, margine: Misure.Pulsante.bluMargine)
+                      premuto: configuration.isPressed, margine: Misure.Pulsante.bluMargine, taglia: .normale)
+    }
+}
+
+/// Azione terziaria: testo del colore dei collegamenti, semibold, con la freccia; area di clic di almeno 28 pt.
+/// Per la freccia in coda: `HStack { Text("Nel Portafoglio"); Image(systemName: "chevron.right") }`.
+struct StileCollegamento: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .labelStyle(EtichettaPulsante())
+            .font(Tema.Testo.collegamento)
+            .foregroundColor(Tema.Colore.link)
+            .lineLimit(1)
+            .frame(minHeight: Tema.Misura.Componenti.areaClicMinima)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
+/// Pulsante con la sola icona (croci, frecce, «＋» delle colonne, «⋯»): capsula di vetro tonda, o soltanto
+/// l'icona con un cerchio al passaggio (`vetro: false`). L'area di clic è sempre di 28 (compatta) o 32 pt;
+/// l'aiuto fa da suggerimento e da etichetta per VoiceOver.
+struct PulsanteIcona: View {
+    let simbolo: String
+    let aiuto: String
+    var taglia: TagliaPulsante = .normale
+    /// false: niente vetro, solo l'icona (croci nelle righe); l'area di clic resta piena.
+    var vetro = true
+    let azione: () -> Void
+
+    var body: some View {
+        let m = Tema.Misura.Componenti.self
+        let lato: CGFloat = taglia == .compatta ? m.areaClicMinima : m.pulsanteIcona
+        Button(action: azione) {
+            Image(systemName: simbolo)
+                .font(Tema.Testo.Componenti.simboloPulsante)
+                .imageScale(.medium)
+                .foregroundColor(vetro ? Tema.Colore.inchiostro : Tema.Colore.inchiostroSecondario)
+                .frame(width: lato, height: lato)
+                .contentShape(Circle())
+        }
+        .buttonStyle(StileIconaTonda(vetro: vetro))
+        .help(aiuto)
+        .accessibilityLabel(aiuto)
+    }
+}
+
+/// Lo stile di `PulsanteIcona`: vetro tondo (come i pulsanti di vetro) oppure trasparente con un cerchio
+/// al passaggio; molla alla pressione come `CorpoPulsante`.
+struct StileIconaTonda: ButtonStyle {
+    let vetro: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        CorpoIconaTonda(etichetta: configuration.label, vetro: vetro, premuto: configuration.isPressed)
+    }
+}
+
+struct CorpoIconaTonda<Etichetta: View>: View {
+    let etichetta: Etichetta
+    let vetro: Bool
+    let premuto: Bool
+    @State private var sopra = false
+    @Environment(\.isEnabled) private var abilitato
+    @Environment(\.chipDelTema) private var chipDelTema
+
+    init(etichetta: Etichetta, vetro: Bool, premuto: Bool) {
+        self.etichetta = etichetta
+        self.vetro = vetro
+        self.premuto = premuto
+    }
+
+    var body: some View {
+        let alPassaggio: Color = chipDelTema ? Tema.Colore.chipSopra : Tema.Colore.chipControlloSopra
+        Group {
+            if vetro {
+                etichetta.vetro(.chip, forma: .capsula, riempimento: sopra ? alPassaggio : nil, interattivo: true)
+            } else {
+                etichetta.background {
+                    Circle().fill(sopra ? Tema.Colore.chip : Color.clear).allowsHitTesting(false)
+                }
+            }
+        }
+        .contentShape(Circle())
+        .scaleEffect(premuto ? Tema.Moto.scalaPressione : 1)
+        .animation(Tema.Moto.molla, value: premuto)
+        .opacity(abilitato ? 1 : 0.55)
+        .onHover { sopra = $0 }
     }
 }
 

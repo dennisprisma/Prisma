@@ -196,8 +196,8 @@ struct PannelloAggiornaValori: View {
                                 selezione: $scheda)
                     .frame(width: m.segmenti)
             }
-            Button(TestiAggiornaValori.chiudi) { stato.aggiornaValori = nil }
-                .buttonStyle(StileVetro(margine: m.marginePulsante))
+            Button { stato.aggiornaValori = nil } label: { Label(TestiAggiornaValori.chiudi, systemImage: "xmark") }
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
         }
     }
@@ -252,10 +252,10 @@ struct PannelloAggiornaValori: View {
                     .foregroundColor(Tema.Colore.inchiostro)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: m.spazioComandi) {
-                    Button(TestiAggiornaValori.scegliFile) { stato.scegliFileValori() }
+                    Button { stato.scegliFileValori() } label: { Label(TestiAggiornaValori.scegliFile, systemImage: "doc.badge.plus") }
                         .buttonStyle(StileBlu())
-                    Button(TestiAggiornaValori.incolla) { stato.incollaValoriDaExcel() }
-                        .buttonStyle(StileVetro(margine: m.marginePulsante))
+                    Button { stato.incollaValoriDaExcel() } label: { Label(TestiAggiornaValori.incolla, systemImage: "doc.on.clipboard") }
+                        .buttonStyle(StileVetro())
                 }
             }
             .padding(m.riquadroVuoto)
@@ -430,10 +430,9 @@ struct PannelloAggiornaValori: View {
                         .foregroundColor(Tema.Colore.inchiostro)
                         .lineLimit(1)
                     EtichettaCanale(canale: p.canale, compatta: true)
-                    Button("↗") { stato.apriPosizione(p) }
-                        .buttonStyle(StileSemplice())
-                        .foregroundColor(Tema.Colore.accento)
-                        .help(TestiAggiornaValori.apri)
+                    PulsanteIcona(simbolo: "arrow.up.right", aiuto: TestiAggiornaValori.apri, taglia: .compatta, vetro: false) {
+                        stato.apriPosizione(p)
+                    }
                 }
             } else {
                 Text([e.riga.cliente, e.riga.prodotto].filter { !$0.isEmpty }.joined(separator: " · "))

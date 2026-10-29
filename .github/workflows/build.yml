@@ -138,7 +138,7 @@ jobs:
               "Prisma.app/Contents/MacOS/Prisma" --prova-prospetti "$PWD/anteprime/prospetti" > /dev/null || true
               # Alcune schermate con il testo «molto grande» (Impostazioni → Dimensione del testo)
               "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime/testo-grande" --metodo "$metodo" --testo 1.2 \
-                --solo 1-scrivania,5-clienti-panoramica,8-posizioni-dettaglio,11-agenda,65-portafoglio > /dev/null || true
+                --solo 1-scrivania,5-clienti-panoramica,8-posizioni-dettaglio,11-agenda,65-portafoglio,220-avvio-benvenuto,222-introduzione,225-guida-posizioni,234-posizioni-finestra-stretta > /dev/null || true
               ls -la anteprime anteprime/prospetti || true
               break
             fi

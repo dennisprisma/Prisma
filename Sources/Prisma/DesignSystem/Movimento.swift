@@ -87,22 +87,23 @@ extension Tema.Moto {
     // l'unico movimento elastico resta lo sblocco col dito (Sblocco.ritorno, Sblocco.pressione).
 
     enum Finestre {
-        // Apertura, come macOS: compare appena più piccola e trasparente, al suo posto, e decelera morbida
-        static let apertura = Animation.timingCurve(0.2, 0.9, 0.25, 1, duration: 0.24)
-        static let durataApertura: Double = 0.24
-        static let scalaApertura: CGFloat = 0.9
-        // Chiusura: dissolvenza con un lieve rimpicciolimento, in accelerazione
-        static let chiusura = Animation.easeIn(duration: 0.16)
-        static let durataChiusura: Double = 0.16
-        static let scalaChiusura: CGFloat = 0.95
-        // Riduzione nel dock: «effetto genio» di macOS (circa mezzo secondo); il ripristino è lo stesso al contrario.
-        // La curva del tempo è appena morbida ai capi: le fasi qui sotto hanno già le loro accelerazioni, e così
-        // la finestra risponde subito al clic (con easeInOut pieno partirebbe troppo piano).
-        static let genio = Animation.timingCurve(0.25, 0.1, 0.55, 1, duration: 0.5)
-        static let durataGenio: Double = 0.5
+        // Curve come punti di controllo: valgono per SwiftUI (Animation.timingCurve), per Core Animation
+        // (CAMediaTimingFunction) e per CurveGenio (fotogrammi chiave precalcolati, Shell/MotoreGenio.swift).
+        static let controlliGenio: (Double, Double, Double, Double) = (0.25, 0.1, 0.55, 1)
+        static let controlliRipristino: (Double, Double, Double, Double) = (0.42, 0, 0.58, 1)
+        // Riduzione nel dock: «effetto genio» di macOS (circa 8 fotogrammi a 24 al secondo, come il video del Mac
+        // dell'utente). La curva è appena morbida ai capi: le fasi qui sotto hanno già le loro accelerazioni, e così
+        // la finestra risponde subito al clic. Il genio vero lo fa Core Animation su un'istantanea della finestra;
+        // la curva SwiftUI resta per il ripiego.
+        static let genio = Animation.timingCurve(0.25, 0.1, 0.55, 1, duration: 0.4)
+        static let durataGenio: Double = 0.4
         // Il ripristino finisce piano: i lati tornano dritti senza scatto
-        static let ripristino = Animation.timingCurve(0.42, 0, 0.58, 1, duration: 0.45)
-        static let durataRipristino: Double = 0.45
+        static let ripristino = Animation.timingCurve(0.42, 0, 0.58, 1, duration: 0.4)
+        static let durataRipristino: Double = 0.4
+        /// Passando avanti e indietro sui semafori non si cattura l'istantanea più spesso di così (secondi).
+        static let genioIntervalloPreparazione: Double = 0.3
+        /// Con Maiusc premuto (come il rallentatore di macOS) le durate del genio si moltiplicano per questo.
+        static let fattoreRallentato: Double = 2
         /// Prima fase del genio (fino a qui): il bordo in basso si stringe e scende fino all'icona, la cima resta ferma.
         static let genioFineFondo: CGFloat = 0.45
         /// Fino a qui si forma l'imbuto: i lati si piegano a S verso l'icona (subito, mentre il fondo comincia a scendere).
@@ -111,10 +112,43 @@ extension Tema.Moto {
         static let genioInizioCima: CGFloat = 0.3
         /// Da qui la finestra, ormai nell'icona, svanisce: il contenuto resta visibile fin quasi alla fine.
         static let genioInizioDissolvenza: CGFloat = 0.88
-        /// Spazio sopra la finestra occupato dalla sua ombra: la prospettiva non deve mai rovesciarla.
-        static let genioMargineOmbra: CGFloat = 40
-        /// Fattore prospettico minimo (w) sul bordo alto dell'ombra.
-        static let genioProspettivaMinima: CGFloat = 0.2
+        /// Strisce orizzontali dell'istantanea: ognuna segue un trapezio esatto dell'imbuto (i lati diventano curvi).
+        static let genioStrisce = 40
+        /// Fotogrammi chiave al secondo precalcolati (sopra i 60 Hz del Mac: fra due vicini l'interpolazione non si vede).
+        static let genioFotogrammiAlSecondo: Double = 120
+        /// Le strisce si sovrappongono di tanto (pt) verso il basso: niente fili di sfondo tra una e l'altra.
+        static let genioSovrapposizione: CGFloat = 1
+        /// L'ombra della finestra svanisce all'inizio del genio (e ricompare alla fine del ripristino) in tanto.
+        static let genioDurataOmbra: Double = 0.12
+        /// Oltre questo tempo una cattura sincrona dell'istantanea è «lenta»: la volta dopo, senza istantanea pronta,
+        /// si usa il ripiego (e l'istantanea si prepara al giro dopo).
+        static let genioAttesaMassimaIstantanea: Double = 0.12
+        /// Un'istantanea preparata (puntatore sui semafori) vale per tanto (secondi).
+        static let genioValiditaIstantanea: Double = 1.5
+        /// Istantanee tenute per le finestre ridotte (servono al ripristino); oltre si rifanno al ripristino.
+        static let genioIstantaneeTenute = 4
+        /// A effetto finito l'istantanea resta sopra la finestra vera ancora tanto: nessun fotogramma vuoto.
+        static let genioRitardoRimozione: Double = 0.034
+        /// Ripiego senza istantanea: la finestra viva rimpicciolisce verso l'icona e svanisce (solo scala, affine).
+        static let ripiegoGenio = Animation.easeIn(duration: 0.28)
+        static let durataRipiegoGenio: Double = 0.28
+        static let scalaRipiegoGenio: CGFloat = 0.12
+        // Apertura come macOS dal dock: la finestra viva cresce dall'icona (scala affine, il vetro resta vero),
+        // molla senza rimbalzo
+        static let apertura = Tema.Moto.conMolla(risposta: 0.3, smorzamento: 1)
+        static let durataApertura: Double = 0.3
+        /// Da dove parte la finestra che si apre da un punto (icona del dock, della scrivania, widget).
+        static let scalaApertura: CGFloat = 0.2
+        /// Senza punto d'origine (menu, spazi, comandi) l'apertura resta quella lieve al suo posto.
+        static let scalaAperturaSulPosto: CGFloat = 0.94
+        /// L'opacità arriva piena quasi subito: niente vetro mezzo trasparente (niente fantasma).
+        static let aperturaOpacita = Animation.easeOut(duration: 0.06)
+        // Chiusura: l'istantanea svanisce con un lieve rimpicciolimento, in accelerazione (easeIn)
+        static let controlliChiusura: (Double, Double, Double, Double) = (0.42, 0, 1, 1)
+        static let durataChiusura: Double = 0.2
+        static let scalaChiusura: CGFloat = 0.96
+        /// Solo con «Riduci movimento» e nelle prove: la finestra viva svanisce.
+        static let chiusura = Animation.easeIn(duration: 0.2)
         // Ingrandisci / ripristina dimensione / affianca / spazi (FLIP): fluido, senza rimbalzo
         static let ingrandimento = Animation.timingCurve(0.3, 0, 0.2, 1, duration: 0.25)
         static let durataIngrandimento: Double = 0.25
@@ -236,21 +270,14 @@ struct EffettoFinestra: ViewModifier {
     }
 }
 
-/// «Effetto genio» di macOS: con progresso 0 la finestra è com'è, con 1 è risucchiata nell'icona del dock.
-/// Il modello è quello del Mac: un imbuto con i lati a S (`GenioImbuto`) che va dalla cima della finestra
-/// all'icona. Prima il bordo in basso si stringe verso l'icona e scende per primo mentre i lati si piegano,
-/// poi la cima scende lungo l'imbuto e il corpo della finestra scivola dentro l'icona; il ripristino è l'inverso.
-/// Un'omografia porta il rettangolo della finestra sul quadrilatero che ha cima e fondo sull'imbuto: i lati
-/// restano corde dritte della curva, ma la prospettiva schiaccia il contenuto verso il collo come nel genio vero,
-/// e la cima resta larga finché non arriva alla piega. Solo una trasformazione (niente istantanee della finestra,
-/// che col vetro non si possono catturare fedelmente, niente impaginazione a ogni fotogramma).
-/// Con «Riduci movimento» nessuna deformazione (resta la dissolvenza di `OpacitaGenio`).
-struct EffettoGenio: GeometryEffect {
+/// Ripiego del genio senza istantanea (Core Animation assente, istantanea lenta): la finestra viva rimpicciolisce
+/// verso l'icona del dock, solo con una scala (affine: il vetro di Apple si disegna bene). Con progresso 0 è com'è.
+/// Il genio vero, a strisce curve, lo fa MotoreGenio su un'istantanea (una prospettiva sulla finestra viva, col
+/// vetro nativo, non si disegna: è il difetto del video del 29 ottobre).
+struct RiduzioneSemplice: GeometryEffect {
     var progresso: CGFloat
-    /// Il centro dell'icona nelle coordinate della finestra (di solito sotto la finestra).
-    let bersaglio: CGPoint
-    /// Il lato dell'icona: alla fine la finestra è grande così.
-    let lato: CGFloat
+    /// Il centro dell'icona nelle coordinate della finestra.
+    let ancora: CGPoint
     let calmo: Bool
 
     var animatableData: CGFloat {
@@ -259,75 +286,25 @@ struct EffettoGenio: GeometryEffect {
     }
 
     func effectValue(size: CGSize) -> ProjectionTransform {
-        let identita = ProjectionTransform(CGAffineTransform.identity)
-        guard !calmo, progresso > 0, size.width > 1, size.height > 1 else { return identita }
-        let q = EffettoGenio.quadrilatero(progresso: min(progresso, 1), larghezza: size.width, altezza: size.height,
-                                          bersaglio: bersaglio, lato: lato)
-        return EffettoGenio.omografia(larghezza: size.width, altezza: size.height, q.0, q.1, q.2, q.3)
+        guard !calmo, progresso > 0 else { return ProjectionTransform(CGAffineTransform.identity) }
+        let s = 1 - (1 - Tema.Moto.Finestre.scalaRipiegoGenio) * min(progresso, 1)
+        let t = CGAffineTransform(translationX: ancora.x, y: ancora.y)
+            .scaledBy(x: s, y: s)
+            .translatedBy(x: -ancora.x, y: -ancora.y)
+        return ProjectionTransform(t)
     }
+}
 
-    /// Gli angoli (in alto a sinistra, in alto a destra, in basso a destra, in basso a sinistra) della finestra
-    /// deformata. Con progresso 0 sono quelli del rettangolo; con 1 quelli dell'icona attorno al bersaglio.
-    static func quadrilatero(progresso p: CGFloat, larghezza w: CGFloat, altezza h: CGFloat,
-                             bersaglio: CGPoint, lato: CGFloat) -> (CGPoint, CGPoint, CGPoint, CGPoint) {
-        let m = Tema.Moto.Finestre.self
-        let mezzo = lato / 2
-        // L'icona sta sotto la cima della finestra: il quadrilatero non si rovescia mai
-        let ty = max(bersaglio.y, mezzo)
-        let imbuto = GenioImbuto(larghezza: w, centroIcona: bersaglio.x, lato: lato,
-                                 collo: ty - mezzo,
-                                 piega: GenioImbuto.esce(GenioImbuto.limita(p / m.genioFinePiega)))
-        // Fondo: accelera e rallenta arrivando sul fondo dell'icona
-        let fondo = GenioImbuto.morbido(GenioImbuto.limita(p / m.genioFineFondo))
-        let yFondo = GenioImbuto.verso(h, ty + mezzo, fondo)
-        // Cima: parte piano, scivola lungo l'imbuto e si posa sulla cima dell'icona; mai sotto il fondo
-        let cima = GenioImbuto.morbido(GenioImbuto.limita((p - m.genioInizioCima) / (1 - m.genioInizioCima)))
-        let yCima = min((ty - mezzo) * cima, max(0, yFondo - lato))
-        let alto = imbuto.lati(a: yCima)
-        var basso = imbuto.lati(a: yFondo)
-        // Prospettiva limitata: sopra la finestra c'è la sua ombra, che non deve andare all'infinito
-        let rapportoMassimo = 1 + (1 - m.genioProspettivaMinima) * h / m.genioMargineOmbra
-        let larghezzaCima = alto.destra - alto.sinistra
-        let minima = larghezzaCima / rapportoMassimo
-        if basso.destra - basso.sinistra < minima {
-            let centro = (basso.sinistra + basso.destra) / 2
-            basso = (centro - minima / 2, centro + minima / 2)
-        }
-        return (CGPoint(x: alto.sinistra, y: yCima),
-                CGPoint(x: alto.destra, y: yCima),
-                CGPoint(x: basso.destra, y: yFondo),
-                CGPoint(x: basso.sinistra, y: yFondo))
-    }
+/// L'opacità dell'apertura con la sua curva breve (piena in 0,06 s), separata dalla scala che segue la molla.
+/// Va messa prima (dentro) di EffettoFinestra: la sua `.animation` tocca solo ciò che sta sotto.
+struct OpacitaApertura: ViewModifier {
+    let visibile: Bool
+    @Environment(\.modoIstantanea) private var istantanea
 
-    /// L'omografia che porta il rettangolo (0, 0, w, h) sul quadrilatero a0 a1 a2 a3 (stesso ordine degli angoli):
-    /// quadrato → quadrilatero di Heckbert, preceduta dalla scala del rettangolo sul quadrato unitario.
-    /// ProjectionTransform moltiplica il vettore riga (x, y, 1). Con il rettangolo stesso dà l'identità.
-    static func omografia(larghezza w: CGFloat, altezza h: CGFloat,
-                          _ a0: CGPoint, _ a1: CGPoint, _ a2: CGPoint, _ a3: CGPoint) -> ProjectionTransform {
-        let dx1 = a1.x - a2.x
-        let dx2 = a3.x - a2.x
-        let dx3 = a0.x - a1.x + a2.x - a3.x
-        let dy1 = a1.y - a2.y
-        let dy2 = a3.y - a2.y
-        let dy3 = a0.y - a1.y + a2.y - a3.y
-        let den = dx1 * dy2 - dx2 * dy1
-        var g: CGFloat = 0
-        var k: CGFloat = 0
-        if abs(den) > 1e-9 {
-            g = (dx3 * dy2 - dx2 * dy3) / den
-            k = (dx1 * dy3 - dx3 * dy1) / den
-        }
-        var t = ProjectionTransform(CGAffineTransform.identity)
-        t.m11 = (a1.x - a0.x + g * a1.x) / w
-        t.m12 = (a1.y - a0.y + g * a1.y) / w
-        t.m13 = g / w
-        t.m21 = (a3.x - a0.x + k * a3.x) / h
-        t.m22 = (a3.y - a0.y + k * a3.y) / h
-        t.m23 = k / h
-        t.m31 = a0.x
-        t.m32 = a0.y
-        t.m33 = 1
-        return t
+    func body(content: Content) -> some View {
+        content
+            .opacity(visibile ? 1 : 0)
+            .animation(istantanea ? nil : Movimenti.curva(Tema.Moto.Finestre.aperturaOpacita), value: visibile)
     }
 }
 

@@ -25,10 +25,10 @@ struct ModuloCondizioni: View {
                 sezione("Le parti del contratto")
                 ForEach($bozza.componenti) { $c in parte($c) }
                 HStack(spacing: 8) {
-                    Button("＋ Gestione separata") { aggiungi(.gestioneSeparata) }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    Button("＋ Fondo Interno") { aggiungi(.fondoInterno) }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    Button { aggiungi(.gestioneSeparata) } label: { Label("Gestione separata", systemImage: "plus") }
+                        .buttonStyle(StileVetro())
+                    Button { aggiungi(.fondoInterno) } label: { Label("Fondo Interno", systemImage: "plus") }
+                        .buttonStyle(StileVetro())
                     Spacer()
                     if !bozza.componenti.isEmpty && abs(sommaQuote - 100) > 0.01 {
                         Text("Le quote sommano \(Formati.percentuale(sommaQuote)): devono fare 100%")
@@ -61,8 +61,10 @@ struct ModuloCondizioni: View {
                                 }
                             }
                         }
-                        Button("＋ Anno con penale") { bozza.penali.append(bozza.penali.last.map { max(0, $0 - 1) } ?? 2) }
-                            .buttonStyle(StileSemplice()).font(Tipo.kpiNota).foregroundColor(Colori.Colonna.collegamento)
+                        Button { bozza.penali.append(bozza.penali.last.map { max(0, $0 - 1) } ?? 2) } label: {
+                            Label("Anno con penale", systemImage: "plus")
+                        }
+                        .buttonStyle(StileCollegamento())
                         Text(bozza.penali.isEmpty ? "Nessuna penale." : "Dal \(bozza.annoSenzaPenali)° anno nessuna penale.")
                             .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                     }
@@ -114,10 +116,10 @@ struct ModuloCondizioni: View {
                 salva(nil)
                 chiudi()
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+            .buttonStyle(StileVetro())
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button("Salva") {
                 salva(bozza)
@@ -194,8 +196,10 @@ struct ModuloCondizioni: View {
                         }
                     }
                 }
-                Button("＋ Dato storico") { c.wrappedValue.storico.append(PuntoStorico(etichetta: "", valore: nil)) }
-                    .buttonStyle(StileSemplice()).font(Tipo.kpiNota).foregroundColor(Colori.Colonna.collegamento)
+                Button { c.wrappedValue.storico.append(PuntoStorico(etichetta: "", valore: nil)) } label: {
+                    Label("Dato storico", systemImage: "plus")
+                }
+                .buttonStyle(StileCollegamento())
             }
         }
         .padding(12)
@@ -245,8 +249,9 @@ struct ModuloCondizioni: View {
             .bordoBasso(Colori.Analisi.tabellaRiga)
     }
 
+    /// L'etichetta di un campo: con la «i» del glossario se la parola è tecnica (Minimo garantito, Consolidamento…).
     private func etichetta(_ testo: String) -> some View {
-        Text(testo).font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario)
+        EtichettaConTermine(testo: testo, font: Tipo.campoEtichetta, colore: Colori.Rubrica.secondario)
     }
 
     private func numero(_ valore: Binding<Double>, _ unita: String) -> some View {

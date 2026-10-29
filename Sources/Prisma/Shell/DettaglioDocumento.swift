@@ -198,17 +198,24 @@ struct DettaglioDocumento: View {
                     .lineLimit(1)
             }
             if MotoreDocumenti.delCliente(d) {
-                Button("↗ In regola") { stato.apriInRegola(d.clienteId) }
-                    .buttonStyle(StileSemplice())
-                    .font(Tema.Testo.didascalia)
-                    .foregroundColor(Colori.Colonna.collegamento)
-                    .help("Apri «In regola» nel dossier del cliente")
+                Button { stato.apriInRegola(d.clienteId) } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("In regola")
+                        Image(systemName: "arrow.up.right")
+                    }
+                }
+                .buttonStyle(StileCollegamento())
+                .fixedSize()
+                .help("Apri «In regola» nel dossier del cliente")
             } else if let b = collegamento, let n = stato.nomeBersaglio(b) {
-                Button("↗ \(Self.genere(b)) «\(n.nome)»") { stato.apriCollegamentoDocumento(b) }
-                    .buttonStyle(StileSemplice())
-                    .font(Tema.Testo.didascalia)
-                    .foregroundColor(Colori.Colonna.collegamento)
-                    .lineLimit(1)
+                Button { stato.apriCollegamentoDocumento(b) } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("\(Self.genere(b)) «\(n.nome)»").lineLimit(1)
+                        Image(systemName: "arrow.up.right")
+                    }
+                }
+                .buttonStyle(StileCollegamento())
+                .help("Apri il collegamento del documento")
                 EtichettaCanale(canale: n.canale)
             } else if d.genere != .prisma {
                 // Il canale si vede sempre: quello del documento o, se non si sa ancora, una pillola neutra
@@ -238,7 +245,23 @@ struct DettaglioDocumento: View {
         }
     }
 
+    /// La fila delle azioni: mai una parola tagliata. Prima le etichette intere con l'icona; se non c'è posto,
+    /// i pulsanti di vetro con la sola icona (con il suggerimento); se ancora non basta, la tendina e «Apri con
+    /// Eve» restano fuori e «Collega a…» e «Crea…» entrano nel menu «⋯».
     private var rigaPulsanti: some View {
+        ViewThatFits(in: .horizontal) {
+            filaPulsanti(ridotta: false).environment(\.pulsantiSoloIcona, false)
+            filaPulsanti(ridotta: false).environment(\.pulsantiSoloIcona, true)
+            filaPulsanti(ridotta: true).environment(\.pulsantiSoloIcona, true)
+        }
+        // Il modulo «Crea…» si apre dalla fila (anche quando «Crea…» è dentro «⋯»)
+        .popover(isPresented: $moduloMenu, arrowEdge: .bottom) {
+            ModuloCreaDaDocumento(documento: d, cosa: cosaCrea) { moduloMenu = false }
+                .environmentObject(stato)
+        }
+    }
+
+    private func filaPulsanti(ridotta: Bool) -> some View {
         let m = Tema.Misura.Documenti.self
         let id = d.id
         let categorie: [(CategoriaDocumento, String)] = CategoriaDocumento.allCases.filter { $0.selezionabile }
@@ -251,38 +274,39 @@ struct DettaglioDocumento: View {
             if d.genere != .prisma {
                 MenuTendina(selezione: categoria, opzioni: categorie, larghezza: m.menuCategoria)
                     .disabled(stato.solaLettura)
-                Button("✦ Apri con Eve") {
+                    .fixedSize()
+                Button {
                     TestiRinviati.scriviOra()
                     stato.spiegaDocumentoConEve(d.id)
+                } label: {
+                    Label("Apri con Eve", systemImage: "sparkles")
                 }
-                .buttonStyle(StileVetro(margine: m.pulsante))
+                .buttonStyle(StileVetro())
                 .disabled(stato.eveInCorso || inLettura)
                 .help("Eve spiega il documento con le pagine e lo confronta con il dossier")
                 .fixedSize()
-                collegaA
-                MenuAzioni(voci: { vociCrea() }) {
-                    Text("Crea…")
-                }
-                .disabled(stato.solaLettura || inLettura)
-                .fixedSize()
-                .popover(isPresented: $moduloMenu, arrowEdge: .bottom) {
-                    ModuloCreaDaDocumento(documento: d, cosa: cosaCrea) { moduloMenu = false }
-                        .environmentObject(stato)
+                if !ridotta {
+                    collegaA
+                    MenuAzioni(voci: { vociCrea() }, taglia: .normale) {
+                        Label("Crea…", systemImage: "plus.square.on.square")
+                    }
+                    .disabled(stato.solaLettura || inLettura)
+                    .fixedSize()
+                    .help("Crea dal documento una scheda prodotto, una posizione o una proposta")
                 }
             }
-            MenuAzioni(voci: { vociAltro() }, margine: m.pulsanteIcona) {
+            MenuAzioni(voci: { ridotta ? vociAltroConCollegaCrea() : vociAltro() }, margine: m.pulsanteIcona,
+                       taglia: .normale) {
                 Image(systemName: "ellipsis")
             }
             .fixedSize()
-            .help("Altre azioni")
+            .help(ridotta ? "Collega, crea e altre azioni" : "Altre azioni")
+            .accessibilityLabel("Altre azioni")
             Spacer(minLength: 0)
-            Button {
+            PulsanteIcona(simbolo: "sidebar.left", aiuto: "Mostra o nascondi l'anteprima") {
                 stato.vistaDocumenti.anteprima = !conAnteprima(larghezza)
-            } label: {
-                Image(systemName: "sidebar.left")
             }
-            .buttonStyle(StileVetro(margine: m.pulsanteIcona))
-            .help("Mostra o nascondi l'anteprima")
+            .fixedSize()
         }
     }
 
@@ -294,15 +318,30 @@ struct DettaglioDocumento: View {
             Chip(testo: "Del cliente")
                 .help("I documenti d'identità e i questionari sono del cliente: si confrontano con il dossier")
         } else {
-            MenuAzioni(voci: { vociCollega() }) {
-                HStack(spacing: Tema.Misura.Documenti.spazioStatoRiga) {
-                    Text("Collega a…")
-                    Image(systemName: "chevron.down").font(Tema.Testo.Componenti.frecciaTendina)
-                }
+            MenuAzioni(voci: { vociCollega() }, taglia: .normale) {
+                Label("Collega a…", systemImage: "link")
             }
             .disabled(stato.solaLettura)
             .fixedSize()
+            .help("Collega il documento a una posizione o a una scheda prodotto")
         }
+    }
+
+    /// Il menu «⋯» della fila ridotta: le azioni di sempre, poi «Collega a…» e «Crea…» (se si possono usare).
+    private func vociAltroConCollegaCrea() -> [VoceMenuAzioni] {
+        var voci = vociAltro()
+        guard d.genere != .prisma, !stato.solaLettura else { return voci }
+        if !MotoreDocumenti.delCliente(d) {
+            voci.append(VoceMenuAzioni.separatore)
+            voci.append(VoceMenuAzioni.sezione("Collega a…"))
+            voci.append(contentsOf: vociCollega())
+        }
+        if !inLettura {
+            voci.append(VoceMenuAzioni.separatore)
+            voci.append(VoceMenuAzioni.sezione("Crea…"))
+            voci.append(contentsOf: vociCrea())
+        }
+        return voci
     }
 
     private func vociCollega() -> [VoceMenuAzioni] {
@@ -403,6 +442,18 @@ struct DettaglioDocumento: View {
             }
         }
 
+        /// L'icona davanti al titolo.
+        var simbolo: String {
+            switch self {
+            case .rileggi: return "arrow.clockwise"
+            case .vediDifferenze: return "exclamationmark.triangle"
+            case .aggiornaValore: return "arrow.triangle.2.circlepath"
+            case .collega: return "link"
+            case .creaProposta, .creaScheda, .creaPosizione: return "plus"
+            case .conferma: return "checkmark"
+            }
+        }
+
         /// Scrive nell'archivio: in sola lettura resta spenta.
         var scrive: Bool {
             if case .vediDifferenze = self { return false }
@@ -435,7 +486,8 @@ struct DettaglioDocumento: View {
 
     @ViewBuilder private var azionePrincipaleVista: some View {
         if let a = azionePrincipale {
-            Button(a.titolo) { esegui(a) }
+            // Il blu del documento: la prima azione che vale
+            Button { esegui(a) } label: { Label(a.titolo, systemImage: a.simbolo) }
                 .buttonStyle(StileBlu())
                 .disabled(a.scrive && stato.solaLettura)
                 .fixedSize()
@@ -721,7 +773,7 @@ struct SchedaDatiDocumento: View {
             }
             HStack {
                 Spacer(minLength: 0)
-                Button("Aggiungi") { scrivi(campo, id) }
+                Button { scrivi(campo, id) } label: { Label("Aggiungi", systemImage: "plus") }
                     .buttonStyle(StileBlu())
                     .disabled(valoreNuovo.trimmingCharacters(in: .whitespaces).isEmpty || stato.solaLettura)
             }
@@ -940,9 +992,15 @@ struct ConfrontoClienteVista: View {
                 Text("Dossier di \(stato.cliente(d.clienteId)?.nome ?? "questo cliente")")
                     .font(Tema.Testo.secondario)
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
-                Button("In regola ↗") { stato.apriInRegola(d.clienteId) }
-                    .buttonStyle(StileVetro(margine: m.pulsante))
-                    .fixedSize()
+                Button { stato.apriInRegola(d.clienteId) } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("In regola")
+                        Image(systemName: "arrow.up.right")
+                    }
+                }
+                .buttonStyle(StileCollegamento())
+                .fixedSize()
+                .help("Apri «In regola» nel dossier del cliente")
             }
             if questionario {
                 if let c = canaleLetto {
@@ -979,11 +1037,16 @@ struct ConfrontoClienteVista: View {
             }
             HStack {
                 Spacer(minLength: 0)
-                Button(valide.count == 1 ? "Aggiorna 1 dato nel dossier" : "Aggiorna \(valide.count) dati nel dossier") {
+                Button {
                     TestiRinviati.scriviOra()
                     stato.aggiornaClienteDaDocumento(d.id, campi: valide, canale: canale)
+                } label: {
+                    Label(valide.count == 1 ? "Aggiorna 1 dato nel dossier" : "Aggiorna \(valide.count) dati nel dossier",
+                          systemImage: "arrow.triangle.2.circlepath")
                 }
-                .buttonStyle(StileBlu())
+                // Il blu del dettaglio è l'azione in alto: qui l'azione consigliata del pannello, in vetro dell'accento
+                .buttonStyle(StileVetro(accento: true))
+                .fixedSize()
                 .disabled(valide.isEmpty || stato.solaLettura)
             }
         }
@@ -1099,21 +1162,17 @@ private struct SchedaTestoDocumento: View {
                 let n = min(max(stato.vistaDocumenti.pagina, 1), pagine.count)
                 let qui = documento.campi.filter { $0.pagina == n }
                 HStack(spacing: m.spazioPagine) {
-                    Button { stato.vistaDocumenti.pagina = n - 1 } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(n <= 1 ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro)
+                    PulsanteIcona(simbolo: "chevron.left", aiuto: "Pagina precedente", taglia: .compatta, vetro: false) {
+                        stato.vistaDocumenti.pagina = n - 1
                     }
-                    .buttonStyle(StileSemplice())
                     .disabled(n <= 1)
                     Text("Pagina \(n) di \(pagine.count)")
                         .font(Tema.Testo.titolo)
                         .monospacedDigit()
                         .foregroundColor(Tema.Colore.inchiostro)
-                    Button { stato.vistaDocumenti.pagina = n + 1 } label: {
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(n >= pagine.count ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro)
+                    PulsanteIcona(simbolo: "chevron.right", aiuto: "Pagina successiva", taglia: .compatta, vetro: false) {
+                        stato.vistaDocumenti.pagina = n + 1
                     }
-                    .buttonStyle(StileSemplice())
                     .disabled(n >= pagine.count)
                     Spacer(minLength: 0)
                 }

@@ -292,7 +292,7 @@ private struct ModuloIndice: View {
             }
             HStack {
                 Button(action: elimina) {
-                    Text(T.eliminaIndice).foregroundColor(K.elimina)
+                    Label(T.eliminaIndice, systemImage: "trash").foregroundColor(K.elimina)
                 }
                 .buttonStyle(StileVetro(margine: M.marginePulsante))
                 Spacer()

@@ -12,8 +12,8 @@ struct PannelloCosti: View {
                 if analisi.risparmioPossibile > 0 {
                     Pillola(testo: "Si può risparmiare", tono: .attenzione)
                 }
-                Button("Report per il cliente") { stato.apriProspetto(.costi(report: true)) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                Button { stato.apriProspetto(.costi(report: true)) } label: { Label("Report per il cliente", systemImage: "doc.richtext") }
+                    .buttonStyle(StileVetro())
                     .help("Apre in Prospetti il report dei costi, da stampare o salvare in PDF")
             }
         } contenuto: {

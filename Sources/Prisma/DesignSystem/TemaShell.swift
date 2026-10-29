@@ -106,7 +106,8 @@ extension Tema.Misura {
         static let barraCanali: CGFloat = 10
         static let barraCanaliSpazio: CGFloat = 2
         static let quadratinoCanale: CGFloat = 10
-        static let colonnaQuota: CGFloat = 38
+        /// «100%» a 13,8 pt (il widget usa `Tema.Testo.corpo`, sulla scala leggibile).
+        static let colonnaQuota: CGFloat = 42
         static let portafoglioSpazio: CGFloat = 10
 
         // Dock
@@ -178,49 +179,55 @@ extension Tema.Misura {
 }
 
 extension Tema.Testo {
-    /// Caratteri della shell.
+    /// Caratteri della shell: fuori dalle app la scala resta quella approvata (`sfFisso`, niente scala leggibile).
     enum Shell {
-        static let tastoBarra = Tema.Testo.sf(10.5, .medium)
-        static let pulsanteBarra = Tema.Testo.sf(12.5, .medium)
-        static let simboloBarra = Tema.Testo.sf(14, .medium)
-        static let avatarBarra = Tema.Testo.sf(10, .bold, arrotondato: true)
-        static let orologio = Tema.Testo.sf(13, .medium).monospacedDigit()
+        static let tastoBarra = Tema.Testo.sfFisso(10.5, .medium)
+        static let pulsanteBarra = Tema.Testo.sfFisso(12.5, .medium)
+        static let simboloBarra = Tema.Testo.sfFisso(14, .medium)
+        static let avatarBarra = Tema.Testo.sfFisso(10, .bold, arrotondato: true)
+        static let orologio = Tema.Testo.sfFisso(13, .medium).monospacedDigit()
         static let spaziaturaMarchio = Tema.Testo.spaziatura(-0.01, 13)
-        static let simboloPulsante = Tema.Testo.sf(13, .medium)
-        static let piede = Tema.Testo.sf(12)
+        static let simboloPulsante = Tema.Testo.sfFisso(13, .medium)
+        static let piede = Tema.Testo.sfFisso(12)
         // Widget
-        static let collegamento = Tema.Testo.sf(12, .semibold)
-        static let giornoSettimana = Tema.Testo.sf(14, .semibold)
-        static let meseAgenda = Tema.Testo.sf(14)
-        static let riepilogoAgenda = Tema.Testo.sf(12)
-        static let riepilogoAgendaForte = Tema.Testo.sf(13, .semibold)
-        static let occhielloCliente = Tema.Testo.sf(11.5, .medium)
-        static let temaCliente = Tema.Testo.sf(12.5)
+        /// I testi comuni dei widget fuori dalla scala leggibile (la scrivania resta com'era, B2):
+        /// gli stessi valori di Tema.Testo.corpo / titolo / importo / valoreKpi prima del 29 ottobre.
+        static let corpoWidget = Tema.Testo.sfFisso(13)
+        static let titoloWidget = Tema.Testo.sfFisso(13, .semibold)
+        static let importoWidget = Tema.Testo.sfFisso(13, .semibold).monospacedDigit()
+        static let valoreKpiWidget = Tema.Testo.sfFisso(16, .semibold)
+        static let collegamento = Tema.Testo.sfFisso(12, .semibold)
+        static let giornoSettimana = Tema.Testo.sfFisso(14, .semibold)
+        static let meseAgenda = Tema.Testo.sfFisso(14)
+        static let riepilogoAgenda = Tema.Testo.sfFisso(12)
+        static let riepilogoAgendaForte = Tema.Testo.sfFisso(13, .semibold)
+        static let occhielloCliente = Tema.Testo.sfFisso(11.5, .medium)
+        static let temaCliente = Tema.Testo.sfFisso(12.5)
         static let spaziaturaNomeCliente = Tema.Testo.spaziatura(-0.015, 18)
-        static let etichettaKpi = Tema.Testo.sf(11.5)
+        static let etichettaKpi = Tema.Testo.sfFisso(11.5)
         static let spaziaturaKpi = Tema.Testo.spaziatura(-0.01, 16)
-        static let notaCliente = Tema.Testo.sf(12.5)
-        static let titoloEve = Tema.Testo.sf(14, .semibold)
-        static let testoEve = Tema.Testo.sf(12)
-        static let chevron = Tema.Testo.sf(12, .semibold)
-        static let nomeRiga = Tema.Testo.sf(13, .semibold)
-        static let secondarioRiga = Tema.Testo.sf(12)
+        static let notaCliente = Tema.Testo.sfFisso(12.5)
+        static let titoloEve = Tema.Testo.sfFisso(14, .semibold)
+        static let testoEve = Tema.Testo.sfFisso(12)
+        static let chevron = Tema.Testo.sfFisso(12, .semibold)
+        static let nomeRiga = Tema.Testo.sfFisso(13, .semibold)
+        static let secondarioRiga = Tema.Testo.sfFisso(12)
         // Dock
-        static let etichettaDock = Tema.Testo.sf(10, .medium)
-        static let suggerimentoDock = Tema.Testo.sf(12, .semibold)
+        static let etichettaDock = Tema.Testo.sfFisso(10, .medium)
+        static let suggerimentoDock = Tema.Testo.sfFisso(12, .semibold)
         // Finestre
-        static let contestoFinestra = Tema.Testo.sf(12, .medium)
+        static let contestoFinestra = Tema.Testo.sfFisso(12, .medium)
         // App aperte
-        static let nomeAppAperta = Tema.Testo.sf(13, .semibold)
-        static let contestoAppAperta = Tema.Testo.sf(12)
-        static let statoAppAperta = Tema.Testo.sf(11.5)
+        static let nomeAppAperta = Tema.Testo.sfFisso(13, .semibold)
+        static let contestoAppAperta = Tema.Testo.sfFisso(12)
+        static let statoAppAperta = Tema.Testo.sfFisso(11.5)
         // Benvenuto
-        static let dataBenvenuto = Tema.Testo.sf(22, .semibold)
-        static let nomeBenvenuto = Tema.Testo.sf(20, .bold)
-        static let mottoBenvenuto = Tema.Testo.sf(13)
-        static let scorriBenvenuto = Tema.Testo.sf(15, .medium)
-        static let entraBenvenuto = Tema.Testo.sf(13)
-        static let notaBenvenuto = Tema.Testo.sf(11.5)
+        static let dataBenvenuto = Tema.Testo.sfFisso(22, .semibold)
+        static let nomeBenvenuto = Tema.Testo.sfFisso(20, .bold)
+        static let mottoBenvenuto = Tema.Testo.sfFisso(13)
+        static let scorriBenvenuto = Tema.Testo.sfFisso(15, .medium)
+        static let entraBenvenuto = Tema.Testo.sfFisso(13)
+        static let notaBenvenuto = Tema.Testo.sfFisso(11.5)
         static let frecciaManopola = Font.system(size: Tema.Misura.Shell.frecciaManopola, weight: .semibold)
         /// L'ora grande del benvenuto: segue la larghezza della finestra (clamp del tema), arrotondata.
         static func oraBenvenuto(_ corpo: CGFloat) -> Font {

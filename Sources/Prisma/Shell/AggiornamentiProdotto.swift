@@ -47,8 +47,10 @@ struct AvvisoNuovoKID: View {
                                 .buttonStyle(StileVetro(margine: m.pulsante))
                         }
                         if !clienti.isEmpty {
-                            Button(TestiConfrontoDossier.creaAttivita) {
+                            Button {
                                 stato.creaAttivitaImpatto(x.esito, prodotto: prodotto, il: x.il)
+                            } label: {
+                                Label(TestiConfrontoDossier.creaAttivita, systemImage: "plus")
                             }
                             .buttonStyle(StileVetro(margine: m.pulsante))
                             .disabled(stato.solaLettura)
