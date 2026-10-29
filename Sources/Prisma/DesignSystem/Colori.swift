@@ -179,8 +179,9 @@ enum Colori {
         static let kpiTitolo = TC.inchiostroSecondario
         static let kpiValore = TC.inchiostro
         static let kpiNota = TC.inchiostroSecondario
-        static let chip = TC.chip
-        static let chipBordo = TC.bordoChip
+        /// Caselle della scala SRI: pozzetto e filo scuro, visibili anche sulle schede bianche in chiaro.
+        static let chip = TC.chipControllo
+        static let chipBordo = TC.bordoControllo
         static let chipTesto = TC.inchiostroSecondario
         static let pannelloTitolo = TC.inchiostro
         static let pannelloNota = TC.inchiostroSecondario
@@ -230,7 +231,8 @@ enum Colori {
             switch a {
             case .investimento: return Color(hex: "#6386a5")
             case .risparmio: return Color(hex: "#94b4a1")
-            case .previdenza: return Color(hex: "#c5ab7e")
+            // Malva: il sabbia di prima si confondeva con il cuoio del canale indipendente
+            case .previdenza: return Color(hex: "#9483b5")
             case .protezione: return Color(hex: "#6e9f9b")
             case .liquidita: return Color(hex: "#8fa7bf")
             case .immobili: return Color(hex: "#a99382")
@@ -729,7 +731,8 @@ enum Colori {
             case .casa: return Color(hex: "#94b4a1")
             case .famiglia: return Color(hex: "#6e9f9b")
             case .lavoro: return Color(hex: "#8fa7bf")
-            case .pensione: return Color(hex: "#c5ab7e")
+            // Come l'area Previdenza delle posizioni
+            case .pensione: return Color(hex: "#9483b5")
             case .salute: return Color(hex: "#b07a6e")
             case .patrimonio: return Color(hex: "#6386a5")
             }
@@ -891,7 +894,8 @@ enum Colori {
         static let rischioAssenteBordo = TC.separatore
         static let rischioAssenteTesto = TC.inchiostroSecondario
         // Serie dei confronti: A, B, C
-        static let serie = [adatto(Color(hex: "#2F6EB0"), Color(hex: "#6AA6F0")), Color(hex: "#c08a3e"), Color(hex: "#6e9f9b")]
+        // La B in viola: l'ocra di prima sembrava il cuoio del canale indipendente
+        static let serie = [adatto(Color(hex: "#2F6EB0"), Color(hex: "#6AA6F0")), Color(hex: "#7A6FB0"), Color(hex: "#6e9f9b")]
     }
 
     /// App Attività: elenco su scheda di vetro, spunte verdi del tema.

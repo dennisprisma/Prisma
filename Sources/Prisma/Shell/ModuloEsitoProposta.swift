@@ -111,11 +111,11 @@ struct FormEsitoProposta: View {
             }
             if finanziaria {
                 CampoEsito(etichetta: "Primo valore", compatto: compatto) {
-                    CampoCifraFacoltativa(valore: $dati.primoValore, unita: "€", larghezza: Misure.Seguito.campoEuro)
+                    CampoEuroEsito(valore: $dati.primoValore)
                 }
             }
             CampoEsito(etichetta: posizione.area == .protezione ? "Primo premio pagato" : "Versato", compatto: compatto) {
-                CampoCifraFacoltativa(valore: $dati.versato, unita: "€", larghezza: Misure.Seguito.campoEuro)
+                CampoEuroEsito(valore: $dati.versato)
             }
             CampoEsito(etichetta: "Scadenza", compatto: compatto) {
                 VStack(alignment: .leading, spacing: Misure.Seguito.spazioCampo) {
@@ -174,7 +174,7 @@ struct FormEsitoProposta: View {
                 MenuTendina(selezione: $motivo, opzioni: opzioni(MotivoEsito.perRifiuto))
             }
             CampoEsito(etichetta: "Nota", compatto: compatto) {
-                TextField(TestiSeguito.nota, text: $nota).textFieldStyle(.roundedBorder)
+                TextField(TestiSeguito.nota, text: $nota).campoTesto()
             }
             testoNota(TestiSeguito.notaRifiuto)
             HStack(spacing: Misure.Seguito.spazio) {
@@ -203,7 +203,7 @@ struct FormEsitoProposta: View {
                 MenuTendina(selezione: $motivo, opzioni: opzioni(MotivoEsito.perRinvio))
             }
             CampoEsito(etichetta: "Nota", compatto: compatto) {
-                TextField(TestiSeguito.nota, text: $nota).textFieldStyle(.roundedBorder)
+                TextField(TestiSeguito.nota, text: $nota).campoTesto()
             }
             testoNota(TestiSeguito.creaAttivita(posizione))
             HStack(spacing: Misure.Seguito.spazio) {
@@ -232,7 +232,8 @@ struct FormEsitoProposta: View {
     }
 }
 
-/// Un campo del modulo dell'esito: etichetta sopra (compatto) o a sinistra (`CampoModulo`).
+/// Un campo del modulo dell'esito. Compatto (riquadro dell'Agenda): con spazio sufficiente una griglia «etichetta |
+/// campo», altrimenti l'etichetta sopra il campo. Largo (foglio): `CampoModulo`, con l'etichetta a sinistra.
 private struct CampoEsito<Controllo: View>: View {
     let etichetta: String
     let compatto: Bool
@@ -240,16 +241,49 @@ private struct CampoEsito<Controllo: View>: View {
 
     var body: some View {
         if compatto {
-            VStack(alignment: .leading, spacing: Misure.Seguito.spazioCampo) {
-                Text(etichetta)
-                    .font(Tipo.voceEtichetta)
-                    .foregroundColor(Tema.Colore.inchiostroSecondario)
-                controllo()
+            // Il campo dichiara una larghezza ideale fissa: le note sotto i campi non decidono la scelta,
+            // così tutte le righe del modulo prendono la stessa disposizione
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: Misure.Seguito.spazio) {
+                    testoEtichetta
+                        .frame(width: Misure.Seguito.etichettaGriglia, alignment: .leading)
+                    controllo()
+                        .frame(idealWidth: Misure.Seguito.campoGriglia, maxWidth: .infinity, alignment: .leading)
+                }
+                VStack(alignment: .leading, spacing: Misure.Seguito.spazioCampo) {
+                    testoEtichetta
+                    controllo()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             CampoModulo(etichetta: etichetta, controllo: controllo)
         }
+    }
+
+    private var testoEtichetta: some View {
+        Text(etichetta)
+            .font(Tipo.voceEtichetta)
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Una cifra in euro nel pozzetto del tema (`.campoTesto()`), con «€» dentro il pozzetto: vuota = non indicata.
+private struct CampoEuroEsito: View {
+    @Binding var valore: Double?
+
+    private static let formato = FloatingPointFormatStyle<Double>.number.locale(Formati.italiano)
+
+    var body: some View {
+        HStack(spacing: Misure.Seguito.spazioCampo) {
+            TextField("—", value: $valore, format: Self.formato)
+                .multilineTextAlignment(.trailing)
+            Text("€")
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+        }
+        .campoTesto()
+        .frame(width: Misure.Seguito.campoEuro)
     }
 }
 

@@ -56,7 +56,7 @@ private struct PaginaDestini: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Ai beneficiari", CifreDoc.euro(s.fuoriAsse), "fuori successione", colore: C.positivo)
                 CifraProspetto("Nell'asse", CifreDoc.euro(s.attivoAsse), "fondi, conti, immobili")
                 CifraProspetto("Debiti", s.debiti > 0.5 ? CifreDoc.togli(s.debiti) : "—", "passano agli eredi", colore: s.debiti > 0.5 ? C.negativo : nil)
@@ -113,7 +113,7 @@ private struct PaginaEredi: View {
                                        altezza: 24)
                            }, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 18, margine: 4)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Imposta di successione", s.impostaSuccessione > 0.5 ? CifreDoc.euro(s.impostaSuccessione) : "—", "entro le franchigie se zero")
                 CifraProspetto("Ipotecaria e catastale", s.ipocatastali > 0.5 ? CifreDoc.euro(s.ipocatastali) : "—", s.primaCasa ? "con l'agevolazione prima casa" : "3% sugli immobili")
                 CifraProspetto("Fuori dall'eredità", CifreDoc.percento(s.quotaFuori * 100, decimali: 0), "di quanto passerebbe", colore: C.positivo)

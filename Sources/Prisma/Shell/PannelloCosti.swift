@@ -54,7 +54,8 @@ struct PannelloCosti: View {
                 Text("Come nel KID").frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
                 Text("Quest'anno").frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
                 Text("In 20 anni").frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
-                Text("Alternativa a parità di rischio").frame(width: Misure.Analisi.colonnaAlternativa, alignment: .leading)
+                Text("Alternativa").frame(width: Misure.Analisi.colonnaAlternativa, alignment: .leading)
+                    .help("Alternativa a parità di rischio: stessa area e stesso indicatore di rischio, dal catalogo")
             }
             .font(Tipo.tabellaTesta)
             .foregroundColor(Colori.Analisi.tabellaTesta)
@@ -93,8 +94,10 @@ struct PannelloCosti: View {
                 .frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)
             VStack(alignment: .trailing, spacing: 1) {
                 Text(Formati.euro(v.perso20)).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto)
+                // Su due righe: nella colonna stretta «a scadenza · 11 anni» si troncherebbe
                 if v.anni20 < MotoreCosti.orizzonti.1 {
-                    Text("a scadenza · \(v.anni20) anni").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                    Text("a scadenza").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
+                    Text("\(v.anni20) \(v.anni20 == 1 ? "anno" : "anni")").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
                 }
             }
             .frame(width: Misure.Analisi.colonnaCosto, alignment: .trailing)

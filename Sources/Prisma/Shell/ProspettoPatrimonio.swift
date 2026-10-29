@@ -36,7 +36,7 @@ private struct PaginaPercorso: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Oggi", CifreDoc.euro(p.nettoOggi), "patrimonio netto")
                 CifraProspetto("Tra 10 anni", CifreDoc.euro(p.valore(10)), "versando \(CifreDoc.euro(p.versamentiAnnui)) l'anno")
                 CifraProspetto("Tra \(p.anni) anni", CifreDoc.euro(p.valore(p.anni)), "\(CifreDoc.euro(p.reale(p.valore(p.anni), anno: p.anni))) in euro di oggi")

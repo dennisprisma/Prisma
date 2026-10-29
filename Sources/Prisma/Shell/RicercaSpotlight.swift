@@ -770,56 +770,68 @@ struct AnteprimaRicerca: View {
     private typealias M = Misure.Spotlight
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: M.anteprimaSpazio) {
-                HStack(spacing: M.intestazioneSpazio) {
-                    IconaRisultatoRicerca(risultato: scheda.risultato, cliente: scheda.cliente, lato: M.iconaAnteprima)
-                    VStack(alignment: .leading, spacing: M.rigaTestoSpazio) {
-                        Text(scheda.titolo)
-                            .font(Tipo.spotlightAnteprimaTitolo)
-                            .tracking(Tema.Testo.spaziaturaSezione)
-                            .foregroundColor(Colori.Spotlight.titolo)
-                            .lineLimit(2)
-                        if !scheda.sottotitolo.isEmpty {
-                            Text(scheda.sottotitolo)
-                                .font(Tipo.spotlightAnteprimaSottotitolo)
-                                .foregroundColor(Colori.Spotlight.dettaglio)
+        // Le cifre scorrono; le azioni stanno in un piede fisso, sempre intere dentro il pannello
+        VStack(alignment: .leading, spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: M.anteprimaSpazio) {
+                    HStack(spacing: M.intestazioneSpazio) {
+                        IconaRisultatoRicerca(risultato: scheda.risultato, cliente: scheda.cliente, lato: M.iconaAnteprima)
+                        VStack(alignment: .leading, spacing: M.rigaTestoSpazio) {
+                            Text(scheda.titolo)
+                                .font(Tipo.spotlightAnteprimaTitolo)
+                                .tracking(Tema.Testo.spaziaturaSezione)
+                                .foregroundColor(Colori.Spotlight.titolo)
                                 .lineLimit(2)
+                            if !scheda.sottotitolo.isEmpty {
+                                Text(scheda.sottotitolo)
+                                    .font(Tipo.spotlightAnteprimaSottotitolo)
+                                    .foregroundColor(Colori.Spotlight.dettaglio)
+                                    .lineLimit(2)
+                            }
                         }
-                    }
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-                if let c = scheda.canale { EtichettaCanale(canale: c) }
-                if !scheda.cifre.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(Array(scheda.cifre.enumerated()), id: \.element.id) { i, c in
-                            CifraAnteprimaRicerca(etichetta: c.etichetta, valore: c.valore, ultima: i == scheda.cifre.count - 1)
-                        }
-                    }
-                }
-                if let t = scheda.testo, !t.isEmpty {
-                    Text(t)
-                        .font(Tipo.spotlightTesto)
-                        .foregroundColor(Colori.Spotlight.testoAnteprima)
-                        .lineLimit(M.testoAnteprimaRighe)
                         .fixedSize(horizontal: false, vertical: true)
-                }
-                DisposizioneAcapoRicerca(spazio: M.azioniSpazio) {
-                    ForEach(Array(scheda.azioni.enumerated()), id: \.offset) { i, a in
-                        if i == 0 {
-                            Button { fai(a.azione) } label: { Label(a.titolo, systemImage: a.simbolo) }
-                                .buttonStyle(StileBlu())
-                                .disabled(sola && scheda.modificano.contains(i))
-                        } else {
-                            Button { fai(a.azione) } label: { Label(a.titolo, systemImage: a.simbolo) }
-                                .buttonStyle(StileVetro())
-                                .disabled(sola && scheda.modificano.contains(i))
+                    }
+                    if let c = scheda.canale { EtichettaCanale(canale: c) }
+                    if !scheda.cifre.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(Array(scheda.cifre.enumerated()), id: \.element.id) { i, c in
+                                CifraAnteprimaRicerca(etichetta: c.etichetta, valore: c.valore, ultima: i == scheda.cifre.count - 1)
+                            }
                         }
                     }
+                    if let t = scheda.testo, !t.isEmpty {
+                        Text(t)
+                            .font(Tipo.spotlightTesto)
+                            .foregroundColor(Colori.Spotlight.testoAnteprima)
+                            .lineLimit(M.testoAnteprimaRighe)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(M.anteprimaMargine)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .sfumaturaBordiScorrimento(sotto: scheda.azioni.isEmpty ? 0 : M.sfumaturaAnteprima)
+            if !scheda.azioni.isEmpty {
+                azioni
+                    .padding(M.azioniMargine)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var azioni: some View {
+        DisposizioneAcapoRicerca(spazio: M.azioniSpazio) {
+            ForEach(Array(scheda.azioni.enumerated()), id: \.offset) { i, a in
+                if i == 0 {
+                    Button { fai(a.azione) } label: { Label(a.titolo, systemImage: a.simbolo) }
+                        .buttonStyle(StileBlu())
+                        .disabled(sola && scheda.modificano.contains(i))
+                } else {
+                    Button { fai(a.azione) } label: { Label(a.titolo, systemImage: a.simbolo) }
+                        .buttonStyle(StileVetro())
+                        .disabled(sola && scheda.modificano.contains(i))
                 }
             }
-            .padding(M.anteprimaMargine)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

@@ -43,12 +43,17 @@ extension CompositoreProspetti {
             b.append(.testo("Nessun punto da trattare: posizioni in linea, niente in scadenza, dati aggiornati."))
         } else {
             b.append(.tabella(TabellaProspetto(
-                colonne: [ColonnaProspetto(titolo: "#", peso: 0.35), ColonnaProspetto(titolo: "Tema", peso: 1.15),
-                          ColonnaProspetto(titolo: "Punto", peso: 2.1), ColonnaProspetto(titolo: "Da sapere", peso: 3.75),
-                          ColonnaProspetto(titolo: "Priorità", peso: 0.8)],
-                righe: r.punti.enumerated().map { i, p in
-                    [.n("\(i + 1)"), p.canale.map { CellaProspetto.c($0) } ?? .t(p.tema.nome), .f(p.titolo), .t(p.dettaglio),
-                     p.priorita == .alta ? .f(p.priorita.nome) : .n(p.priorita.nome)]
+                // Il tema e il canale in due colonne: il canale come etichetta, «—» se il punto riguarda il cliente.
+                // Punto e Da sapere vanno a capo (righe ad altezza variabile, misurate dall'impaginatore)
+                colonne: [ColonnaProspetto(titolo: "#", peso: 0.35), ColonnaProspetto(titolo: "Tema", peso: 1.05),
+                          ColonnaProspetto(titolo: "Canale", peso: 0.95),
+                          ColonnaProspetto(titolo: "Punto", peso: 2.1), ColonnaProspetto(titolo: "Da sapere", peso: 2.9),
+                          ColonnaProspetto(titolo: "Priorità", peso: 0.75)],
+                righe: r.punti.enumerated().map { i, p -> [CellaProspetto] in
+                    let canale: CellaProspetto = p.canale.map { CellaProspetto.c($0) } ?? CellaProspetto.n("—")
+                    let priorita: CellaProspetto = p.priorita == .alta ? CellaProspetto.f(p.priorita.nome) : CellaProspetto.n(p.priorita.nome)
+                    return [CellaProspetto.n("\(i + 1)"), CellaProspetto.t(p.tema.nome), canale,
+                            CellaProspetto.f(p.titolo), CellaProspetto.t(p.dettaglio), priorita]
                 })))
         }
 
@@ -210,7 +215,8 @@ extension CompositoreProspetti {
             return [.testo(TestiMemoria.nessunaVariazione(data: p.data))]
         }
         let righe: [[CellaProspetto]] = m.variazioni.map { v in
-            let tema: CellaProspetto = v.canale.map { CellaProspetto.c($0) } ?? CellaProspetto.t(v.tema.nome)
+            let tema = CellaProspetto.t(v.tema.nome)
+            let canale: CellaProspetto = v.canale.map { CellaProspetto.c($0) } ?? CellaProspetto.n(TestiMemoria.vuoto)
             let frase: CellaProspetto = v.verso == .peggio ? CellaProspetto.f(v.testo) : CellaProspetto.t(v.testo)
             let verso: CellaProspetto
             switch v.verso {
@@ -218,12 +224,13 @@ extension CompositoreProspetti {
             case .peggio: verso = CellaProspetto.f("peggio")
             case .neutro: verso = CellaProspetto.n(TestiMemoria.vuoto)
             }
-            return [tema, frase, CellaProspetto.n(v.prima), CellaProspetto.t(v.oggi), verso]
+            return [tema, canale, frase, CellaProspetto.n(v.prima), CellaProspetto.t(v.oggi), verso]
         }
         return [
             .testo(testo),
             .tabella(TabellaProspetto(
-                colonne: [ColonnaProspetto(titolo: "Tema", peso: 1.1), ColonnaProspetto(titolo: "Cosa è cambiato", peso: 3.2),
+                colonne: [ColonnaProspetto(titolo: "Tema", peso: 1.1), ColonnaProspetto(titolo: "Canale", peso: 0.95),
+                          ColonnaProspetto(titolo: "Cosa è cambiato", peso: 2.25),
                           ColonnaProspetto(titolo: "Prima", peso: 1.3), ColonnaProspetto(titolo: "Oggi", peso: 1.3),
                           ColonnaProspetto(titolo: "Verso", peso: 0.8)],
                 righe: righe)),

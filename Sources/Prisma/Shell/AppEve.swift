@@ -19,18 +19,26 @@ struct AppEve: View {
 
     var body: some View {
         let raggio = Tema.Raggio.EveChat.contenitore
-        HStack(spacing: 0) {
-            contesto
-                .frame(width: Tema.Misura.EveChat.contesto)
-                .frame(maxHeight: .infinity, alignment: .top)
-                .background(Tema.Colore.EveChat.fondoContesto)
-            Rectangle()
-                .fill(Tema.Colore.EveChat.divisore)
-                .frame(width: Tema.Misura.filo)
-                .frame(maxHeight: .infinity)
-                .allowsHitTesting(false)
-            conversazione
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { geo in
+            // Eve a metà schermo: il contesto si stringe e la conversazione resta sempre dentro la finestra
+            let m = Tema.Misura.EveChat.self
+            let larghezzaContesto = geo.size.width < m.sogliaContestoStretto ? m.contestoStretto : m.contesto
+            HStack(spacing: 0) {
+                contesto(larghezza: larghezzaContesto)
+                    .frame(width: larghezzaContesto)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .background(Tema.Colore.EveChat.fondoContesto)
+                Rectangle()
+                    .fill(Tema.Colore.EveChat.divisore)
+                    .frame(width: Tema.Misura.filo)
+                    .frame(maxHeight: .infinity)
+                    .allowsHitTesting(false)
+                conversazione
+                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                    .layoutPriority(1)
+                    .clipped()
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .clipShape(FormaVetro.arrotondata(raggio))
         .vetro(.sottile, forma: .arrotondata(raggio))
@@ -65,19 +73,23 @@ struct AppEve: View {
 
     // MARK: - Contesto (colonna a sinistra)
 
-    private var contesto: some View {
+    private func contesto(larghezza: CGFloat) -> some View {
         let m = Tema.Misura.EveChat.self
-        return ScrollView {
+        // Senza barra di scorrimento (sembrava un secondo divisore); le tessere in fondo sfumano invece di
+        // finire tagliate a metà
+        return ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: m.spazioContesto) {
                 saluto
-                ambito
+                ambito(larghezza: larghezza)
                 motore
                 giornata
                 if let c = cliente, !stato.evePortafoglio { quadro(c) }
             }
             .padding(m.margineContesto)
+            .padding(.bottom, m.sfumaturaContesto / 2)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .sfumaturaBordiScorrimento(sotto: m.sfumaturaContesto)
     }
 
     /// Eve si presenta (.eve-ctx del tema): la sfera, il nome e una riga.
@@ -99,9 +111,9 @@ struct AppEve: View {
     }
 
     /// Di chi si parla: un cliente (scelto dal menu) o tutto il portafoglio.
-    private var ambito: some View {
+    private func ambito(larghezza colonna: CGFloat) -> some View {
         let m = Tema.Misura.EveChat.self
-        let larghezza = m.contesto - 2 * m.margineContesto
+        let larghezza = colonna - 2 * m.margineContesto
         return VStack(alignment: .leading, spacing: m.spazioSezione) {
             if !stato.inModoCliente {
                 SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.evePortafoglio)
@@ -301,8 +313,21 @@ struct AppEve: View {
         }
     }
 
-    /// La barra in alto: di chi si parla, lo stato della voce di Eve, Nuova conversazione.
+    /// La barra in alto: di chi si parla, lo stato della voce di Eve, Nuova conversazione. Se non c'è posto lo stato
+    /// della voce resta la sola onda e «Nuova conversazione» la sola icona (con il testo nell'aiuto).
     private var barra: some View {
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        return ViewThatFits(in: .horizontal) {
+            rigaBarra(compatta: false)
+            rigaBarra(compatta: true)
+        }
+        .padding(.horizontal, m.margineBarra)
+        .frame(height: m.barra)
+        .bordoBasso(c.divisore)
+    }
+
+    private func rigaBarra(compatta: Bool) -> some View {
         let m = Tema.Misura.EveChat.self
         let c = Tema.Colore.EveChat.self
         return HStack(spacing: m.spazioSezione) {
@@ -317,23 +342,41 @@ struct AppEve: View {
                     .lineLimit(1)
             }
             Spacer(minLength: m.spazioSezione)
-            statoVoce
-            Button("Nuova conversazione") { stato.nuovaConversazione() }
-                .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
-                .disabled(messaggi.isEmpty)
-                .fixedSize()
+            statoVoce(compatta: compatta)
+            if compatta {
+                Button { stato.nuovaConversazione() } label: { Image(systemName: "square.and.pencil") }
+                    .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
+                    .disabled(messaggi.isEmpty)
+                    .fixedSize()
+                    .help("Nuova conversazione")
+            } else {
+                Button("Nuova conversazione") { stato.nuovaConversazione() }
+                    .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
+                    .disabled(messaggi.isEmpty)
+                    .fixedSize()
+            }
         }
-        .padding(.horizontal, m.margineBarra)
-        .frame(height: m.barra)
-        .bordoBasso(c.divisore)
+    }
+
+    /// Cosa fa Eve adesso. A riposo segue il motore: se Qwen non è pronto Eve non risponde, e la capsula lo dice.
+    private func scrittaVoce(_ v: StatoVoce, ascolta: Bool, pronta: Bool) -> String {
+        if v.prepara { return "EVE · SI PREPARA" }
+        if ascolta { return "EVE · TI ASCOLTA" }
+        if stato.eveInCorso { return "EVE · STA PENSANDO" }
+        if v.parla { return "EVE · TI RISPONDE" }
+        return pronta ? "EVE · PRONTA" : "EVE · NON PRONTA"
     }
 
     /// Eve pronta, al lavoro, in ascolto o mentre parla: capsula discreta con l'onda, e i comandi della voce.
-    private var statoVoce: some View {
+    /// Compatta: la sola onda, con lo stato nell'aiuto.
+    private func statoVoce(compatta: Bool) -> some View {
         conVoce { v in
             let ascolta = v.ascolta || stato.dettaturaAttiva
             let attiva = stato.eveInCorso || ascolta || v.parla
-            let scritta = v.prepara ? "EVE · SI PREPARA" : (ascolta ? "EVE · TI ASCOLTA" : (stato.eveInCorso ? "EVE · STA PENSANDO" : (v.parla ? "EVE · TI RISPONDE" : "EVE · PRONTA")))
+            let pronta = stato.qwen.disponibilita.pronto
+            // A riposo con il motore non pronto l'onda si spegne
+            let spenta = !attiva && !v.prepara && !pronta
+            let scritta = scrittaVoce(v, ascolta: ascolta, pronta: pronta)
             let m = Tema.Misura.EveChat.self
             let c = Tema.Colore.EveChat.self
             HStack(spacing: m.spazioSezione) {
@@ -344,15 +387,19 @@ struct AppEve: View {
                             .frame(width: m.spiaVoce, height: m.spiaVoce)
                     }
                     OndaEve(attiva: attiva, livello: v.ascolta ? v.livello : nil, scala: m.scalaOnda, barre: m.barreOnda)
-                    Text(scritta)
-                        .font(Tema.Testo.EveChat.statoVoce)
-                        .tracking(Tema.Testo.EveChat.spaziaturaStatoVoce)
-                        .foregroundColor(attiva ? c.testo : c.testoSecondario)
-                        .fixedSize()
+                        .opacity(spenta ? m.opacitaOndaSpenta : 1)
+                    if !compatta {
+                        Text(scritta)
+                            .font(Tema.Testo.EveChat.statoVoce)
+                            .tracking(Tema.Testo.EveChat.spaziaturaStatoVoce)
+                            .foregroundColor(attiva ? c.testo : c.testoSecondario)
+                            .fixedSize()
+                    }
                 }
                 .padding(.horizontal, m.margineStatoVoce)
                 .frame(height: m.statoVoce)
                 .background { FormaVetro.capsula.fill(c.statoVoce) }
+                .help(scritta)
                 if v.parla {
                     Button("Interrompi") { stato.voceEve.zitta() }
                         .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
@@ -360,11 +407,15 @@ struct AppEve: View {
                 }
                 if stato.conversazioneAVoce {
                     Button { stato.fermaVoce() } label: {
-                        Label("Chiudi la conversazione a voce", systemImage: "stop.fill")
+                        if compatta {
+                            Image(systemName: "stop.fill")
+                        } else {
+                            Label("Chiudi la conversazione a voce", systemImage: "stop.fill")
+                        }
                     }
                     .buttonStyle(StileVetro(margine: m.margineAzioneBarra))
                     .fixedSize()
-                    .help("Oppure di' a Eve «basta così»")
+                    .help(compatta ? "Chiudi la conversazione a voce · oppure di' a Eve «basta così»" : "Oppure di' a Eve «basta così»")
                 }
             }
         }
@@ -417,9 +468,14 @@ struct AppEve: View {
                 .frame(maxWidth: m.colonnaChat)
                 .frame(maxWidth: .infinity)
             }
+            // L'ultima risposta sfuma sopra gli spunti invece di scorrerci sotto senza stacco
+            .sfumaturaBordiScorrimento(sotto: m.sfumaturaMessaggi)
             .onChange(of: messaggi.count) { _ in
-                if let ultimo = messaggi.last?.id {
-                    withAnimation { lettore.scrollTo(ultimo, anchor: .bottom) }
+                if let ultimo = messaggi.last {
+                    // Una risposta di Eve si legge dall'inizio: se è più alta della vista ne resta in vista la cima
+                    // (se è corta lo scorrimento si ferma comunque in fondo)
+                    let ancora: UnitPoint = ultimo.autore == .utente ? .bottom : .top
+                    withAnimation { lettore.scrollTo(ultimo.id, anchor: ancora) }
                 }
             }
             .onChange(of: stato.eveInCorso) { pensa in

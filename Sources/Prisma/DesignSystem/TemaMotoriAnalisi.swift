@@ -46,6 +46,8 @@ extension Tema.Misura {
         static let marginePulsante = EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)
         /// Scheda di una persona (protezione persona per persona).
         static let schedaPersona = EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+        /// Riquadro dell'obiettivo scelto sotto le schede degli Obiettivi (probabilità e posizioni collegate).
+        static let riquadroObiettivo = EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
         /// Colonne delle cifre nella tabella dei rischi di una persona.
         static let colonnaCifra: CGFloat = 104
         static let colonnaProposte: CGFloat = 122

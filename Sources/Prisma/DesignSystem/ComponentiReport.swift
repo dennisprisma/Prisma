@@ -26,11 +26,40 @@ private struct ChiaveNumeroPaginaReport: EnvironmentKey {
     static let defaultValue = 1
 }
 
+/// La numerazione di un report dentro il fascicolo: le sue pagine contano dall'inizio del fascicolo.
+struct NumerazioneFascicolo {
+    /// Pagine del fascicolo prima della copertina del report.
+    let scostamento: Int
+    /// Pagine dell'intero fascicolo.
+    let totale: Int
+}
+
+private struct ChiaveDocumentoInSala: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private struct ChiaveNumerazioneFascicolo: EnvironmentKey {
+    static let defaultValue: NumerazioneFascicolo? = nil
+}
+
 extension EnvironmentValues {
     /// Numero della pagina del report, per il capitolo ("05 —").
     var numeroPaginaReport: Int {
         get { self[ChiaveNumeroPaginaReport.self] }
         set { self[ChiaveNumeroPaginaReport.self] = newValue }
+    }
+
+    /// Il documento mostrato nella sala della presentazione: le etichette piccole crescono e scuriscono.
+    /// Nel PDF resta false.
+    var documentoInSala: Bool {
+        get { self[ChiaveDocumentoInSala.self] }
+        set { self[ChiaveDocumentoInSala.self] = newValue }
+    }
+
+    /// Dentro il fascicolo il piede stampa la pagina del fascicolo («13 / 24»), come l'indice; fuori è nil.
+    var numerazioneFascicolo: NumerazioneFascicolo? {
+        get { self[ChiaveNumerazioneFascicolo.self] }
+        set { self[ChiaveNumerazioneFascicolo.self] = newValue }
     }
 }
 
@@ -38,10 +67,18 @@ extension EnvironmentValues {
 /// logo e l'intestazione, carta avorio nei suoi toni, logo in filigrana, piede con il motto e il numero.
 struct CorniceReport<Contenuto: View>: View {
     @Environment(\.paletteDocumento) private var C
+    @Environment(\.numerazioneFascicolo) private var fascicolo
+    @Environment(\.documentoInSala) private var inSala
     let intestazione: String
     let numero: Int
     let totale: Int
     @ViewBuilder let contenuto: () -> Contenuto
+
+    /// «4 / 10» nel report, «13 / 24» dentro il fascicolo.
+    private var numerazione: String {
+        guard let f = fascicolo else { return "\(numero) / \(totale)" }
+        return "\(numero + f.scostamento) / \(f.totale)"
+    }
 
     var body: some View {
         let tono = Colori.Documento.toniReport[numero % Colori.Documento.toniReport.count]
@@ -70,9 +107,9 @@ struct CorniceReport<Contenuto: View>: View {
                     HStack {
                         Text(verbatim: "PERSONE. PRIORITÀ. PROSPETTIVE.")
                         Spacer()
-                        Text(verbatim: "\(numero) / \(totale)")
+                        Text(verbatim: numerazione)
                     }
-                    .font(T.piede).tracking(1.5).foregroundColor(C.tenue)
+                    .font(inSala ? T.piedeSala : T.piede).tracking(1.5).foregroundColor(inSala ? C.testo : C.tenue)
                     .padding(.top, 7)
                     .overlay(Rectangle().fill(C.filetto).frame(height: 0.8), alignment: .top)
                 }

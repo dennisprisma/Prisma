@@ -19,15 +19,12 @@ struct AppAgenda: View {
 
     var body: some View {
         GeometryReader { geo in
-            // Finestra stretta o bassa: la fascia diventa una riga sola e lascia spazio a calendario e dettaglio
-            let compatta = geo.size.width < Misure.AgendaImpaginazione.sogliaFasciaLarghezza
-                || geo.size.height < Misure.AgendaImpaginazione.sogliaFasciaAltezza
             // I riesami del mese mostrato: in un mese passato la striscia non compare, e nemmeno nella vista
             // «Occasioni», che guarda 12 mesi mentre la striscia ne guarda uno
             let riesami: RiesamiDelMese? = stato.vistaAgenda == .occasioni ? nil : stato.riesamiDelMese(giorno)
             let mesePassato = giorno < (cal.dateInterval(of: .month, for: Date())?.start ?? giorno)
             VStack(spacing: 0) {
-                fasciaCuoio(compatta: compatta)
+                fascia
                 if let riesami, !riesami.vuota && !mesePassato {
                     striscia(riesami, compatta: geo.size.height < Misure.RiesamiAgenda.sogliaAltezzaPiena)
                         .padding(.top, Tema.Misura.Dossier.spazioAgenda)
@@ -136,48 +133,23 @@ struct AppAgenda: View {
         }
     }
 
-    @ViewBuilder private func fasciaCuoio(compatta: Bool) -> some View {
-        if compatta {
-            HStack(alignment: .firstTextBaseline, spacing: Misure.AgendaImpaginazione.spazioFascia) {
-                Text("Il tuo tempo, con cura.")
-                    .font(Tipo.agendaTitolo)
-                    .foregroundColor(Colori.Agenda.cuoioTitolo)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                Text(periodo)
-                    .font(Tipo.agendaPeriodo)
-                    .foregroundColor(Colori.Agenda.cuoioTesto)
-                    .lineLimit(1)
-            }
-            .padding(Misure.AgendaImpaginazione.fasciaCompatta)
-            .frame(maxWidth: .infinity)
-            .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
-        } else {
-            fasciaIntera
+    /// La fascia in testa: sempre una riga sola. Nome dell'app e occhiello stanno già nella barra della finestra,
+    /// qui restano il motto e il periodo mostrato, e il calendario guadagna spazio.
+    private var fascia: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Misure.AgendaImpaginazione.spazioFascia) {
+            Text("Il tuo tempo, con cura.")
+                .font(Tipo.agendaTitolo)
+                .foregroundColor(Colori.Agenda.cuoioTitolo)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Text(periodo)
+                .font(Tipo.agendaPeriodo)
+                .foregroundColor(Colori.Agenda.cuoioTesto)
+                .lineLimit(1)
         }
-    }
-
-    private var fasciaIntera: some View {
-        CuoioAgenda {
-            HStack(alignment: .center, spacing: 18) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("PRISMA · AGENDA PERSONALE")
-                        .font(Tipo.agendaOcchiello)
-                        .tracking(0.8)
-                        .foregroundColor(Colori.Agenda.cuoioTesto)
-                    HStack(alignment: .firstTextBaseline, spacing: 25) {
-                        Text("Il tuo tempo, con cura.")
-                            .font(Tipo.agendaTitolo)
-                            .foregroundColor(Colori.Agenda.cuoioTitolo)
-                        Spacer(minLength: 0)
-                        Text(periodo)
-                            .font(Tipo.agendaPeriodo)
-                            .foregroundColor(Colori.Agenda.cuoioTesto)
-                    }
-                }
-                TarghettaData(giorno: giorno)
-            }
-        }
+        .padding(Misure.AgendaImpaginazione.fasciaCompatta)
+        .frame(maxWidth: .infinity)
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
     }
 
     // MARK: - Libro
@@ -225,34 +197,61 @@ struct AppAgenda: View {
         .vetro(.sottile, forma: forma)
     }
 
+    /// La barra sopra il calendario: tutta intera se c'è posto; nelle finestre strette il selettore della vista
+    /// prende la larghezza delle sue voci, il menu dei clienti si stringe e «＋ Appuntamento» diventa «＋».
+    /// Nessun pulsante va mai a capo.
     private var barraStrumenti: some View {
-        HStack(spacing: 8) {
+        ViewThatFits(in: .horizontal) {
+            rigaStrumenti(compatta: false)
+            rigaStrumenti(compatta: true)
+        }
+        .padding(EdgeInsets(top: 12, leading: 12, bottom: 7, trailing: 12))
+        .bordoBasso(Colori.Agenda.settimanaBordo)
+    }
+
+    private func rigaStrumenti(compatta: Bool) -> some View {
+        let m = Misure.AgendaImpaginazione.self
+        let viste: [(VistaAgenda, String)] = [(.settimana, "Settimana"), (.mese, "Mese"), (.occasioni, "Occasioni")]
+        let clienti: [(String?, String)] = [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) }
+        return HStack(spacing: 8) {
             HStack(spacing: 4) {
                 Button("‹") { sposta(-1) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .buttonStyle(StileVetro(margine: m.pulsanteBarra))
+                    .fixedSize()
                     .help(stato.vistaAgenda == .settimana ? "Settimana precedente" : "Mese precedente")
                 Button("Oggi") {
                     stato.giornoAgenda = cal.startOfDay(for: Date())
                     stato.appuntamentoSelezionato = nil
                     stato.occasioneSelezionata = nil
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .buttonStyle(StileVetro(margine: m.pulsanteBarra))
+                .fixedSize()
                 Button("›") { sposta(1) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    .buttonStyle(StileVetro(margine: m.pulsanteBarra))
+                    .fixedSize()
                     .help(stato.vistaAgenda == .settimana ? "Settimana successiva" : "Mese successivo")
             }
-            Segmentato(opzioni: [(VistaAgenda.settimana, "Settimana"), (VistaAgenda.mese, "Mese"), (VistaAgenda.occasioni, "Occasioni")],
-                       selezione: $stato.vistaAgenda)
-                .frame(width: Misure.Occasioni.segmentiVista)
+            if compatta {
+                ControlloSegmenti(opzioni: viste, selezione: $stato.vistaAgenda)
+                    .fixedSize()
+            } else {
+                Segmentato(opzioni: viste, selezione: $stato.vistaAgenda)
+                    .frame(width: Misure.Occasioni.segmentiVista)
+            }
             Spacer(minLength: 0)
-            MenuTendina(selezione: $stato.filtroClienteAgenda,
-                        opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
-                        larghezza: 190)
-            Button("＋ Appuntamento") { nuovoAppuntamento() }
-                .buttonStyle(StileBlu())
+            MenuTendina(selezione: $stato.filtroClienteAgenda, opzioni: clienti,
+                        larghezza: compatta ? m.menuClientiCompatto : m.menuClienti)
+            if compatta {
+                Button { nuovoAppuntamento() } label: { Image(systemName: "plus") }
+                    .buttonStyle(StileBlu())
+                    .fixedSize()
+                    .help("Nuovo appuntamento")
+            } else {
+                Button("＋ Appuntamento") { nuovoAppuntamento() }
+                    .buttonStyle(StileBlu())
+                    .fixedSize()
+            }
         }
-        .padding(EdgeInsets(top: 12, leading: 12, bottom: 7, trailing: 12))
-        .bordoBasso(Colori.Agenda.settimanaBordo)
     }
 
     private func sposta(_ verso: Int) {
@@ -358,6 +357,7 @@ struct AppAgenda: View {
                     ForEach(eventi) { e in
                         RigaEventoAgenda(
                             evento: e, cliente: stato.cliente(e.clienteId)?.nome ?? "Cliente",
+                            canale: stato.canaleAppuntamento(e),
                             selezionato: e.id == selezionato?.id && occasioneScelta == nil
                         ) {
                             stato.appuntamentoSelezionato = e.id
@@ -438,14 +438,32 @@ struct AppAgenda: View {
         let corrente = giorni.contains { cal.isDateInToday($0) }
         let periodo = corrente ? "QUESTA SETTIMANA"
             : "SETTIMANA DEL \(giorni.first.map { Formati.giornoMeseBreve.string(from: $0) } ?? "")".uppercased()
-        return HStack(spacing: 6) {
+        // Se la riga non ci sta, prima si toglie il tempo riservato: il periodo resta sempre intero
+        return ViewThatFits(in: .horizontal) {
+            rigaSettimana(periodo, daSvolgere: daSvolgere.count, riservati: CalendarioAgenda.durata(minuti),
+                          scadenze: scadenze, occasioni: occasioni)
+            rigaSettimana(periodo, daSvolgere: daSvolgere.count, riservati: nil, scadenze: scadenze, occasioni: occasioni)
+        }
+        .font(Tipo.notaSettimana)
+        .foregroundColor(Colori.Agenda.notaSettimana)
+        .lineLimit(1)
+        .padding(EdgeInsets(top: 7, leading: 15, bottom: 7, trailing: 15))
+        .bordoAlto(Colori.Agenda.notaSettimanaBordo)
+    }
+
+    private func rigaSettimana(_ periodo: String, daSvolgere: Int, riservati: String?, scadenze: Int, occasioni: Int) -> some View {
+        HStack(spacing: 6) {
             Text(periodo)
                 .font(Tipo.paginaOcchiello)
                 .tracking(1.2)
+                .fixedSize()
+                .layoutPriority(1)
                 .padding(.trailing, 5)
-            Text("\(daSvolgere.count) da svolgere").font(Tipo.notaSettimanaForte)
-            Text("·")
-            Text("\(CalendarioAgenda.durata(minuti)) riservati").font(Tipo.notaSettimanaForte)
+            Text("\(daSvolgere) da svolgere").font(Tipo.notaSettimanaForte)
+            if let riservati {
+                Text("·")
+                Text("\(riservati) riservati").font(Tipo.notaSettimanaForte)
+            }
             if scadenze > 0 {
                 Text("·")
                 Text("\(scadenze) \(scadenze == 1 ? "scadenza" : "scadenze")").font(Tipo.notaSettimanaForte)
@@ -456,11 +474,6 @@ struct AppAgenda: View {
             }
             Spacer(minLength: 0)
         }
-        .font(Tipo.notaSettimana)
-        .foregroundColor(Colori.Agenda.notaSettimana)
-        .lineLimit(1)
-        .padding(EdgeInsets(top: 7, leading: 15, bottom: 7, trailing: 15))
-        .bordoAlto(Colori.Agenda.notaSettimanaBordo)
     }
 
     // MARK: - Dettaglio
@@ -514,7 +527,7 @@ struct AppAgenda: View {
 
     private var quieto: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("✎")
+            Image(systemName: "calendar")
                 .font(Tipo.simboloQuieto)
                 .foregroundColor(Colori.Agenda.quieto)
             Text("Il tempo per ciò che conta.")
@@ -525,8 +538,8 @@ struct AppAgenda: View {
                 .foregroundColor(Colori.Agenda.quietoTesto)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Ogni incontro è collegato alla scheda cliente e, se serve, a una posizione da analizzare. Le scadenze delle posizioni in essere e le occasioni (penali finite, previdenza, famiglia, coperture, fisco) compaiono da sole nella giornata.")
-                .font(Tipo.quietoSuggerimento)
-                .foregroundColor(Colori.Agenda.quietoSuggerimento)
+                .font(Tema.Testo.didascalia)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 10)
                 .bordoAlto(Colori.Agenda.azioniBordo)
@@ -659,6 +672,8 @@ struct CellaMeseAgenda: View {
 struct RigaEventoAgenda: View {
     let evento: Appuntamento
     let cliente: String
+    /// Il canale dell'appuntamento o, se manca, quello della posizione collegata (`canaleAppuntamento`).
+    let canale: Canale?
     let selezionato: Bool
     let azione: () -> Void
 
@@ -685,7 +700,7 @@ struct RigaEventoAgenda: View {
                         if concluso {
                             EtichettaStato(testo: "✓ Concluso", colore: Colori.Agenda.conclusoTesto, fondo: Colori.Agenda.conclusoFondo)
                         }
-                        if let c = evento.canale {
+                        if let c = canale {
                             EtichettaCanale(canale: c, compatta: true)
                         }
                     }
@@ -724,7 +739,8 @@ struct RigaScadenzaAgenda: View {
 
     var body: some View {
         Button(action: azione) {
-            HStack(alignment: .center, spacing: 12) {
+            // «Scade» e «Analizza ›» sulla riga del nome, come l'ora nelle righe degli appuntamenti
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
                 EtichettaStato(testo: "Scade", colore: Colori.Agenda.scadenzaTesto, fondo: Colori.Agenda.scadenzaFondo)
                     .frame(width: Misure.Agenda.colonnaOra, alignment: .leading)
                 VStack(alignment: .leading, spacing: 3) {
@@ -746,7 +762,7 @@ struct RigaScadenzaAgenda: View {
                 Spacer(minLength: 0)
                 Text("Analizza ›")
                     .font(Tipo.eventoDettagli)
-                    .foregroundColor(Colori.Agenda.freccia)
+                    .foregroundColor(Colori.Colonna.collegamento)
             }
             .padding(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 15))
             .bordoBasso(Colori.Agenda.rigaBordo)
@@ -769,6 +785,7 @@ struct DettaglioAppuntamento: View {
         let cliente = stato.cliente(evento.clienteId)
         let posizione = evento.posizioneId.flatMap { id in stato.posizioni.first { $0.id == id } }
         let collegate = stato.attivitaCollegate(evento.id)
+        let canale = stato.canaleAppuntamento(evento)
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -813,10 +830,11 @@ struct DettaglioAppuntamento: View {
                     VoceDettaglio(etichetta: "Durata") { valore("\(evento.durataMinuti) minuti") }
                     VoceDettaglio(etichetta: "Tipo") { valore(evento.tipo.nome) }
                     VoceDettaglio(etichetta: "Canale") {
-                        if let c = evento.canale {
+                        if let c = canale {
                             EtichettaCanale(canale: c, compatta: true)
                         } else {
-                            valore("Non indicato")
+                            Pillola(testo: "Da indicare", tono: .neutro)
+                                .help("Indica il canale con «Modifica» o collega una posizione all'appuntamento")
                         }
                     }
 
@@ -862,7 +880,10 @@ struct DettaglioAppuntamento: View {
                     }
                 }
                 .padding(.trailing, 4)
+                .padding(.bottom, Misure.AgendaImpaginazione.sfumaturaDettaglio / 2)
             }
+            // L'ultima riga sfuma sopra le azioni invece di finire tagliata a metà
+            .sfumaturaBordiScorrimento(sotto: Misure.AgendaImpaginazione.sfumaturaDettaglio)
 
             // Le azioni in due gruppi: le principali in alto, le altre in una fila sola se c'è posto,
             // altrimenti due per riga (o una sotto l'altra): i titoli non si troncano mai
@@ -983,5 +1004,13 @@ struct DettaglioAppuntamento: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .vetro(.sottile, forma: .arrotondata(Tema.Raggio.Dossier.riquadro))
         .padding(.bottom, 8)
+    }
+}
+
+extension StatoShell {
+    /// Il canale da mostrare per un appuntamento: il suo o, se non è indicato, quello della posizione collegata.
+    func canaleAppuntamento(_ e: Appuntamento) -> Canale? {
+        if let c = e.canale { return c }
+        return e.posizioneId.flatMap { id in posizioni.first { $0.id == id } }?.canale
     }
 }

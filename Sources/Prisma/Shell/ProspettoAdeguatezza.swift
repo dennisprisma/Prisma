@@ -104,7 +104,10 @@ private struct PaginaControlliAdeguatezza: View {
             let testo: [String] = [r.esito] + Array(r.dettagli.prefix(2))
             var cosa = CellaDoc(testo.joined(separator: " "), font: T.pTabella)
             cosa.righe = D.righeCosaRisulta
-            return RigaDoc(celle: [titolo, esito, cosa], altezza: D.rigaControllo)
+            // Alta quanto il testo, almeno `rigaControlloMinima`: le righe brevi non lasciano un vuoto
+            var riga = RigaDoc(celle: [titolo, esito, cosa], altezza: D.rigaControlloMinima)
+            riga.variabile = true
+            return riga
         }
     }
 
@@ -146,7 +149,7 @@ private struct PaginaControlliAdeguatezza: View {
     /// Quattro cifre in evidenza: per le coperture capitale, premio, rischio e scadenza.
     private func cifre(_ p: Posizione) -> some View {
         let elenco = valoriCifre(p)
-        return HStack(spacing: 6) {
+        return FilaCifre {
             ForEach(Array(elenco.enumerated()), id: \.offset) { _, c in
                 CifraProspetto(c.etichetta, c.valore, c.nota)
             }
@@ -299,11 +302,14 @@ private struct PaginaDocumentiAdeguatezza: View {
             Text(verbatim: "Nessun documento per questo canale e questo tipo di prodotto.")
                 .font(T.pTabellaNota).foregroundColor(C.tenue)
         } else {
-            let altezza = elenco.count > D.documentiPieni ? D.rigaDocumento - D.rigaDocumentoStretta : D.rigaDocumento
+            // Le voci con il riferimento sotto prendono più spazio: le due righe non si toccano
+            let pieni = elenco.count > D.documentiPieni
+            let altezza = pieni ? D.rigaDocumento - D.rigaDocumentoStretta : D.rigaDocumento
+            let conDettaglio = pieni ? D.rigaDocumento : D.rigaDocumentoDettaglio
             let mostrati = Array(elenco.prefix(D.documentiMassimi))
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(mostrati) { d in
-                    rigaDocumento(d).frame(height: altezza)
+                    rigaDocumento(d).frame(height: d.voce.dettaglio.isEmpty ? altezza : conDettaglio)
                 }
                 if elenco.count > mostrati.count {
                     Text(verbatim: "e altri \(elenco.count - mostrati.count) documenti (vedi la scheda in Prisma)")
@@ -314,7 +320,8 @@ private struct PaginaDocumentiAdeguatezza: View {
     }
 
     private func rigaDocumento(_ d: DocumentoDaConsegnare) -> some View {
-        HStack(alignment: .center, spacing: 6) {
+        // La casella e lo stato sulla prima riga del titolo, anche quando sotto c'è il riferimento
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             SpuntaCarta(segnata: d.consegnatoIl != nil, nonPertinente: d.nonPertinente)
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: d.voce.titolo).font(T.pTabella).foregroundColor(C.testo).lineLimit(1).minimumScaleFactor(0.8)

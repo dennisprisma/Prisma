@@ -15,10 +15,7 @@ extension Misure {
         static let dettaglioMassimo: CGFloat = 580
         /// La giornata (a sinistra) non scende sotto questa larghezza finché la finestra lo consente.
         static let paginaMinima: CGFloat = 320
-        /// Sotto queste misure la fascia in testa diventa una riga sola e lascia spazio al calendario.
-        static let sogliaFasciaLarghezza: CGFloat = 820
-        static let sogliaFasciaAltezza: CGFloat = 640
-        /// Margini della fascia compatta.
+        /// Margini della fascia in testa (una riga sola).
         static let fasciaCompatta = EdgeInsets(top: 9, leading: 18, bottom: 9, trailing: 18)
         /// Spazio tra il titolo della fascia e il periodo.
         static let spazioFascia: CGFloat = 14
@@ -30,6 +27,13 @@ extension Misure {
         static let spazioAzioni: CGFloat = 6
         /// Spazio tra il nome del cliente e il collegamento alla sua scheda.
         static let spazioCliente: CGFloat = 8
+        /// Barra degli strumenti: margini dei pulsanti ‹ Oggi ›, menu dei clienti (largo e, nelle finestre
+        /// strette, compatto, con «＋» al posto di «＋ Appuntamento»).
+        static let pulsanteBarra = EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)
+        static let menuClienti: CGFloat = 190
+        static let menuClientiCompatto: CGFloat = 130
+        /// Il dettaglio che scorre sfuma sopra le azioni in fondo.
+        static let sfumaturaDettaglio: CGFloat = 22
 
         /// Larghezza del dettaglio per la larghezza disponibile.
         static func dettaglio(_ totale: CGFloat) -> CGFloat {
@@ -98,6 +102,11 @@ extension Misure {
         /// Altezza di appunti e decisioni: il resto della pagina, tolto lo spazio di titoli e pulsanti.
         static let riservaAscolto: CGFloat = 230
         static let appuntiAltezza: ClosedRange<CGFloat> = 160...520
+        /// Margine interno dei pozzetti di domande, appunti e decisioni: il testo non tocca il bordo.
+        static let margineFoglio: CGFloat = 10
+        /// Spazio tra il segno colorato e l'occhiello di una proposta («BISOGNO», «ATTIVITÀ») e lato del segno.
+        static let spazioSegnoProposta: CGFloat = 5
+        static let segnoProposta: CGFloat = 7
 
         static func colonna(_ totale: CGFloat) -> CGFloat {
             min(max(totale * quotaColonna, colonnaMinima), colonnaMassima)

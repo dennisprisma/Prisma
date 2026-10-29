@@ -8,6 +8,8 @@ extension Tema.Misura {
         static let colonnaTipo: CGFloat = 200
         static let colonnaDomanda: CGFloat = 78
         static let colonnaLivello: CGFloat = 124
+        /// Spazio tra le colonne della griglia (le caselle vicine non si toccano più).
+        static let spazioColonne: CGFloat = 16
         static let casella = CGSize(width: 52, height: 22)
         static let margineCella = EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
         static let spazioSezione: CGFloat = 10
@@ -31,7 +33,8 @@ extension Tema.Colore {
         static let noNeutro = Tema.Colore.pozzettoScuro
         static let testoNoNeutro = Tema.Colore.inchiostroSecondario
         static let vuota = Tema.Colore.pozzetto
-        static let testoVuota = Tema.Colore.inchiostroTerziario
+        /// Il trattino «non indicato»: secondario, si legge anche sulle righe alternate.
+        static let testoVuota = Tema.Colore.inchiostroSecondario
         static let bordoCasella = Tema.Colore.separatore
     }
 }
@@ -135,10 +138,11 @@ struct GrigliaEsperienza: View {
     }
 
     private var testa: some View {
-        HStack(spacing: 0) {
+        // Le intestazioni delle domande larghe e centrate come le caselle sotto
+        HStack(spacing: M.spazioColonne) {
             Text("Tipo di prodotto").frame(width: M.colonnaTipo, alignment: .leading)
             ForEach(DomandaEsperienza.allCases) { d in
-                Text(d.titolo).frame(width: M.colonnaDomanda)
+                Text(d.titolo).frame(width: M.colonnaDomanda, alignment: .center)
             }
             Text("Livello").frame(width: M.colonnaLivello, alignment: .leading)
             Text("In Prisma").frame(maxWidth: .infinity, alignment: .leading)
@@ -154,7 +158,7 @@ struct GrigliaEsperienza: View {
     private func riga(_ t: TipoProdotto, indice i: Int) -> some View {
         let voce = esperienza?.voce(t) ?? VoceEsperienza(tipo: t)
         let livello = MotoreEsperienza.livello(voce)
-        return HStack(spacing: 0) {
+        return HStack(spacing: M.spazioColonne) {
             Text(t.nome)
                 .font(Tipo.tabellaCellaForte)
                 .foregroundColor(Colori.Analisi.tabellaTesto)
@@ -163,7 +167,7 @@ struct GrigliaEsperienza: View {
                 .help(t.esempi)
             ForEach(DomandaEsperienza.allCases) { d in
                 CasellaEsperienza(valore: voce[d], domanda: d, tipo: t) { rispondi(t, d, $0) }
-                    .frame(width: M.colonnaDomanda)
+                    .frame(width: M.colonnaDomanda, alignment: .center)
             }
             HStack(spacing: 0) {
                 Pillola(testo: livello.nome, tono: livello.tono)

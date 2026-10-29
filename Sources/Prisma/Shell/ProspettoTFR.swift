@@ -88,7 +88,7 @@ private struct PaginaStradeTFR: View {
                 .fixedSize()
                 CampoProspetto(etichetta: "Fondo", valore: t.nomeFondo)
             }
-            HStack(spacing: DT.spazioCifre) {
+            FilaCifre(spazio: DT.spazioCifre) {
                 CifraProspetto("TFR in azienda", CifreDoc.euro(e.azienda.netto), "in euro di oggi \(CifreDoc.euro(e.azienda.reale))")
                 CifraProspetto("Nel fondo, solo TFR", CifreDoc.euro(e.fondo.netto), "in euro di oggi \(CifreDoc.euro(e.fondo.reale))")
                 CifraProspetto("Differenza", CifreDoc.euroSegno(e.differenza), "fondo meno azienda, al netto", colore: coloreDifferenza(e.differenza))

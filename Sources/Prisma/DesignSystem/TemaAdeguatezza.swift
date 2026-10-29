@@ -12,7 +12,11 @@ extension Tema.Misura {
         static let spazioRighe: CGFloat = 8
         static let spazioColonne: CGFloat = 24
         static let spazioSezioni: CGFloat = 14
+        /// Il campo della motivazione: alto almeno così, cresce con il testo fino all'altezza massima (poi scorre).
         static let altezzaMotivazione: CGFloat = 76
+        static let altezzaMotivazioneMassima: CGFloat = 180
+        /// Il rientro del testo dentro il campo (quello dell'editor di AppKit), per misurare le righe a capo.
+        static let rientroMotivazione: CGFloat = 5
         static let margineRiga = EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)
         static let spazioPallino: CGFloat = 10
         static let larghezzaPopover: CGFloat = 340
@@ -91,7 +95,11 @@ extension Misure.Documento {
     static let spazioEtichettaFirma: CGFloat = 3
     static let spazioFirme: CGFloat = 18
     static let rigaControllo: CGFloat = 44
+    /// I controlli su carta: la riga è alta quanto il suo testo, almeno così.
+    static let rigaControlloMinima: CGFloat = 26
     static let rigaDocumento: CGFloat = 17
+    /// Una voce dei documenti con il riferimento normativo sotto il titolo.
+    static let rigaDocumentoDettaglio: CGFloat = 22
     static let rigaEsperienza: CGFloat = 14
     /// Oltre 12 documenti la riga si abbassa di 3 punti; oltre 16 si scrivono i primi 16.
     static let documentiPieni = 12

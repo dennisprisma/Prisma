@@ -184,6 +184,7 @@ struct CorpoPulsante<Etichetta: View>: View {
     let altezza: CGFloat?
     @State private var sopra = false
     @Environment(\.isEnabled) private var abilitato
+    @Environment(\.chipDelTema) private var chipDelTema
 
     init(etichetta: Etichetta, aspetto: AspettoPulsante, premuto: Bool, margine: EdgeInsets, altezza: CGFloat? = nil) {
         self.etichetta = etichetta
@@ -195,7 +196,9 @@ struct CorpoPulsante<Etichetta: View>: View {
 
     var body: some View {
         let m = Tema.Misura.Componenti.self
-        let base = etichetta
+        // Una riga sola e mai più stretta del testo: nessun pulsante va a capo lettera per lettera.
+        // Chi riempie la sua cella (`.frame(maxWidth: .infinity)` nell'etichetta) continua a riempirla.
+        let base = LarghezzaAlmenoIdeale().callAsFunction { etichetta.lineLimit(1) }
             .font(Tema.Testo.pulsantePiccolo)
             .foregroundColor(aspetto == .vetro ? Tema.Colore.inchiostro : Tema.Colore.Componenti.testoSuColore)
             .padding(.leading, max(margine.leading, m.margineCapsula))
@@ -204,10 +207,11 @@ struct CorpoPulsante<Etichetta: View>: View {
             .padding(.bottom, altezza == nil ? margine.bottom : 0)
             .frame(minHeight: altezza == nil ? m.pulsanteMinimo : nil)
             .frame(height: altezza)
+        let alPassaggio: Color = chipDelTema ? Tema.Colore.chipSopra : Tema.Colore.chipControlloSopra
         Group {
             switch aspetto {
             case .vetro:
-                base.vetro(.chip, forma: .capsula, riempimento: sopra ? Tema.Colore.chipSopra : nil, interattivo: true)
+                base.vetro(.chip, forma: .capsula, riempimento: sopra ? alPassaggio : nil, interattivo: true)
             case .principale, .rosso:
                 base.background { pieno }
             }
@@ -232,6 +236,23 @@ struct CorpoPulsante<Etichetta: View>: View {
                     .clipShape(FormaVetro.capsula)
             }
             .ombraTema(ombra)
+    }
+}
+
+/// Contenitore di una sola vista che non la lascia mai più stretta della sua larghezza ideale (come
+/// `fixedSize` in orizzontale), ma la lascia allargare quando lo spazio c'è e lei lo chiede.
+struct LarghezzaAlmenoIdeale: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let vista = subviews.first else { return .zero }
+        let ideale = vista.sizeThatFits(.unspecified).width
+        let larghezza = max(ideale, proposal.width ?? ideale)
+        return vista.sizeThatFits(ProposedViewSize(width: larghezza, height: proposal.height))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let vista = subviews.first else { return }
+        vista.place(at: bounds.origin, anchor: .topLeading,
+                    proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
     }
 }
 
@@ -349,7 +370,6 @@ struct ControlloSegmenti<Valore: Hashable>: View {
                 .font(carattere)
                 .foregroundColor(attiva ? Tema.Colore.inchiostro : Tema.Colore.inchiostroSecondario)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
                 .padding(.horizontal, compatto ? Tema.Misura.Componenti.margineSegmentoCompatto : Tema.Misura.Componenti.margineSegmento)
                 .frame(maxWidth: riempi ? .infinity : nil, maxHeight: .infinity)
                 .background {
@@ -600,7 +620,8 @@ struct IconaAgenda: View {
 
 // MARK: - Avviso temporaneo (.toast)
 
-/// Avviso che compare per qualche secondo sopra il dock: capsula di vetro leggero.
+/// Avviso che compare per qualche secondo sopra la barra di stato della finestra attiva (senza finestre,
+/// sopra il dock): capsula di vetro dei pannelli con il riempimento coprente, che non lascia leggere sotto.
 struct VistaAvviso: View {
     let testo: String
 
@@ -610,7 +631,7 @@ struct VistaAvviso: View {
             .foregroundColor(Tema.Colore.inchiostro)
             .multilineTextAlignment(.center)
             .padding(Tema.Misura.Componenti.avviso)
-            .vetro(.leggero, forma: .capsula)
+            .vetro(.pannello, forma: .capsula, riempimento: Tema.Colore.PannelliShell.coprente)
     }
 }
 

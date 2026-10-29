@@ -51,10 +51,18 @@ extension Tema.Misura {
         static let spazioVoci: CGFloat = 2
         /// Spazio tra la fascia in testa all'Agenda e la scheda della settimana.
         static let spazioAgenda: CGFloat = 10
-        /// Testata delle Attività.
-        static let testataAttivita = EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 12)
         /// Separatori verticali del riepilogo delle Attività.
         static let separatoreRiepilogo: CGFloat = 34
+        /// Testata dell'elenco laterale di Posizioni nel Portafoglio: come «Dossier di» (DossierRail).
+        static let testataRail = EdgeInsets(top: 8, leading: 8, bottom: 9, trailing: 8)
+        /// Sfumatura in fondo all'elenco laterale che scorre, sopra il piede «Archivio locale».
+        static let sfumaturaRail: CGFloat = 12
+        /// Dettaglio della posizione: la colonna sinistra (contratto) non va oltre, la destra (costi,
+        /// fiscalità, storico) parte da qui e prende il resto.
+        static let dettaglioSinistraMassima: CGFloat = 520
+        static let dettaglioDestraMinima: CGFloat = 360
+        /// Sfumatura sotto la barra del dettaglio: il contenuto che scorre sparisce prima del filo.
+        static let sfumaturaBarra: CGFloat = 10
     }
 }
 

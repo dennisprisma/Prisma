@@ -86,8 +86,6 @@ extension Tema.Misura {
         // Widget
         /// La fila bassa della bacheca è alta 1,04 volte quella alta (righe 1fr / 64 / 1.04fr del tema).
         static let quotaFilaBassa: CGFloat = 1.04
-        /// Gli elenchi sfumano negli ultimi 16 pt.
-        static let sfumaturaElenco: CGFloat = 16
         static let barrettaEvento: CGFloat = 4
         static let rigaSpazio: CGFloat = 11
         static let rigaTestoSpazio: CGFloat = 2

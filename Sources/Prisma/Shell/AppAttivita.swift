@@ -62,27 +62,26 @@ struct AppAttivita: View {
 
     // MARK: - Testata e riepilogo
 
+    /// La fascia in testa, una riga sola come in Agenda: nome dell'app e occhiello stanno già nella barra della finestra.
     private var testata: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("PRISMA · PROMEMORIA")
-                    .font(Tipo.agendaOcchiello)
-                    .tracking(0.8)
+        HStack(alignment: .center, spacing: Misure.AgendaImpaginazione.spazioFascia) {
+            HStack(alignment: .firstTextBaseline, spacing: Misure.AgendaImpaginazione.spazioFascia) {
+                Text("Le cose da fare.")
+                    .font(Tipo.agendaTitolo)
+                    .foregroundColor(Colori.Attivita.testataTitolo)
+                    .lineLimit(1)
+                    .fixedSize()
+                Text("Un posto per ogni prossimo passo.")
+                    .font(Tipo.agendaPeriodo)
                     .foregroundColor(Colori.Attivita.testataTesto)
-                HStack(alignment: .firstTextBaseline, spacing: 24) {
-                    Text("Le cose da fare.")
-                        .font(Tipo.agendaTitolo)
-                        .foregroundColor(Colori.Attivita.testataTitolo)
-                    Text("Un posto per ogni prossimo passo.")
-                        .font(Tipo.agendaPeriodo)
-                        .foregroundColor(Colori.Attivita.testataTesto)
-                }
+                    .lineLimit(1)
             }
             Spacer(minLength: 0)
             Button("＋ Nuova attività") { nuova() }
                 .buttonStyle(StileBlu())
+                .fixedSize()
         }
-        .padding(Tema.Misura.Dossier.testataAttivita)
+        .padding(Misure.AgendaImpaginazione.fasciaCompatta)
         .vetro(.sottile, forma: .arrotondata(Tema.Raggio.scheda))
     }
 

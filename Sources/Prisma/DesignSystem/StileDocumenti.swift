@@ -3,7 +3,7 @@ import SwiftUI
 
 // Stile dei documenti per i clienti (report A4 orizzontale e prospetto A4 verticale).
 // È lo stile scelto da Denis con i suoi esempi (Orizzonte Valore, ottobre 2026): pulito e moderno.
-// Testi in SF del sistema, verde, blu e rosso per i tre scenari, ardesia e ocra per Gestione separata
+// Testi in SF del sistema, verde, blu e rosso per i tre scenari, ardesia e viola per Gestione separata
 // e Fondo Interno. I documenti restano su carta chiara con colori fissi e opachi, anche con l'app in scuro.
 
 /// I colori di un documento per i clienti. Due tavolozze: "moderna" per il prospetto (lo stile degli
@@ -47,7 +47,10 @@ struct PaletteDocumento {
     var intermedioFondo: Color
     var sfavorevoleFondo: Color
     var gestioneSeparata: Color
+    /// Ocra: il semaforo giallo e i dati da aggiornare (non più il Fondo Interno, che sembrava il cuoio dell'indipendente).
     var fondoInterno: Color
+    /// Il Fondo Interno e i fondi nei grafici: viola, come nell'app, lontano dal blu e dal cuoio dei canali.
+    var fondi: Color
     var negativo: Color
     var positivo: Color
     var penaleForte: Color
@@ -83,7 +86,7 @@ struct PaletteDocumento {
     }
 
     func parte(_ t: ComponenteContratto.Tipo) -> Color {
-        t == .gestioneSeparata ? gestioneSeparata : fondoInterno
+        t == .gestioneSeparata ? gestioneSeparata : fondi
     }
 }
 
@@ -103,19 +106,20 @@ extension Colori {
             bloccato: Color(hex: "#eef0f3"), griglia: Color(hex: "#e6e8ec"), premio: Color(hex: "#7d8796"),
             favorevole: Color(hex: "#2e7d5b"), intermedio: Color(hex: "#2f5ea8"), sfavorevole: Color(hex: "#c0553a"),
             favorevoleFondo: Color(hex: "#e6efe9"), intermedioFondo: Color(hex: "#e5ebf3"), sfavorevoleFondo: Color(hex: "#f6e7e4"),
-            gestioneSeparata: Color(hex: "#6f86a6"), fondoInterno: Color(hex: "#c4913f"),
+            gestioneSeparata: Color(hex: "#6f86a6"), fondoInterno: Color(hex: "#c4913f"), fondi: Color(hex: "#7a6fb0"),
             negativo: Color(hex: "#c0553a"), positivo: Color(hex: "#2e7d5b"),
             penaleForte: Color(hex: "#b5513a"), penaleMedia: Color(hex: "#c9806f"), penaleLieve: Color(hex: "#e0b5ab"),
             cascataTotale: Color(hex: "#8e98a8"), cascataPiu: Color(hex: "#7fb093"), cascataMeno: Color(hex: "#d3897a"),
+            // Liquidità in verde acqua: l'ocra di prima sembrava il cuoio dell'indipendente
             aree: [Color(hex: "#2f5ea8"), Color(hex: "#2e7d5b"), Color(hex: "#6f86a6"), Color(hex: "#8a6fb0"),
-                   Color(hex: "#c4913f"), Color(hex: "#9aa3ad"), Color(hex: "#c0553a")],
+                   Color(hex: "#3a9e9a"), Color(hex: "#9aa3ad"), Color(hex: "#c0553a")],
             alleanza: Tema.Colore.canaleAlleanzaStampa, indipendente: Tema.Colore.canaleIndipendenteStampa
         )
 
         /// Report: l'identità di Prisma. Carta avorio con la sfumatura delle slide, inchiostro blu ardesia,
         /// copertina blu notte del tema (#0F2433 → #1E3A4F) con il logo bianco e i cartellini bianchi;
         /// scenari nei toni dell'app (salvia, blu Prisma, terracotta), Gestione separata e Fondo
-        /// Interno in ardesia e cuoio.
+        /// Interno in ardesia e viola.
         static let prisma = PaletteDocumento(
             foglio: Color(hex: "#fffef8"), foglioFine: Color(hex: "#f1eee4"),
             copertina: Color(hex: "#0F2433"), copertinaFine: Color(hex: "#1E3A4F"), copertinaRiquadro: .white,
@@ -129,12 +133,12 @@ extension Colori {
             bloccato: Color(hex: "#ece9df"), griglia: Color(hex: "#e2e0d6"), premio: Color(hex: "#8d9a93"),
             favorevole: Color(hex: "#4d7f5b"), intermedio: Color(hex: "#2f6e9b"), sfavorevole: Color(hex: "#a65a3c"),
             favorevoleFondo: Color(hex: "#eaf0e6"), intermedioFondo: Color(hex: "#e6eef2"), sfavorevoleFondo: Color(hex: "#f5e9e1"),
-            gestioneSeparata: Color(hex: "#6d8a96"), fondoInterno: Color(hex: "#b98a4e"),
+            gestioneSeparata: Color(hex: "#6d8a96"), fondoInterno: Color(hex: "#b98a4e"), fondi: Color(hex: "#7a6fb0"),
             negativo: Color(hex: "#a65a3c"), positivo: Color(hex: "#4d7f5b"),
             penaleForte: Color(hex: "#a65a3c"), penaleMedia: Color(hex: "#c28b6c"), penaleLieve: Color(hex: "#dfc0a8"),
             cascataTotale: Color(hex: "#9aa6a2"), cascataPiu: Color(hex: "#8fb194"), cascataMeno: Color(hex: "#cf9c84"),
             aree: [Color(hex: "#2f6e9b"), Color(hex: "#4d7f5b"), Color(hex: "#6d8a96"), Color(hex: "#8b6f93"),
-                   Color(hex: "#b98a4e"), Color(hex: "#a89f8c"), Color(hex: "#a65a3c")],
+                   Color(hex: "#4a9590"), Color(hex: "#a89f8c"), Color(hex: "#a65a3c")],
             alleanza: Tema.Colore.canaleAlleanzaStampa, indipendente: Tema.Colore.canaleIndipendenteStampa
         )
     }

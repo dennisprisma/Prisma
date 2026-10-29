@@ -4,6 +4,7 @@ import SwiftUI
 /// o, per le coperture, il quadro della protezione. Si apre dentro la finestra, come su iOS 5.
 struct DettaglioPosizione: View {
     @EnvironmentObject var stato: StatoShell
+    @Environment(\.modoIstantanea) private var modoIstantanea
     let posizione: Posizione
     let modifica: () -> Void
     @State var confermaEliminazione = false
@@ -52,7 +53,9 @@ struct DettaglioPosizione: View {
                                     }
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            // Con la colonna destra il contratto non va oltre la sua misura: la destra prende il resto
+                            .frame(maxWidth: p.area.proiettabile ? Tema.Misura.Dossier.dettaglioSinistraMassima : .infinity,
+                                   alignment: .leading)
                             if p.area.proiettabile {
                                 VStack(alignment: .leading, spacing: 22) {
                                     costiERischio(prodotto)
@@ -62,7 +65,7 @@ struct DettaglioPosizione: View {
                                         storico(voce)
                                     }
                                 }
-                                .frame(width: 320, alignment: .leading)
+                                .frame(minWidth: Tema.Misura.Dossier.dettaglioDestraMinima, maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         // La scheda di adeguatezza della proposta (giro 4): controlli, documenti, PDF da firmare
@@ -93,6 +96,14 @@ struct DettaglioPosizione: View {
                     }
                     .padding(EdgeInsets(top: 14, leading: 16, bottom: 18, trailing: 16))
                 }
+                // Il contenuto che scorre sfuma sotto la barra invece di finire tagliato sul filo
+                .mask {
+                    VStack(spacing: 0) {
+                        LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                            .frame(height: Tema.Misura.Dossier.sfumaturaBarra)
+                        Color.black
+                    }
+                }
                 .onAppear { scorri(lettore) }
                 .onChange(of: stato.ancoraPosizioni) { _ in scorri(lettore) }
             }
@@ -115,8 +126,14 @@ struct DettaglioPosizione: View {
     /// ancore «dettaglio-…», le altre sono del dossier.
     private func scorri(_ lettore: ScrollViewProxy) {
         guard let ancora = stato.ancoraPosizioni, ancora.hasPrefix("dettaglio-") else { return }
+        let istantanea = modoIstantanea
         DispatchQueue.main.async {
-            withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }
+            // Nell'istantanea si scorre di colpo: con il movimento la foto arriverebbe a metà strada
+            if istantanea {
+                lettore.scrollTo(ancora, anchor: .top)
+            } else {
+                withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }
+            }
             stato.ancoraPosizioni = nil
         }
     }
@@ -171,7 +188,20 @@ struct DettaglioPosizione: View {
         .bordoBasso(Colori.Analisi.tabellaRiga)
     }
 
+    /// Dove vanno l'etichetta del canale e la pillola dello stato nella testata.
+    private enum PostoEtichetta { case completa, compatta, sotto }
+
+    /// Il canale accanto al nome se c'è posto, poi compatto, poi sotto il titolo: in una finestra
+    /// stretta il nome non si stringe mai fino a una lettera per riga.
     private var intestazione: some View {
+        ViewThatFits(in: .horizontal) {
+            rigaIntestazione(.completa)
+            rigaIntestazione(.compatta)
+            rigaIntestazione(.sotto)
+        }
+    }
+
+    private func rigaIntestazione(_ etichetta: PostoEtichetta) -> some View {
         HStack(alignment: .center, spacing: 14) {
             FormaVetro.capsula
                 .fill(Colori.Analisi.area(posizione.area))
@@ -181,13 +211,25 @@ struct DettaglioPosizione: View {
                     .font(Tipo.profiloNome)
                     .tracking(-0.4)
                     .foregroundColor(Colori.Analisi.kpiValore)
+                    .lineLimit(etichetta == .sotto ? 2 : 1)
+                    .fixedSize(horizontal: false, vertical: etichetta == .sotto)
                 Text([posizione.area.nome, posizione.tipologia, posizione.emittente].filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.Analisi.kpiNota)
+                    .lineLimit(etichetta == .sotto ? 2 : 1)
+                if etichetta == .sotto {
+                    HStack(spacing: 8) {
+                        EtichettaCanale(canale: posizione.canale, compatta: true)
+                        PillolaStato(posizione: posizione)
+                    }
+                }
             }
-            Spacer()
-            EtichettaCanale(canale: posizione.canale)
-            PillolaStato(posizione: posizione)
+            .layoutPriority(1)
+            if etichetta != .sotto {
+                Spacer(minLength: 8)
+                EtichettaCanale(canale: posizione.canale, compatta: etichetta == .compatta)
+                PillolaStato(posizione: posizione)
+            }
         }
     }
 
@@ -433,7 +475,7 @@ struct DettaglioPosizione: View {
                 GraficoAndamento(punti: a.punti)
                 HStack(spacing: 16) {
                     legenda(Colori.Analisi.linea, "Valore rilevato")
-                    if a.attesoAnnuo != nil { legenda(Colori.Analisi.lineaAtteso, "All'atteso netto") }
+                    if a.attesoAnnuo != nil { legenda(Colori.Analisi.lineaAtteso, "All'atteso netto", tratteggio: true) }
                     if a.punti.contains(where: { $0.versato != nil }) { legenda(Colori.Analisi.lineaTratteggiata, "Versato", tratteggio: true) }
                     if versamenti != nil {
                         Spacer(minLength: 0)
@@ -501,9 +543,9 @@ struct DettaglioPosizione: View {
                         .padding(Misure.Analisi.cellaMargine)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     cellaNumero(Formati.euro(q.valoreIniziale), 110)
-                    cellaNumero((q.stimati ? "≈ " : "") + CifreDoc.euroSegno(q.versamenti), 100)
+                    cellaNumero((q.stimati ? "≈ " : "") + CifreVista.euroSegno(q.versamenti), 100)
                     cellaNumero(Formati.euro(q.valoreFinale), 110)
-                    cellaNumero(CifreDoc.euroSegno(q.guadagno), 100,
+                    cellaNumero(CifreVista.euroSegno(q.guadagno), 100,
                                 colore: q.guadagno < 0 ? Colori.Analisi.erroreTesto : Colori.Analisi.tabellaTesto)
                     cellaNumero(q.rendimento.map { CifreDoc.variazione($0) } ?? "—", 90,
                                 colore: (q.rendimento ?? 0) < 0 ? Colori.Analisi.erroreTesto : Colori.Analisi.tabellaTesto)

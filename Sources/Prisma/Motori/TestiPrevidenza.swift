@@ -30,6 +30,10 @@ struct TestiPrevidenza {
     /// Euro al mese: "1.400 € al mese".
     static func mese(_ v: Double) -> String { "\(CifreDoc.euro(v)) al mese" }
 
+    /// La nota di una cifra mensile nelle schede del prospetto: "al mese · da integrare". La cifra resta
+    /// in euro ("800 €"), così entra intera e allo stesso corpo delle schede accanto.
+    static func alMese(_ nota: String) -> String { "al mese · \(nota)" }
+
     var titoloDivario: String {
         e.divario < 1 ? "La pensione pubblica copre il reddito che desideri"
             : "Alla pensione ti mancheranno circa \(Self.mese(e.divario))"

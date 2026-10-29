@@ -6,17 +6,24 @@ struct AppPosizioni: View {
     enum FiltroStato: Hashable { case inEssere, proposte, tutte }
 
     @EnvironmentObject var stato: StatoShell
+    @Environment(\.modoIstantanea) private var modoIstantanea
     @State var filtroStato: FiltroStato = .inEssere
     @State var filtroCanale: Canale?
     @State var area: AreaPosizione?
-    @State var sceltaCliente = false
     @State var modulo: Posizione?
     /// L'appuntamento da fissare per un cliente da ricontattare (dal Portafoglio).
     @State var moduloAppuntamento: Appuntamento?
     /// Il campo su cui si apre il modulo della posizione (completezza dei dati); si toglie alla chiusura.
     @State var fuocoPosizione: FuocoModulo?
 
-    static let opzioniCanale: [(Canale?, String)] = [(nil, "Tutti"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")]
+    /// Il filtro dello stato con etichette brevi: nella colonna laterale non si troncano.
+    static let opzioniStato: [(FiltroStato, String)] = [(.inEssere, "Attive"), (.proposte, "Proposte"), (.tutte, "Tutte")]
+
+    /// L'aiuto di una voce del canale: il secondo clic sulla voce scelta toglie il filtro.
+    static func aiutoCanale(_ c: Canale, attivo: Bool) -> String {
+        if attivo { return "Clic di nuovo per vedere tutti i canali" }
+        return c == .alleanza ? "Solo le posizioni Alleanza" : "Solo le posizioni indipendenti"
+    }
 
     /// Le posizioni del cliente attivo, o di tutti i clienti nella vista Portafoglio.
     private var delCliente: [Posizione] {
@@ -151,41 +158,25 @@ struct AppPosizioni: View {
                         SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
                             .padding(.top, 2)
                     }
+                    // Le stesse testate delle altre app di analisi (ComponentiStrumenti)
                     if stato.portafoglio {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("IL TUO PORTAFOGLIO").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
-                            Text("Tutti i clienti").font(Tipo.railTitolo).foregroundColor(Colori.Analisi.railTesto)
-                            Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "cliente" : "clienti") in rubrica").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
-                        }
-                        .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .bordoBasso(Colori.Analisi.railFilo)
+                        TestataPortafoglioRail(clienti: stato.clienti.count)
                     } else {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("DOSSIER DI").font(Tipo.railEtichetta).foregroundColor(Colori.Analisi.railEtichetta)
-                            Button {
-                                sceltaCliente = true
-                            } label: {
-                                HStack(spacing: 5) {
-                                    Text(stato.clienteAttivo?.nome ?? "Nessun cliente").font(Tipo.railTitolo)
-                                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
-                                }
-                                .foregroundColor(Colori.Analisi.railTesto)
-                            }
-                            .buttonStyle(StileSemplice())
-                            .popover(isPresented: $sceltaCliente, arrowEdge: .trailing) { ElencoClienti(aperto: $sceltaCliente) }
-                            Text(stato.clienteAttivo?.tema ?? "").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
-                        }
-                        .padding(EdgeInsets(top: 9, leading: 2, bottom: 9, trailing: 2))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .bordoBasso(Colori.Analisi.railFilo)
+                        DossierRail()
                     }
 
                     EtichettaRail(testo: "Stato")
-                    SegmentiAnalisi(opzioni: [(FiltroStato.inEssere, "In essere"), (.proposte, "Proposte"), (.tutte, "Tutte")],
-                                    selezione: $filtroStato)
+                    SegmentiAnalisi(opzioni: Self.opzioniStato, selezione: $filtroStato)
+                    // Il canale come in Documenti: una voce per canale con il suo colore, un secondo clic toglie il filtro
                     EtichettaRail(testo: "Canale")
-                    SegmentiAnalisi(opzioni: Self.opzioniCanale, selezione: $filtroCanale)
+                    VStack(spacing: 0) {
+                        ForEach(Canale.allCases) { c in
+                            VoceNavigazione(titolo: c.nomeBreve, colore: Tema.Colore.canale(c), attiva: filtroCanale == c) {
+                                filtroCanale = filtroCanale == c ? nil : c
+                            }
+                            .help(Self.aiutoCanale(c, attivo: filtroCanale == c))
+                        }
+                    }
                     EtichettaRail(testo: "Aree")
                     VStack(spacing: 0) {
                         VoceNavigazione(titolo: "Tutte le aree", conteggio: tutte.count, attiva: area == nil) { area = nil }
@@ -218,19 +209,17 @@ struct AppPosizioni: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, Tema.Misura.Dossier.sfumaturaRail)
             }
-            HStack(spacing: 8) {
-                SimboloLucchetto()
-                    .stroke(Colori.Analisi.railEtichetta, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    .frame(width: 15, height: 15)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("ARCHIVIO LOCALE").font(Tipo.chip).foregroundColor(Colori.Analisi.railEtichetta)
-                    Text("Solo su questo Mac").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.railTesto)
+            // L'ultima voce sfuma prima del piede invece di finire tagliata sul filo
+            .mask {
+                VStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: Tema.Misura.Dossier.sfumaturaRail)
                 }
             }
-            .padding(.top, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .bordoAlto(Colori.Analisi.railFilo)
+            ArchivioLocaleRail()
         }
         .padding(Misure.Analisi.margineRail)
         .frame(maxHeight: .infinity, alignment: .top)
@@ -334,8 +323,14 @@ struct AppPosizioni: View {
     /// Porta in vista il pannello chiesto (dalla colonna o da un'istantanea), poi dimentica l'ancora.
     func scorri(_ lettore: ScrollViewProxy) {
         guard let ancora = stato.ancoraPosizioni else { return }
+        let istantanea = modoIstantanea
         DispatchQueue.main.async {
-            withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }
+            // Nell'istantanea si scorre di colpo: con il movimento la foto arriverebbe a metà strada
+            if istantanea {
+                lettore.scrollTo(ancora, anchor: .top)
+            } else {
+                withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }
+            }
             stato.ancoraPosizioni = nil
         }
     }
@@ -585,6 +580,28 @@ struct PillolaStato: View {
             } else {
                 Pillola(testo: "In essere", tono: .ok)
             }
+        }
+    }
+}
+
+/// «Il tuo portafoglio» in cima all'elenco laterale di Posizioni: come «Dossier di» (DossierRail), stesso
+/// corpo e stessi margini, con la sola iniziale maiuscola.
+private struct TestataPortafoglioRail: View {
+    let clienti: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Il tuo portafoglio").font(Tema.Testo.occhiello).foregroundColor(Tema.Colore.inchiostroTerziario)
+            Text("Tutti i clienti").font(Tema.Testo.titolo).foregroundColor(Tema.Colore.inchiostro)
+            Text("\(clienti) \(clienti == 1 ? "cliente" : "clienti") in rubrica")
+                .font(Tema.Testo.didascalia)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .lineLimit(1)
+        }
+        .padding(Tema.Misura.Dossier.testataRail)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
         }
     }
 }

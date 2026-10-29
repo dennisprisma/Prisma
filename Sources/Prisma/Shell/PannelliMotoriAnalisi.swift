@@ -83,7 +83,8 @@ enum CifreAnalisi {
 // MARK: - Obiettivi: probabilità di arrivarci
 
 /// La probabilità di raggiungere l'obiettivo (scenari con le probabilità): «7 possibilità su 10», i capitali
-/// finali sfavorevole, mediano e favorevole e il ventaglio anno per anno. Per la colonna dell'obiettivo.
+/// finali sfavorevole, mediano e favorevole e il ventaglio anno per anno. Sotto le schede degli Obiettivi,
+/// a tutta larghezza (la colonna di destra tiene i dati dell'obiettivo).
 struct SezioneProbabilitaObiettivo: View {
     let esito: EsitoMonteCarlo
     /// L'importo dell'obiettivo, in euro di oggi.

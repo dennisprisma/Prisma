@@ -90,18 +90,18 @@ struct AppProspetti: View {
         DossierRail()
         // Il fascicolo in cima: è il documento dell'incontro e si vede senza scorrere la colonna
         EtichettaRail(testo: "Per l'incontro")
-        VoceNavigazione(titolo: TipoProspetto.fascicolo.nome, attiva: scelta.tipo == .fascicolo) { scegli(.fascicolo) }
+        VoceNavigazione(titolo: nomeBreve(.fascicolo), attiva: scelta.tipo == .fascicolo) { scegli(.fascicolo) }
         EtichettaRail(testo: "Prospetto e report")
         ForEach([TipoProspetto.checkUp, .valutazione, .resoconto, .patrimonio, .resistenza, .costi, .successione, .sostituzione, .previdenza, .protezione, .obiettivo, .liquidita]) { t in
-            VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
+            VoceNavigazione(titolo: nomeBreve(t), attiva: scelta.tipo == t) { scegli(t) }
         }
         EtichettaRail(testo: "Prospetti di dettaglio")
         ForEach([TipoProspetto.riesame, .posizione, .confronto]) { t in
-            VoceNavigazione(titolo: t.nome, attiva: scelta.tipo == t) { scegli(t) }
+            VoceNavigazione(titolo: nomeBreve(t), attiva: scelta.tipo == t) { scegli(t) }
         }
         if !stato.inModoCliente {
             EtichettaRail(testo: "Per te")
-            VoceNavigazione(titolo: TipoProspetto.portafoglio.nome, attiva: scelta.tipo == .portafoglio) { scegli(.portafoglio) }
+            VoceNavigazione(titolo: nomeBreve(.portafoglio), attiva: scelta.tipo == .portafoglio) { scegli(.portafoglio) }
         }
         Text(scelta.tipo.descrizione)
             .font(Tipo.kpiNota)
@@ -109,6 +109,16 @@ struct AppProspetti: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 3)
         CollegatiRail(app: [.posizioni, .prodotti, .documenti])
+    }
+
+    /// Il nome nella barra laterale: breve per i titoli lunghi (il nome intero resta nei documenti).
+    private func nomeBreve(_ t: TipoProspetto) -> String {
+        switch t {
+        case .valutazione: return "Valutazione"
+        case .resoconto: return "Resoconto"
+        case .liquidita: return "Capitale e liquidità"
+        default: return t.nome
+        }
     }
 
     private func scegli(_ t: TipoProspetto) {
@@ -669,7 +679,10 @@ struct AppProspetti: View {
     private func barra(_ d: DocumentoStampabile) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
+                // Nelle finestre strette il titolo si accorcia nel mezzo: restano l'inizio e la fine («… 2030»)
                 Text(d.titolo).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.kpiValore).lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(d.titolo)
                 Text("\(d.genere) · \(d.cliente)").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
             }
             Spacer()

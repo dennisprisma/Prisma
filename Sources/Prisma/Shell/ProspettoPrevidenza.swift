@@ -43,25 +43,26 @@ private struct PaginaDivario: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
-                CifraProspetto("Reddito desiderato", TestiPrevidenza.mese(e.redditoDesiderato), "netto, in euro di oggi")
-                CifraProspetto("Pensione pubblica", TestiPrevidenza.mese(e.pensionePubblica), "stima INPS da verificare")
-                CifraProspetto("Divario", TestiPrevidenza.mese(e.divario), "da integrare", colore: e.divario > 0.5 ? C.negativo : nil)
-                CifraProspetto("Dai piani di oggi", TestiPrevidenza.mese(e.renditaInEssere), "per \(e.anniIntegrazione) anni")
-                CifraProspetto("Resta da coprire", TestiPrevidenza.mese(e.divarioResiduo), "senza le proposte",
+            // Cifre in euro e «al mese» nella nota: tutte allo stesso corpo, senza troncarsi
+            FilaCifre {
+                CifraProspetto("Reddito desiderato", CifreDoc.euro(e.redditoDesiderato), TestiPrevidenza.alMese("netto, in euro di oggi"))
+                CifraProspetto("Pensione pubblica", CifreDoc.euro(e.pensionePubblica), TestiPrevidenza.alMese("stima INPS da verificare"))
+                CifraProspetto("Divario", CifreDoc.euro(e.divario), TestiPrevidenza.alMese("da integrare"), colore: e.divario > 0.5 ? C.negativo : nil)
+                CifraProspetto("Dai piani di oggi", CifreDoc.euro(e.renditaInEssere), TestiPrevidenza.alMese("per \(e.anniIntegrazione) anni"))
+                CifraProspetto("Resta da coprire", CifreDoc.euro(e.divarioResiduo), TestiPrevidenza.alMese("senza le proposte"),
                                colore: e.divarioResiduo > 0.5 ? C.negativo : C.positivo)
             }
-            HStack(spacing: 6) {
-                CifraProspetto("Con le proposte", TestiPrevidenza.mese(e.renditaInEssere + e.renditaProposte),
-                               e.proposte.isEmpty ? "nessuna proposta aperta" : "\(e.proposte.count == 1 ? "1 proposta" : "\(e.proposte.count) proposte")")
-                CifraProspetto("Resta con le proposte", TestiPrevidenza.mese(e.divarioConProposte), "divario residuo",
+            FilaCifre {
+                CifraProspetto("Con le proposte", CifreDoc.euro(e.renditaInEssere + e.renditaProposte), TestiPrevidenza.alMese(notaProposte))
+                CifraProspetto("Resta con le proposte", CifreDoc.euro(e.divarioConProposte), TestiPrevidenza.alMese("divario residuo"),
                                colore: e.divarioConProposte > 0.5 ? C.negativo : C.positivo)
-                CifraProspetto("Versamento che manca", e.versamentoMancante.map { TestiPrevidenza.mese($0) } ?? "—",
-                               "al \(CifreDoc.condizione(e.rendimentoReale)) reale annuo")
+                CifraProspetto("Versamento che manca", e.versamentoMancante.map { CifreDoc.euro($0) } ?? "—",
+                               TestiPrevidenza.alMese("al \(CifreDoc.condizione(e.rendimentoReale)) reale annuo"))
                 CifraProspetto("Risparmio IRPEF", e.aliquotaMarginale == nil ? "—" : CifreDoc.euro(e.risparmioConProposte),
                                e.aliquotaMarginale.map { "l'anno, aliquota \(CifreDoc.condizione($0))" } ?? "reddito non indicato")
-                // Quinto posto vuoto: le schede restano larghe e allineate a quelle della riga sopra
-                Color.clear.frame(maxWidth: .infinity)
+                // Quinto posto vuoto: le schede restano larghe e allineate a quelle della riga sopra (alto zero,
+                // altrimenti prende tutto lo spazio libero della pagina)
+                Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
             }
             SezioneProspetto(titolo: "I piani alla pensione",
                              testo: Text(verbatim: "Ogni piano portato fino a \(e.etaPensione) anni con i suoi versamenti, il rendimento netto dell'imposta sui rendimenti e i suoi costi. Alla prestazione si tassano solo i contributi dedotti, con l'aliquota che spetterà allora."))
@@ -69,12 +70,12 @@ private struct PaginaDivario: View {
                 Text(verbatim: "Nessun piano di previdenza complementare, né in essere né proposto.").font(T.pCorpo).foregroundColor(C.tenue)
             } else {
                 TabellaCanali(colonne: [
-                    ColonnaDoc(titolo: "Piano", sottotitolo: "stato · partecipazione", peso: 2.3, destra: false),
+                    ColonnaDoc(titolo: "Piano", sottotitolo: "stato · partecipazione", peso: 2.1, destra: false),
                     ColonnaDoc(titolo: "Oggi", sottotitolo: "versamenti l'anno", peso: 1.1),
                     ColonnaDoc(titolo: "Rendimento", sottotitolo: "netto · costi", peso: 0.95),
                     ColonnaDoc(titolo: "Montante", sottotitolo: "alla pensione", peso: 1.1),
                     ColonnaDoc(titolo: "Imposta", sottotitolo: "aliquota allora", peso: 1),
-                    ColonnaDoc(titolo: "Netto", sottotitolo: "in euro di oggi", peso: 1.1),
+                    ColonnaDoc(titolo: "Netto", sottotitolo: "in euro di oggi", peso: 1.3),
                     ColonnaDoc(titolo: "Rendita", sottotitolo: "al mese", peso: 0.9),
                 ], gruppi: Canale.allCases.compactMap { c in
                     let mie = e.piani.filter { $0.posizione.canale == c }
@@ -90,6 +91,12 @@ private struct PaginaDivario: View {
                 }
             }
         }
+    }
+
+    /// "nessuna proposta aperta", "1 proposta", "2 proposte".
+    private var notaProposte: String {
+        if e.proposte.isEmpty { return "nessuna proposta aperta" }
+        return e.proposte.count == 1 ? "1 proposta" : "\(e.proposte.count) proposte"
     }
 
     private func riga(_ p: PianoPrevidenza) -> RigaDoc {
@@ -122,12 +129,13 @@ private struct PaginaPensioneStimata: View {
         VStack(alignment: .leading, spacing: 9) {
             SezioneProspetto(titolo: "La pensione pubblica stimata con il contributivo",
                              testo: Text(verbatim: "Stima di Prisma con il metodo contributivo: i contributi accantonati fino all'uscita, rivalutati, per il coefficiente di trasformazione dell'età (\(RegolePensione.validitaCoefficienti)). In euro di oggi, netta di IRPEF e addizionali stimate, su 13 mensilità. Si affianca alla pensione dell'Analisi 360 e va verificata sull'estratto conto INPS."))
-            HStack(spacing: 6) {
-                CifraProspetto("Pensione netta stimata", TestiPrevidenza.mese(s.nettaMensile), "su 13 mensilità, a \(s.etaPensione) anni")
-                CifraProspetto("Pensione lorda", TestiPrevidenza.mese(s.lordaMensile), "\(CifreDoc.euro(s.lordaAnnua)) l'anno")
+            FilaCifre {
+                CifraProspetto("Pensione netta stimata", CifreDoc.euro(s.nettaMensile), TestiPrevidenza.alMese("su 13 mensilità, a \(s.etaPensione) anni"))
+                CifraProspetto("Pensione lorda", CifreDoc.euro(s.lordaMensile), TestiPrevidenza.alMese("\(CifreDoc.euro(s.lordaAnnua)) l'anno"))
                 CifraProspetto("Montante all'uscita", CifreDoc.euro(s.montante), "coefficiente \(CifreDoc.percento(s.coefficiente, decimali: 3))")
                 CifraProspetto("Tasso di sostituzione", s.tassoSostituzione.map { CifreDoc.percento($0, decimali: 0) } ?? "—", "lordo, sull'ultimo reddito")
-                CifraProspetto("Divario con la stima", e.divarioStimato.map { TestiPrevidenza.mese($0) } ?? "—", "nell'analisi \(TestiPrevidenza.mese(e.divario))",
+                CifraProspetto("Divario con la stima", e.divarioStimato.map { CifreDoc.euro($0) } ?? "—",
+                               TestiPrevidenza.alMese("nell'analisi \(CifreDoc.euro(e.divario))"),
                                colore: (e.divarioStimato ?? 0) > 0.5 ? C.negativo : C.positivo)
             }
             TabellaDoc(larghezza: larghezza, colonne: [ColonnaDoc(titolo: "Dato", peso: 1.6, destra: false), ColonnaDoc(titolo: "Valore", peso: 1.2),

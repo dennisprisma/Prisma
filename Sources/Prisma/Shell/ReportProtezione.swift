@@ -253,7 +253,7 @@ private struct SlideMappaTutele: View {
                 ForEach(Array(stride(from: 0, to: tutele.count, by: 4)), id: \.self) { i in
                     HStack(alignment: .top, spacing: 10) {
                         ForEach(i..<min(i + 4, tutele.count), id: \.self) { j in scheda(tutele[j]) }
-                        ForEach(0..<max(0, 4 - (tutele.count - i)), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
+                        ForEach(0..<max(0, 4 - (tutele.count - i)), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
                     }
                 }
             }

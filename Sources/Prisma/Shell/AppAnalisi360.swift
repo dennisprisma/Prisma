@@ -172,30 +172,33 @@ struct AppAnalisi360: View {
         } ?? []
         return Button { stato.areaAnalisi = area } label: {
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                // Una riga sola, alta uguale in tutte le schede (con o senza priorità): titoli e cifre allineati
+                HStack(spacing: Tema.Misura.Strumenti.spazioTestataArea) {
                     Text(area.numero).font(Tipo.schedaAreaNumero).foregroundColor(Colori.Strumenti.schedaNumero)
                     if prioritarie.contains(area) {
-                        Text("★ PRIORITÀ DEL CLIENTE")
+                        Text("★ Priorità")
                             .font(Tipo.chip)
                             .foregroundColor(Colori.Bisogni.importanza(.alta))
-                            .help("Dalla ruota dei bisogni nella scheda del cliente")
+                            .lineLimit(1)
+                            .fixedSize()
+                            .help("Priorità del cliente, dalla ruota dei bisogni nella sua scheda")
                     }
-                    Spacer()
+                    Spacer(minLength: 4)
                     Text(testoStato)
                         .font(Tipo.chip)
                         .foregroundColor(coloreStato)
+                        .lineLimit(1)
                 }
+                .frame(minHeight: Tema.Misura.Strumenti.testataSchedaArea)
                 Text(area.nome).font(Tipo.schedaAreaTitolo).foregroundColor(Colori.Strumenti.schedaTitolo)
                 Text(valore).font(Tipo.schedaAreaValore).foregroundColor(Colori.Strumenti.schedaValore)
                     .lineLimit(1).minimumScaleFactor(0.7)
                 Text(nota).font(Tipo.schedaAreaNota).foregroundColor(Colori.Strumenti.schedaNota).lineLimit(2)
                 Spacer(minLength: 4)
-                HStack(spacing: 6) {
-                    Text((inEssere.isEmpty ? "Nessuna in essere" : "\(inEssere.count) in essere")
-                         + (proposte > 0 ? " · \(proposte) \(proposte == 1 ? "proposta aperta" : "proposte aperte")" : ""))
-                    ForEach(Canale.allCases.filter { canali.contains($0) }) { c in EtichettaCanale(canale: c, compatta: true) }
-                    Spacer()
-                    Text("↗").font(Tipo.ipotesiTitolo)
+                // Il conteggio per esteso se c'è posto, altrimenti «1 + 1 proposta»: sempre su una riga
+                ViewThatFits(in: .horizontal) {
+                    piedeArea(contaPosizioni(inEssere.count, proposte, breve: false), canali: canali)
+                    piedeArea(contaPosizioni(inEssere.count, proposte, breve: true), canali: canali)
                 }
                 .font(Tipo.chip)
                 .foregroundColor(Colori.Strumenti.schedaNota)
@@ -203,10 +206,28 @@ struct AppAnalisi360: View {
                 .bordoAlto(Colori.Strumenti.schedaFilo)
             }
             .padding(EdgeInsets(top: 12, leading: 17, bottom: 10, trailing: 17))
-            .frame(maxWidth: .infinity, minHeight: Misure.Strumenti.schedaArea, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: Tema.Misura.Strumenti.schedaAreaPanoramica, alignment: .topLeading)
             .schedaColorata(Colori.Analisi.area(area.areaPosizioni))
         }
         .buttonStyle(StileSemplice())
+    }
+
+    /// «1 in essere · 1 proposta aperta» oppure, breve, «1 + 1 proposta».
+    private func contaPosizioni(_ inEssere: Int, _ proposte: Int, breve: Bool) -> String {
+        guard proposte > 0 else { return inEssere == 0 ? "Nessuna in essere" : "\(inEssere) in essere" }
+        if breve { return "\(inEssere) + \(proposte) \(proposte == 1 ? "proposta" : "proposte")" }
+        let prima = inEssere == 0 ? "Nessuna in essere" : "\(inEssere) in essere"
+        return "\(prima) · \(proposte) \(proposte == 1 ? "proposta aperta" : "proposte aperte")"
+    }
+
+    /// Il piede di una scheda dell'area: posizioni, canali in essere e la freccia.
+    private func piedeArea(_ testo: String, canali: Set<Canale>) -> some View {
+        HStack(spacing: 6) {
+            Text(testo).lineLimit(1)
+            ForEach(Canale.allCases.filter { canali.contains($0) }) { c in EtichettaCanale(canale: c, compatta: true) }
+            Spacer(minLength: 4)
+            Text("↗").font(Tipo.ipotesiTitolo)
+        }
     }
 
     // MARK: - Un'area
@@ -417,7 +438,8 @@ struct AppAnalisi360: View {
                 }
             }
             pensioneStimata(i)
-            GraficoProiezione(serie: [.init(id: "montante", punti: e.punti, colore: Colori.Analisi.area(.previdenza), principale: true)])
+            GraficoProiezione(serie: [.init(id: "montante", punti: e.punti, colore: Colori.Analisi.area(.previdenza), principale: true)],
+                              vuoto: "Nessun piano in essere: il grafico compare con il primo versamento")
             VStack(spacing: 0) {
                 RigaDato("Capitale obiettivo", Formati.euro(e.capitaleObiettivo), larghezza: 230)
                 RigaDato("Montante alla pensione", Formati.euro(e.montante), larghezza: 230)

@@ -127,6 +127,8 @@ struct BarraCompletezza: View {
 
 /// Una voce da completare: pallino dello stato, titolo e ipotesi usata, analisi toccate, canale della
 /// posizione (sempre riconoscibile), «Completa» e la croce «non pertinente».
+/// Chip, canale e pulsanti restano interi: se la riga non basta si tolgono prima i chip delle analisi,
+/// poi chip, canale e azioni scendono in una seconda riga sotto il testo.
 struct RigaVoceCompletezza: View {
     let voce: VoceCompletezza
     let completa: () -> Void
@@ -134,29 +136,85 @@ struct RigaVoceCompletezza: View {
 
     var body: some View {
         let m = Tema.Misura.Completezza.self
-        HStack(alignment: .center, spacing: m.spazioRiga) {
-            Circle()
-                .fill(Tema.Colore.Completezza.stato(voce.stato))
-                .frame(width: m.pallino, height: m.pallino)
-                .help(voce.stato.nome)
-            VStack(alignment: .leading, spacing: m.spazioTesto) {
-                Text(voce.titolo)
-                    .font(Tema.Testo.corpo)
-                    .foregroundColor(Tema.Colore.inchiostro)
-                    .lineLimit(1)
-                if !voce.ipotesi.isEmpty {
-                    Text(voce.ipotesi)
-                        .font(Tema.Testo.didascalia)
-                        .foregroundColor(Tema.Colore.inchiostroSecondario)
-                        .lineLimit(m.righeIpotesi)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: m.spazioRiga) {
+                pallino
+                testo
+                chipAnalisi
+                azioni
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
+            HStack(alignment: .center, spacing: m.spazioRiga) {
+                pallino
+                testo
+                azioni
+            }
+            dueRighe
+        }
+        .padding(.vertical, m.margineVoce)
+        .contentShape(Rectangle())
+        .help(voce.perche)
+    }
+
+    /// La riga stretta: il testo sopra, sotto (rientrati sotto il testo) chip, canale e azioni.
+    private var dueRighe: some View {
+        let m = Tema.Misura.Completezza.self
+        return VStack(alignment: .leading, spacing: m.spazioRighe) {
+            HStack(alignment: .center, spacing: m.spazioRiga) {
+                pallino
+                testo
+            }
+            HStack(alignment: .center, spacing: m.spazioRiga) {
+                chipAnalisi
+                Spacer(minLength: 0)
+                azioni
+            }
+            .padding(.leading, m.pallino + m.spazioRiga)
+        }
+    }
+
+    private var pallino: some View {
+        let m = Tema.Misura.Completezza.self
+        return Circle()
+            .fill(Tema.Colore.Completezza.stato(voce.stato))
+            .frame(width: m.pallino, height: m.pallino)
+            .help(voce.stato.nome)
+    }
+
+    /// Titolo e ipotesi: prendono lo spazio che resta. La larghezza ideale è fissa, così la scelta della
+    /// disposizione non dipende dalla lunghezza dell'ipotesi (che va a capo).
+    private var testo: some View {
+        let m = Tema.Misura.Completezza.self
+        return VStack(alignment: .leading, spacing: m.spazioTesto) {
+            Text(voce.titolo)
+                .font(Tema.Testo.corpo)
+                .foregroundColor(Tema.Colore.inchiostro)
+                .lineLimit(1)
+            if !voce.ipotesi.isEmpty {
+                Text(voce.ipotesi)
+                    .font(Tema.Testo.didascalia)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    .lineLimit(m.righeIpotesi)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(minWidth: m.testoVoceMinimo, idealWidth: m.testoVoceIdeale, maxWidth: .infinity, alignment: .leading)
+        .layoutPriority(1)
+    }
+
+    private var chipAnalisi: some View {
+        let m = Tema.Misura.Completezza.self
+        return HStack(spacing: m.spazioRiga) {
             ForEach(voce.analisiOrdinate.prefix(m.chipPerVoce)) { a in
                 Chip(testo: a.nome)
             }
+        }
+        .fixedSize()
+    }
+
+    /// Canale della posizione, «Completa» e la croce: sempre interi.
+    private var azioni: some View {
+        let m = Tema.Misura.Completezza.self
+        return HStack(alignment: .center, spacing: m.spazioRiga) {
             if let canale = voce.canale {
                 EtichettaCanale(canale: canale, compatta: true)
             }
@@ -172,8 +230,6 @@ struct RigaVoceCompletezza: View {
             .help(TestiCompletezza.aiutoNonPertinente)
             .accessibilityLabel(TestiCompletezza.nonPertinente)
         }
-        .padding(.vertical, m.margineVoce)
-        .contentShape(Rectangle())
-        .help(voce.perche)
+        .fixedSize()
     }
 }

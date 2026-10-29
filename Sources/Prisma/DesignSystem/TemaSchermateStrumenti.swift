@@ -59,6 +59,11 @@ extension Tema.Misura {
         /// Spazio tra i fogli sul tavolo delle anteprime e margine sopra e sotto.
         static let spazioFogli: CGFloat = 22
         static let margineTavolo: CGFloat = 20
+        /// Schede delle quattro aree nella panoramica di Analisi 360: altezza minima (riempiono la pagina
+        /// invece di lasciare un vuoto sotto), riga d'intestazione alta uguale con o senza priorità e spazio tra le sue voci.
+        static let schedaAreaPanoramica: CGFloat = 190
+        static let testataSchedaArea: CGFloat = 16
+        static let spazioTestataArea: CGFloat = 8
     }
 }
 

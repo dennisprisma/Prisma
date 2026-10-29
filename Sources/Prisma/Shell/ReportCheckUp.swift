@@ -145,7 +145,7 @@ private struct SlideSemaforo: View {
                 ForEach(Array(stride(from: 0, to: ind.count, by: 4)), id: \.self) { i in
                     HStack(alignment: .top, spacing: 10) {
                         ForEach(i..<min(i + 4, ind.count), id: \.self) { j in scheda(ind[j]) }
-                        ForEach(0..<max(0, 4 - (ind.count - i)), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
+                        ForEach(0..<max(0, 4 - (ind.count - i)), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
                     }
                 }
             }

@@ -678,7 +678,7 @@ private struct SlideSintesi: View {
                 ForEach(Array(stride(from: 0, to: punti.count, by: 2)), id: \.self) { inizio in
                     HStack(spacing: 14) {
                         ForEach(inizio..<min(inizio + 2, punti.count), id: \.self) { i in punto(i + 1, punti[i]) }
-                        if inizio + 1 >= punti.count { Color.clear.frame(maxWidth: .infinity) }
+                        if inizio + 1 >= punti.count { Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
                     }
                 }
             }

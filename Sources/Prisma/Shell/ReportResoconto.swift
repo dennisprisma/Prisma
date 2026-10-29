@@ -314,7 +314,7 @@ private struct SlidePosizioni: View {
                 ForEach(Array(stride(from: 0, to: voci.count, by: 2)), id: \.self) { i in
                     HStack(alignment: .top, spacing: 12) {
                         scheda(voci[i])
-                        if i + 1 < voci.count { scheda(voci[i + 1]) } else { Color.clear.frame(maxWidth: .infinity) }
+                        if i + 1 < voci.count { scheda(voci[i + 1]) } else { Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
                     }
                 }
             }
@@ -393,7 +393,7 @@ private struct SlideTutele: View {
                     ForEach(Array(stride(from: 0, to: coperture.count, by: 3)), id: \.self) { i in
                         HStack(alignment: .top, spacing: 12) {
                             ForEach(i..<min(i + 3, coperture.count), id: \.self) { j in scheda(coperture[j]) }
-                            ForEach(0..<max(0, 3 - (coperture.count - i)), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
+                            ForEach(0..<max(0, 3 - (coperture.count - i)), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
                         }
                     }
                 }

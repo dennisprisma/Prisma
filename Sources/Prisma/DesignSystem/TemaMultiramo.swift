@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Gettoni delle multiramo a due parti (tema Liquid Glass)
 // Composizione «gestione separata + fondi» nel modulo della posizione, nella scheda prodotto e nel dettaglio:
 // barra a due colori, colonne affiancate delle due parti, cursore della quota.
-// Le tinte vengono da quelle che i documenti usano già per le parti (StileDocumenti: GS #6f86a6, FI #c4913f),
+// Le tinte vengono da quelle che i documenti usano già per le parti (StileDocumenti: GS #6f86a6, FI #7a6fb0),
 // schiarite nell'aspetto scuro. Su carta (PDF) restano solo `Colori.Documento.prisma.parte(_:)`.
 
 extension Tema.Colore {
@@ -11,8 +11,8 @@ extension Tema.Colore {
     enum Multiramo {
         /// La parte in gestione separata (Ramo I): barra, pallino della colonna, linea nel grafico.
         static let gestione = Color.dinamico(chiaro: Color(hex: "#5F7EA3"), scuro: Color(hex: "#93B2D8"))
-        /// La parte nei fondi (Ramo III).
-        static let fondi = Color.dinamico(chiaro: Color(hex: "#C4913F"), scuro: Color(hex: "#D9AA5E"))
+        /// La parte nei fondi (Ramo III): viola, perché l'ocra di prima sembrava il cuoio del canale indipendente.
+        static let fondi = Color.dinamico(chiaro: Color(hex: "#7A6FB0"), scuro: Color(hex: "#A69BDB"))
         /// Fondo delle due colonne del modulo: il pozzetto dei campi.
         static let fondoColonna = Tema.Colore.pozzetto
         /// Filo attorno alle colonne.

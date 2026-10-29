@@ -210,6 +210,14 @@ struct DettaglioDocumento: View {
                     .foregroundColor(Colori.Colonna.collegamento)
                     .lineLimit(1)
                 EtichettaCanale(canale: n.canale)
+            } else if d.genere != .prisma {
+                // Il canale si vede sempre: quello del documento o, se non si sa ancora, una pillola neutra
+                if let c = voce.canale {
+                    EtichettaCanale(canale: c, compatta: true)
+                } else {
+                    Pillola(testo: "Canale da indicare", tono: .neutro)
+                        .help("Collega il documento a una posizione o a una scheda prodotto: il canale viene da lì")
+                }
             }
         }
     }
@@ -282,9 +290,8 @@ struct DettaglioDocumento: View {
 
     @ViewBuilder private var collegaA: some View {
         if MotoreDocumenti.delCliente(d) {
-            Text("Del cliente")
-                .font(Tema.Testo.didascalia)
-                .foregroundColor(Tema.Colore.inchiostroSecondario)
+            // Un'informazione, non un'azione: un chip neutro accanto ai pulsanti
+            Chip(testo: "Del cliente")
                 .help("I documenti d'identità e i questionari sono del cliente: si confrontano con il dossier")
         } else {
             MenuAzioni(voci: { vociCollega() }) {

@@ -47,7 +47,7 @@ private struct PaginaChiE: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Patrimonio netto", CifreDoc.euro(e.riepilogo.patrimonioNetto), "attività − debiti")
                 CifraProspetto("Liquidità", CifreDoc.euro(e.riepilogo.perArea[.liquidita] ?? 0), "conti e depositi")
                 CifraProspetto("Investito", CifreDoc.euro((e.riepilogo.perArea[.investimento] ?? 0) + (e.riepilogo.perArea[.risparmio] ?? 0) + (e.riepilogo.perArea[.previdenza] ?? 0)),
@@ -77,6 +77,10 @@ private struct PaginaChiE: View {
                                                   CellaDoc(quota, font: T.pTabella)], altezza: 14)
                        }, fontTesta: T.pTabellaTesta, altezzaTesta: 12, margine: 4)
             HStack(spacing: 8) {
+                // Il titolo sulla stessa riga: le etichette non restano isolate e la pagina non si allunga
+                if Canale.allCases.contains(where: { (e.riepilogo.perCanale[$0] ?? 0) > 0.5 }) {
+                    Text(verbatim: "Per canale").font(T.pSottosezione).foregroundColor(C.titolo)
+                }
                 ForEach(Canale.allCases) { c in
                     if let v = e.riepilogo.perCanale[c], v > 0.5 {
                         HStack(spacing: 6) {

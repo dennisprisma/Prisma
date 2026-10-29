@@ -280,22 +280,33 @@ struct PannelloAdeguatezza: View {
         let testo = Binding<String>(
             get: { scheda?.motivazione ?? "" },
             set: { nuovo in stato.modificaScheda(posizione) { $0.motivazione = nuovo } })
+        // Il campo cresce con il testo (fino all'altezza massima, poi scorre): la motivazione si legge intera,
+        // senza la barra di scorrimento. L'altezza la dà il testo invisibile sotto il campo, a capo come il campo.
+        let margini = M.margineMotivazione.top + M.margineMotivazione.bottom
         return TestoRinviato(testo: testo, salvaOra: { stato.salvaOra() }) { bozza in
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: bozza)
-                    .font(Tipo.strumentoTesto)
-                    .foregroundColor(K.testo)
-                    .scrollContentBackground(.hidden)
-                if bozza.wrappedValue.isEmpty {
-                    Text("Perché questa proposta è adatta al cliente: entra nel PDF.")
-                        .font(Tipo.strumentoTesto)
-                        .foregroundColor(K.segnaposto)
-                        .allowsHitTesting(false)
+            Text(verbatim: bozza.wrappedValue + "\n")
+                .font(Tipo.strumentoTesto)
+                .padding(.horizontal, M.rientroMotivazione)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .hidden()
+                .frame(minHeight: M.altezzaMotivazione - margini, maxHeight: M.altezzaMotivazioneMassima - margini, alignment: .topLeading)
+                .fixedSize(horizontal: false, vertical: true)
+                .overlay(alignment: .topLeading) {
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: bozza)
+                            .font(Tipo.strumentoTesto)
+                            .foregroundColor(K.testo)
+                            .scrollContentBackground(.hidden)
+                        if bozza.wrappedValue.isEmpty {
+                            Text("Perché questa proposta è adatta al cliente: entra nel PDF.")
+                                .font(Tipo.strumentoTesto)
+                                .foregroundColor(K.segnaposto)
+                                .allowsHitTesting(false)
+                        }
+                    }
                 }
-            }
-            .padding(M.margineMotivazione)
-            .frame(height: M.altezzaMotivazione)
-            .background { RoundedRectangle(cornerRadius: M.raggioMotivazione, style: .continuous).fill(K.campo) }
+                .padding(M.margineMotivazione)
+                .background { RoundedRectangle(cornerRadius: M.raggioMotivazione, style: .continuous).fill(K.campo) }
         }
         .id(posizione.id)
     }
@@ -305,7 +316,8 @@ struct PannelloAdeguatezza: View {
     private func documenti(_ esito: EsitoAdeguatezza) -> some View {
         VStack(alignment: .leading, spacing: M.spazioCampo) {
             HStack(spacing: M.spazioPulsanti) {
-                Text("Documenti da consegnare · \(posizione.canale.nomeBreve)")
+                // Il canale lo dice già l'etichetta accanto
+                Text("Documenti da consegnare")
                     .font(Tipo.chip)
                     .foregroundColor(K.nota)
                 EtichettaCanale(canale: posizione.canale, compatta: true)
