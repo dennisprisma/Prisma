@@ -20,9 +20,11 @@ struct GuscioiPad: View {
     private typealias D = Tema.Misura.Mobile.Dock
 
     var body: some View {
+        // La safe area si legge da fuori: dentro una vista che la ignora i margini valgono zero
+        GeometryReader { esterno in
+        let sicuro = esterno.safeAreaInsets
         GeometryReader { geo in
             let misura = geo.size
-            let sicuro = geo.safeAreaInsets
             let sottoBarra = sicuro.top + Tema.Misura.Mobile.Barra.altezza
             let voci = DisposizioneDockMobile.app(.iPad, consentita: { stato.appConsentita($0) }).count + 1
             let lato = DisposizioneDockMobile.lato(elementi: voci, larghezza: misura.width, massimo: D.massimoiPad)
@@ -60,6 +62,7 @@ struct GuscioiPad: View {
             .coordinateSpace(name: ShellView.spazioShell)
         }
         .ignoresSafeArea(.container)
+        }
         .modifier(SceltaFileiPad())
         .modifier(EsportaBackupiPad())
     }
