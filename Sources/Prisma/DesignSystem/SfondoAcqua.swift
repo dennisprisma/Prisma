@@ -143,8 +143,8 @@ struct SfondoAcqua: View {
         #if os(macOS)
         let conMetal = !modoIstantanea && !senzaMetal && ProgrammaAcqua.condiviso.device != nil
         #elseif os(iOS)
-        // iPad: l'acqua animata (iOS/SfondoAcquaMobile.swift, CAMetalLayer e CADisplayLink); iPhone e istantanee
-        // iOS: il fermo-immagine
+        // iPhone e iPad: la stessa acqua animata del Mac (iOS/SfondoAcquaMobile.swift, CAMetalLayer e CADisplayLink);
+        // istantanee iOS: il fermo-immagine
         let conMetal = SfondoAcqua.animabileSuiOS && !modoIstantanea && !senzaMetal && ProgrammaAcqua.condiviso.device != nil
         #endif
         ZStack {

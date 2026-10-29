@@ -7,7 +7,6 @@ import UniformTypeIdentifiers
 /// `onOpenURL` nella radice); la password apre il backup protetto e il ripristino usa le funzioni del Mac.
 struct AperturaBackup: View {
     @EnvironmentObject var mobile: StatoMobile
-    @Environment(\.colorScheme) private var schema
 
     @State private var password = ""
     @State private var scegliFile = false
@@ -17,9 +16,7 @@ struct AperturaBackup: View {
 
     var body: some View {
         ZStack {
-            // L'acqua della scrivania: animata sull'iPad, ferma sull'iPhone e nelle istantanee (SfondoAcqua)
-            Materiale.SfondoScrivania(animato: mobile.stato.dati.impostazioni.sfondoAnimato,
-                                      intensita: mobile.stato.dati.impostazioni.pioggia.forza)
+            // Sotto c'è l'acqua di RadiceMobile, la stessa della scrivania: questa schermata non ne disegna una sua
             ScrollView {
                 VStack(spacing: M.spazioApertura) {
                     intestazione

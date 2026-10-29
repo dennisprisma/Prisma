@@ -4,19 +4,15 @@
 import SwiftUI
 
 // MARK: - Gettoni del guscio di iPhone e iPad (Sources/Prisma/iOS/)
-// Stesso tema Liquid Glass del Mac: i colori e il vetro vengono da Tema e Vetro; qui solo le misure e i
-// caratteri propri delle schermate touch (barra laterale dell'iPad, schede dell'iPhone, apertura del backup).
+// Stesso tema Liquid Glass del Mac (Design/tema-liquid-glass.html, con la sua impaginazione da telefono
+// `@media (max-width: 760px)`): i colori e il vetro vengono da Tema e Vetro; qui solo le misure e i caratteri
+// propri delle schermate touch (scrivania, barra, dock e finestre di iPhone e iPad, apertura del backup).
 
 extension Tema.Misura {
     enum Mobile {
-        /// Barra laterale dell'iPad (NavigationSplitView).
-        static let lateraleMinima: CGFloat = 240
-        static let lateraleIdeale: CGFloat = 272
-        static let lateraleMassima: CGFloat = 320
-        /// Icona in vetro delle app nella barra laterale e nell'elenco «Altro».
+        /// Icona in vetro delle app negli elenchi (passi dell'apertura del backup, righe delle app).
         static let iconaLaterale: CGFloat = 30
-        /// Logo di Prisma in cima alla barra laterale e sull'apertura del backup.
-        static let logoLaterale: CGFloat = 26
+        /// Logo di Prisma sull'apertura del backup.
         static let logoApertura: CGFloat = 64
         /// Margini delle schermate e spazio fra le schede di vetro.
         static let margine: CGFloat = 16
@@ -35,6 +31,8 @@ extension Tema.Misura {
         static let spazioApertura: CGFloat = 16
         /// Campo della password e pulsanti grandi (almeno 44 pt per il dito).
         static let altezzaControllo: CGFloat = 46
+        /// L'avviso temporaneo (.toast) sopra il dock: dal bordo della safe area in basso.
+        static let avvisoBasso: CGFloat = 72
         /// Segnaposto «In arrivo su iPad».
         static let iconaInArrivo: CGFloat = 72
         static let testoInArrivoMassimo: CGFloat = 460
@@ -70,8 +68,6 @@ extension Tema.Misura {
         /// Rubrica di Clienti: larghezza sull'iPad e altezza minima della testata del dossier su due righe.
         static let rubrica: CGFloat = 240
         static let testataDossierDueRighe: CGFloat = 8
-        /// La finestra di vetro dell'app nella colonna di dettaglio dell'iPad: margine dall'acqua ai lati e in basso.
-        static let margineFinestra: CGFloat = 12
         /// Impostazioni: sotto questa larghezza dell'app la colonna delle informazioni a destra non c'è.
         static let sogliaInformazioniImpostazioni: CGFloat = 820
     }
@@ -82,8 +78,11 @@ extension Tema.Raggio {
         static let scheda: CGFloat = Tema.Raggio.scheda
         static let riga: CGFloat = Tema.Raggio.riga
         static let apertura: CGFloat = Tema.Raggio.pannello
-        /// La finestra dell'app nella colonna di dettaglio dell'iPad (come una finestra ingrandita del Mac).
-        static let finestra: CGFloat = Tema.Raggio.finestraIngrandita
+        /// La finestra dell'app sull'iPhone (--r-win del tema) e sull'iPad (come una finestra ingrandita del Mac).
+        static let finestraTelefono: CGFloat = Tema.Raggio.finestra
+        static let finestraiPad: CGFloat = Tema.Raggio.finestraIngrandita
+        /// Le tessere del centro di controllo (.cc-tile) e le schede delle app aperte (.sw-card).
+        static let tessera: CGFloat = 20
         static let controllo: CGFloat = 12
     }
 }
@@ -101,7 +100,28 @@ extension Tipo {
         static let etichetta = Tipo.sistema(12, .medium)
         static let corpo = Tipo.sistema(15)
         static let pulsante = Tipo.sistema(16, .semibold)
-        static let voceLaterale = Tipo.sistema(15, .medium)
+        /// Il saluto della scrivania sul telefono (.hero h1 a 28 sotto i 760 punti).
+        static let salutoTelefono = Tipo.sistema(28, .bold)
+        static let spaziaturaSaluto = Tema.Testo.spaziatura(-0.024, 28)
+        /// Barra superiore: «Prisma» (.bar-brand) e il nome dell'app in primo piano (.bar-app).
+        static let barraMarchio = Tipo.sistema(14, .bold)
+        static let barraApp = Tipo.sistema(14, .medium)
+        static let simboloBarra = Tipo.sistema(16, .medium)
+        static let avatarBarra = Tipo.arrotondato(11, .bold)
+        /// Titolo della finestra di un'app sull'iPad (.win-title).
+        static let titoloFinestra = Tipo.sistema(15, .semibold)
+        /// Nome sotto le icone della griglia «Tutte le app» e delle app aperte.
+        static let etichettaIcona = Tipo.sistema(11.5, .medium)
+        static let nomeAppAperta = Tipo.sistema(13, .semibold)
+        /// Centro di controllo (.cc-tile h3, .cc-round b / small).
+        static let titoloTessera = Tipo.sistema(12, .semibold)
+        static let nomeTessera = Tipo.sistema(12.5, .semibold)
+        static let statoTessera = Tipo.sistema(11)
+        static let simboloTessera = Tipo.sistema(17, .medium)
+        /// Titolo dei pannelli «Tutte le app» e «App aperte» (.sw-h).
+        static let titoloPannello = Tipo.sistema(19, .bold)
+        /// La ✕ della finestra.
+        static let simboloChiudi = Tipo.sistema(12, .bold)
         static let marchio = Tipo.sistema(17, .bold)
         static let stato = Tipo.sistema(11.5, .semibold)
     }
@@ -113,13 +133,155 @@ extension Tema.Colore {
         static let errore = Tema.Colore.scadenzaOra
         /// Conferma dell'apertura riuscita.
         static let riuscita = Tema.Colore.testoInEssere
-        /// Voce scelta nella barra laterale dell'iPad.
-        static let selezione = Tema.Colore.selezioneRiga
         /// Velo sul contenuto sotto l'elenco laterale aperto sopra (iPad stretto).
         static let velo = Color.black.opacity(Tema.Misura.Mobile.opacitaVelo)
         /// Fondo dell'elenco laterale aperto sopra il contenuto e della sua striscia chiusa.
         static let fondoLaterale = Colori.Analisi.railAlto
         static let filoLaterale = Colori.ColonneStrumento.divisore
+    }
+}
+
+// MARK: - Scrivania, barra, dock, finestre e pannelli (giro 3: la scrivania del template su iPhone e iPad)
+
+extension Tema.Misura.Mobile {
+    /// La scrivania: sull'iPhone la colonna unica del tema (@media 760), sull'iPad quella del Mac.
+    enum Scrivania {
+        /// --gut: clamp(16px, 3vw, 44px) → 16 sul telefono.
+        static let margineTelefono: CGFloat = 16
+        /// Altezze dei widget a una colonna (@media 760: rows 330 310 64 300 280 250; Eve: Tema.Misura.widgetEve).
+        static let agenda: CGFloat = 330
+        static let cliente: CGFloat = 310
+        static let attivita: CGFloat = 300
+        static let scadenze: CGFloat = 280
+        static let portafoglio: CGFloat = 250
+        /// @media 1100: sotto questa larghezza dell'iPad la bacheca va su due colonne (rows 300 64 300 270).
+        static let sogliaDueColonne: CGFloat = 1100
+        static let filaAlta: CGFloat = 300
+        static let filaPortafoglio: CGFloat = 270
+        /// .board { min-height: 520px }: sotto, la scrivania dell'iPad scorre.
+        static let bachecaMinima: CGFloat = 520
+        /// .desk { padding-top: 8px } e .hero { padding-top: 14px }.
+        static let alto: CGFloat = 8
+        static let salutoAlto: CGFloat = 14
+        /// .hero: spazio fra il saluto e i pulsanti quando vanno a capo (gap 16).
+        static let salutoPulsanti: CGFloat = 16
+        /// Spazio fra l'ultimo contenuto della scrivania e il dock (oltre al dock stesso).
+        static let sopraDock: CGFloat = 12
+    }
+
+    /// La barra superiore (.bar) sotto la barra di stato di iOS, alta per il dito.
+    enum Barra {
+        /// --bar-h 34/38 → 44 per il dito (Human Interface Guidelines).
+        static let altezza: CGFloat = 44
+        /// .bar { padding: 0 8px 0 10px }.
+        static let margineSinistro: CGFloat = 10
+        static let margineDestro: CGFloat = 8
+        static let spazio: CGFloat = 4
+        /// .bar-brand / .bar-app: capsula alta 26 → 36, margini 10 (6 a sinistra del logo), spazio 7.
+        static let marchio: CGFloat = 36
+        static let marchioMargine: CGFloat = 10
+        static let marchioMargineSinistro: CGFloat = 6
+        static let marchioSpazio: CGFloat = 7
+        /// .bar-tools: capsula di vetro sottile alta 30 → 36, pulsanti alti 26 → 32 e larghi almeno 28 → 40.
+        static let strumenti: CGFloat = 36
+        static let strumentiMargine: CGFloat = 2
+        static let strumentiSpazio: CGFloat = 1
+        static let pulsante: CGFloat = 40
+        static let pulsanteAltezza: CGFloat = 32
+        static let pulsanteMargine: CGFloat = 8
+        static let pulsanteSpazio: CGFloat = 6
+        /// .me: 24 → 28.
+        static let avatar: CGFloat = 28
+        /// .bar-brand svg.
+        static let logo: CGFloat = 19
+        /// Il badge della campanella, spostato in alto a destra (.badge top 0 right 0).
+        static let spostamentoBadge = CGSize(width: 8, height: -7)
+        /// Area di tocco minima dei pulsanti della barra.
+        static let tocco: CGFloat = 44
+    }
+
+    /// Il dock (.dock) con il lato delle icone di `fitDock` del tema.
+    enum Dock {
+        /// Lato massimo delle icone: quello del Mac (Tema.Misura.dockIcona).
+        static let massimoTelefono: CGFloat = Tema.Misura.dockIcona
+        static let massimoiPad: CGFloat = Tema.Misura.dockIcona
+        /// Sotto, l'iPad mini in verticale non ci starebbe: è la misura più piccola ammessa.
+        static let minimo: CGFloat = 36
+        /// fitDock: spazio fra le icone, margine della capsula, margine del divisore (quote del lato).
+        static let quotaSpazio: CGFloat = 0.12
+        static let quotaMargine: CGFloat = 0.14
+        static let quotaDivisore: CGFloat = 0.06
+        /// fitDock: il margine orizzontale della capsula ha 2 punti in più, quello del divisore almeno 2.
+        static let margineFisso: CGFloat = 2
+        static let divisoreMinimo: CGFloat = 2
+        /// Lo spazio libero ai lati del dock (max-width: calc(100vw - 12px)).
+        static let bordo: CGFloat = 12
+        /// Passo dei lati provati da fitDock (0,5 px).
+        static let passo: CGFloat = 0.5
+        /// I nomi sotto le icone solo con un passo (lato · 1,12) almeno così: quello del dock del Mac, dove
+        /// «Impostazioni» ci sta.
+        static let passoPerNomi: CGFloat = 56
+        /// Dal bordo fisico dello schermo: sopra l'indicatore di iOS sull'iPhone, .dock bottom 10 sull'iPad.
+        static let dalBassoTelefono: CGFloat = 14
+        static let dalBassoiPad: CGFloat = 10
+        /// Area di tocco minima di un'icona.
+        static let tocco: CGFloat = 44
+        /// La cartella «Tutte le app»: le quattro icone in miniatura (2 × 2) e il loro spazio.
+        static let quotaMiniatura: CGFloat = 0.36
+        static let quotaSpazioMiniature: CGFloat = 0.06
+        /// .ic { border-radius: 23.5% }.
+        static let quotaRaggioIcona: CGFloat = 0.235
+    }
+
+    /// La finestra di vetro di un'app (deskRect del tema: x 8, y bar + 6, larghezza w − 16, fino al dock).
+    enum Finestra {
+        static let margine: CGFloat = 8
+        static let sopra: CGFloat = 6
+        static let sopraDock: CGFloat = 10
+        /// La barra del titolo sull'iPad: .tbar 52 (36 sul Mac) → 44 per il dito.
+        static let barraTitolo: CGFloat = 44
+        /// La ✕ (il semaforo rosso del tema, grande per il dito) e la sua area di tocco.
+        static let chiudi: CGFloat = 26
+        static let toccoChiudi: CGFloat = 44
+        /// Dove sta la ✕: dal bordo sinistro della finestra (.lights left 21, meno il margine dell'area di tocco).
+        static let margineChiudi: CGFloat = 10
+        static let spazioTitolo: CGFloat = 8
+        static let margineDestroTitolo: CGFloat = 14
+    }
+
+    /// I pannelli sopra la scrivania (.nc, .cc, .switcher) e la griglia «Tutte le app».
+    enum Pannelli {
+        /// .nc / .cc: right 10, max-width 100vw − 20, top bar + 6.
+        static let margine: CGFloat = 10
+        static let sottoBarra: CGFloat = 6
+        /// .cc: larghezza, margine interno e spazio fra le tessere.
+        static let controllo: CGFloat = 340
+        static let margineControllo: CGFloat = 12
+        static let spazioTessere: CGFloat = 10
+        /// .cc-tile: padding 11px 12px 12px, gap 8.
+        static let margineTessera = EdgeInsets(top: 11, leading: 12, bottom: 12, trailing: 12)
+        static let spazioTessera: CGFloat = 8
+        /// .cc-round i: il cerchio del simbolo, e lo spazio fra cerchio e testo.
+        static let cerchioTessera: CGFloat = 36
+        static let spazioCerchio: CGFloat = 10
+        /// .switcher: larghezza massima, margine dai bordi (100vw − 32), margine interno 20, spazio 14 e 12.
+        static let appAperte: CGFloat = 760
+        static let bordoAppAperte: CGFloat = 16
+        static let margineAppAperte: CGFloat = 20
+        static let spazioAppAperte: CGFloat = 12
+        static let sottoTitolo: CGFloat = 14
+        /// .sw-card: larghezza minima, margini (18 10 14) e spazio 8; l'icona.
+        static let schedaApp: CGFloat = 150
+        static let margineSchedaApp = EdgeInsets(top: 18, leading: 10, bottom: 14, trailing: 10)
+        static let spazioSchedaApp: CGFloat = 8
+        static let iconaSchedaApp: CGFloat = 50
+        /// «Tutte le app»: 4 colonne su 361 punti, icone 56 con il nome sotto.
+        static let cellaApp: CGFloat = 76
+        static let iconaGriglia: CGFloat = 56
+        static let spazioGriglia: CGFloat = 14
+        static let spazioNome: CGFloat = 6
+        /// Altezza massima dei pannelli in quota dello schermo (il resto lo vede l'acqua).
+        static let quotaAltezza: CGFloat = 0.8
     }
 }
 #endif

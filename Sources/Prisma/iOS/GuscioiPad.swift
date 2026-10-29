@@ -3,169 +3,85 @@ import SwiftUI
 // UTType (contentType del backup) senza contare sulle importazioni di passaggio
 import UniformTypeIdentifiers
 
-/// Il guscio dell'iPad: barra laterale con le app di Prisma nell'ordine del dock del Mac (Clienti e Posizioni,
-/// il fulcro, in cima) e, nella colonna di dettaglio, le stesse viste `App*` del Mac con lo stesso StatoShell.
-/// Dal giro 2 ci sono tutte le app tranne Eve (giro 4). Ciò che sul Mac apre la shell sopra le finestre (Ricerca
-/// come Spotlight, guida, presentazione) qui si apre sopra il guscio; i pannelli di apertura del Mac diventano
+/// Il guscio dell'iPad: la scrivania del Mac (Design/tema-liquid-glass.html) con la barra in alto, i sei widget, il dock
+/// con tutte le app e un'app alla volta in una finestra di vetro fra la barra e il dock (come una finestra ingrandita
+/// del Mac), che entra ed esce con il movimento del Mac. Dentro la finestra le stesse viste `App*` del Mac con lo stesso
+/// StatoShell (tutte tranne Eve, giro 4). Ciò che sul Mac apre la shell sopra le finestre (Ricerca come Spotlight,
+/// notifiche, guida, presentazione) qui si apre sopra tutto (PannelliMobile); i pannelli di apertura del Mac diventano
 /// `.fileImporter` e `.fileExporter`; i moduli (nuovo cliente, posizione, appuntamento…) sono i fogli delle app.
+/// Sotto tutto l'acqua animata di RadiceMobile.
 struct GuscioiPad: View {
     @EnvironmentObject var mobile: StatoMobile
     @EnvironmentObject var stato: StatoShell
-    @State private var colonne: NavigationSplitViewVisibility = .all
 
     /// Le app portate sull'iPad: tutte tranne Eve, che arriva con Qwen in rete locale (giro 4).
     static let appPronte: Set<AppPrisma> = Set(AppPrisma.allCases).subtracting([.eve])
 
-    private typealias M = Tema.Misura.Mobile
+    private typealias D = Tema.Misura.Mobile.Dock
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $colonne) {
-            BarraLateraleiPad()
-                // Trasparente: sotto c'è il vetro della barra laterale di iPadOS, non un fondo pieno
-                .scrollContentBackground(.hidden)
-                .navigationSplitViewColumnWidth(min: M.lateraleMinima, ideal: M.lateraleIdeale, max: M.lateraleMassima)
-        } detail: {
-            DettaglioiPad(app: mobile.appiPad)
-                // L'acqua della scrivania dietro le app, come sul Mac: animata sull'iPad (SfondoAcquaMobile),
-                // ferma nelle istantanee; si ferma sotto la sala della presentazione, che la copre tutta
-                .background {
-                    Materiale.SfondoScrivania(animato: stato.dati.impostazioni.sfondoAnimato && stato.presentazione == nil,
-                                              intensita: stato.dati.impostazioni.pioggia.forza)
+        GeometryReader { geo in
+            let misura = geo.size
+            let sicuro = geo.safeAreaInsets
+            let sottoBarra = sicuro.top + Tema.Misura.Mobile.Barra.altezza
+            let voci = DisposizioneDockMobile.app(.iPad, consentita: { stato.appConsentita($0) }).count + 1
+            let lato = DisposizioneDockMobile.lato(elementi: voci, larghezza: misura.width, massimo: D.massimoiPad)
+            let sopraDock = max(D.dalBassoiPad, sicuro.bottom) + DisposizioneDockMobile.altezza(lato: lato)
+            let aperta = mobile.appAperta != nil
+            ZStack(alignment: .topLeading) {
+                // Sotto la finestra la scrivania resta costruita (i widget non si rifanno a ogni ritorno) ma non si
+                // disegna, non prende i tocchi e VoiceOver non la legge
+                ScrivaniaiPad(alto: sottoBarra, basso: sopraDock)
+                    .frame(width: misura.width, height: misura.height)
+                    .opacity(aperta ? 0 : 1)
+                    .allowsHitTesting(!aperta)
+                    .accessibilityHidden(aperta)
+
+                if let app = mobile.appAperta {
+                    FinestraMobile(app: app,
+                                   cornice: GuscioiPhone.cornice(misura: misura, sottoBarra: sottoBarra, sopraDock: sopraDock),
+                                   spazio: misura, raggio: Tema.Raggio.Mobile.finestraiPad,
+                                   origine: mobile.origineApertura, animata: mobile.persistente, conBarra: true) {
+                        ContenutoiPad(app: app)
+                    }
+                    .id(app)
                 }
-                .toolbar { strumenti }
-                .navigationBarTitleDisplayMode(.inline)
-                .modifier(EsportaBackupiPad())
+
+                BarraMobile(compatta: false, alto: sicuro.top)
+
+                DockMobile(stile: .iPad, larghezza: misura.width)
+                    .padding(.bottom, max(D.dalBassoiPad, sicuro.bottom))
+                    .frame(width: misura.width, height: misura.height, alignment: .bottom)
+
+                PannelliMobile(sistema: stato.sistema, sottoBarra: sottoBarra, misura: misura)
+            }
+            .frame(width: misura.width, height: misura.height, alignment: .topLeading)
+            // Una volta, qui, sulla vista che ignora la safe area: le origini dei widget e del dock sono nel suo spazio
+            .coordinateSpace(name: ShellView.spazioShell)
         }
-        .navigationSplitViewStyle(.balanced)
+        .ignoresSafeArea(.container)
         .modifier(SceltaFileiPad())
-        // Sopra tutto, come nella shell del Mac: Ricerca, guida e presentazione
-        .overlay { PannelliiPad(sistema: stato.sistema) }
-    }
-
-    /// Barra degli strumenti al posto della barra superiore del Mac: la ricerca, il cliente attivo e
-    /// l'apertura del backup.
-    @ToolbarContentBuilder private var strumenti: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                stato.cercaOvunque()
-            } label: {
-                Label("Cerca", systemImage: "magnifyingglass")
-            }
-            // ⌘K come sul Mac, con la tastiera dell'iPad
-            .keyboardShortcut("k", modifiers: .command)
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            SceltaClienteMobile()
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                mobile.apriBackup()
-            } label: {
-                Label("Apri un backup", systemImage: "lock.doc")
-            }
-        }
+        .modifier(EsportaBackupiPad())
     }
 }
 
-/// La barra laterale: logo di Prisma e le app con le loro icone in vetro.
-private struct BarraLateraleiPad: View {
-    @EnvironmentObject var mobile: StatoMobile
-
-    private typealias M = Tema.Misura.Mobile
-
-    var body: some View {
-        List(selection: Binding<AppPrisma?>(get: { mobile.appiPad }, set: { if let app = $0 { mobile.mostra(app) } })) {
-            Section {
-                ForEach(AppPrisma.allCases) { app in
-                    VoceLateraleiPad(app: app, pronta: GuscioiPad.appPronte.contains(app))
-                        .tag(app)
-                }
-            } header: {
-                LogoPrismaConNome(altezza: M.logoLaterale)
-                    .padding(.vertical, M.spazioRiga)
-                    .textCase(nil)
-            }
-        }
-        .listStyle(.sidebar)
-        // Il nome è già nel logo in cima: la barra della colonna resta senza titolo
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private struct VoceLateraleiPad: View {
+/// Il contenuto della finestra dell'iPad: l'app del Mac, o il segnaposto di Eve (giro 4).
+private struct ContenutoiPad: View {
     let app: AppPrisma
-    let pronta: Bool
-
-    private typealias M = Tema.Misura.Mobile
-
-    var body: some View {
-        HStack(spacing: M.spazioRiga) {
-            IconaApp(app: app, lato: M.iconaLaterale)
-            Text(app.nomeDock)
-                .font(Tipo.Mobile.voceLaterale)
-                .foregroundColor(pronta ? Tema.Colore.inchiostro : Tema.Colore.inchiostroSecondario)
-                .lineLimit(1)
-        }
-        .padding(.vertical, M.spazioTesto)
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(pronta ? "" : "In arrivo su iPad")
-    }
-}
-
-/// La colonna di dettaglio: l'app del Mac in una finestra di vetro sopra l'acqua (come le finestre interne
-/// del Mac, ma sempre ingrandita), o il segnaposto di Eve (giro 4).
-private struct DettaglioiPad: View {
-    let app: AppPrisma
-
-    private typealias M = Tema.Misura.Mobile
 
     var body: some View {
         if GuscioiPad.appPronte.contains(app) {
-            let forma = FormaVetro.arrotondata(Tema.Raggio.Mobile.finestra)
             ContenutoApp(app: app)
-                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
-                // Il contenuto si taglia prima del vetro: dopo taglierebbe anche le ombre
-                .clipShape(forma)
-                .vetro(.finestra(attiva: true), forma: forma)
-                .padding(.horizontal, M.margineFinestra)
-                .padding(.bottom, M.margineFinestra)
-                .id(app)
         } else {
             InArrivoMobile(app: app, titolo: "Eve non è ancora disponibile qui", testo: MotoreLocale.nonSuiOS)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-    }
-}
-
-/// Ricerca (⌘K, il pannello come Spotlight), guida di Prisma e presentazione all'incontro sopra il guscio,
-/// come i livelli di CorpoShell sul Mac. Osserva solo StatoFinestre e la presentazione.
-private struct PannelliiPad: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sistema: StatoFinestre
-
-    var body: some View {
-        ZStack {
-            if sistema.pannelloRicerca {
-                RicercaSpotlight()
-                    .transition(.opacity)
-            }
-            if sistema.guida != nil {
-                PannelloGuida()
-                    .transition(.opacity)
-            }
-            if let p = stato.presentazione {
-                VistaPresentazione(p: p)
-                    .transition(.opacity)
-            }
-        }
-        .ignoresSafeArea()
-        .animation(Movimenti.curva(Tema.Moto.Spotlight.entrata), value: sistema.pannelloRicerca)
-        .animation(Movimenti.curva(Tema.Moto.Guida.entrata), value: sistema.guida != nil)
     }
 }
 
 /// I pannelli di apertura del Mac (`importaClientiDaFile`, `importaPosizioniDaFile`, `scegliFileValori`) su
-/// iPad: `StatoShell.sceltaFileMobile` apre il selettore dei file, StatoMobile legge la copia del file scelto.
-private struct SceltaFileiPad: ViewModifier {
+/// iPhone e iPad: `StatoShell.sceltaFileMobile` apre il selettore dei file, StatoMobile legge la copia del file scelto.
+struct SceltaFileiPad: ViewModifier {
     @EnvironmentObject var stato: StatoShell
     @EnvironmentObject var mobile: StatoMobile
     /// L'ultima scelta: il selettore toglie la richiesta prima di dare il file.
@@ -187,8 +103,8 @@ private struct SceltaFileiPad: ViewModifier {
 }
 
 /// Il backup da rimandare al Mac (Impostazioni › Archivio, ArchivioMobile): pronto in tmp/, si salva in File o
-/// iCloud Drive con `.fileExporter`; salvato o annullato, la copia si cancella.
-private struct EsportaBackupiPad: ViewModifier {
+/// iCloud Drive con `.fileExporter`; salvato o annullato, la copia si cancella (iPhone e iPad).
+struct EsportaBackupiPad: ViewModifier {
     @EnvironmentObject var mobile: StatoMobile
 
     func body(content: Content) -> some View {
@@ -206,8 +122,7 @@ private struct EsportaBackupiPad: ViewModifier {
     }
 }
 
-/// Segnaposto in vetro per le app non ancora portate (iPad) o non disponibili (Eve). Sta sopra l'acqua della
-/// colonna di dettaglio (GuscioiPad): non ne disegna una sua.
+/// Segnaposto in vetro per le app non ancora portate (iPhone) o non disponibili (Eve), dentro la finestra di vetro.
 struct InArrivoMobile: View {
     let app: AppPrisma
     let titolo: String

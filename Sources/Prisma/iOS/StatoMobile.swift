@@ -4,32 +4,18 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// Le schede dell'iPhone (GuscioiPhone).
-enum SchedaTelefono: String, Hashable, CaseIterable {
-    case clienti, posizioni, agenda, notifiche, altro
-
-    var titolo: String {
-        switch self {
-        case .clienti: return "Clienti"
-        case .posizioni: return "Posizioni"
-        case .agenda: return "Agenda"
-        case .notifiche: return "Notifiche"
-        case .altro: return "Altro"
-        }
-    }
-
-    var simbolo: String {
-        switch self {
-        case .clienti: return "person.2"
-        case .posizioni: return "chart.pie"
-        case .agenda: return "calendar"
-        case .notifiche: return "bell"
-        case .altro: return "ellipsis.circle"
-        }
-    }
+/// Il pannello sopra la scrivania di iPhone e iPad (uno alla volta, come i pannelli della shell del Mac).
+/// La Ricerca resta `stato.pannelloRicerca` e le notifiche `stato.pannelloNotifiche` (quelli del Mac).
+enum PannelloMobile: Equatable {
+    /// Il centro di controllo (.cc del tema).
+    case controllo
+    /// Solo iPhone: tutte le app in griglia (il dock ne tiene quattro).
+    case tutteLeApp
+    /// Solo iPad: le app aperte (lo switcher del tema).
+    case appAperte
 }
 
-/// Dove porta un tocco negli elenchi dell'iPhone (NavigationStack di ogni scheda).
+/// Dove porta un tocco negli elenchi dell'iPhone (NavigationStack di ogni app nella finestra).
 enum DestinazioneTelefono: Hashable {
     case cliente(String)
     case posizione(String)
@@ -101,7 +87,7 @@ extension UTType {
 
 /// Lo stato di Prisma su iPhone e iPad: un sottile involucro attorno allo `StatoShell` condiviso (lo stesso
 /// `@EnvironmentObject` delle viste `App*` del Mac), con ciò che serve solo qui: l'apertura del backup del Mac,
-/// la scheda o l'app scelta e il salvataggio prima che il dispositivo si blocchi.
+/// l'app nella finestra di vetro sopra la scrivania, i pannelli e il salvataggio prima che il dispositivo si blocchi.
 @MainActor
 final class StatoMobile: ObservableObject {
     /// A che punto è l'apertura del backup.
@@ -126,17 +112,22 @@ final class StatoMobile: ObservableObject {
     /// true se il file scelto è un backup protetto da password (`.zip.cifrato`).
     @Published private(set) var protetto = false
 
-    /// L'app mostrata nella colonna di dettaglio dell'iPad (la cambiano la barra laterale con `mostra(_:)`
-    /// e le app stesse con `stato.apri(_:)`, che sul Mac porta davanti una finestra).
-    @Published var appiPad: AppPrisma = .clienti
+    /// L'app nella finestra di vetro sopra la scrivania; nil = la scrivania. La scrive solo StatoMobile: le icone
+    /// (`apri`), la scrivania (`mostraHome`) e i rimandi delle app (`stato.apri`, dal sink su `sistema.$elenco`).
+    @Published private(set) var appAperta: AppPrisma?
+    /// Il pannello aperto sopra la scrivania (centro di controllo, tutte le app, app aperte).
+    @Published var pannello: PannelloMobile?
+    /// Da dove si è aperta l'app (spazio `ShellView.spazioShell`): l'ancora del movimento d'apertura del Mac.
+    private(set) var origineApertura: CGPoint?
     /// Il backup per il Mac: in preparazione, poi pronto da salvare con `.fileExporter`.
     @Published private(set) var preparazioneBackup = false
     @Published var backupDaInviare: DocumentoBackupMobile?
-    /// La scheda scelta sull'iPhone e il percorso aperto in ciascuna (le istantanee lo impostano).
-    @Published var schedaiPhone: SchedaTelefono = .clienti
+    /// Il percorso aperto nelle app dell'iPhone (Clienti, Posizioni, Agenda; le istantanee lo impostano).
     @Published var percorsoClienti: [DestinazioneTelefono] = []
     @Published var percorsoPosizioni: [DestinazioneTelefono] = []
     @Published var percorsoAgenda: [DestinazioneTelefono] = []
+    /// Solo istantanee: la scrivania dell'iPhone parte scorsa fino al piede.
+    var scrivaniaInFondo = false
 
     /// Dopo la fine del ripristino, quanto aspettare prima di leggerne l'esito (gli ultimi passi di StatoShell).
     nonisolated static let ritardoEsito: UInt64 = 800_000_000
@@ -144,6 +135,8 @@ final class StatoMobile: ObservableObject {
     nonisolated static let ritardoDopoSelettore: UInt64 = 500_000_000
 
     private var abbonamenti = Set<AnyCancellable>()
+    /// L'ultima app davanti vista dal sink: una finestra si apre solo quando cambia (come `removeDuplicates`).
+    private var ultimaDavanti: AppPrisma?
     private var attesaEsito: AnyCancellable?
     private var compitoSalvataggio: UIBackgroundTaskIdentifier = .invalid
 
@@ -161,32 +154,99 @@ final class StatoMobile: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] richiesta in self?.passwordRifiutata(richiesta) }
             .store(in: &abbonamenti)
-        // Le app aprono le altre con `stato.apri(_:)` (risultati della Ricerca, importazioni, rimandi): sul Mac
-        // la finestra viene davanti, sull'iPad cambia la colonna di dettaglio
+        // Le app e i widget aprono le altre con `stato.apri(_:)` (risultati della Ricerca, importazioni, rimandi):
+        // sul Mac la finestra viene davanti, su iPhone e iPad l'app va nella finestra di vetro
         stato.sistema.$elenco
-            .map { elenco in elenco.last(where: { !$0.ridotta })?.app }
-            .removeDuplicates()
-            .compactMap { $0 }
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] app in
-                guard let self, self.appiPad != app else { return }
-                self.appiPad = app
+            // Si legge l'elenco di adesso, non quello pubblicato: fra la pubblicazione e la consegna (al giro dopo)
+            // le icone possono averlo già cambiato di nuovo
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.elencoCambiato(self.stato.sistema.elenco)
             }
             .store(in: &abbonamenti)
     }
 
-    // MARK: - App dell'iPad
+    // MARK: - App aperta (iPhone e iPad)
 
-    /// Una voce della barra laterale: l'app va nel dettaglio e, come sul Mac, davanti alle altre in StatoShell
-    /// (così le app che chiedono `stato.apri` di quella già davanti non restano senza effetto). In modo cliente
-    /// le app riservate non si aprono: lo dice `stato.apri` con il suo avviso.
-    func mostra(_ app: AppPrisma) {
+    /// Un'icona (dock, «Tutte le app», un pulsante della barra): l'app va subito nella finestra, poi passa da
+    /// StatoShell, così modo cliente, Impostazioni ed Eve restano quelli del Mac. Sull'iPhone i percorsi ripartono
+    /// dalla radice. In modo cliente le app riservate non si aprono: lo dice `stato.apri` con il suo avviso.
+    func apri(_ app: AppPrisma, da origine: CGPoint? = nil) {
         guard stato.appConsentita(app) else {
             stato.apri(app)
             return
         }
-        appiPad = app
-        if stato.sistema.appAttiva != app { stato.apri(app) }
+        pannello = nil
+        if stato.pannelloNotifiche { stato.pannelloNotifiche = false }
+        // La Ricerca è il pannello come Spotlight, non una finestra
+        guard app != .ricerca else {
+            stato.cercaOvunque()
+            return
+        }
+        percorsoClienti = []
+        percorsoPosizioni = []
+        percorsoAgenda = []
+        origineApertura = origine
+        appAperta = app
+        ultimaDavanti = app
+        stato.apriApp(app, da: origine)
+    }
+
+    /// Torna alla scrivania: la finestra se ne va subito, poi le finestre di StatoShell si riducono di colpo
+    /// (mai `stato.mostraScrivania()`, che le riduce una alla volta: il sink vedrebbe passare le altre app).
+    func mostraHome() {
+        pannello = nil
+        if stato.pannelloNotifiche { stato.pannelloNotifiche = false }
+        appAperta = nil
+        ultimaDavanti = nil
+        stato.riduciTutteSuiOS()
+    }
+
+    /// iPad, dalle app aperte: un'altra app nella finestra, con il suo stato (come `apri`, senza azzerare nulla).
+    func passaA(_ app: AppPrisma) {
+        guard stato.appConsentita(app), app != .ricerca else {
+            apri(app)
+            return
+        }
+        pannello = nil
+        origineApertura = nil
+        appAperta = app
+        ultimaDavanti = app
+        stato.apri(app)
+    }
+
+    /// Le finestre di StatoShell sono cambiate: se davanti c'è un'altra app (un rimando, un widget) va nella
+    /// finestra; se l'app della finestra è stata chiusa resta quella dietro, o la scrivania.
+    private func elencoCambiato(_ elenco: [StatoShell.Finestra]) {
+        let davanti = elenco.last(where: { !$0.ridotta })?.app
+        defer { ultimaDavanti = davanti }
+        if let davanti, davanti != ultimaDavanti, davanti != appAperta {
+            apriDaRimando(davanti)
+        } else if let aperta = appAperta, !elenco.contains(where: { $0.app == aperta }) {
+            appAperta = davanti
+        }
+    }
+
+    /// Un'app aperta da un'altra o da un widget: l'origine è quella misurata dal widget (`misuraOrigine`).
+    /// Sull'iPhone le app sono le viste da telefono: il rimando apre il dettaglio che il Mac mostrerebbe.
+    private func apriDaRimando(_ app: AppPrisma) {
+        pannello = nil
+        origineApertura = stato.sistema.origini[app]
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            switch app {
+            case .posizioni:
+                percorsoPosizioni = stato.posizioneInDettaglio.map { [DestinazioneTelefono.posizione($0)] } ?? []
+            case .agenda:
+                percorsoAgenda = stato.appuntamentoSelezionato.map { [DestinazioneTelefono.appuntamento($0)] } ?? []
+            case .clienti:
+                let id = stato.clienteAttivoId
+                percorsoClienti = stato.clienti.contains(where: { $0.id == id }) ? [DestinazioneTelefono.cliente(id)] : []
+            default:
+                break
+            }
+        }
+        appAperta = app
     }
 
     // MARK: - Importazioni da file
@@ -443,8 +503,9 @@ final class StatoMobile: ObservableObject {
         fase = .attesa
     }
 
-    /// Riapre la schermata dell'apertura (da «Altro» sull'iPhone o dalla barra dell'iPad).
+    /// Riapre la schermata dell'apertura (dal centro di controllo o da Impostazioni › Archivio).
     func apriBackup() {
+        pannello = nil
         fase = .attesa
         mostraApertura = true
     }
@@ -528,6 +589,24 @@ final class StatoMobile: ObservableObject {
         let percorso = url.resolvingSymlinksInPath().standardizedFileURL.path
         let cartella = inbox.resolvingSymlinksInPath().standardizedFileURL.path
         return percorso.hasPrefix(cartella + "/")
+    }
+}
+
+extension StatoShell {
+    /// Solo iPhone e iPad: tutte le finestre ridotte in un colpo solo, senza il genio del Mac né lo sfalsamento di
+    /// `mostraScrivania` (lo stato delle app resta in StatoShell). Così il prossimo `apri` di un'app qualsiasi
+    /// cambia l'elenco e arriva al sink di StatoMobile.
+    func riduciTutteSuiOS() {
+        guard finestre.contains(where: { !$0.ridotta }) else { return }
+        sistema.giroScrivania &+= 1
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) {
+            var elenco = finestre
+            for i in elenco.indices { elenco[i].ridotta = true }
+            finestre = elenco
+            sistema.spente.formUnion(elenco.map(\.app))
+        }
     }
 }
 #endif

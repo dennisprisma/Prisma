@@ -205,11 +205,25 @@ private struct CorpoWidgetAgenda: View, Equatable {
     @State private var origineSeguito = OrigineApertura()
 
     var body: some View {
+        #if os(iOS)
+        // iPhone e iPad: il widget può essere stretto (una colonna sul telefono, due sull'iPad in verticale).
+        // La regola del tema `@container w (max-width: 430px)`: colonna del giorno 96 e numero a 50 punti.
+        // Sul Mac (finestra di almeno 1100 punti, widget di almeno 480) non scatta mai: il ramo resta quello di sempre
+        GeometryReader { geo in
+            corpo(stretto: geo.size.width < Tema.Misura.Shell.sogliaAgendaStretta)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+        }
+        #else
+        corpo(stretto: false)
+        #endif
+    }
+
+    private func corpo(stretto: Bool) -> some View {
         HStack(spacing: 0) {
             TimelineView(.everyMinute) { contesto in
-                giorno(contesto.date)
+                giorno(contesto.date, stretto: stretto)
             }
-            .frame(width: Tema.Misura.Shell.colonnaGiorno)
+            .frame(width: stretto ? Tema.Misura.Shell.colonnaGiornoStretta : Tema.Misura.Shell.colonnaGiorno)
             Rectangle().fill(Tema.Colore.separatore).frame(width: Tema.Misura.filo)
             incontri
                 .padding(.leading, Tema.Misura.widgetMargine)
@@ -217,7 +231,8 @@ private struct CorpoWidgetAgenda: View, Equatable {
     }
 
     /// Il giorno grande: giorno della settimana in rosso, numero, mese e il riepilogo di oggi.
-    private func giorno(_ oggi: Date) -> some View {
+    /// `stretto`: la colonna stretta del tema (solo su iPhone e iPad).
+    private func giorno(_ oggi: Date, stretto: Bool) -> some View {
         let incontriOggi = stato.appuntamentiDiOggi.count
         let prossimo = stato.prossimiAppuntamenti.first { $0.inizio >= oggi }
         // Le proposte ferme (cache oraria, leggera: niente motori del Portafoglio)
@@ -227,8 +242,8 @@ private struct CorpoWidgetAgenda: View, Equatable {
                 .font(Tema.Testo.Shell.giornoSettimana)
                 .foregroundColor(Tema.Colore.rosso)
             Text(Formati.giorno.string(from: oggi))
-                .font(Tema.Testo.giornoAgenda)
-                .tracking(Tema.Testo.spaziaturaGiornoAgenda)
+                .font(stretto ? Tema.Testo.Shell.giornoAgendaStretto : Tema.Testo.giornoAgenda)
+                .tracking(stretto ? Tema.Testo.Shell.spaziaturaGiornoAgendaStretto : Tema.Testo.spaziaturaGiornoAgenda)
                 .foregroundColor(Tema.Colore.inchiostro)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -265,7 +280,7 @@ private struct CorpoWidgetAgenda: View, Equatable {
                 .padding(.top, Tema.Misura.Shell.rigaTestoSpazio)
             }
         }
-        .padding(Tema.Misura.Shell.colonnaGiornoMargine)
+        .padding(stretto ? Tema.Misura.Shell.colonnaGiornoStrettaMargine : Tema.Misura.Shell.colonnaGiornoMargine)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 

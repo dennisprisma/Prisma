@@ -108,6 +108,11 @@ extension Tema.Misura {
         static let rigaMargine: CGFloat = 8
         static let colonnaGiorno: CGFloat = 148
         static let colonnaGiornoMargine = EdgeInsets(top: 4, leading: 4, bottom: 6, trailing: 12)
+        /// `@container w (max-width: 430px)` del tema: sotto questa larghezza del contenuto il widget Agenda ha la
+        /// colonna del giorno stretta. Succede solo su iPhone e iPad (sul Mac il widget è largo almeno 480).
+        static let sogliaAgendaStretta: CGFloat = 430
+        static let colonnaGiornoStretta: CGFloat = 96
+        static let colonnaGiornoStrettaMargine = EdgeInsets(top: 4, leading: 4, bottom: 6, trailing: 8)
         static let avatarCliente: CGFloat = 46
         static let veloCliente: CGFloat = 120
         static let kpiMargine = EdgeInsets(top: 11, leading: 14, bottom: 11, trailing: 14)
@@ -217,6 +222,9 @@ extension Tema.Testo {
         static let valoreKpiWidget = Tema.Testo.sfFisso(16, .semibold)
         static let collegamento = Tema.Testo.sfFisso(12, .semibold)
         static let giornoSettimana = Tema.Testo.sfFisso(14, .semibold)
+        /// Il numero del giorno nella colonna stretta (.wa-num a 50, solo su iPhone e iPad).
+        static let giornoAgendaStretto = Tema.Testo.sf(50, .light)
+        static let spaziaturaGiornoAgendaStretto = Tema.Testo.spaziatura(-0.045, 50)
         static let meseAgenda = Tema.Testo.sfFisso(14)
         static let riepilogoAgenda = Tema.Testo.sfFisso(12)
         static let riepilogoAgendaForte = Tema.Testo.sfFisso(13, .semibold)
