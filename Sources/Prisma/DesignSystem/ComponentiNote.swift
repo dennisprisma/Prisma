@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 
 // App Note nel tema Liquid Glass: l'indice delle note a sinistra sul vetro della barra laterale,
 // la nota su una scheda chiara con righe appena accennate, i pulsanti in capsula di vetro.
@@ -113,8 +117,13 @@ extension Misure {
         /// Altezza di una riga di testo nel carattere della nota come la misura l'editor (NSLayoutManager):
         /// con l'interlinea ogni riga è alta `riga` e il testo resta sulle righe della pagina.
         static let altezzaTesto: CGFloat = {
+            #if os(macOS)
             let f = NSFont.systemFont(ofSize: Misure.Note.corpoTesto)
             return NSLayoutManager().defaultLineHeight(for: f)
+            #elseif os(iOS)
+            // Su iPhone e iPad l'editor (UITextView) usa l'altezza di riga del carattere
+            return UIFont.systemFont(ofSize: Misure.Note.corpoTesto).lineHeight
+            #endif
         }()
         static let interlinea: CGFloat = max(0, riga - altezzaTesto)
         /// La prima riga della pagina, appena sotto la prima riga di testo.
@@ -200,6 +209,7 @@ struct MargineNote: View {
     }
 }
 
+#if os(macOS)
 /// Legge di quanto è scorso il testo dell'editor che ha accanto (il TextEditor di SwiftUI non lo
 /// dice): cerca la vista di testo AppKit che sta sotto di sé e ne segue lo scorrimento.
 struct ScorrimentoEditor: NSViewRepresentable {
@@ -265,3 +275,12 @@ struct ScorrimentoEditor: NSViewRepresentable {
         deinit { stacca() }
     }
 }
+#elseif os(iOS)
+/// Su iPhone e iPad, per ora, le righe della pagina non seguono lo scorrimento del testo: segnaposto vuoto
+/// con la stessa API (lo scorrimento resta 0).
+struct ScorrimentoEditor: View {
+    @Binding var scorrimento: CGFloat
+
+    var body: some View { Color.clear }
+}
+#endif

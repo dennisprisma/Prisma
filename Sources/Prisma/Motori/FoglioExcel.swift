@@ -1,7 +1,8 @@
 import Foundation
 
 /// Legge il primo foglio di una cartella di lavoro Excel (.xlsx) come righe di testo, senza Excel e senza
-/// librerie esterne: un .xlsx è un archivio zip di file XML, che si apre con `unzip` del Mac.
+/// librerie esterne: un .xlsx è un archivio zip di file XML, che si apre con `unzip` del Mac (su iPhone e iPad,
+/// dove non c'è `Process`, con `LettoreZip`).
 /// Tutto in locale: il file non lascia il Mac.
 ///
 /// Le celle escono come le leggerebbe un CSV italiano: i numeri con la virgola decimale ("1234,5"),
@@ -33,8 +34,10 @@ enum FoglioExcel {
         return "xl/worksheets/sheet1.xml"
     }
 
-    /// Un file dell'archivio, letto con `unzip -p` (sul Mac da sempre, nessuna installazione).
+    /// Un file dell'archivio, letto con `unzip -p` (sul Mac da sempre, nessuna installazione); su iPhone e iPad
+    /// con `LettoreZip` (stessa regola: nil se la voce manca, è vuota o lo zip non si legge).
     static func estrai(_ archivio: URL, _ percorso: String) -> Data? {
+        #if os(macOS)
         let processo = Process()
         processo.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
         processo.arguments = ["-p", archivio.path, percorso]
@@ -45,6 +48,10 @@ enum FoglioExcel {
         let dati = uscita.fileHandleForReading.readDataToEndOfFile()
         processo.waitUntilExit()
         return processo.terminationStatus == 0 && !dati.isEmpty ? dati : nil
+        #elseif os(iOS)
+        guard let dati = try? LettoreZip.dati(archivio, voce: percorso), !dati.isEmpty else { return nil }
+        return dati
+        #endif
     }
 
     // MARK: - XML

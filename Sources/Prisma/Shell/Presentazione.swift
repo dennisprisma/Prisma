@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 /// La presentazione all'incontro: le pagine di un documento a tutto schermo, una alla volta,
@@ -17,8 +21,10 @@ struct Presentazione {
     var clienteId: String?
     var appuntamentoId: String?
     var annotazioni = 0
+    #if os(macOS)
     /// La finestra messa a tutto schermo: all'uscita si rimette com'era quella, non la finestra in primo piano.
     var finestra: NSWindow?
+    #endif
 }
 
 extension StatoShell {
@@ -36,6 +42,7 @@ extension StatoShell {
                 p.appuntamentoId = id
             }
         }
+        #if os(macOS)
         // La finestra da mettere a tutto schermo (nessuna se lo è già)
         var schermoIntero: NSWindow?
         if persistente, let finestra = NSApp.keyWindow, !finestra.styleMask.contains(.fullScreen) { schermoIntero = finestra }
@@ -43,6 +50,7 @@ extension StatoShell {
             p.haAccesoSchermoIntero = true
             p.finestra = finestra
         }
+        #endif
         let accendeModoCliente = p.clienteId != nil && !inModoCliente
         // La sala per prima, con la sua dissolvenza; le modifiche senza animazione vengono dopo
         Movimenti.anima(Tema.Moto.Pannelli.presentazione, durata: Tema.Moto.Pannelli.durataPresentazione, animato: persistente) {
@@ -56,6 +64,7 @@ extension StatoShell {
         // La guida resterebbe sotto la sala con il suo Esc: si chiude (l'introduzione non si segna come vista)
         if sistema.guida != nil { sistema.guida = nil }
         // Nessun campo sotto il velo deve ricevere i tasti: il commento o la chat di Eve resterebbero scrivibili
+        #if os(macOS)
         if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
         guard let finestra = schermoIntero else { return }
         let giro = sistema.giroPresentazione &+ 1
@@ -65,6 +74,10 @@ extension StatoShell {
                   !finestra.styleMask.contains(.fullScreen) else { return }
             finestra.toggleFullScreen(nil)
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad la sala è già a tutto schermo: basta togliere la tastiera dai campi sotto il velo
+        if persistente { _ = UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+        #endif
     }
 
     func paginaSeguente() {
@@ -126,9 +139,11 @@ extension StatoShell {
         // Un genio o una chiusura in corso sotto la sala finiscono di colpo (dopo il cambio animato)
         annullaEffetti()
         if p.haAccesoModoCliente { esciModoCliente() }
+        #if os(macOS)
         if p.haAccesoSchermoIntero, let finestra = p.finestra ?? NSApp.keyWindow, finestra.styleMask.contains(.fullScreen) {
             finestra.toggleFullScreen(nil)
         }
+        #endif
     }
 }
 

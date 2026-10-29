@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -123,12 +125,17 @@ struct AppDocumenti: View {
     }
 
     private func importa() {
+        #if os(macOS)
         let pannello = NSOpenPanel()
         pannello.allowedContentTypes = [.pdf, .png, .jpeg, .tiff, .heic]
         pannello.allowsMultipleSelection = true
         pannello.prompt = "Importa"
         pannello.message = "Scegli KID, polizze, estratti conto, documenti d'identità o questionari: vengono copiati nell'archivio di Prisma."
         if pannello.runModal() == .OK { stato.aggiungiDocumenti(pannello.urls) }
+        #elseif os(iOS)
+        // Su iPhone e iPad i documenti si sceglieranno con `.fileImporter` (giro 2)
+        stato.mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     // MARK: - Barra laterale
@@ -215,11 +222,13 @@ struct ElencoDocumenti: View {
                     }
                     .padding(.vertical, Tema.Misura.Strumenti.margineElenco)
                 }
+                #if os(macOS)
                 .focusable()
                 .onMoveCommand { direzione in muovi(direzione, mostrate) }
                 .onDeleteCommand {
                     if !stato.solaLettura, let v = mostrate.first(where: { $0.id == scelta }) { elimina(v.voce.documento) }
                 }
+                #endif
             }
             Text(piede(mostrate.count))
                 .font(Tema.Testo.didascalia)
@@ -245,7 +254,7 @@ struct ElencoDocumenti: View {
         }
         .buttonStyle(StileSemplice())
         .contextMenu {
-            Button("Apri in Anteprima") { if let file { NSWorkspace.shared.open(file) } }
+            Button("Apri in Anteprima") { if let file { ApriFile.apri(file) } }
                 .disabled(file == nil)
             Button("Mostra nel Finder") { stato.mostraNelFinder(d) }
                 .disabled(file == nil)
@@ -267,6 +276,7 @@ struct ElencoDocumenti: View {
         .onDrag { file.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
     }
 
+    #if os(macOS)
     private func muovi(_ direzione: MoveCommandDirection, _ elenco: [MotoreDocumenti.VoceTrovata]) {
         guard !elenco.isEmpty else { return }
         let i = elenco.firstIndex { $0.id == scelta } ?? 0
@@ -276,4 +286,5 @@ struct ElencoDocumenti: View {
         default: break
         }
     }
+    #endif
 }

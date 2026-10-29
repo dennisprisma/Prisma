@@ -34,7 +34,9 @@ struct PannelloSpazi: View {
             // La scheda scende dall'alto, come Mission Control; il velo e il contenitore fanno solo l'opacità
             .entrataScheda(Tema.Moto.Pannelli.spazi, scala: Tema.Moto.Pannelli.spaziScala, ancora: .top)
         }
+        #if os(macOS)
         .onExitCommand { stato.pannelloSpazi = false }
+        #endif
     }
 
     private var intestazione: some View {

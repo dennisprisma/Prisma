@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // Movimenti dell'interfaccia (fluidità in stile macOS): token, aiuti e modificatori.
@@ -13,8 +17,14 @@ extension Notification.Name {
 
 /// Aiuti comuni a tutti i movimenti di Prisma.
 enum Movimenti {
-    /// «Riduci movimento» del Mac: niente scale né spostamenti, solo dissolvenze brevi.
-    static var calmo: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    /// «Riduci movimento» del Mac (o di iPhone e iPad): niente scale né spostamenti, solo dissolvenze brevi.
+    static var calmo: Bool {
+        #if os(macOS)
+        return NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        #elseif os(iOS)
+        return UIAccessibility.isReduceMotionEnabled
+        #endif
+    }
 
     /// La curva data, o la dissolvenza calma con «Riduci movimento».
     static func curva(_ a: Animation) -> Animation { calmo ? Tema.Moto.dissolvenzaCalma : a }

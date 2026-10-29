@@ -1118,6 +1118,7 @@ enum ProvaEve {
         try? Data(#"<Relationships><Relationship Id="rId7" Target="worksheets/foglio.xml"/></Relationships>"#.utf8)
             .write(to: cartella.appendingPathComponent("xl/_rels/workbook.xml.rels"))
         let file = cartella.appendingPathComponent("polizze.xlsx")
+        #if os(macOS)
         let zip = Process()
         zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
         zip.currentDirectoryURL = cartella
@@ -1126,6 +1127,15 @@ enum ProvaEve {
         zip.waitUntilExit()
         let daFile = FoglioExcel.righe(file)
         controlla(daFile?.count == 2 && daFile?.last?.first == "Mario Nuovo", "Excel: .xlsx aperto senza Excel, primo foglio dalle relazioni (\(daFile ?? []))")
+        #elseif os(iOS)
+        // Su iPhone e iPad non c'è /usr/bin/zip: lo stesso .xlsx si scrive con ScrittoreZip (voci memorizzate)
+        // e si rilegge con LettoreZip, come fa FoglioExcel su iOS
+        let voci = ["xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/worksheets/foglio.xml", "xl/sharedStrings.xml"]
+            .map { ScrittoreZip.Voce(nome: $0, contenuto: .file(cartella.appendingPathComponent($0))) }
+        try? ScrittoreZip.crea(voci: voci, a: file)
+        let daFile = FoglioExcel.righe(file)
+        controlla(daFile?.count == 2 && daFile?.last?.first == "Mario Nuovo", "Excel: .xlsx aperto senza Excel, primo foglio dalle relazioni (\(daFile ?? []))")
+        #endif
 
         // Le stesse righe come posizioni: cliente nuovo, scheda prodotto collegata, premio e data
         var scheda = Prodotto(nome: "Piano Alleanza Futuro", canale: .alleanza, area: .risparmio)

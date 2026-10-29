@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 // Le misure (spazioDopoSemafori, bordoSemaforiTipico) stanno in DesignSystem/TemaShell.swift.
@@ -11,6 +13,9 @@ struct PosizioneSemafori: Equatable {
     /// Centro verticale dei pulsanti.
     var centroVerticale: CGFloat
 }
+
+// Da qui in poi solo Mac (AppKit): su iPhone e iPad i pulsanti della finestra non ci sono e la barra resta senza.
+#if os(macOS)
 
 /// Vista invisibile, da mettere dietro la barra superiore: legge dove AppKit ha messo i pulsanti della
 /// finestra e lo dice alla barra (`nil` se non ci sono: schermo intero, finestra senza pulsanti).
@@ -154,3 +159,4 @@ struct LettoreSemafori: NSViewRepresentable {
         nsView.cambiata = cambiata
     }
 }
+#endif

@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -73,12 +75,14 @@ struct CorpoShell: View {
 
                 // Lo strato degli effetti (genio e chiusura in Core Animation, MotoreGenio): sopra finestre, dock e
                 // pannelli, sotto la presentazione e il benvenuto. Mai nelle istantanee e nelle prove
+                #if os(macOS)
                 if !modoIstantanea {
                     StratoEffettiVista()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
+                #endif
 
                 if let p = stato.presentazione {
                     VistaPresentazione(p: p)
@@ -152,6 +156,7 @@ struct CorpoShell: View {
                 }
             }
         }
+        #if os(macOS)
         .frame(minWidth: 1100, minHeight: 720)
         .ignoresSafeArea()
         .background {
@@ -168,6 +173,11 @@ struct CorpoShell: View {
         .onChange(of: stato.dati.impostazioni.aspetto) { aspetto in
             if !modoIstantanea { PrismaApp.applicaAspetto(aspetto) }
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad niente misura minima della finestra né tutto schermo da seguire;
+        // l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile)
+        .ignoresSafeArea()
+        #endif
     }
 
     /// Scala del contenitore della scrivania con il benvenuto: al blocco si allontana appena (0,98), a blocco
@@ -439,6 +449,7 @@ private final class AttesaDock {
     var lavoro: DispatchWorkItem?
 }
 
+#if os(macOS)
 /// Imposta la finestra macOS: barra del titolo trasparente, fondo del colore del cielo (chiaro o scuro), dimensione minima.
 struct ConfiguraFinestra: NSViewRepresentable {
     final class Vista: NSView {
@@ -458,3 +469,4 @@ struct ConfiguraFinestra: NSViewRepresentable {
     func makeNSView(context: Context) -> Vista { Vista() }
     func updateNSView(_ nsView: Vista, context: Context) {}
 }
+#endif

@@ -9,9 +9,12 @@ on:
 jobs:
   build:
     permissions:
-      contents: write
+      contents: read
     # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
     runs-on: macos-15-intel
+    # La pubblicazione sul branch anteprime la fa il job «pubblica» (Mac e iOS insieme)
+    outputs:
+      anteprime: ${{ steps.anteprime.outputs.ok }}
     steps:
       - uses: actions/checkout@v6
 
@@ -145,13 +148,270 @@ jobs:
             echo "Metodo $metodo non riuscito"
           done
 
-      - name: Pubblica le anteprime sul branch anteprime
+      # Le anteprime Mac passano al job «pubblica», che le mette sul branch anteprime così come sono oggi
+      - name: Carica le anteprime Mac
         if: github.event_name == 'push' && steps.anteprime.outputs.ok == '1'
+        uses: actions/upload-artifact@v6
+        with:
+          name: anteprime-mac
+          path: anteprime/
+          retention-days: 7
+
+      - name: Crea zip
+        run: ditto -c -k --keepParent Prisma.app Prisma.zip
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Prisma
+          path: Prisma.zip
+          retention-days: 7
+
+  # Prisma per iPhone e iPad: compilazione per il simulatore, prove e istantanee.
+  # Niente .xcodeproj: xcodebuild apre Package.swift, il .app si assembla con Supporto/iOS/assembla.sh.
+  # Per ora non bloccante (continue-on-error): resta così finché tutto il target non compila su iOS,
+  # poi si toglie e da lì vale «iOS rosso = niente merge».
+  ios:
+    permissions:
+      contents: read
+    # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
+    runs-on: macos-15-intel
+    timeout-minutes: 75
+    continue-on-error: true
+    env:
+      BID: local.prisma
+    steps:
+      - uses: actions/checkout@v6
+
+      # Serve l'SDK iOS 26 (vetro nativo): senza Xcode 26 il job fallisce, nessun ripiego su Xcode 16.
+      - name: Seleziona Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XC" ]; then
+            echo "::error::Xcode 26 non trovato sul runner: Prisma per iOS ha bisogno dell'SDK iOS 26"
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          echo "Uso $XC"
+
+      - name: Strumenti disponibili
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+          swift --version
+          xcrun simctl list runtimes
+          # Deve comparire lo schema Prisma (generato da Package.swift)
+          xcodebuild -list
+
+      # Release (le soglie di ProvaCarico sono tarate su codice ottimizzato), solo x86_64 (runner Intel),
+      # senza firma (si firma ad-hoc il .app assemblato). Il log completo va in build/ios.log;
+      # a schermo restano errori e riepiloghi, l'elenco completo degli errori è nel passo finale.
+      - name: Compila per il simulatore iOS
+        id: compila
+        run: |
+          mkdir -p build
+          # Dove xcodebuild mette l'eseguibile nudo e Prisma_Prisma.bundle (i passi seguenti leggono PROD)
+          PROD=build/ios/Build/Products/Release-iphonesimulator
+          echo "PROD=$PROD" >> "$GITHUB_ENV"
+          set +e
+          xcodebuild build \
+            -scheme Prisma \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Release \
+            -derivedDataPath build/ios \
+            -showBuildTimingSummary \
+            ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/ios.log | grep --line-buffered -E 'error:|warning: unre|BUILD|Build Timing Summary|^[A-Za-z]+ \([0-9]+ tasks?\) \|'
+          stato=${PIPESTATUS[0]}
+          set -e
+          if [ "$stato" -ne 0 ]; then
+            echo "::error::xcodebuild per iOS non riuscito ($(grep -cE '(^|: )error:' build/ios.log) righe di errore, elenco completo nel passo «Errori di compilazione iOS»)"
+            exit "$stato"
+          fi
+          echo "Prodotti:"
+          find "$PROD" -maxdepth 2 | head -40 || true
+          # Ripiego: se xcodebuild non desse l'eseguibile nudo, swift build con la tripla del simulatore
+          if [ ! -x "$PROD/Prisma" ]; then
+            echo "::warning::xcodebuild non ha prodotto $PROD/Prisma: ripiego su swift build"
+            SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+            swift build -c release --triple x86_64-apple-ios17.0-simulator --sdk "$SDK" 2>&1 | tee -a build/ios.log
+            PROD="$(swift build -c release --triple x86_64-apple-ios17.0-simulator --sdk "$SDK" --show-bin-path)"
+            echo "PROD=$PROD" >> "$GITHUB_ENV"
+            find "$PROD" -maxdepth 2 | head -40 || true
+          fi
+          test -x "$PROD/Prisma"
+
+      - name: Assembla Prisma.app per iOS
+        id: assembla
+        run: bash Supporto/iOS/assembla.sh "$PROD" build/Prisma-iOS/Prisma.app
+
+      # Il runtime iOS più recente presente sul runner e dispositivi creati qui: i nomi cambiano con le immagini
+      - name: Crea i simulatori iPhone e iPad
+        id: simulatori
+        run: |
+          RUNTIME="$(xcrun simctl list runtimes -j | jq -r '[.runtimes[] | select(.platform=="iOS" and .isAvailable)] | sort_by(.version|split(".")|map(tonumber)) | last | .identifier')"
+          if [ -z "$RUNTIME" ] || [ "$RUNTIME" = null ]; then
+            echo "::error::Nessun runtime iOS disponibile sul runner"
+            exit 1
+          fi
+          echo "Runtime: $RUNTIME"
+          tipo() {
+            for n in "$@"; do
+              id="$(xcrun simctl list devicetypes -j | jq -r --arg n "$n" '.devicetypes[] | select(.name==$n) | .identifier')"
+              [ -n "$id" ] && { echo "$id"; return 0; }
+            done
+            return 1
+          }
+          TIPO_PHONE="$(tipo 'iPhone 17 Pro' 'iPhone 16 Pro' 'iPhone 15 Pro')" || { echo "::error::Nessun tipo di iPhone"; exit 1; }
+          TIPO_PAD="$(tipo 'iPad Pro 13-inch (M5)' 'iPad Pro 13-inch (M4)' 'iPad Pro (12.9-inch) (6th generation)')" || { echo "::error::Nessun tipo di iPad"; exit 1; }
+          PHONE="$(xcrun simctl create prisma-iphone "$TIPO_PHONE" "$RUNTIME")"
+          PAD="$(xcrun simctl create prisma-ipad "$TIPO_PAD" "$RUNTIME")"
+          echo "iPhone: $TIPO_PHONE → $PHONE"
+          echo "iPad: $TIPO_PAD → $PAD"
+          echo "PHONE=$PHONE" >> "$GITHUB_ENV"
+          echo "PAD=$PAD" >> "$GITHUB_ENV"
+
+      # Un dispositivo alla volta (memoria del runner): avvio, installazione, prove, istantanee, spegnimento
+      - name: iPhone · avvio e installazione
+        id: avvio-iphone
+        if: steps.assembla.outcome == 'success' && steps.simulatori.outcome == 'success'
+        timeout-minutes: 10
+        run: |
+          xcrun simctl bootstatus "$PHONE" -b || xcrun simctl bootstatus "$PHONE" -b
+          xcrun simctl install "$PHONE" build/Prisma-iOS/Prisma.app
+          xcrun simctl get_app_container "$PHONE" "$BID" data
+
+      - name: iPhone · prove
+        if: steps.avvio-iphone.outcome == 'success'
+        timeout-minutes: 40
+        run: bash Supporto/iOS/prove.sh "$PHONE"
+
+      - name: iPhone · istantanee
+        if: always() && steps.avvio-iphone.outcome == 'success'
+        timeout-minutes: 15
+        run: bash Supporto/iOS/istantanee.sh "$PHONE" anteprime-ios/iphone
+
+      - name: iPhone · spegni
+        if: always() && env.PHONE != ''
+        run: xcrun simctl shutdown "$PHONE" || true
+
+      - name: iPad · avvio e installazione
+        id: avvio-ipad
+        if: always() && steps.assembla.outcome == 'success' && steps.simulatori.outcome == 'success'
+        timeout-minutes: 10
+        run: |
+          xcrun simctl bootstatus "$PAD" -b || xcrun simctl bootstatus "$PAD" -b
+          xcrun simctl install "$PAD" build/Prisma-iOS/Prisma.app
+          xcrun simctl get_app_container "$PAD" "$BID" data
+
+      # Sull'iPad le prove di calcolo sono le stesse dell'iPhone: basta controllare le risorse
+      - name: iPad · prove
+        if: always() && steps.avvio-ipad.outcome == 'success'
+        timeout-minutes: 10
+        run: bash Supporto/iOS/prove.sh "$PAD" verifica-risorse
+
+      - name: iPad · istantanee
+        if: always() && steps.avvio-ipad.outcome == 'success'
+        timeout-minutes: 15
+        run: bash Supporto/iOS/istantanee.sh "$PAD" anteprime-ios/ipad
+
+      - name: iPad · spegni
+        if: always() && env.PAD != ''
+        run: xcrun simctl shutdown "$PAD" || true
+
+      # Se l'app si è chiusa di colpo nel simulatore, il rapporto di crash dice dove
+      - name: Rapporti di crash
+        if: failure()
+        run: |
+          ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i prisma | head -5 | while read -r f; do
+            echo "::group::$f"
+            head -120 ~/Library/Logs/DiagnosticReports/"$f"
+            echo "::endgroup::"
+          done || true
+
+      # L'elenco completo degli errori di compilazione, non solo il primo: ogni giro di CI costa 30-45 minuti
+      - name: Errori di compilazione iOS
+        if: always() && steps.compila.outcome != 'skipped'
+        run: |
+          LOG=build/ios.log
+          [ -f "$LOG" ] || { echo "Nessun log di compilazione"; exit 0; }
+          # Percorsi relativi alla radice del repository, righe uguali una volta sola
+          grep -E '(^|: )(fatal )?error:' "$LOG" | sed "s#$GITHUB_WORKSPACE/##g" | sort | uniq -c | sort -k2 > build/errori-ios.txt || true
+          N="$(wc -l < build/errori-ios.txt | tr -d ' ')"
+          if [ "$N" = 0 ]; then
+            echo "Nessun errore di compilazione iOS"
+            exit 0
+          fi
+          echo "=== Errori per file ==="
+          sed -E 's/^ *[0-9]+ //' build/errori-ios.txt | grep -oE '^[^:]+\.swift' | sort | uniq -c | sort -rn || true
+          echo
+          echo "=== Comandi falliti ==="
+          sed -n '/The following build commands failed/,/^\*\*/p' "$LOG" || true
+          echo
+          echo "=== Elenco completo degli errori ($N righe distinte) ==="
+          cat build/errori-ios.txt
+          {
+            echo "### Errori di compilazione iOS ($N righe distinte)"
+            echo
+            echo '```'
+            head -300 build/errori-ios.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Carica il log di compilazione iOS
+        if: always() && steps.compila.outcome != 'skipped'
+        uses: actions/upload-artifact@v6
+        with:
+          name: log-ios
+          path: |
+            build/ios.log
+            build/errori-ios.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Carica le anteprime iOS
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v6
+        with:
+          name: anteprime-ios
+          path: anteprime-ios/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Un solo push -f sul branch anteprime: le PNG del Mac dove sono sempre state, quelle di iOS in ios/.
+  # Parte anche se iOS è rosso (le anteprime Mac servono a capire il problema), purché la build Mac sia riuscita.
+  pubblica:
+    needs: [build, ios]
+    if: always() && github.event_name == 'push' && needs.build.result == 'success' && needs.build.outputs.anteprime == '1'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica le anteprime Mac
+        uses: actions/download-artifact@v6
+        with:
+          name: anteprime-mac
+          path: anteprime
+
+      - name: Scarica le anteprime iOS
+        id: ios
+        continue-on-error: true
+        uses: actions/download-artifact@v6
+        with:
+          name: anteprime-ios
+          path: anteprime/ios
+
+      - name: Pubblica le anteprime sul branch anteprime
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd anteprime
-          printf 'branch: %s\ncommit: %s\ndata: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" "$(date -u +%FT%TZ)" > INFO.txt
+          IOS=no
+          [ -d ios ] && [ -n "$(find ios -name '*.png' -print -quit)" ] && IOS=sì
+          printf 'branch: %s\ncommit: %s\ndata: %s\nios: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" "$(date -u +%FT%TZ)" "$IOS" > INFO.txt
+          ls -la . ios 2>/dev/null || true
           git init -q -b anteprime
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
@@ -163,12 +423,3 @@ jobs:
             sleep $((tentativo * 10))
           done
           exit 1
-
-      - name: Crea zip
-        run: ditto -c -k --keepParent Prisma.app Prisma.zip
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: Prisma
-          path: Prisma.zip
-          retention-days: 7

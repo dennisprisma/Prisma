@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 private typealias M = Misure.Carta
@@ -165,12 +169,19 @@ enum ImpaginatoreProspetto {
 
     /// Altezza di un testo a capo automatico. Si misura su una colonna un po' più stretta
     /// di quella disegnata: il testo a schermo va a capo al più nello stesso punto, mai dopo.
-    static func altezzaTesto(_ s: String, font: NSFont, larghezza: CGFloat, interlinea: CGFloat) -> CGFloat {
+    static func altezzaTesto(_ s: String, font: FontPiattaforma, larghezza: CGFloat, interlinea: CGFloat) -> CGFloat {
         let stile = NSMutableParagraphStyle()
         stile.lineSpacing = interlinea
-        let r = (s as NSString).boundingRect(with: NSSize(width: larghezza - 6, height: .greatestFiniteMagnitude),
+        #if os(macOS)
+        let r = (s as NSString).boundingRect(with: CGSize(width: larghezza - 6, height: .greatestFiniteMagnitude),
                                              options: [.usesLineFragmentOrigin, .usesFontLeading],
                                              attributes: [.font: font, .paragraphStyle: stile])
+        #elseif os(iOS)
+        // In UIKit la stessa misura vuole anche il contesto di disegno (nessuno: come sul Mac)
+        let r = (s as NSString).boundingRect(with: CGSize(width: larghezza - 6, height: .greatestFiniteMagnitude),
+                                             options: [.usesLineFragmentOrigin, .usesFontLeading],
+                                             attributes: [.font: font, .paragraphStyle: stile], context: nil)
+        #endif
         return ceil(r.height) + 3
     }
 }

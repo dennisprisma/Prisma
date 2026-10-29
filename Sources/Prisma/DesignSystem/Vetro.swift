@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // MARK: - Vetro del tema Liquid Glass
@@ -180,7 +184,7 @@ struct ModificatoreVetro: ViewModifier {
     private var usaVetroNativo: Bool {
         guard conSfocatura, !semplice, !trasparenzaRidotta, Vetro.nativo else { return false }
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) { return true }
+        if #available(macOS 26.0, iOS 26.0, *) { return true }
         #endif
         return false
     }
@@ -265,7 +269,7 @@ struct ModificatoreVetro: ViewModifier {
 
     private func vetroNativo(_ content: Content) -> AnyView {
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, iOS 26.0, *) {
             return AnyView(
                 content
                     // Un riempimento scelto (pannelli che galleggiano sopra altro contenuto) resta anche sul vetro di Apple
@@ -372,7 +376,7 @@ struct ModificatoreVetro: ViewModifier {
 }
 
 #if compiler(>=6.2)
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 extension ModificatoreVetro {
     /// Il vetro di Apple con tinta e interattività.
     fileprivate var vetroDiSistema: SwiftUI.Glass {
@@ -478,7 +482,7 @@ struct CapsulaCanale: View {
         let margini = compatta ? Tema.Misura.chipPiccoloMargini : Tema.Misura.chipMargini
         HStack(spacing: Tema.Misura.spazioChip) {
             if canale == .alleanza, !compatta, let simbolo = Risorse.immagine("Loghi/Alleanza_simbolo.png") {
-                Image(nsImage: simbolo)
+                Image(piattaforma: simbolo)
                     .renderingMode(.template)
                     .resizable()
                     .interpolation(.high)
@@ -540,7 +544,7 @@ private struct GruppoVetro: ViewModifier {
 
     private func contenitore(_ content: Content) -> AnyView {
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, iOS 26.0, *) {
             return AnyView(GlassEffectContainer(spacing: spazio) { content })
         }
         #endif

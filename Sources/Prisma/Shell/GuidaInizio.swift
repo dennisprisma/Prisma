@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -87,12 +89,17 @@ extension StatoShell {
 
     @MainActor
     func importaClientiDaFile() {
+        #if os(macOS)
         let pannello = NSOpenPanel()
         pannello.allowedContentTypes = [.vCard] + Self.tipiTabelle
         pannello.allowsMultipleSelection = false
         pannello.message = "Un file vCard (dall'app Contatti: seleziona i contatti e trascinali sulla scrivania), un foglio Excel o un CSV. Il file resta sul Mac."
         guard pannello.runModal() == .OK, let url = pannello.url else { return }
         importaClienti(da: url)
+        #elseif os(iOS)
+        // Su iPhone e iPad il file si sceglierà con `.fileImporter` nella vista (giro 2), poi `importaClienti(da:)`
+        mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     @MainActor
@@ -107,12 +114,17 @@ extension StatoShell {
 
     @MainActor
     func importaPosizioniDaFile() {
+        #if os(macOS)
         let pannello = NSOpenPanel()
         pannello.allowedContentTypes = Self.tipiTabelle
         pannello.allowsMultipleSelection = false
         pannello.message = "Un foglio Excel o un CSV con una posizione per riga e i nomi delle colonne nella prima. I clienti che non sono in rubrica si aggiungono insieme."
         guard pannello.runModal() == .OK, let url = pannello.url else { return }
         importaPosizioni(da: url)
+        #elseif os(iOS)
+        // Su iPhone e iPad il file si sceglierà con `.fileImporter` nella vista (giro 2), poi `importaPosizioni(da:)`
+        mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     @MainActor
@@ -130,7 +142,7 @@ extension StatoShell {
     @MainActor
     func incollaDaExcel(posizioni preferite: Bool) {
         guard !solaLettura else { return }
-        guard let testo = NSPasteboard.general.string(forType: .string), testo.contains("\n") || testo.contains("\t") else {
+        guard let testo = Appunti.testo, testo.contains("\n") || testo.contains("\t") else {
             mostraAvviso("Negli appunti non ci sono righe di tabella. In Excel seleziona le righe con l'intestazione, ⌘C, poi «Incolla da Excel».")
             return
         }

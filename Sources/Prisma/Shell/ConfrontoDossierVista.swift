@@ -398,7 +398,7 @@ struct ConfrontoDossierVista: View {
             }
             if proposte > 0 {
                 Toggle(TestiConfrontoDossier.ancheProposte(proposte), isOn: $ancheProposte)
-                    .toggleStyle(.checkbox)
+                    .stileCasella()
                     .font(Tipo.kpiNota)
                     .foregroundColor(Colori.ConfrontoDossier.testo)
                     .disabled(stato.solaLettura)

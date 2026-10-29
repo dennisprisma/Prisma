@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import Combine
 import SwiftUI
 
@@ -253,8 +257,10 @@ final class StatoShell: ObservableObject {
     private var lavoroAvviso: DispatchWorkItem?
     /// Le sottoscrizioni dello stato (anche quelle di RipresaSistema.swift).
     var abbonamenti = Set<AnyCancellable>()
+    #if os(macOS)
     /// Il controllo del backup automatico, quando il Mac è libero (al posto di un timer orario).
     private var attivitaBackup: NSBackgroundActivityScheduler?
+    #endif
     /// Il salvataggio in background (Archivio.swift): generazione 0 = i dati letti all'avvio.
     private let salvataggio = SalvataggioArchivio()
     private var salvataggioSospeso = false
@@ -289,16 +295,26 @@ final class StatoShell: ObservableObject {
             // Una pagina nuova rimasta vuota alla chiusura non torna come «Bozza»
             if dati.note.contains(where: \.vuota) { dati.note.removeAll(where: \.vuota) }
             avviaSalvataggio()
+            #if os(macOS)
             avviaBackupAutomatico()
+            #elseif os(iOS)
+            // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
+            #endif
             verificaMotoreLocale()
             DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
             aggiornaElencoBackup()
             // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
             avviaPromemoria()
+            #if os(macOS)
             // L'aspetto scelto vale prima del primo disegno: niente lampo chiaro con l'aspetto scuro
             NSApplication.shared.appearance = StatoShell.aspettoMac(dati.impostazioni.aspetto)
             // Stop del Mac e risveglio (RipresaSistema.swift)
             avviaRipresa()
+            #elseif os(iOS)
+            // Su iPhone e iPad l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile);
+            // background e ritorno in primo piano (RipresaSistema.swift)
+            avviaRipresa()
+            #endif
             // I file rimasti da un'importazione interrotta vanno nel Cestino (il disco lavora in background);
             // solo con l'archivio letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
             if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
@@ -329,6 +345,7 @@ final class StatoShell: ObservableObject {
             .store(in: &abbonamenti)
     }
 
+    #if os(macOS)
     /// L'aspetto da dare all'app (nil = segue il Mac); come `AspettoInterfaccia.aspettoMac`, fuori dal MainActor.
     static func aspettoMac(_ aspetto: AspettoInterfaccia) -> NSAppearance? {
         switch aspetto {
@@ -337,6 +354,10 @@ final class StatoShell: ObservableObject {
         case .scuro: return NSAppearance(named: .darkAqua)
         }
     }
+    #elseif os(iOS)
+    /// Per le funzioni legate ai pannelli e alle finestre del Mac, che su iPhone e iPad arrivano nei prossimi giri.
+    static let soloSulMacPerOra = "Su iPhone e iPad questa funzione non c'è ancora: usala da Prisma sul Mac."
+    #endif
 
     // MARK: - Lettura
 
@@ -2143,7 +2164,12 @@ final class StatoShell: ObservableObject {
             }
             .store(in: &abbonamenti)
         // Tornando a Prisma (⌘Tab) al massimo una volta ogni mezzo minuto; il calcolo è in background
-        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+        #if os(macOS)
+        let tornaAttiva = NSApplication.didBecomeActiveNotification
+        #elseif os(iOS)
+        let tornaAttiva = UIApplication.didBecomeActiveNotification
+        #endif
+        NotificationCenter.default.publisher(for: tornaAttiva)
             .receive(on: DispatchQueue.main)
             .throttle(for: .seconds(StatoShell.intervalloRitornoAttivo), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] _ in
@@ -2164,6 +2190,7 @@ final class StatoShell: ObservableObject {
             .debounce(for: .milliseconds(800), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.scrivi() }
             .store(in: &abbonamenti)
+        #if os(macOS)
         NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
             .sink { [weak self] _ in
                 // La finestra sparisce subito; poi si finisce di salvare (niente, se i dati non sono cambiati)
@@ -2171,6 +2198,12 @@ final class StatoShell: ObservableObject {
                 self?.salvaOra()
             }
             .store(in: &abbonamenti)
+        #elseif os(iOS)
+        // Su iPhone e iPad la chiusura non si annuncia: si salva quando Prisma va in background
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in self?.salvaOra() }
+            .store(in: &abbonamenti)
+        #endif
     }
 
     /// Salva adesso e aspetta: quando torna, l'archivio sul disco è aggiornato. Lo usano backup,
@@ -2698,6 +2731,7 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    #if os(macOS)
     /// Backup automatico settimanale: un controllo poco dopo l'avvio, poi circa ogni ora quando il Mac è
     /// libero (lo decide macOS, che raggruppa i lavori e non li fa cadere tutti sul risveglio).
     private func avviaBackupAutomatico() {
@@ -2727,8 +2761,10 @@ final class StatoShell: ObservableObject {
         }
         attivitaBackup = attivita
     }
+    #endif
 
     private func controllaBackupAutomatico() {
+        #if os(macOS)
         let b = dati.impostazioni.backup
         // Con un archivio non leggibile da sistemare i backup automatici non sostituiscono quelli buoni
         // (il conto si aggiorna all'avvio, dopo un ripristino e quando il consulente le segna come gestite)
@@ -2747,6 +2783,10 @@ final class StatoShell: ObservableObject {
             return
         }
         creaBackup(automatico: true)
+        #elseif os(iOS)
+        // Su iPhone e iPad niente backup automatico (anche se le impostazioni arrivate dal Mac lo chiedono):
+        // la fonte dei dati è il Mac
+        #endif
     }
 
     // MARK: - Avvisi
@@ -2762,7 +2802,11 @@ final class StatoShell: ObservableObject {
     }
 
     func alternaSchermoIntero() {
+        #if os(macOS)
         (NSApp.keyWindow ?? NSApp.windows.first)?.toggleFullScreen(nil)
+        #elseif os(iOS)
+        // Su iPhone e iPad Prisma è già a tutto schermo
+        #endif
     }
 }
 

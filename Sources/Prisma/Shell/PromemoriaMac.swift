@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import UserNotifications
 
 /// Il permesso di macOS per i promemoria (così StatoShell e le Impostazioni non importano UserNotifications).
@@ -78,11 +82,17 @@ final class PromemoriaMac: NSObject, UNUserNotificationCenterDelegate, @unchecke
 
     /// Impostazioni di Sistema › Notifiche (per riattivare i promemoria negati).
     static func apriImpostazioniDiSistema() {
+        #if os(macOS)
         let indirizzi = ["x-apple.systempreferences:com.apple.Notifications-Settings.extension",
                          "x-apple.systempreferences:com.apple.preference.notifications"]
         for indirizzo in indirizzi {
             if let url = URL(string: indirizzo), NSWorkspace.shared.open(url) { return }
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad: Impostazioni › Prisma › Notifiche
+        guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else { return }
+        Task { @MainActor in UIApplication.shared.open(url, options: [:], completionHandler: nil) }
+        #endif
     }
 
     // MARK: Consegna
@@ -207,7 +217,9 @@ final class PromemoriaMac: NSObject, UNUserNotificationCenterDelegate, @unchecke
         let predefinita = response.actionIdentifier == UNNotificationDefaultActionIdentifier
         await MainActor.run {
             guard predefinita else { return }
+            #if os(macOS)
             NSApp.activate(ignoringOtherApps: true)
+            #endif
             guard let s = self.stato, s.modoCliente == nil, s.presentazione == nil, !s.bloccato,
                   let t = testo, let destinazione = DestinazioneRicerca(testo: t) else { return }
             s.vai(a: destinazione)

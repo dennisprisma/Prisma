@@ -34,10 +34,14 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
     }
 
     private func url(_ percorso: String) throws -> URL {
+        #if os(iOS)
+        throw ErroreEve(messaggio: Self.nonSuiOS)
+        #elseif os(macOS)
         guard let base = Self.indirizzoLocale(indirizzo) else {
             throw ErroreEve(messaggio: "Prisma parla solo con un modello sul Mac (127.0.0.1): l'indirizzo «\(indirizzo)» non è locale.")
         }
         return base.appendingPathComponent(percorso)
+        #endif
     }
 
     // MARK: - Disponibilità
@@ -47,6 +51,11 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
         guard let base = indirizzoLocale(eve.indirizzoLocale) else {
             return .nonDisponibile("L'indirizzo di Ollama deve essere sul Mac (127.0.0.1): un altro computer riceverebbe i dati dei clienti.")
         }
+        #if os(iOS)
+        // Su iPhone e iPad Qwen non c'è ancora (arriverà dal Mac in rete locale): Eve lo dice e non risponde
+        _ = base
+        return .nonDisponibile(nonSuiOS)
+        #elseif os(macOS)
         var r = URLRequest(url: base.appendingPathComponent("api/tags"), timeoutInterval: 3)
         r.httpMethod = "GET"
         guard case let (dati, risposta)? = try? await URLSession.shared.data(for: r),
@@ -59,7 +68,13 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
             return .nonDisponibile("Ollama è aperto ma manca il modello \(voluto): scaricalo dall'app Ollama (o con «ollama pull \(voluto)»).")
         }
         return .pronto
+        #endif
     }
+
+    #if os(iOS)
+    /// Il motivo per cui Eve non risponde su iPhone e iPad (in questa versione).
+    static let nonSuiOS = "Eve su iPhone e iPad non è ancora disponibile: Qwen lavora sul Mac. Usa Eve da Prisma sul Mac."
+    #endif
 
     /// I nomi dei modelli nella risposta di /api/tags.
     static func modelli(_ dati: Data) -> [String] {

@@ -1,8 +1,13 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import Combine
 
 // Proprietario: G2 (ciclo di vita).
 
+#if os(macOS)
 extension StatoShell {
     /// Stop del Mac e schermo spento: prima di dormire i lavori a tempo si fermano (notifiche, promemoria,
     /// backup automatico) e i dati cambiati partono per il disco; al risveglio l'interfaccia c'è già, ferma
@@ -29,3 +34,25 @@ extension StatoShell {
         }
     }
 }
+#elseif os(iOS)
+extension StatoShell {
+    /// Su iPhone e iPad il sonno del Mac non c'è: Prisma va in background. Lì i lavori a tempo si fermano e i dati
+    /// cambiati partono per il disco; tornando in primo piano i controlli ripartono poco dopo.
+    func avviaRipresa() {
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.annullaEffetti()
+                self?.sospendiLavoriATempo()
+            }
+            .store(in: &abbonamenti)
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.riprendiLavoriATempo(dopo: StatoShell.attesaRitornoPrimoPiano) }
+            .store(in: &abbonamenti)
+    }
+
+    /// Tornando in primo piano su iPhone e iPad i controlli ripartono dopo un secondo (non c'è un risveglio da lasciare libero).
+    static let attesaRitornoPrimoPiano: Double = 1
+}
+#endif

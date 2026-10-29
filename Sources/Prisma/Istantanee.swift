@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 /// Modalità istantanea (`Prisma --istantanee <cartella>`): disegna le schermate principali
@@ -1328,6 +1330,11 @@ enum Istantanee {
         s.salvaIpotesiTFR("marco", i)
     }
 
+    // MARK: - Disegno (solo Mac)
+    // Su iPhone e iPad le scene si scattano nel simulatore (iOS/IstantaneeMobile.swift); qui restano comuni
+    // solo l'elenco delle scene e la loro preparazione.
+
+    #if os(macOS)
     /// Metodi di disegno, in ordine di preferenza sul server di build:
     /// - "finestra": NSHostingView in una finestra fuori schermo + cacheDisplay (senza Metal)
     /// - "livello": come sopra, ma con CALayer.render(in:)
@@ -1453,6 +1460,7 @@ enum Istantanee {
         }
         return rep.representation(using: .png, properties: [:])
     }
+    #endif
 }
 
 private struct ChiaveModoIstantanea: EnvironmentKey {

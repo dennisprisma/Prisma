@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import PDFKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -180,12 +184,19 @@ enum StampaCarta {
                     .environment(\.colorScheme, .light))
                 renderer.proposedSize = ProposedViewSize(d.formato)
                 contesto.beginPDFPage(nil)
+                #if os(macOS)
                 // Anche i colori di AppKit si risolvono in chiaro, qualunque sia l'aspetto dell'app
                 if let chiaro = NSAppearance(named: .aqua) {
                     chiaro.performAsCurrentDrawingAppearance { renderer.render { _, disegna in disegna(contesto) } }
                 } else {
                     renderer.render { _, disegna in disegna(contesto) }
                 }
+                #elseif os(iOS)
+                // Anche i colori di UIKit si risolvono in chiaro, qualunque sia l'aspetto dell'app
+                UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+                    renderer.render { _, disegna in disegna(contesto) }
+                }
+                #endif
                 contesto.endPDFPage()
             }
         }
@@ -206,6 +217,7 @@ enum StampaCarta {
 
     @MainActor
     static func salva(_ dati: Data, nome: String) {
+        #if os(macOS)
         let pannello = NSSavePanel()
         pannello.allowedContentTypes = [.pdf]
         pannello.nameFieldStringValue = nome
@@ -214,7 +226,32 @@ enum StampaCarta {
         if pannello.runModal() == .OK, let url = pannello.url {
             try? dati.write(to: url)
         }
+        #elseif os(iOS)
+        // Su iPhone e iPad: il foglio di condivisione (Salva su File, AirDrop…), da una copia temporanea.
+        // Il salvataggio con `.fileExporter` nella vista arriva nel giro 2.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(nome)
+        guard (try? dati.write(to: url, options: [.atomic, .completeFileProtection])) != nil else { return }
+        presenta(UIActivityViewController(activityItems: [url], applicationActivities: nil))
+        #endif
     }
+
+    #if os(iOS)
+    /// Mostra un controller di UIKit sopra quello in primo piano della scena attiva (su iPad come fumetto al centro).
+    @MainActor
+    private static func presenta(_ controller: UIViewController) {
+        let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        guard let finestra = scena?.windows.first(where: \.isKeyWindow) ?? scena?.windows.first,
+              var sopra = finestra.rootViewController else { return }
+        while let presentato = sopra.presentedViewController { sopra = presentato }
+        if let fumetto = controller.popoverPresentationController {
+            fumetto.sourceView = finestra
+            fumetto.sourceRect = CGRect(x: finestra.bounds.midX, y: finestra.bounds.midY, width: 1, height: 1)
+            fumetto.permittedArrowDirections = []
+        }
+        sopra.present(controller, animated: true)
+    }
+    #endif
 
     /// Il PDF cifrato: per aprirlo serve la password. Quella del proprietario (che permette di togliere la
     /// protezione) è casuale e non si conserva: nessuno può modificare il documento.
@@ -228,6 +265,7 @@ enum StampaCarta {
 
     @MainActor
     static func stampa(_ dati: Data, formato: CGSize) {
+        #if os(macOS)
         guard let documento = PDFDocument(data: dati) else { return }
         let info = NSPrintInfo.shared.copy() as? NSPrintInfo ?? NSPrintInfo()
         info.paperSize = formato.width > formato.height ? CGSize(width: formato.height, height: formato.width) : formato
@@ -237,6 +275,16 @@ enum StampaCarta {
         info.leftMargin = 0
         info.rightMargin = 0
         documento.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true)?.run()
+        #elseif os(iOS)
+        // Su iPhone e iPad: la stampa di sistema (AirPrint); il PDF ha già il formato giusto
+        let info = UIPrintInfo(dictionary: nil)
+        info.outputType = .general
+        info.orientation = formato.width > formato.height ? .landscape : .portrait
+        let stampante = UIPrintInteractionController.shared
+        stampante.printInfo = info
+        stampante.printingItem = dati
+        stampante.present(animated: true, completionHandler: nil)
+        #endif
     }
 
     /// Testo delle pagine di un PDF (per Eve e per la scheda Testo dei Documenti).

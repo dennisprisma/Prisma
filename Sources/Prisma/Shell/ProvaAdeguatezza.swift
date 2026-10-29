@@ -13,7 +13,7 @@ enum ProvaAdeguatezza {
     /// Le voci consegnate ieri nella scheda di Sofia.
     nonisolated static let consegnateSofia = ["ind-informativa", "ind-contratto", "ind-profilo", "ind-kid"]
     /// Tempo massimo del centro notifiche con 200 schede incomplete.
-    static let limiteNotifiche = 0.5
+    static let limiteNotifiche = 0.5 * ProvaCarico.fattoreTempo
 
     /// Dati per le prove e le istantanee: Sofia con l'area pensione importante e la scheda della proposta
     /// obbligazionaria (sostituisce la polizza in scadenza, quattro documenti consegnati ieri, motivazione).

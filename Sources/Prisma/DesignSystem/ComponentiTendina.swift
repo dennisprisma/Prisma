@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 extension Tema.Misura.Componenti {
@@ -35,30 +39,56 @@ struct MenuTendina<Valore: Hashable>: View {
     private var etichetta: String { opzioni.first { $0.0 == selezione }?.1 ?? "" }
 
     var body: some View {
-        let m = Tema.Misura.Componenti.self
+        #if os(macOS)
         Button(action: apri) {
-            fondo(
-                HStack(spacing: m.spazioTendina) {
-                    Text(verbatim: etichetta)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: larghezza == nil ? nil : .infinity, alignment: .leading)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(Tema.Testo.Componenti.frecciaTendina)
-                        .foregroundColor(Tema.Colore.inchiostroSecondario)
-                }
-                .font(Tema.Testo.pulsante)
-                .foregroundColor(Tema.Colore.inchiostro)
-                .padding(.leading, m.margineSinistroTendina)
-                .padding(.trailing, m.margineDestroTendina)
-                .frame(width: larghezza)
-                .frame(minHeight: m.altezzaTendina)
-            )
-            .contentShape(FormaVetro.capsula)
+            capsula
         }
         .buttonStyle(.plain)
         .opacity(attivo ? 1 : 0.5)
         .accessibilityLabel(etichetta)
+        #elseif os(iOS)
+        // Su iPhone e iPad non c'è il menu del Mac: un `Menu` di sistema con le voci in un Picker
+        // (la scelta è spuntata), aperto dalla stessa capsula
+        Menu {
+            Picker(selection: $selezione) {
+                ForEach(Array(opzioni.enumerated()), id: \.offset) { voce in
+                    Text(verbatim: voce.element.1).tag(voce.element.0)
+                }
+            } label: {
+                Text(verbatim: etichetta)
+            }
+            .pickerStyle(.inline)
+        } label: {
+            capsula
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .opacity(attivo ? 1 : 0.5)
+        .accessibilityLabel(etichetta)
+        #endif
+    }
+
+    /// L'etichetta in capsula con le frecce: la stessa sul Mac e su iPhone e iPad.
+    private var capsula: some View {
+        let m = Tema.Misura.Componenti.self
+        return fondo(
+            HStack(spacing: m.spazioTendina) {
+                Text(verbatim: etichetta)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: larghezza == nil ? nil : .infinity, alignment: .leading)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(Tema.Testo.Componenti.frecciaTendina)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+            }
+            .font(Tema.Testo.pulsante)
+            .foregroundColor(Tema.Colore.inchiostro)
+            .padding(.leading, m.margineSinistroTendina)
+            .padding(.trailing, m.margineDestroTendina)
+            .frame(width: larghezza)
+            .frame(minHeight: m.altezzaTendina)
+        )
+        .contentShape(FormaVetro.capsula)
     }
 
     @ViewBuilder private func fondo<V: View>(_ contenuto: V) -> some View {
@@ -77,6 +107,7 @@ struct MenuTendina<Valore: Hashable>: View {
         }
     }
 
+    #if os(macOS)
     /// Il menu del Mac: modale finché non si sceglie, quindi il bersaglio delle voci vive abbastanza.
     private func apri() {
         let menu = NSMenu()
@@ -94,10 +125,13 @@ struct MenuTendina<Valore: Hashable>: View {
             menu.popUp(positioning: scelta, at: NSEvent.mouseLocation, in: nil)
         }
     }
+    #endif
 }
 
+#if os(macOS)
 private final class BersaglioMenu: NSObject {
     let scelto: (Int) -> Void
     init(_ scelto: @escaping (Int) -> Void) { self.scelto = scelto }
     @objc func scegli(_ voce: NSMenuItem) { scelto(voce.tag) }
 }
+#endif

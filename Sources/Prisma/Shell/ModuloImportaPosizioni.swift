@@ -67,7 +67,7 @@ struct ModuloImportaPosizioni: View {
                                                  : "Aggiungi in rubrica i \(clientiNelFile) clienti che non ci sono ancora")
                             .font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.testo)
                     }
-                    .toggleStyle(.checkbox)
+                    .stileCasella()
                 }
                 if importazione.posizioni.contains(where: { !$0.canaleDalFile }) {
                     HStack(spacing: 10) {

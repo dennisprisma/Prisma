@@ -1,4 +1,9 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+import ImageIO
+#endif
 import Foundation
 import SwiftUI
 
@@ -24,22 +29,29 @@ enum Risorse {
         bundle.resourceURL?.appendingPathComponent("Risorse", isDirectory: true)
     }
 
-    private static var cache: [String: NSImage] = [:]
+    private static var cache: [String: ImmaginePiattaforma] = [:]
 
     /// Immagine dalla cartella Risorse. `scala` 2 = PNG disegnati a doppia risoluzione.
-    static func immagine(_ percorso: String, scala: CGFloat = 1) -> NSImage? {
+    static func immagine(_ percorso: String, scala: CGFloat = 1) -> ImmaginePiattaforma? {
         let chiave = "\(percorso)@\(scala)"
         if let img = cache[chiave] { return img }
+        #if os(macOS)
         guard let url = cartella?.appendingPathComponent(percorso),
               let img = NSImage(contentsOf: url) else { return nil }
         if scala != 1, let rep = img.representations.first {
             img.size = NSSize(width: CGFloat(rep.pixelsWide) / scala, height: CGFloat(rep.pixelsHigh) / scala)
         }
+        #elseif os(iOS)
+        // UIImage porta la scala da sé: punti = pixel / scala, come la misura data alla NSImage sul Mac
+        guard let url = cartella?.appendingPathComponent(percorso),
+              let dati = try? Data(contentsOf: url),
+              let img = UIImage(data: dati, scale: scala > 0 ? scala : 1) else { return nil }
+        #endif
         cache[chiave] = img
         return img
     }
 
-    static func icona(_ nome: String) -> NSImage? {
+    static func icona(_ nome: String) -> ImmaginePiattaforma? {
         immagine("Icone/\(nome).png")
     }
 
@@ -48,7 +60,11 @@ enum Risorse {
     static func verifica() -> Int32 {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent(nomeBundle),
               FileManager.default.fileExists(atPath: url.path) else {
+            #if os(macOS)
             print("ERRORE: \(nomeBundle) non trovato in Contents/Resources")
+            #elseif os(iOS)
+            print("ERRORE: \(nomeBundle) non trovato nella radice di Prisma.app")
+            #endif
             return 1
         }
         // Icona della Scrivania nel dock, base e riflesso dell'icona Agenda, simbolo Alleanza delle etichette.
@@ -67,6 +83,7 @@ enum Risorse {
         let latoDock = CGSize(width: latoIcona, height: latoIcona)
         let pixelAttesi = Int((latoIcona * 2).rounded())
         for app in AppPrisma.allCases {
+            #if os(macOS)
             // La bitmap vera (cgImage(forProposedRect:) ridisegnerebbe l'immagine ai punti dello schermo del server)
             guard let img = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2),
                   let rep = img.representations.first,
@@ -76,6 +93,17 @@ enum Risorse {
                 print("ERRORE: icona \(app.icona) non ridotta ai pixel dello schermo (attesi \(pixelAttesi) px, trovati \(trovato?.representations.first?.pixelsWide ?? -1) px, \(trovato?.size.width ?? -1) pt)")
                 return 1
             }
+            #elseif os(iOS)
+            // Su iPhone e iPad la bitmap è il CGImage dell'UIImage; punti = pixel / scala (anche la misura in punti)
+            guard let img = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2),
+                  let cg = img.cgImage,
+                  cg.width == pixelAttesi, cg.height == pixelAttesi,
+                  abs(img.size.width - latoIcona) < 0.5 else {
+                let trovato = immagineNitida("Icone/\(app.icona).png", in: latoDock, scala: 2)
+                print("ERRORE: icona \(app.icona) non ridotta ai pixel dello schermo (attesi \(pixelAttesi) px, trovati \(trovato?.cgImage?.width ?? -1) px, \(trovato?.size.width ?? -1) pt)")
+                return 1
+            }
+            #endif
         }
         if immagineNitida("Loghi/Alleanza_simbolo.png", in: CGSize(width: CGFloat.infinity, height: 15), scala: 2) == nil {
             print("ERRORE: logo Alleanza non ridotto")
@@ -89,7 +117,7 @@ enum Risorse {
 extension Risorse {
     /// Un'immagine già ridotta, i suoi pixel e quando è servita l'ultima volta.
     private struct VoceNitida {
-        let immagine: NSImage
+        let immagine: ImmaginePiattaforma
         let pixel: Int
         var uso: Int
     }
@@ -120,7 +148,7 @@ extension Risorse {
     /// - misura: lo spazio in punti in cui deve stare, mantenendo le proporzioni; una dimensione
     ///   infinita o zero non vincola (es. logo: solo l'altezza)
     /// - scala: `displayScale` dello schermo (1 o 2)
-    static func immagineNitida(_ percorso: String, in misura: CGSize, scala: CGFloat) -> NSImage? {
+    static func immagineNitida(_ percorso: String, in misura: CGSize, scala: CGFloat) -> ImmaginePiattaforma? {
         let scala = max(1, scala)
         let larghezza = vincolo(misura.width, scala)
         let altezza = vincolo(misura.height, scala)
@@ -179,10 +207,18 @@ extension Risorse {
     /// Decodifica e riduzione ai pixel del riquadro: niente stato condiviso, va bene anche fuori dal thread principale.
     /// La sorgente non va in cache: dopo la riduzione i 512 px non servono più.
     private static func riduzione(_ percorso: String, larghezza: Int?, altezza: Int?) -> CGImage? {
+        #if os(macOS)
         guard let url = cartella?.appendingPathComponent(percorso),
               let originale = NSImage(contentsOf: url),
               let sorgente = originale.cgImage(forProposedRect: nil, context: nil, hints: nil),
               sorgente.width > 0, sorgente.height > 0 else { return nil }
+        #elseif os(iOS)
+        // ImageIO decodifica il PNG ai suoi pixel veri, senza passare da UIImage
+        guard let url = cartella?.appendingPathComponent(percorso),
+              let fonte = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let sorgente = CGImageSourceCreateImageAtIndex(fonte, 0, nil),
+              sorgente.width > 0, sorgente.height > 0 else { return nil }
+        #endif
 
         let fattore = min(larghezza.map { CGFloat($0) / CGFloat(sorgente.width) } ?? .infinity,
                           altezza.map { CGFloat($0) / CGFloat(sorgente.height) } ?? .infinity)
@@ -194,7 +230,8 @@ extension Risorse {
     /// Punti = pixel del riquadro / scala dello schermo.
     /// Rappresentazione bitmap esplicita: NSImage(cgImage:size:) dichiara i pixel pari ai punti
     /// e perderebbe la densità; la bitmap invece porta i 118 px veri sotto i 52 pt.
-    private static func nitida(_ ridotta: CGImage, scala: CGFloat) -> NSImage {
+    private static func nitida(_ ridotta: CGImage, scala: CGFloat) -> ImmaginePiattaforma {
+        #if os(macOS)
         let punti = NSSize(width: CGFloat(ridotta.width) / scala, height: CGFloat(ridotta.height) / scala)
         let bitmap = NSBitmapImageRep(cgImage: ridotta)
         bitmap.size = punti
@@ -202,10 +239,14 @@ extension Risorse {
         immagine.addRepresentation(bitmap)
         immagine.cacheMode = .never
         return immagine
+        #elseif os(iOS)
+        // Su iPhone e iPad la scala dell'UIImage dà gli stessi punti (pixel / scala) con i pixel intatti
+        return UIImage(cgImage: ridotta, scale: scala, orientation: .up)
+        #endif
     }
 
     /// Mette in cache; oltre il budget toglie le immagini usate meno di recente, mai tutta la cache in un colpo.
-    private static func metti(_ immagine: NSImage, pixel: Int, chiave: String) {
+    private static func metti(_ immagine: ImmaginePiattaforma, pixel: Int, chiave: String) {
         while pixelInCache + pixel > limitePixelCache,
               let vecchia = cacheNitide.min(by: { $0.value.uso < $1.value.uso }) {
             pixelInCache -= vecchia.value.pixel
@@ -269,7 +310,7 @@ struct ImmagineNitida: View {
     var body: some View {
         if let img = Risorse.immagineNitida(percorso, in: misura, scala: scala) {
             // Non resizable: SwiftUI la disegna ai suoi punti, pixel per pixel: nessuna riduzione resta a CoreAnimation
-            Image(nsImage: img)
+            Image(piattaforma: img)
                 .interpolation(.high)
                 .frame(width: img.size.width, height: img.size.height)
         } else {
@@ -287,7 +328,7 @@ struct ImmagineRisorsa: View {
     var body: some View {
         if let img = Risorse.immagine(percorso, scala: scala) {
             // Riduzione di qualità: le icone a 512 pixel restano nitide anche piccole
-            Image(nsImage: img).resizable().interpolation(.high).antialiased(true)
+            Image(piattaforma: img).resizable().interpolation(.high).antialiased(true)
         } else {
             Color.clear
         }

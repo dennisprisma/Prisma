@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // Stile dei documenti per i clienti (report A4 orizzontale e prospetto A4 verticale).
@@ -184,8 +188,8 @@ extension Tipo {
             sf(dimensione, grassetto ? .bold : .regular)
         }
 
-        static func nsSF(_ dimensione: CGFloat) -> NSFont {
-            NSFont.systemFont(ofSize: dimensione)
+        static func nsSF(_ dimensione: CGFloat) -> FontPiattaforma {
+            FontPiattaforma.systemFont(ofSize: dimensione)
         }
 
         // Comuni (valori predefiniti dei componenti)

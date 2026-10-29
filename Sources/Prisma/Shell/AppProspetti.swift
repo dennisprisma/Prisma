@@ -360,7 +360,7 @@ struct AppProspetti: View {
                                      })) {
                     Text(t.nome).font(Tipo.tabellaCella).foregroundColor(Colori.Analisi.tabellaTesto)
                 }
-                .toggleStyle(.checkbox)
+                .stileCasella()
             }
             Text("Ogni report porta il suo commento, se l'hai scritto. Salvando il PDF vale la password del cliente, come per ogni documento.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)

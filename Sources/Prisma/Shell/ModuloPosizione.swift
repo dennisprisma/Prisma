@@ -469,7 +469,7 @@ struct ModuloPosizione: View {
                         larghezza: m.tipoMovimento)
             DatePicker("", selection: movimento.data, displayedComponents: .date)
                 .labelsHidden()
-                .datePickerStyle(.field)
+                .stileDataCampo()
                 .environment(\.locale, Formati.italiano)
                 .fixedSize()
             CampoCifraFacoltativa(valore: importo, unita: "€", larghezza: m.campoEuro)
@@ -546,7 +546,7 @@ struct ModuloPosizione: View {
         return VStack(alignment: .leading, spacing: m.spazioUnita) {
             Toggle("Indico le penali di questa posizione",
                    isOn: Binding(get: { bozza.penali != nil }, set: { penaliProprie($0) }))
-                .toggleStyle(.checkbox)
+                .stileCasella()
             if let penali = bozza.penali {
                 ForEach(penali.indices, id: \.self) { i in
                     HStack(spacing: m.spazioUnita) {
@@ -710,7 +710,7 @@ struct ModuloPosizione: View {
                 CampoModulo(etichetta: "Capitale decrescente") {
                     Toggle("Il capitale caso morte scende nel tempo (per esempio legato al mutuo)",
                            isOn: Binding(get: { bozza.capitaleDecrescente == true }, set: { capitaleDecrescente($0) }))
-                        .toggleStyle(.checkbox)
+                        .stileCasella()
                 }
             }
         }

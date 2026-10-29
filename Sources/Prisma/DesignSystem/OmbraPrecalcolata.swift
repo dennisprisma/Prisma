@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // Ombre delle finestre già sfocate in una bitmap a 9 fette, con il buco della forma ritagliato («mai sotto il vetro»).
@@ -18,7 +22,7 @@ extension Tema.Ombra {
 enum OmbraPrecalcolata {
     /// L'immagine e dove tagliarla: `margine` = quanto esce dalla forma, `bordo` = lato delle fette d'angolo.
     struct Pronta {
-        let immagine: NSImage
+        let immagine: ImmaginePiattaforma
         let margine: CGFloat
         let bordo: CGFloat
     }
@@ -38,8 +42,14 @@ enum OmbraPrecalcolata {
     private static func chiave(raggio: CGFloat, strati: [StratoOmbra], scala: CGFloat) -> String {
         var parti = ["\(raggio)@\(scala)"]
         for s in strati {
+            #if os(macOS)
             let c = NSColor(s.colore).usingColorSpace(.sRGB) ?? NSColor.black
             let colore = [c.redComponent, c.greenComponent, c.blueComponent, c.alphaComponent].map { "\($0)" }
+            #elseif os(iOS)
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 1
+            _ = UIColor(s.colore).getRed(&r, green: &g, blue: &b, alpha: &a)
+            let colore = [r, g, b, a].map { "\($0)" }
+            #endif
             parti.append("\(s.y),\(s.sfocatura),\(s.espansione)," + colore.joined(separator: ","))
         }
         return parti.joined(separator: "|")
@@ -70,13 +80,21 @@ enum OmbraPrecalcolata {
         // Tutto in pixel: offset e sfocatura delle ombre di CoreGraphics non seguono la trasformazione corrente
         let forma = CGRect(x: margine * scala, y: margine * scala,
                            width: (lato - 2 * margine) * scala, height: (lato - 2 * margine) * scala)
+        #if os(macOS)
         ctx.setFillColor(NSColor.black.cgColor)
+        #elseif os(iOS)
+        ctx.setFillColor(UIColor.black.cgColor)
+        #endif
         for s in strati {
             // Come OmbreVetro: la forma rientra di -espansione (anche negli angoli) e l'ombra cade sotto di y
             let rientro = max(0, -s.espansione)
             let r = forma.insetBy(dx: rientro * scala, dy: rientro * scala)
             guard r.width > 0, r.height > 0 else { continue }
+            #if os(macOS)
             let colore = NSColor(s.colore).usingColorSpace(.sRGB)?.cgColor ?? NSColor(s.colore).cgColor
+            #elseif os(iOS)
+            let colore = UIColor(s.colore).cgColor
+            #endif
             ctx.saveGState()
             // L'asse y di CoreGraphics va in su: l'ombra «in giù» di SwiftUI ha l'offset negativo
             ctx.setShadow(offset: CGSize(width: 0, height: -s.y * scala),
@@ -90,11 +108,16 @@ enum OmbraPrecalcolata {
         ctx.addPath(percorso(forma, raggio: raggio * scala))
         ctx.fillPath()
         guard let cg = ctx.makeImage() else { return nil }
+        #if os(macOS)
         let punti = NSSize(width: CGFloat(pixel) / scala, height: CGFloat(pixel) / scala)
         let rep = NSBitmapImageRep(cgImage: cg)
         rep.size = punti
         let immagine = NSImage(size: punti)
         immagine.addRepresentation(rep)
+        #elseif os(iOS)
+        // UIImage porta da sé la scala: punti = pixel / scala, come la bitmap del Mac
+        let immagine = UIImage(cgImage: cg, scale: scala, orientation: .up)
+        #endif
         return Pronta(immagine: immagine, margine: margine, bordo: bordo)
     }
 
@@ -113,7 +136,7 @@ struct OmbraVetroPronta: View {
     var body: some View {
         if let pronta = OmbraPrecalcolata.ombra(raggio: raggio, strati: strati, scala: scala) {
             let b = pronta.bordo
-            Image(nsImage: pronta.immagine)
+            Image(piattaforma: pronta.immagine)
                 .resizable(capInsets: EdgeInsets(top: b, leading: b, bottom: b, trailing: b), resizingMode: .stretch)
                 .padding(-pronta.margine)
                 .allowsHitTesting(false)

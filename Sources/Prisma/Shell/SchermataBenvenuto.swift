@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 
 /// Schermata di benvenuto (il lucchetto in alto), composta come il blocco di macOS: sullo sfondo d'acqua
 /// restano solo la data e l'ora grande in alto, il logo con «Prisma» e il cursore «scorri per entrare» in
@@ -45,7 +49,13 @@ struct SchermataBenvenuto: View {
         }
         .contentShape(Rectangle())
         // Il cursore lascia il campo sotto la schermata: niente si scrive nelle finestre coperte
-        .onAppear { NSApp.keyWindow?.makeFirstResponder(nil) }
+        .onAppear {
+            #if os(macOS)
+            NSApp.keyWindow?.makeFirstResponder(nil)
+            #elseif os(iOS)
+            _ = UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            #endif
+        }
     }
 
     /// La data piccola sopra l'ora grande, come sul blocco di macOS.

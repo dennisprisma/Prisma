@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // Carta stampata dei prospetti di dettaglio: carta avorio, testata con il logo di Prisma e
@@ -46,8 +50,8 @@ extension Tipo {
             Font.system(size: dimensione, weight: grassetto ? .bold : .regular)
         }
 
-        static func nsFont(_ dimensione: CGFloat, grassetto: Bool = false) -> NSFont {
-            NSFont.systemFont(ofSize: dimensione, weight: grassetto ? .bold : .regular)
+        static func nsFont(_ dimensione: CGFloat, grassetto: Bool = false) -> FontPiattaforma {
+            FontPiattaforma.systemFont(ofSize: dimensione, weight: grassetto ? .bold : .regular)
         }
 
         static let testataPiccola = font(5.8)

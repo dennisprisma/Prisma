@@ -40,7 +40,7 @@ enum SceltaRiconoscimento: String, Codable, CaseIterable, Identifiable {
 
     /// I riconoscimenti dentro Prisma che l'automatico prova in ordine su questo Mac (poi la dettatura di macOS).
     static var catenaAutomatica: [SceltaRiconoscimento] {
-        if #available(macOS 26.0, *) { return [.nuovo, .dettaturaSistema, .classico] }
+        if #available(macOS 26.0, iOS 26.0, *) { return [.nuovo, .dettaturaSistema, .classico] }
         return [.classico]
     }
 }
@@ -60,7 +60,7 @@ enum Trascrizioni {
             return TrascrizioneClassica.crea()
         case .nuovo, .dettaturaSistema:
             #if canImport(FoundationModels)
-            if #available(macOS 26.0, *) {
+            if #available(macOS 26.0, iOS 26.0, *) {
                 do {
                     if let t = try await TrascrizioneNuova.prepara(dettatura: scelta == .dettaturaSistema, avviso: avviso) { return .success(t) }
                     return .failure(ErroreEve(messaggio: "L'italiano non è tra le lingue di «\(scelta.nome)»."))
@@ -133,7 +133,7 @@ final class TrascrizioneClassica: TrascrizioneEve {
 // MARK: - Riconoscimento nuovo (SpeechAnalyzer, macOS 26 e successivi)
 
 #if canImport(FoundationModels)
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 final class TrascrizioneNuova: TrascrizioneEve {
     /// Il modulo di Apple che trascrive: il riconoscimento nuovo o i modelli della dettatura di sistema.
     private enum Modulo {

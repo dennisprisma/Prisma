@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 /// Caratteri delle schermate nel tema «Liquid Glass»: il font di sistema (SF), come `--font` del tema.
@@ -7,7 +11,7 @@ import SwiftUI
 /// - "serif": i titoli delle pagine, ora SF semibold (prima Georgia)
 enum Tipo {
     /// Non serve più per scegliere il carattere (resta per compatibilità).
-    static let lucidaDisponibile: Bool = NSFont(name: "LucidaGrande", size: 12) != nil
+    static let lucidaDisponibile: Bool = FontPiattaforma(name: "LucidaGrande", size: 12) != nil
 
     /// Ingrandimento dei testi dell'interfaccia (Impostazioni → Dimensione del testo). Si fissa all'avvio,
     /// prima che si disegni qualcosa: i caratteri sono costanti. Prospetti e report hanno i loro caratteri

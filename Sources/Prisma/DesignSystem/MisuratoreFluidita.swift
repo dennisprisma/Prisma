@@ -1,3 +1,5 @@
+// La misura della fluidità (--prova-fluidita, CVDisplayLink) esiste solo sul Mac.
+#if os(macOS)
 import AppKit
 import CoreVideo
 import Foundation
@@ -257,3 +259,4 @@ final class MisuratoreFluidita {
         return esito == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : 0
     }
 }
+#endif

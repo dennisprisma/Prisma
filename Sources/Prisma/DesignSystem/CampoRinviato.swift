@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 /// Un testo dell'archivio che si scrive qui e passa allo stato poco dopo l'ultimo tasto (come le Note,
@@ -48,12 +52,22 @@ struct TestoRinviato<Campo: View>: View {
                 if !scrittura.inAttesa && esterno != bozza { bozza = esterno }
             }
             .onDisappear { scrittura.subito() }
+            #if os(macOS)
             // Chiudendo Prisma entro l'attesa: si scrive e si salva di nuovo
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 guard scrittura.inAttesa else { return }
                 scrittura.subito()
                 salvaOra()
             }
+            #elseif os(iOS)
+            // Su iPhone e iPad l'app non riceve un preavviso di chiusura: si scrive e si salva quando va
+            // in secondo piano, prima che il sistema possa chiuderla o bloccare il dispositivo
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                guard scrittura.inAttesa else { return }
+                scrittura.subito()
+                salvaOra()
+            }
+            #endif
     }
 }
 

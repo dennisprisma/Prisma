@@ -402,7 +402,7 @@ struct AppAnalisi360: View {
                         a.wrappedValue = x
                     }
                 ))
-                .toggleStyle(.checkbox)
+                .stileCasella()
                 .font(Tipo.ipotesiNota)
                 Spacer()
             }

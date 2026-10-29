@@ -218,7 +218,7 @@ struct AppObiettivi: View {
                             Text(Formati.euro(p.valore)).font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.kpiNota)
                         }
                     }
-                    .toggleStyle(.checkbox)
+                    .stileCasella()
                 }
             }
         }
@@ -322,7 +322,7 @@ struct ModuloObiettivo: View {
                 CampoModulo(etichetta: "Importo, in euro di oggi") { euro($bozza.importo) }
                 CampoModulo(etichetta: "Entro") {
                     DatePicker("", selection: $bozza.scadenza, displayedComponents: .date)
-                        .labelsHidden().datePickerStyle(.field).environment(\.locale, Formati.italiano)
+                        .labelsHidden().stileDataCampo().environment(\.locale, Formati.italiano)
                 }
                 CampoModulo(etichetta: "Priorità") {
                     Picker("", selection: $bozza.priorita) {

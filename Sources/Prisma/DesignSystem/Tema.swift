@@ -1,24 +1,38 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftUI
 
 // MARK: - Colori che seguono l'aspetto
 
+#if os(macOS)
 extension NSAppearance {
     /// true con l'aspetto scuro (anche nelle varianti ad alto contrasto).
     var prismaScuro: Bool { bestMatch(from: [.aqua, .darkAqua]) == .darkAqua }
 }
+#endif
 
 extension Color {
     /// Colore che cambia con l'aspetto della vista in cui si disegna (chiaro o scuro).
     /// Solo per le schermate: i PDF restano su carta bianca con colori fissi.
     static func dinamico(chiaro: Color, scuro: Color) -> Color {
+        #if os(macOS)
         let c = NSColor(chiaro)
         let s = NSColor(scuro)
         return Color(nsColor: NSColor(name: nil) { aspetto in aspetto.prismaScuro ? s : c })
+        #elseif os(iOS)
+        // Su iPhone e iPad l'aspetto arriva dai tratti della vista (anche con `.preferredColorScheme`).
+        let c = UIColor(chiaro)
+        let s = UIColor(scuro)
+        return Color(uiColor: UIColor { tratti in tratti.userInterfaceStyle == .dark ? s : c })
+        #endif
     }
 }
 
 extension AspettoInterfaccia {
+    #if os(macOS)
     /// L'aspetto da dare all'app (nil = segue il Mac).
     @MainActor var aspettoMac: NSAppearance? {
         switch self {
@@ -27,6 +41,7 @@ extension AspettoInterfaccia {
         case .scuro: return NSAppearance(named: .darkAqua)
         }
     }
+    #endif
 
     /// Lo schema SwiftUI corrispondente (nil = segue il Mac).
     var schema: ColorScheme? {
