@@ -97,6 +97,18 @@ enum ProvaBackup {
             variazione.id = "var-prova"
             if let i = originale.posizioni.firstIndex(where: { $0.id == "pos-marco-polizza-multiramo" }) { originale.posizioni[i].variazioni = [variazione] }
             if let i = originale.prodotti.firstIndex(where: { $0.id == "prodotto-multiramo" }) { originale.prodotti[i].variazioni = [variazione] }
+            // Metri di confronto dei rendimenti e confronto «TFR in azienda o nel fondo» (versione 24)
+            originale.impostazioni.riferimenti.valori = [ValoreRiferimento(serie: SerieRiferimento.idInflazione, anno: 2024, valore: 1.0)]
+            originale.impostazioni.riferimenti.indici = [IndiceRiferimento(id: "indice-prova", nome: "Azionario globale", fonte: "prova")]
+            originale.impostazioni.riferimenti.perMercato = "indice-prova"
+            if let i = originale.posizioni.firstIndex(where: { $0.id == "pos-giulia-etf-azionario-globale" }) { originale.posizioni[i].riferimento = "indice-prova" }
+            var tfr = IpotesiTFR()
+            tfr.contributoLavoratore = 1.2
+            tfr.contributoDatore = 1.6
+            tfr.nomeFondo = "Fondo di prova"
+            originale.confrontiTFR["marco"] = tfr
+            // Fotografie dei riesami (versione 24)
+            originale.fotografie = ProvaBackup.fotografieDiProva()
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
@@ -146,6 +158,17 @@ enum ProvaBackup {
             let estratto = try GestoreBackup.estrai(elenco[0].url)
             guard estratto.dati == originale else {
                 print("ERRORE: i dati estratti non coincidono con l'originale")
+                return 1
+            }
+            guard estratto.dati.impostazioni.riferimenti.valori.count == 1, estratto.dati.impostazioni.riferimenti.indici.first?.id == "indice-prova",
+                  estratto.dati.impostazioni.riferimenti.perMercato == "indice-prova",
+                  estratto.dati.posizioni.first(where: { $0.id == "pos-giulia-etf-azionario-globale" })?.riferimento == "indice-prova",
+                  estratto.dati.confrontiTFR["marco"]?.contributoDatore == 1.6 else {
+                print("ERRORE: riferimenti e confronto del TFR non tornano uguali dal backup")
+                return 1
+            }
+            if let e = try verificaFotografie(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
                 return 1
             }
             // Multiramo a due parti (versione 20): i campi nuovi della posizione, della scheda prodotto (che ha le
@@ -262,7 +285,8 @@ enum ProvaBackup {
                   letto.schedeAdeguatezza.isEmpty, letto.impostazioni.consegna == ImpostazioniConsegna(),
                   letto.clienti.first?.conformita == nil, letto.clienti.first?.consensi.dataMarketing == nil,
                   letto.impostazioni.conformita == RegoleConformita(), letto.impostazioni.occasioni == ImpostazioniOccasioni(),
-                  letto.impostazioni.promemoria.occasioni else {
+                  letto.impostazioni.promemoria.occasioni,
+                  letto.impostazioni.riferimenti == RiferimentiRendimento(), letto.confrontiTFR.isEmpty else {
                 print("ERRORE: archivio della versione 1 non letto correttamente")
                 return 1
             }

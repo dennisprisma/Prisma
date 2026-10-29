@@ -253,8 +253,12 @@ struct AppIncontri: View {
                 Text("• Proposta aperta: \(p.nome) (\(p.canale.nomeBreve))").font(Tipo.incontroNota).foregroundColor(Colori.Incontri.testo)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if scadenze.isEmpty && proposte.isEmpty {
-                Text("Nessuna scadenza vicina e nessuna proposta aperta.").font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
+            // Raggruppati: la colonna resta entro i dieci elementi del ViewBuilder (macOS 13)
+            Group {
+                if scadenze.isEmpty && proposte.isEmpty {
+                    Text("Nessuna scadenza vicina e nessuna proposta aperta.").font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
+                }
+                CambiatoDalRiesame(clienteId: i.clienteId)
             }
             if let p = precedente {
                 Text("L'ULTIMA VOLTA").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Incontri.citazione).padding(.top, 6)

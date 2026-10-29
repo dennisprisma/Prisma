@@ -283,6 +283,9 @@ struct Posizione: Identifiable, Codable, Hashable {
     var ribilanciamento: Bool?
     /// Dati cambiati dal confronto con i documenti (polizze, appendici, KID), dal più vecchio (dalla versione 23).
     var variazioni: [VariazioneDossier]?
+    // Dalla versione 24 dell'archivio
+    /// Metro di confronto del rendimento scelto per questa posizione (id di `SerieRiferimento`); nil = quello del suo tipo.
+    var riferimento: String?
 
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }

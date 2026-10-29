@@ -6,7 +6,10 @@ import Foundation
 extension CompositoreProspetti {
     static let titoloRiesame = "Riesame annuale"
 
-    static func riesame(_ f: FonteEve, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil) -> ContenutoProspetto {
+    /// Con `memoria` (giro 6) il prospetto apre l'ordine del giorno con quanto è cambiato dal riesame precedente e
+    /// aggiunge la cronologia dei riesami; senza è identico a prima (Eve lo chiama senza).
+    static func riesame(_ f: FonteEve, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil,
+                        memoria: MemoriaRiesame? = nil) -> ContenutoProspetto {
         let r = MotoreRiesame.calcola(f, conformita: conformita, occasioni: occasioni)
         let data: (Date) -> String = { Formati.dataBreve.string(from: $0) }
         var b: [BloccoProspetto] = []
@@ -34,6 +37,8 @@ extension CompositoreProspetti {
         }
 
         sezione("Ordine del giorno")
+        // Memoria del riesame: prima di tutto che cosa è cambiato dal riesame precedente
+        if let m = memoria { b += bloccoCambiato(m) }
         if r.punti.isEmpty {
             b.append(.testo("Nessun punto da trattare: posizioni in linea, niente in scadenza, dati aggiornati."))
         } else {
@@ -178,13 +183,79 @@ extension CompositoreProspetti {
             b.append(.nota(TestiConformita.avvertenza))
         }
 
+        // Memoria del riesame: la fotografia di oggi e le ultime salvate, una riga per riesame
+        if let m = memoria {
+            sezione(TestiMemoria.titoloCronologia)
+            b += bloccoCronologia(m)
+        }
+
         sezione("Domande da fare")
-        b.append(.testo(r.domande.map { "• \($0)" }.joined(separator: "\n")))
+        let domande = r.domande + (memoria.map { TestiMemoria.domande($0.variazioni) } ?? [])
+        b.append(.testo(domande.map { "• \($0)" }.joined(separator: "\n")))
 
-        b.append(.nota("Metodo: andamento dallo storico dei valori di ogni posizione, al netto dei costi e tolti i versamenti, confrontato con il rendimento atteso meno i costi annui (in linea entro un punto all'anno). Scadenze delle posizioni in essere nei prossimi 12 mesi, con il valore di oggi prima delle imposte. Obiettivi con le posizioni collegate; aree del check-up dai dati del dossier e dall'Analisi 360. Valori da aggiornare: posizioni con il valore fermo da più di un anno. Documento ad uso del consulente per preparare l'incontro."))
+        let metodoMemoria = memoria == nil ? "" : " " + TestiMemoria.metodo
+        b.append(.nota("Metodo: andamento dallo storico dei valori di ogni posizione, al netto dei costi e tolti i versamenti, confrontato con il rendimento atteso meno i costi annui (in linea entro un punto all'anno). Scadenze delle posizioni in essere nei prossimi 12 mesi, con il valore di oggi prima delle imposte. Obiettivi con le posizioni collegate; aree del check-up dai dati del dossier e dall'Analisi 360. Valori da aggiornare: posizioni con il valore fermo da più di un anno. Documento ad uso del consulente per preparare l'incontro." + metodoMemoria))
 
+        let precedente = memoria?.precedente.map { " · riesame precedente il \(Formati.dataEstesa.string(from: $0.data))" } ?? ""
         return ContenutoProspetto(occhiello: "Prospetto di dettaglio · Riesame annuale", titolo: "\(titoloRiesame) di \(f.cliente.nome)",
-                                  sottotitolo: "Preparato il \(Formati.dataEstesa.string(from: f.oggi))" + (r.ultimoContatto.map { " · ultimo incontro il \(Formati.dataEstesa.string(from: $0))" } ?? ""),
+                                  sottotitolo: "Preparato il \(Formati.dataEstesa.string(from: f.oggi))" + (r.ultimoContatto.map { " · ultimo incontro il \(Formati.dataEstesa.string(from: $0))" } ?? "") + precedente,
                                   cliente: f.cliente.nome, data: f.oggi, blocchi: b)
+    }
+
+    /// In testa all'ordine del giorno: che cosa è cambiato dal riesame precedente (tabella con il canale come
+    /// etichetta di stampa), nessuna variazione, oppure la prima fotografia.
+    private static func bloccoCambiato(_ m: MemoriaRiesame) -> [BloccoProspetto] {
+        guard let p = m.precedente else { return [.testo(TestiMemoria.primaFotografia)] }
+        guard !m.variazioni.isEmpty, let testo = TestiMemoria.testoProspetto(m: m) else {
+            return [.testo(TestiMemoria.nessunaVariazione(data: p.data))]
+        }
+        let righe: [[CellaProspetto]] = m.variazioni.map { v in
+            let tema: CellaProspetto = v.canale.map { CellaProspetto.c($0) } ?? CellaProspetto.t(v.tema.nome)
+            let frase: CellaProspetto = v.verso == .peggio ? CellaProspetto.f(v.testo) : CellaProspetto.t(v.testo)
+            let verso: CellaProspetto
+            switch v.verso {
+            case .meglio: verso = CellaProspetto.t("meglio")
+            case .peggio: verso = CellaProspetto.f("peggio")
+            case .neutro: verso = CellaProspetto.n(TestiMemoria.vuoto)
+            }
+            return [tema, frase, CellaProspetto.n(v.prima), CellaProspetto.t(v.oggi), verso]
+        }
+        return [
+            .testo(testo),
+            .tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Tema", peso: 1.1), ColonnaProspetto(titolo: "Cosa è cambiato", peso: 3.2),
+                          ColonnaProspetto(titolo: "Prima", peso: 1.3), ColonnaProspetto(titolo: "Oggi", peso: 1.3),
+                          ColonnaProspetto(titolo: "Verso", peso: 0.8)],
+                righe: righe)),
+        ]
+    }
+
+    /// «Cronologia dei riesami»: la riga «Oggi» (non salvata, evidenziata) e le ultime fotografie salvate, con il
+    /// patrimonio sempre diviso per canale. Senza fotografie salvate un testo (la riga «Oggi» da sola non dice niente).
+    private static func bloccoCronologia(_ m: MemoriaRiesame) -> [BloccoProspetto] {
+        guard !m.cronologia.isEmpty else { return [.testo(TestiMemoria.nessunaFotografia)] }
+        func riga(_ f: FotografiaRiesame, data: String, forte: Bool) -> [CellaProspetto] {
+            let cella: (String) -> CellaProspetto = { forte ? CellaProspetto.f($0) : CellaProspetto.t($0) }
+            return [cella(data),
+                    cella(TestiMemoria.propensioneBreve(f.propensione)),
+                    cella(TestiMemoria.euroAlMese(f.divarioPensione)),
+                    cella(TestiMemoria.euro(f.scopertoCasoMorte)),
+                    cella(TestiMemoria.euro(f.patrimonioAlleanza)),
+                    cella(TestiMemoria.euro(f.patrimonioIndipendente)),
+                    cella(TestiMemoria.semafori(f: f)),
+                    cella(f.completezza.map { "\($0)%" } ?? TestiMemoria.vuoto)]
+        }
+        let salvate = m.cronologia.prefix(MotoreMemoria.massimoCronologiaProspetto)
+        var righe: [[CellaProspetto]] = [riga(m.attuale, data: "Oggi", forte: true)]
+        for f in salvate { righe.append(riga(f, data: Formati.dataBreve.string(from: f.data), forte: false)) }
+        return [.tabella(TabellaProspetto(
+            colonne: [ColonnaProspetto(titolo: "Data", peso: 1), ColonnaProspetto(titolo: "Propensione", peso: 1),
+                      ColonnaProspetto(titolo: "Divario pensione", peso: 1.1, destra: true),
+                      ColonnaProspetto(titolo: "Scoperto caso morte", peso: 1.2, destra: true),
+                      ColonnaProspetto(titolo: "Alleanza", peso: 1.1, destra: true),
+                      ColonnaProspetto(titolo: "Indipendente", peso: 1.1, destra: true),
+                      ColonnaProspetto(titolo: "Semafori", peso: 1.3), ColonnaProspetto(titolo: "Dati", peso: 0.7, destra: true)],
+            righe: righe,
+            evidenzia: [0]))]
     }
 }

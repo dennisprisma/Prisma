@@ -26,8 +26,12 @@ struct DatiPrisma: Codable, Equatable {
     var note: [Nota] = []
     /// Spazi di lavoro salvati dal consulente (quelli pronti di Prisma non si salvano).
     var spazi: [SpazioLavoro] = []
+    /// Fotografie delle cifre chiave salvate a ogni riesame, di tutti i clienti (dalla versione 24).
+    var fotografie: [FotografiaRiesame] = []
     /// Schede di adeguatezza delle proposte (dalla versione 22 dell'archivio).
     var schedeAdeguatezza: [SchedaAdeguatezza] = []
+    /// Ipotesi del confronto «TFR in azienda o nel fondo», per cliente (dalla versione 24).
+    var confrontiTFR: [String: IpotesiTFR] = [:]
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -55,7 +59,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 23: categoria dei documenti e dati letti nuovi (ISIN, data del documento, rendimento prima dei costi, documenti
     ///     d'identità e questionari); confronto dei documenti con il dossier: voci lasciate come in Prisma e storico dei
     ///     dati aggiornati nelle posizioni e nelle schede prodotto.
-    static let versioneAttuale = 23
+    /// 24: metri di confronto dei rendimenti (valori annui, indici e scelte nelle impostazioni; metro scelto nella posizione) e confronto «TFR in azienda o nel fondo» per cliente; fotografie dei riesami (cifre chiave datate per cliente).
+    static let versioneAttuale = 24
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
@@ -98,6 +103,7 @@ struct DatiPrisma: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, note, spazi, clienteAttivoId, impostazioni
         case schedeAdeguatezza
+        case confrontiTFR, fotografie
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -119,8 +125,12 @@ struct DatiPrisma: Codable, Equatable {
         commenti = (try? c.decodeIfPresent([CommentoReport].self, forKey: .commenti)) ?? []
         spazi = (try? c.decodeIfPresent([SpazioLavoro].self, forKey: .spazi)) ?? []
         note = (try? c.decodeIfPresent([Nota].self, forKey: .note)) ?? []
+        // Fotografie dei riesami (dalla versione 24): una fotografia illeggibile si scarta, le altre restano
+        fotografie = (try? c.decodeIfPresent(ElencoTollerante<FotografiaRiesame>.self, forKey: .fotografie))?.elementi ?? []
         // Schede di adeguatezza (dalla versione 22): una scheda illeggibile si scarta, le altre restano
         schedeAdeguatezza = (try? c.decodeIfPresent(ElencoTollerante<SchedaAdeguatezza>.self, forKey: .schedeAdeguatezza))?.elementi ?? []
+        // Confronti del TFR (dalla versione 24): gli archivi di prima non li hanno
+        confrontiTFR = (try? c.decodeIfPresent([String: IpotesiTFR].self, forKey: .confrontiTFR)) ?? [:]
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -159,6 +169,9 @@ struct Impostazioni: Codable, Equatable {
     var conformita = RegoleConformita()
     /// Il calendario delle occasioni (dalla versione 22 dell'archivio).
     var occasioni = ImpostazioniOccasioni()
+    /// I metri di confronto dei rendimenti: valori annui e indici del consulente, metro di ogni tipo di posizione
+    /// (Impostazioni › Riferimenti). Dalla versione 24.
+    var riferimenti = RiferimentiRendimento()
 
     init() {}
 
@@ -166,6 +179,7 @@ struct Impostazioni: Codable, Equatable {
         case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
         case promemoria, ricercheSalvate, giorniSeguitoProposte, orari
         case consegna, conformita, occasioni
+        case riferimenti
     }
 
     init(from decoder: Decoder) throws {
@@ -196,6 +210,8 @@ struct Impostazioni: Codable, Equatable {
         consegna = (try? c.decodeIfPresent(ImpostazioniConsegna.self, forKey: .consegna)) ?? ImpostazioniConsegna()
         conformita = (try? c.decodeIfPresent(RegoleConformita.self, forKey: .conformita)) ?? RegoleConformita()
         occasioni = (try? c.decodeIfPresent(ImpostazioniOccasioni.self, forKey: .occasioni)) ?? ImpostazioniOccasioni()
+        // Giro 6 (versione 24): gli archivi di prima non hanno i metri di confronto dei rendimenti
+        riferimenti = (try? c.decodeIfPresent(RiferimentiRendimento.self, forKey: .riferimenti)) ?? RiferimentiRendimento()
     }
 }
 

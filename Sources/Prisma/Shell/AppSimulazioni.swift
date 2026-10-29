@@ -44,10 +44,10 @@ struct AppSimulazioni: View {
         } contenuto: {
             VStack(spacing: 0) {
                 barra
-                if stato.schedaSimulazioni == .simulatore {
-                    simulatore
-                } else {
-                    scenari
+                switch stato.schedaSimulazioni {
+                case .simulatore: simulatore
+                case .scenari: scenari
+                case .tfr: SchedaTFR()
                 }
             }
         }
@@ -65,8 +65,24 @@ struct AppSimulazioni: View {
     @ViewBuilder private var rail: some View {
         DossierRail()
         EtichettaRail(testo: "Vista")
-        SegmentiAnalisi(opzioni: [(SchedaSimulazioni.simulatore, "Simulatore"), (.scenari, "Scenari")],
+        SegmentiAnalisi(opzioni: [(SchedaSimulazioni.simulatore, "Simulatore"), (.scenari, "Scenari"), (.tfr, "TFR")],
                         selezione: $stato.schedaSimulazioni)
+        if stato.schedaSimulazioni == .tfr {
+            // TFR in azienda o nel fondo: le ipotesi partono dal dossier, non da una posizione
+            EtichettaRail(testo: "Dal dossier")
+            Text("Retribuzione, anni alla pensione e anni nella previdenza complementare partono dal profilo del cliente e dalle sue posizioni.")
+                .font(Tema.Testo.TFR.nota)
+                .foregroundColor(Tema.Colore.TFR.notaKPI)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, Tema.Misura.TFR.margineRail)
+        } else {
+            railPosizioni
+        }
+        CollegatiRail(app: [.posizioni, .confronti, .analisi360])
+    }
+
+    /// «Parti da una posizione»: le posizioni proiettabili del cliente (simulatore e scenari).
+    @ViewBuilder private var railPosizioni: some View {
         EtichettaRail(testo: "Parti da una posizione")
         let posizioni = stato.posizioniCliente(cliente).filter { $0.area.proiettabile && $0.stato != .chiusa }
         if posizioni.isEmpty {
@@ -83,10 +99,20 @@ struct AppSimulazioni: View {
                 }
             }
         }
-        CollegatiRail(app: [.posizioni, .confronti, .analisi360])
     }
 
     // MARK: - Barra degli strumenti
+
+    /// Il titolo della barra: la scheda aperta o l'ipotesi sul tavolo (spezzato per il controllo dei tipi).
+    private func titoloBarra(_ b: Simulazione, caricato: Simulazione?) -> String {
+        switch stato.schedaSimulazioni {
+        case .tfr: return "TFR · in azienda o nel fondo pensione"
+        case .scenari: return "Scenari nel dossier"
+        case .simulatore:
+            if let c = caricato { return "Scenario · \(c.titolo)" }
+            return b.posizioneId != nil ? "Dalla posizione · \(b.titolo)" : "Nuova ipotesi"
+        }
+    }
 
     private var barra: some View {
         let b = bozza.wrappedValue
@@ -94,8 +120,7 @@ struct AppSimulazioni: View {
         return HStack(spacing: 8) {
             Circle().fill(Colori.Strumenti.spia).frame(width: 7, height: 7)
             VStack(alignment: .leading, spacing: 1) {
-                Text(stato.schedaSimulazioni == .scenari ? "Scenari nel dossier"
-                     : caricato.map { "Scenario · \($0.titolo)" } ?? (b.posizioneId != nil ? "Dalla posizione · \(b.titolo)" : "Nuova ipotesi"))
+                Text(titoloBarra(b, caricato: caricato))
                     .font(Tipo.consoleTitolo)
                     .foregroundColor(Colori.Strumenti.consoleTitolo)
                 if let c = caricato, !c.stesseIpotesi(b), stato.schedaSimulazioni == .simulatore {
