@@ -288,8 +288,7 @@ enum MotoreNotifiche {
         }
         // Conformità: questionari, documento, adeguata verifica e consensi scaduti o in scadenza (MotoreConformita).
         // Solo i clienti visibili: in modalità cliente non escono i nomi degli altri
-        let esitiConformita = MotoreConformita.calcola(clienti: stato.clienti, posizioni: dati.posizioni,
-                                                       regole: dati.impostazioni.conformita, oggi: oggi)
+        let esitiConformita = stato.conformitaClienti(oggi: oggi)
         for a in MotoreConformita.avvisi(esitiConformita, oggi: oggi) {
             let gruppoConformita: Notifica.Gruppo
             switch a.urgenza {
@@ -372,6 +371,22 @@ extension StatoShell {
     private func segnaNotificheViste() {
         let nuove = notifiche.map(\.id).filter { !notificheViste.contains($0) }
         if !nuove.isEmpty { notificheViste.formUnion(nuove) }
+    }
+
+    /// Le scadenze di conformità dei clienti visibili; per oggi tenute da parte come gli altri dati ricavati
+    /// (la chiave comprende il giorno e la versione dei calcoli), per un altro giorno calcolate ogni volta.
+    /// Il centro notifiche si ricalcola a ogni disegno della barra.
+    func conformitaClienti(oggi: Date) -> [EsitoConformita] {
+        guard Calendar.current.isDateInToday(oggi) else {
+            return MotoreConformita.calcola(clienti: clienti, posizioni: dati.posizioni,
+                                            regole: dati.impostazioni.conformita, oggi: oggi)
+        }
+        let d = derivatiValidi()
+        if let elenco = d.conformitaClienti { return elenco }
+        let elenco = MotoreConformita.calcola(clienti: clienti, posizioni: dati.posizioni,
+                                              regole: dati.impostazioni.conformita, oggi: oggi)
+        d.conformitaClienti = elenco
+        return elenco
     }
 
     func apriNotifica(_ n: Notifica) {

@@ -17,6 +17,7 @@ enum ProvaCarico {
     static let limitePDF = 8.0
     static let limiteRicerca = 1.0
     static let limiteNotifiche = 0.1
+    static let limiteNotifichePrimaVolta = 1.0
     static let limiteMemoriaMB = 1_200.0
     /// Il fascicolo e il portafoglio calcolati la prima volta, e poi ripresi dalla cache (DerivatiDati).
     static let limiteFascicolo = 8.0
@@ -101,10 +102,14 @@ enum ProvaCarico {
         controlla(cercaFiltri < limiteRicerca, "Ricerca per criterio su tutto l'archivio in \(secondi(cercaFiltri)) (limite \(secondi(limiteRicerca)))")
 
         // Centro notifiche su tutto l'archivio (si ricalcola a ogni disegno della barra)
+        // La prima volta calcola anche occasioni, conformità e schede (poi tenute da parte fino al prossimo cambio dei
+        // dati); i disegni successivi della barra devono restare sotto il limite stretto
         var quante = 0
+        let primaVolta = tempo { quante = MotoreNotifiche.calcola(stato).count }
         let avvisi = tempo { quante = MotoreNotifiche.calcola(stato).count }
-        print("INFO Notifiche: \(quante) in \(secondi(avvisi))")
-        controlla(avvisi < limiteNotifiche, "Notifiche calcolate in \(secondi(avvisi)) (limite \(secondi(limiteNotifiche)))")
+        print("INFO Notifiche: \(quante), la prima volta in \(secondi(primaVolta)), poi in \(secondi(avvisi))")
+        controlla(primaVolta < limiteNotifichePrimaVolta, "Notifiche calcolate la prima volta in \(secondi(primaVolta)) (limite \(secondi(limiteNotifichePrimaVolta)))")
+        controlla(avvisi < limiteNotifiche, "Notifiche ricalcolate in \(secondi(avvisi)) (limite \(secondi(limiteNotifiche)))")
 
         // PDF di un report con tutto l'archivio caricato
         stato.clienteAttivoId = stato.clienti.first?.id ?? ""

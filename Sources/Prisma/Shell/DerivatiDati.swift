@@ -78,6 +78,8 @@ final class DerivatiDati {
     var conformita: [String: EsitoConformita] = [:]
     /// Le occasioni per intervallo di date e filtro (AgendaOccasioni.swift).
     var occasioni: [ChiaveOccasioni: [Occasione]] = [:]
+    /// Le scadenze di conformità di tutti i clienti visibili, per il centro notifiche (Notifiche.swift).
+    var conformitaClienti: [EsitoConformita]?
     /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
     /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
     /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
@@ -112,6 +114,7 @@ final class DerivatiDati {
         seguito = nil
         conformita = [:]
         occasioni = [:]
+        conformitaClienti = nil
     }
 }
 
