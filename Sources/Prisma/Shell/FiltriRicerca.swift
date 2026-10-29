@@ -8,6 +8,7 @@ import Foundation
 //   beneficiari:vuoti                polizze (vita, protezione, previdenza) senza beneficiari scritti
 //   senza:previdenza · con:protez…   clienti senza (o con) posizioni in essere di quell'area
 //   riesame:dovuto                   clienti con il riesame annuale da fare (MotoreRiesame)
+//   conformita:scaduta · :30 · :inscadenza · :mancante · :dasistemare   clienti con scadenze di conformità
 //   stato:proposta · stato:inessere  stato della posizione (senza filtro di stato le chiuse non compaiono)
 //   area:investimento …              area della posizione
 // Tutto puro: niente StatoShell, si prova con `FiltriRicerca.verifica()`.
@@ -54,11 +55,13 @@ enum FiltroRicerca: Hashable {
     case riesameDovuto
     case stato(StatoPosizione)
     case area(AreaPosizione)
+    /// Clienti con scadenze di conformità («In regola»): scadute, vicine, mancanti o tutte da sistemare.
+    case conformita(FiltroConformita)
 
     /// I filtri che scelgono clienti (gli altri scelgono posizioni).
     var suiClienti: Bool {
         switch self {
-        case .senza, .con, .riesameDovuto: return true
+        case .senza, .con, .riesameDovuto, .conformita: return true
         default: return false
         }
     }
@@ -80,6 +83,14 @@ enum FiltroRicerca: Hashable {
         case .riesameDovuto: return "Riesame da fare"
         case .stato(let s): return s.nome
         case .area(let a): return a.nome
+        case .conformita(let f):
+            switch f {
+            case .scaduta: return "Conformità scaduta"
+            case .entro30: return "Conformità entro 30 giorni"
+            case .inScadenza: return "Conformità entro 60 giorni"
+            case .mancante: return "Conformità da raccogliere"
+            case .daSistemare: return "Conformità da sistemare"
+            }
         }
     }
 }
@@ -128,13 +139,15 @@ struct EsitoFiltri {
     var totali: [TotaleCanaleRicerca] = []
     /// I totali sono delle posizioni in essere dei clienti trovati (non di posizioni filtrate).
     var totaliDeiClienti = false
+    /// Con un filtro `conformita:`: gli esiti di conformità dei clienti trovati, per id (per l'estratto dei risultati).
+    var conformita: [String: EsitoConformita] = [:]
 }
 
 enum FiltriRicerca {
     // MARK: Chiavi
 
     private enum Chiave: CaseIterable {
-        case scade, sri, canale, costo, beneficiari, senza, con, riesame, stato, area
+        case scade, sri, canale, costo, beneficiari, senza, con, riesame, stato, area, conformita
 
         /// I nomi con cui si può scrivere la chiave.
         var nomi: [String] {
@@ -149,6 +162,8 @@ enum FiltriRicerca {
             case .riesame: return ["riesame"]
             case .stato: return ["stato"]
             case .area: return ["area"]
+            // «conformità» serve all'espressione degli spazi; la `piega` lo riduce comunque a «conformita»
+            case .conformita: return ["conformita", "conformità", "compliance"]
             }
         }
 
@@ -166,6 +181,7 @@ enum FiltriRicerca {
         SuggerimentoFiltro(testo: "riesame:dovuto", descrizione: "clienti da rivedere"),
         SuggerimentoFiltro(testo: "stato:", descrizione: "in essere o proposta", completo: false),
         SuggerimentoFiltro(testo: "area:", descrizione: "investimento, previdenza…", completo: false),
+        SuggerimentoFiltro(testo: "conformita:scaduta", descrizione: "clienti con scadenze superate"),
     ]
 
     private static let operatori = ["<=", ">=", "<", ">", "=", ":"]
@@ -277,7 +293,21 @@ enum FiltriRicerca {
         case .area:
             guard op == ":" || op == "=" else { return nil }
             return area(v).map { FiltroRicerca.area($0) }
+        case .conformita:
+            guard op == ":" || op == "=" else { return nil }
+            return filtroConformita(v).map { FiltroRicerca.conformita($0) }
         }
+    }
+
+    /// Il valore di «conformita:» (già piegato): scaduta, 30, inscadenza, mancante, dasistemare e i loro sinonimi.
+    private static func filtroConformita(_ v: String) -> FiltroConformita? {
+        let s = v.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "_", with: "")
+        if ["scaduta", "scadute", "scaduto", "scaduti"].contains(s) { return .scaduta }
+        if ["30", "entro30"].contains(s) { return .entro30 }
+        if ["60", "entro60", "inscadenza", "scadenza", "inscad", "presto"].contains(s) { return .inScadenza }
+        if ["mancante", "mancanti", "daraccogliere", "vuota", "vuote"].contains(s) { return .mancante }
+        if ["dasistemare", "tutte", "no", "nonregola"].contains(s) { return .daSistemare }
+        return nil
     }
 
     /// «2027», «2027-03», «2027/3», «03-2027», «3/2027».
@@ -372,6 +402,12 @@ enum FiltriRicerca {
                       SuggerimentoFiltro(testo: "\(nome):chiusa", descrizione: "chiuse")]
         case .area:
             valori = AreaPosizione.allCases.map { SuggerimentoFiltro(testo: "\(nome):\($0.rawValue)", descrizione: $0.nome) }
+        case .conformita:
+            valori = [SuggerimentoFiltro(testo: "\(nome):scaduta", descrizione: "scadenze superate"),
+                      SuggerimentoFiltro(testo: "\(nome):30", descrizione: "entro 30 giorni"),
+                      SuggerimentoFiltro(testo: "\(nome):inscadenza", descrizione: "entro 60 giorni"),
+                      SuggerimentoFiltro(testo: "\(nome):mancante", descrizione: "dati da raccogliere"),
+                      SuggerimentoFiltro(testo: "\(nome):dasistemare", descrizione: "tutto ciò da sistemare")]
         }
         // Solo quelli che continuano ciò che è scritto (e non sono già scritti per intero)
         return valori.filter { piega($0.testo).hasPrefix(p) && piega($0.testo) != p }
@@ -431,7 +467,7 @@ enum FiltriRicerca {
             return p.stato == s
         case .area(let a):
             return p.area == a
-        case .senza, .con, .riesameDovuto:
+        case .senza, .con, .riesameDovuto, .conformita:
             return true
         }
     }
@@ -454,12 +490,25 @@ enum FiltriRicerca {
             ? Set(MotoreRiesame.dovuti(clienti: dati.clienti, posizioni: dati.posizioni, appuntamenti: dati.appuntamenti,
                                        incontri: dati.incontri, oggi: oggi).map(\.cliente.id))
             : []
+        // Esiti di conformità (una volta sola, solo con un filtro «conformita:»). Con «canale:» contano solo le voci
+        // di quel canale e quelle comuni
+        let conConformita = suClienti.contains { if case .conformita = $0 { return true } else { return false } }
+        var esitiConformita: [String: EsitoConformita] = [:]
+        if conConformita {
+            let esiti = MotoreConformita.calcola(clienti: dati.clienti, posizioni: dati.posizioni,
+                                                 regole: dati.impostazioni.conformita, oggi: oggi)
+            for e in esiti where esitiConformita[e.cliente.id] == nil { esitiConformita[e.cliente.id] = e }
+        }
+        let canaleScritto = canaleDelFiltro(r)
         func clienteOK(_ id: String) -> Bool {
             suClienti.allSatisfy { f in
                 switch f {
                 case .senza(let a): return !(aree[id]?.contains(a) ?? false)
                 case .con(let a): return aree[id]?.contains(a) ?? false
                 case .riesameDovuto: return dovuti.contains(id)
+                case .conformita(let fc):
+                    guard let e = esitiConformita[id] else { return false }
+                    return MotoreConformita.rispetta(e, fc, canale: canaleScritto)
                 default: return true
                 }
             }
@@ -476,6 +525,9 @@ enum FiltriRicerca {
         if !suClienti.isEmpty {
             let conPosizioni = Set(esito.posizioni.map(\.clienteId))
             esito.clienti = dati.clienti.filter { clienteOK($0.id) && (suPosizioni.isEmpty || conPosizioni.contains($0.id)) }
+            if conConformita {
+                for c in esito.clienti { esito.conformita[c.id] = esitiConformita[c.id] }
+            }
         }
         if !esito.posizioni.isEmpty {
             esito.totali = totali(esito.posizioni)
@@ -485,6 +537,12 @@ enum FiltriRicerca {
             esito.totaliDeiClienti = true
         }
         return esito
+    }
+
+    /// Il canale scritto con «canale:», se c'è (il primo).
+    static func canaleDelFiltro(_ r: RicercaInterpretata) -> Canale? {
+        for f in r.filtri { if case .canale(let c) = f { return c } }
+        return nil
     }
 
     /// Numero e valore (senza i debiti) delle posizioni per canale; solo i canali presenti.
@@ -593,6 +651,41 @@ enum FiltriRicerca {
             errori.append("sri>=5: solo posizioni con SRI da 5 in su")
         }
         if !applica(interpreta("marco"), dati: dati, oggi: oggi).posizioni.isEmpty { errori.append("Senza filtri nessuna posizione filtrata") }
+
+        // Conformità («In regola»): lettura, suggerimenti e clienti dei dati di prova. I dati di prova partono da oggi:
+        // qui si usa la data di adesso, non quella fissa qui sopra
+        atteso("conformita:scaduta", [.conformita(.scaduta)])
+        atteso("conformità: scadute", [.conformita(.scaduta)])
+        atteso("conformita:30", [.conformita(.entro30)])
+        atteso("conformita:inscadenza marco", [.conformita(.inScadenza)], parole: ["marco"])
+        atteso("conformita:boh", [], incompleti: ["conformita:boh"])
+        let valoriConformita = suggerimenti(per: "conformita:", oggi: oggi)
+        if valoriConformita.count != 5 || valoriConformita.first?.testo != "conformita:scaduta" {
+            errori.append("«conformita:» propone \(valoriConformita.map(\.testo)) invece dei 5 valori, da «conformita:scaduta»")
+        }
+        let adesso = Date()
+        func clientiTrovati(_ testo: String) -> [String] {
+            applica(interpreta(testo), dati: dati, oggi: adesso).clienti.map(\.id).sorted()
+        }
+        let scadute = applica(interpreta("conformita:scaduta"), dati: dati, oggi: adesso)
+        if scadute.clienti.map(\.id).sorted() != ["giulia", "marco", "sofia"] || !scadute.totaliDeiClienti {
+            errori.append("conformita:scaduta: trovati \(scadute.clienti.map(\.id)) invece di giulia, marco e sofia (totali dei clienti)")
+        }
+        if scadute.clienti.contains(where: { scadute.conformita[$0.id] == nil }) {
+            errori.append("conformita:scaduta: manca l'esito di conformità di un cliente trovato")
+        }
+        let scaduteAlleanza = clientiTrovati("conformita:scaduta canale:alleanza")
+        if scaduteAlleanza != ["giulia", "marco", "sofia"] {
+            errori.append("conformita:scaduta canale:alleanza: trovati \(scaduteAlleanza) invece di giulia, marco e sofia")
+        }
+        let scaduteIndipendente = clientiTrovati("conformita:scaduta canale:indipendente")
+        if scaduteIndipendente != ["giulia", "sofia"] {
+            errori.append("conformita:scaduta canale:indipendente: trovati \(scaduteIndipendente) invece di giulia e sofia")
+        }
+        let mancanti = clientiTrovati("conformita:mancante")
+        if mancanti != ["andrea"] {
+            errori.append("conformita:mancante: trovati \(mancanti) invece di andrea")
+        }
         return errori
     }
 }

@@ -56,6 +56,8 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// dell'archivio). Chiave: `VoceCompletezza.id` (per esempio "lavoro", "costi:pos-…"); valore: quando è
     /// stato segnato. nil = nessuno. Le chiavi che non corrispondono più a una voce si ignorano.
     var datiNonPertinenti: [String: Date]?
+    /// Scadenze di conformità: questionari, documento, adeguata verifica (dalla versione 22 dell'archivio).
+    var conformita: ConformitaCliente?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -92,6 +94,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case id, nome, iniziali, tinta, tema, email, telefono, preferito, nota, creatoIl
         case dataNascita, codiceFiscale, professione, statoCivile, indirizzo, canali, famiglia, profilo, consensi, bisogni
         case datiNonPertinenti
+        case conformita
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -119,6 +122,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         bisogni = (try? c.decodeIfPresent(ProfiloBisogni.self, forKey: .bisogni)) ?? ProfiloBisogni()
         // Dati non pertinenti (dalla versione 21): un valore malformato diventa nil e non fa scartare il cliente
         datiNonPertinenti = try? c.decodeIfPresent([String: Date].self, forKey: .datiNonPertinenti)
+        // Scadenze di conformità (dalla versione 22): un valore illeggibile diventa nil e non fa scartare il cliente
+        conformita = (try? c.decodeIfPresent(ConformitaCliente.self, forKey: .conformita)) ?? nil
     }
 }
 
@@ -313,6 +318,8 @@ struct Consensi: Codable, Hashable {
     var privacy = false
     var dataPrivacy: Date?
     var marketing = false
+    /// Quando il cliente ha dato (o tolto) il consenso commerciale (dalla versione 22).
+    var dataMarketing: Date?
 }
 
 /// Tipo di appuntamento: aiuta a capire a che punto è la relazione con il cliente.
@@ -472,7 +479,10 @@ struct Attivita: Identifiable, Codable, Hashable {
 struct GiorniAgenda {
     var perGiorno: [Date: [Appuntamento]] = [:]
     var scadenzePerGiorno: [Date: [Posizione]] = [:]
+    /// Le occasioni dei clienti (dalla specifica 4 del giro 4), per giorno.
+    var occasioniPerGiorno: [Date: [Occasione]] = [:]
 
     func appuntamenti(_ giorno: Date) -> [Appuntamento] { perGiorno[Calendar.current.startOfDay(for: giorno)] ?? [] }
     func scadenze(_ giorno: Date) -> [Posizione] { scadenzePerGiorno[Calendar.current.startOfDay(for: giorno)] ?? [] }
+    func occasioni(_ giorno: Date) -> [Occasione] { occasioniPerGiorno[Calendar.current.startOfDay(for: giorno)] ?? [] }
 }

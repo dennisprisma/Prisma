@@ -3,6 +3,8 @@ import SwiftUI
 /// App Agenda (.os-app-agenda): la fascia in testa, la scheda con la settimana (o il mese),
 /// la pagina della giornata e il dettaglio dell'appuntamento. Nella giornata compaiono anche
 /// le posizioni in scadenza: ogni scadenza è l'occasione per rivedere la posizione del cliente.
+/// Sopra il calendario c'è lo strato delle occasioni (le date in cui cambia qualcosa nelle posizioni e nella
+/// famiglia) e la vista «Occasioni» le mostra tutte, mese per mese, per 12 mesi (AgendaOccasioni.swift).
 struct AppAgenda: View {
     @EnvironmentObject var stato: StatoShell
     @State var modulo: Appuntamento?
@@ -20,12 +22,13 @@ struct AppAgenda: View {
             // Finestra stretta o bassa: la fascia diventa una riga sola e lascia spazio a calendario e dettaglio
             let compatta = geo.size.width < Misure.AgendaImpaginazione.sogliaFasciaLarghezza
                 || geo.size.height < Misure.AgendaImpaginazione.sogliaFasciaAltezza
-            // I riesami del mese mostrato: in un mese passato la striscia non compare
-            let riesami = stato.riesamiDelMese(giorno)
+            // I riesami del mese mostrato: in un mese passato la striscia non compare, e nemmeno nella vista
+            // «Occasioni», che guarda 12 mesi mentre la striscia ne guarda uno
+            let riesami: RiesamiDelMese? = stato.vistaAgenda == .occasioni ? nil : stato.riesamiDelMese(giorno)
             let mesePassato = giorno < (cal.dateInterval(of: .month, for: Date())?.start ?? giorno)
             VStack(spacing: 0) {
                 fasciaCuoio(compatta: compatta)
-                if !riesami.vuota && !mesePassato {
+                if let riesami, !riesami.vuota && !mesePassato {
                     striscia(riesami, compatta: geo.size.height < Misure.RiesamiAgenda.sogliaAltezzaPiena)
                         .padding(.top, Tema.Misura.Dossier.spazioAgenda)
                 }
@@ -118,10 +121,19 @@ struct AppAgenda: View {
     // MARK: - Cuoio
 
     private var periodo: String {
-        if stato.vistaAgenda == .mese { return Formati.meseAnno.string(from: giorno).capitalized }
-        let giorni = CalendarioAgenda.giorni(settimanaDi: giorno)
-        guard let primo = giorni.first, let ultimo = giorni.last else { return "" }
-        return "\(Formati.giornoMese.string(from: primo)) — \(Formati.dataEstesa.string(from: ultimo))"
+        switch stato.vistaAgenda {
+        case .mese:
+            return Formati.meseAnno.string(from: giorno).capitalized
+        case .occasioni:
+            // I 12 mesi della vista: dal primo del mese mostrato all'undicesimo mese dopo
+            let inizio = cal.dateInterval(of: .month, for: giorno)?.start ?? giorno
+            let fine = cal.date(byAdding: .month, value: RegoleOccasioni.mesiElenco - 1, to: inizio) ?? inizio
+            return "\(Formati.meseAnno.string(from: inizio)) — \(Formati.meseAnno.string(from: fine))".capitalized
+        case .settimana:
+            let giorni = CalendarioAgenda.giorni(settimanaDi: giorno)
+            guard let primo = giorni.first, let ultimo = giorni.last else { return "" }
+            return "\(Formati.giornoMese.string(from: primo)) — \(Formati.dataEstesa.string(from: ultimo))"
+        }
     }
 
     @ViewBuilder private func fasciaCuoio(compatta: Bool) -> some View {
@@ -172,22 +184,38 @@ struct AppAgenda: View {
 
     private var libro: some View {
         let forma = FormaVetro.arrotondata(Tema.Raggio.scheda)
-        // Appuntamenti e scadenze dei giorni visibili, raggruppati una volta sola
-        let settimane = CalendarioAgenda.settimane(meseDi: giorno)
-        let indice = stato.giorniAgenda(stato.vistaAgenda == .settimana ? CalendarioAgenda.giorni(settimanaDi: giorno) : settimane.flatMap { $0 })
+        let vista = stato.vistaAgenda
+        // Appuntamenti, scadenze e occasioni dei giorni visibili, raggruppati una volta sola (solo settimana e mese)
+        let settimane = vista == .mese ? CalendarioAgenda.settimane(meseDi: giorno) : []
+        let indice: GiorniAgenda
+        switch vista {
+        case .settimana: indice = stato.giorniAgenda(CalendarioAgenda.giorni(settimanaDi: giorno))
+        case .mese: indice = stato.giorniAgenda(settimane.flatMap { $0 })
+        case .occasioni: indice = GiorniAgenda()
+        }
+        // Le occasioni di 12 mesi solo nella vista «Occasioni»
+        let elenco = vista == .occasioni ? stato.elencoOccasioniAgenda : []
         return VStack(spacing: 0) {
             barraStrumenti
-            // A sinistra il calendario e la giornata, a destra il dettaglio a tutta altezza
-            // (come l'ispettore del Calendario): con il mese aperto il dettaglio non si schiaccia più
+            // A sinistra il calendario e la giornata (o l'elenco delle occasioni), a destra il dettaglio a tutta
+            // altezza (come l'ispettore del Calendario): con il mese aperto il dettaglio non si schiaccia più
             GeometryReader { geo in
                 let larghezza = Misure.AgendaImpaginazione.dettaglio(geo.size.width)
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
-                        if stato.vistaAgenda == .settimana { settimana(indice) } else { mese(settimane, indice) }
-                        paginaGiorno(indice)
+                        switch vista {
+                        case .settimana:
+                            settimana(indice)
+                            paginaGiorno(indice)
+                        case .mese:
+                            mese(settimane, indice)
+                            paginaGiorno(indice)
+                        case .occasioni:
+                            ElencoOccasioniAgenda(elenco: elenco)
+                        }
                     }
                     .frame(width: max(0, geo.size.width - larghezza))
-                    dettaglio(indice)
+                    dettaglio(indice, elenco: elenco)
                         .frame(width: larghezza)
                 }
             }
@@ -206,14 +234,16 @@ struct AppAgenda: View {
                 Button("Oggi") {
                     stato.giornoAgenda = cal.startOfDay(for: Date())
                     stato.appuntamentoSelezionato = nil
+                    stato.occasioneSelezionata = nil
                 }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                 Button("›") { sposta(1) }
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
                     .help(stato.vistaAgenda == .settimana ? "Settimana successiva" : "Mese successivo")
             }
-            Segmentato(opzioni: [(VistaAgenda.settimana, "Settimana"), (VistaAgenda.mese, "Mese")], selezione: $stato.vistaAgenda)
-                .frame(width: 170)
+            Segmentato(opzioni: [(VistaAgenda.settimana, "Settimana"), (VistaAgenda.mese, "Mese"), (VistaAgenda.occasioni, "Occasioni")],
+                       selezione: $stato.vistaAgenda)
+                .frame(width: Misure.Occasioni.segmentiVista)
             Spacer(minLength: 0)
             MenuTendina(selezione: $stato.filtroClienteAgenda,
                         opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
@@ -226,9 +256,11 @@ struct AppAgenda: View {
     }
 
     private func sposta(_ verso: Int) {
+        // Il mese anche per la vista «Occasioni»
         let componente: Calendar.Component = stato.vistaAgenda == .settimana ? .weekOfYear : .month
         stato.giornoAgenda = cal.date(byAdding: componente, value: verso, to: giorno) ?? giorno
         stato.appuntamentoSelezionato = nil
+        stato.occasioneSelezionata = nil
     }
 
     // MARK: - Settimana e mese
@@ -236,6 +268,15 @@ struct AppAgenda: View {
     private func seleziona(_ g: Date) {
         stato.giornoAgenda = cal.startOfDay(for: g)
         stato.appuntamentoSelezionato = nil
+        stato.occasioneSelezionata = nil
+    }
+
+    /// Lo strato delle occasioni nella settimana e nel mese (Impostazioni › Occasioni).
+    private var strato: Bool { stato.dati.impostazioni.occasioni.inAgenda }
+
+    /// I colori delle occasioni di un giorno (vuoto con lo strato spento).
+    private func segni(_ indice: GiorniAgenda, _ g: Date) -> SegniOccasioni {
+        strato ? SegniOccasioni(indice.occasioni(g)) : SegniOccasioni()
     }
 
     private func settimana(_ indice: GiorniAgenda) -> some View {
@@ -247,7 +288,8 @@ struct AppAgenda: View {
                     incontri: indice.appuntamenti(g).count,
                     scadenze: indice.scadenze(g).count,
                     selezionato: cal.isDate(g, inSameDayAs: giorno),
-                    oggi: cal.isDateInToday(g)
+                    oggi: cal.isDateInToday(g),
+                    occasioni: segni(indice, g)
                 ) { seleziona(g) }
             }
         }
@@ -275,7 +317,8 @@ struct AppAgenda: View {
                             incontri: indice.appuntamenti(g).count,
                             scadenze: indice.scadenze(g).count,
                             selezionato: cal.isDate(g, inSameDayAs: giorno),
-                            oggi: cal.isDateInToday(g)
+                            oggi: cal.isDateInToday(g),
+                            occasioni: segni(indice, g)
                         ) { seleziona(g) }
                     }
                 }
@@ -290,7 +333,9 @@ struct AppAgenda: View {
     private func paginaGiorno(_ indice: GiorniAgenda) -> some View {
         let eventi = indice.appuntamenti(giorno)
         let scadenze = indice.scadenze(giorno)
+        let occasioni = strato ? indice.occasioni(giorno) : []
         let selezionato = eventoSelezionato(eventi)
+        let occasioneScelta = stato.occasioneSelezionata?.id
         return VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(Formati.giornoSettimana.string(from: giorno).uppercased())
@@ -313,8 +358,11 @@ struct AppAgenda: View {
                     ForEach(eventi) { e in
                         RigaEventoAgenda(
                             evento: e, cliente: stato.cliente(e.clienteId)?.nome ?? "Cliente",
-                            selezionato: e.id == selezionato?.id
-                        ) { stato.appuntamentoSelezionato = e.id }
+                            selezionato: e.id == selezionato?.id && occasioneScelta == nil
+                        ) {
+                            stato.appuntamentoSelezionato = e.id
+                            stato.occasioneSelezionata = nil
+                        }
                     }
                     if !scadenze.isEmpty {
                         Text("IN SCADENZA")
@@ -329,7 +377,22 @@ struct AppAgenda: View {
                             }
                         }
                     }
-                    if eventi.isEmpty && scadenze.isEmpty {
+                    if !occasioni.isEmpty {
+                        Text("OCCASIONI")
+                            .font(Tipo.paginaOcchiello)
+                            .tracking(Misure.Occasioni.tracciaOcchiello)
+                            .foregroundColor(Colori.Agenda.occasioneOcchiello)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(Misure.Occasioni.occhiello)
+                        ForEach(occasioni) { o in
+                            RigaOccasioneAgenda(occasione: o, cliente: stato.cliente(o.clienteId)?.nome ?? "Cliente",
+                                                selezionata: o.id == occasioneScelta) {
+                                stato.occasioneSelezionata = o
+                                stato.appuntamentoSelezionato = nil
+                            }
+                        }
+                    }
+                    if eventi.isEmpty && scadenze.isEmpty && occasioni.isEmpty {
                         vuoto
                     }
                 }
@@ -370,6 +433,7 @@ struct AppAgenda: View {
         let daSvolgere = eventi.filter { $0.stato != .concluso }
         let minuti = daSvolgere.reduce(0) { $0 + $1.durataMinuti }
         let scadenze = giorni.reduce(0) { $0 + indice.scadenze($1).count }
+        let occasioni = strato ? giorni.reduce(0, { $0 + indice.occasioni($1).count }) : 0
         // Il periodo dei conteggi: la settimana del giorno scelto, anche nella vista del mese
         let corrente = giorni.contains { cal.isDateInToday($0) }
         let periodo = corrente ? "QUESTA SETTIMANA"
@@ -386,6 +450,10 @@ struct AppAgenda: View {
                 Text("·")
                 Text("\(scadenze) \(scadenze == 1 ? "scadenza" : "scadenze")").font(Tipo.notaSettimanaForte)
             }
+            if occasioni > 0 {
+                Text("·")
+                Text("\(occasioni) \(occasioni == 1 ? "occasione" : "occasioni")").font(Tipo.notaSettimanaForte)
+            }
             Spacer(minLength: 0)
         }
         .font(Tipo.notaSettimana)
@@ -397,9 +465,20 @@ struct AppAgenda: View {
 
     // MARK: - Dettaglio
 
-    private func dettaglio(_ indice: GiorniAgenda) -> some View {
+    private func dettaglio(_ indice: GiorniAgenda, elenco: [Occasione]) -> some View {
         Group {
-            if let e = eventoSelezionato(indice.appuntamenti(giorno)) {
+            if let o = occasioneMostrata(indice, elenco: elenco) {
+                DettaglioOccasione(
+                    occasione: o,
+                    nuovoAppuntamento: {
+                        spiegazioneModulo = nil
+                        modulo = $0
+                    },
+                    nuovaAttivita: { moduloAttivita = $0 }
+                )
+            } else if stato.vistaAgenda == .occasioni {
+                QuietoOccasioni()
+            } else if let e = eventoSelezionato(indice.appuntamenti(giorno)) {
                 DettaglioAppuntamento(
                     evento: e,
                     modifica: {
@@ -425,6 +504,14 @@ struct AppAgenda: View {
         }
     }
 
+    /// L'occasione scelta, ritrovata per id tra quelle mostrate (il giorno o i 12 mesi): se i dati sono cambiati
+    /// e non c'è più, il dettaglio torna quieto.
+    private func occasioneMostrata(_ indice: GiorniAgenda, elenco: [Occasione]) -> Occasione? {
+        guard let scelta = stato.occasioneSelezionata else { return nil }
+        let mostrate = stato.vistaAgenda == .occasioni ? elenco : (strato ? indice.occasioni(giorno) : [])
+        return mostrate.first { $0.id == scelta.id }
+    }
+
     private var quieto: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("✎")
@@ -437,7 +524,7 @@ struct AppAgenda: View {
                 .font(Tipo.quietoTesto)
                 .foregroundColor(Colori.Agenda.quietoTesto)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Ogni incontro è collegato alla scheda cliente e, se serve, a una posizione da analizzare. Le scadenze delle posizioni in essere compaiono da sole nella giornata.")
+            Text("Ogni incontro è collegato alla scheda cliente e, se serve, a una posizione da analizzare. Le scadenze delle posizioni in essere e le occasioni (penali finite, previdenza, famiglia, coperture, fisco) compaiono da sole nella giornata.")
                 .font(Tipo.quietoSuggerimento)
                 .foregroundColor(Colori.Agenda.quietoSuggerimento)
                 .fixedSize(horizontal: false, vertical: true)
@@ -456,12 +543,15 @@ struct GiornoSettimanaAgenda: View {
     let scadenze: Int
     let selezionato: Bool
     let oggi: Bool
+    /// Le occasioni del giorno (vuoto con lo strato spento).
+    var occasioni = SegniOccasioni()
     let azione: () -> Void
     @State var sopra = false
 
     private var nota: String {
         if incontri > 0 { return "\(incontri) \(incontri == 1 ? "incontro" : "incontri")" }
         if scadenze > 0 { return "\(scadenze) \(scadenze == 1 ? "scadenza" : "scadenze")" }
+        if occasioni.numero > 0 { return "\(occasioni.numero) \(occasioni.numero == 1 ? "occasione" : "occasioni")" }
         return "Libero"
     }
 
@@ -479,7 +569,7 @@ struct GiornoSettimanaAgenda: View {
                     .lineLimit(1)
                     .minimumScaleFactor(Misure.AgendaImpaginazione.scalaNotaGiorno)
                     .opacity(0.85)
-                PuntiniGiorno(incontri: incontri, scadenze: scadenze, selezionato: selezionato)
+                PuntiniGiorno(incontri: incontri, scadenze: scadenze, selezionato: selezionato, occasioni: occasioni)
                     .padding(.top, 2)
             }
             .foregroundColor(selezionato ? Colori.Agenda.selezioneTesto : Colori.Agenda.giorno)
@@ -503,11 +593,14 @@ struct GiornoSettimanaAgenda: View {
     }
 }
 
-/// Puntini sotto il giorno: rosso per gli incontri, ambra per le scadenze.
+/// Puntini sotto il giorno: rosso per gli incontri, ambra per le scadenze; poi un anello vuoto per ogni
+/// colore di occasione (Alleanza, indipendente, neutro): il pieno è di incontri e scadenze, l'anello delle
+/// occasioni, così si distinguono anche con lo stesso colore.
 struct PuntiniGiorno: View {
     let incontri: Int
     let scadenze: Int
     let selezionato: Bool
+    var occasioni = SegniOccasioni()
 
     var body: some View {
         HStack(spacing: 3) {
@@ -519,8 +612,11 @@ struct PuntiniGiorno: View {
                 Circle().fill(selezionato ? Colori.Agenda.puntinoSelezione : Colori.Agenda.scadenzaTesto)
                     .frame(width: Misure.Agenda.puntino, height: Misure.Agenda.puntino)
             }
+            if !occasioni.vuoto {
+                AnelliOccasioni(segni: occasioni, selezionato: selezionato)
+            }
         }
-        .frame(height: Misure.Agenda.puntino)
+        .frame(height: max(Misure.Agenda.puntino, Misure.Occasioni.anello))
     }
 }
 
@@ -531,6 +627,8 @@ struct CellaMeseAgenda: View {
     let scadenze: Int
     let selezionato: Bool
     let oggi: Bool
+    /// Le occasioni del giorno (vuoto con lo strato spento).
+    var occasioni = SegniOccasioni()
     let azione: () -> Void
 
     var body: some View {
@@ -539,7 +637,7 @@ struct CellaMeseAgenda: View {
                 Text(Formati.giorno.string(from: giorno))
                     .font(Tipo.cellaMese)
                     .foregroundColor(selezionato ? Colori.Agenda.selezioneTesto : (oggi ? Colori.Agenda.giornoOggiNumero : Colori.Agenda.giornoNumero))
-                PuntiniGiorno(incontri: incontri, scadenze: scadenze, selezionato: selezionato)
+                PuntiniGiorno(incontri: incontri, scadenze: scadenze, selezionato: selezionato, occasioni: occasioni)
             }
             .frame(maxWidth: .infinity)
             .frame(height: Misure.Agenda.cellaMese)

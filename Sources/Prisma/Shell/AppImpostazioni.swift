@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// App Impostazioni: Esperienza, Archivio (backup e ripristino), Scorciatoie.
+/// App Impostazioni: Esperienza, Proposte (documenti da consegnare), Archivio (backup e ripristino), Scorciatoie.
 struct AppImpostazioni: View {
     @EnvironmentObject var stato: StatoShell
     @State var daRipristinare: VoceBackup?
@@ -20,8 +20,8 @@ struct AppImpostazioni: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SchedeApp(opzioni: [(SchedaImpostazioni.esperienza, "Esperienza"), (SchedaImpostazioni.archivio, "Archivio"),
-                                (SchedaImpostazioni.scorciatoie, "Scorciatoie")],
+            SchedeApp(opzioni: [(SchedaImpostazioni.esperienza, "Esperienza"), (SchedaImpostazioni.proposte, "Proposte"),
+                                (SchedaImpostazioni.archivio, "Archivio"), (SchedaImpostazioni.scorciatoie, "Scorciatoie")],
                       selezione: $stato.schedaImpostazioni)
                 .padding(.bottom, 7)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -29,18 +29,23 @@ struct AppImpostazioni: View {
                 .padding(.bottom, 8)
             GeometryReader { geo in
                 HStack(alignment: .top, spacing: 0) {
-                    ScrollView {
-                        Group {
-                            switch stato.schedaImpostazioni {
-                            case .esperienza: esperienza
-                            case .archivio: archivio
-                            case .scorciatoie: scorciatoie
+                    ScrollViewReader { lettore in
+                        ScrollView {
+                            Group {
+                                switch stato.schedaImpostazioni {
+                                case .esperienza: esperienza
+                                case .proposte: ImpostazioniProposte()
+                                case .archivio: archivio
+                                case .scorciatoie: scorciatoie
+                                }
                             }
+                            .padding(EdgeInsets(top: 2, leading: 2, bottom: 12, trailing: 2))
                         }
-                        .padding(EdgeInsets(top: 2, leading: 2, bottom: 12, trailing: 2))
+                        // Senza barra di scorrimento: i gruppi restano larghi uguali in tutte le schede
+                        .scrollIndicators(.hidden)
+                        .onAppear { scorri(lettore) }
+                        .onChange(of: stato.ancoraImpostazioni) { _ in scorri(lettore) }
                     }
-                    // Senza barra di scorrimento: i gruppi restano larghi uguali in tutte le schede
-                    .scrollIndicators(.hidden)
                     .frame(width: geo.size.width * (1 - Misure.Impostazioni.informazioniLarghezza))
                     informazioni
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -101,6 +106,16 @@ struct AppImpostazioni: View {
         }
     }
 
+    /// Porta in vista il gruppo chiesto (`"impostazioni-conformita"`, `"impostazioni-occasioni"`: dalle istantanee
+    /// o da un rimando), poi dimentica l'ancora. Come `ancoraPosizioni` in Posizioni.
+    private func scorri(_ lettore: ScrollViewProxy) {
+        guard let ancora = stato.ancoraImpostazioni else { return }
+        DispatchQueue.main.async {
+            withAnimation(Animazioni.apertura) { lettore.scrollTo(ancora, anchor: .top) }
+            stato.ancoraImpostazioni = nil
+        }
+    }
+
     /// I pulsanti di vetro nelle righe (come «Crea backup»).
     private var margineVetro: EdgeInsets { EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10) }
 
@@ -112,6 +127,10 @@ struct AppImpostazioni: View {
             gruppoProfilo
             gruppoOrari
             gruppoSeguito
+            gruppoConformita
+                .id("impostazioni-conformita")
+            GruppoOccasioniImpostazioni()
+                .id("impostazioni-occasioni")
             gruppoPromemoria
             gruppoEve
             gruppoVoce
@@ -252,6 +271,80 @@ struct AppImpostazioni: View {
         }
     }
 
+    /// Le scadenze di conformità («In regola»): validità dei questionari di adeguatezza per canale, rinnovo
+    /// dell'adeguata verifica per rischio, consenso commerciale, data dell'ultima informativa privacy.
+    /// Sono valori di buona prassi: il consulente li allinea alle regole della compagnia e alle sue.
+    private var gruppoConformita: some View {
+        let regole = stato.dati.impostazioni.conformita
+        return VStack(alignment: .leading, spacing: Tema.Misura.Conformita.spazioIntestazione) {
+            GruppoImpostazioni(titolo: "Scadenze di conformità") {
+                RigaImpostazione(titolo: "Questionario Alleanza", sottotitolo: "Validità del questionario di adeguatezza") {
+                    MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiQuestionarioAlleanza,
+                                opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiQuestionario, con: regole.mesiQuestionarioAlleanza))
+                }
+                RigaImpostazione(titolo: "Questionario indipendente", sottotitolo: "Ogni quanto si aggiorna il profilo") {
+                    MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiQuestionarioIndipendente,
+                                opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiQuestionario, con: regole.mesiQuestionarioIndipendente))
+                }
+                RigaImpostazione(titolo: "Adeguata verifica", sottotitolo: "Rinnovo per rischio: alto, medio, basso") {
+                    HStack(spacing: Tema.Misura.Componenti.spazioTendina) {
+                        etichettaRischio(RischioRiciclaggio.alto)
+                        MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiVerificaAlto,
+                                    opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiVerificaAlto, con: regole.mesiVerificaAlto))
+                        etichettaRischio(RischioRiciclaggio.medio)
+                        MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiVerificaMedio,
+                                    opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiVerificaMedio, con: regole.mesiVerificaMedio))
+                        etichettaRischio(RischioRiciclaggio.basso)
+                        MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiVerificaBasso,
+                                    opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiVerificaBasso, con: regole.mesiVerificaBasso))
+                    }
+                }
+                RigaImpostazione(titolo: "Anche sul canale indipendente", sottotitolo: "Se come consulente sei tenuto all'antiriciclaggio") {
+                    Toggle("", isOn: $stato.dati.impostazioni.conformita.verificaIndipendente)
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+                RigaImpostazione(titolo: "Consenso commerciale", sottotitolo: "Ogni quanto riconfermarlo") {
+                    MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiCommerciale,
+                                opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiCommerciale, con: regole.mesiCommerciale))
+                }
+                RigaImpostazione(titolo: "Informativa privacy aggiornata il", sottotitolo: "Chi l'ha firmata prima la riceve di nuovo", ultima: true) {
+                    CampoDataFacoltativa(data: $stato.dati.impostazioni.conformita.informativaAggiornataIl,
+                                         predefinita: Calendar.current.startOfDay(for: Date()))
+                }
+            }
+            Text("Valori predefiniti di Prisma (buona prassi): allineali alle regole della compagnia e alle tue. Le scadenze compaiono in Clienti → «In regola», nelle notifiche, nel riesame e nella ricerca (conformita:scaduta).")
+                .font(Tipo.informazioniTesto)
+                .foregroundColor(Colori.Impostazioni.nota)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, Tema.Misura.Componenti.rientroTitoloGruppo)
+        }
+    }
+
+    /// «Alto», «Medio», «Basso» davanti ai menu dell'adeguata verifica.
+    private func etichettaRischio(_ r: RischioRiciclaggio) -> some View {
+        Text(r.nome)
+            .font(Tema.Testo.secondario)
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+    }
+
+    /// Le validità proposte, in mesi (0 = «Non scade», solo per il consenso commerciale).
+    private static let mesiQuestionario = [12, 24, 36, 48, 60]
+    private static let mesiVerificaAlto = [6, 12, 18]
+    private static let mesiVerificaMedio = [12, 18, 24, 36]
+    private static let mesiVerificaBasso = [24, 36, 48, 60]
+    private static let mesiCommerciale = [0, 12, 24, 36]
+
+    /// Le scelte di una validità («6 mesi», «1 anno», «Non scade»), con quella salvata anche se non è tra le
+    /// scelte (un archivio scritto a mano): il menu mostra sempre il valore vero.
+    private static func opzioniMesi(_ scelte: [Int], con attuale: Int) -> [(Int, String)] {
+        let tutte = scelte.contains(attuale) ? scelte : (scelte + [attuale]).sorted()
+        return tutte.map { m -> (Int, String) in
+            let testo: String = m == 0 ? "Non scade" : TestiConformita.durata(m)
+            return (m, testo)
+        }
+    }
+
     /// Promemoria nel Centro notifiche del Mac: spenti di partenza, il permesso di macOS si chiede
     /// solo accendendoli. Nei testi niente cifre: il nome del cliente (se scelto) e cosa fare.
     private var gruppoPromemoria: some View {
@@ -262,7 +355,7 @@ struct AppImpostazioni: View {
             RigaImpostazione(titolo: "Promemoria nel Centro notifiche",
                              sottotitolo: scelte.attivi
                                 ? "Attivi: arrivano anche a Prisma chiusa. Nei testi niente cifre dei clienti"
-                                : "Appuntamenti, attività, scadenze delle polizze e compleanni, anche a Prisma chiusa",
+                                : "Appuntamenti, attività, scadenze delle polizze, occasioni e compleanni, anche a Prisma chiusa",
                              avvertenza: negati
                                 ? "Non consentiti da macOS: attivali in Impostazioni di Sistema › Notifiche › Prisma" : nil) {
                 HStack(spacing: 8) {
@@ -299,6 +392,12 @@ struct AppImpostazioni: View {
                 }
                 RigaImpostazione(titolo: "Compleanni dei clienti", sottotitolo: "Il giorno stesso, \(ora)") {
                     Toggle("", isOn: $stato.dati.impostazioni.promemoria.compleanni)
+                        .toggleStyle(StileInterruttore())
+                        .labelsHidden()
+                }
+                RigaImpostazione(titolo: "Occasioni",
+                                 sottotitolo: "\(stato.dati.impostazioni.occasioni.anticipoGiorni) giorni prima e il giorno stesso, \(ora): penali finite, previdenza, famiglia, coperture") {
+                    Toggle("", isOn: $stato.dati.impostazioni.promemoria.occasioni)
                         .toggleStyle(StileInterruttore())
                         .labelsHidden()
                 }

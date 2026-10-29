@@ -1,12 +1,13 @@
 import Foundation
 
 /// Il prospetto del riesame annuale (per te, da portare all'incontro di revisione): l'ordine del
-/// giorno, com'è andata ogni posizione, cosa scade, obiettivi, check-up, proposte e domande da fare.
+/// giorno, com'è andata ogni posizione, cosa scade, le occasioni dei prossimi 12 mesi, obiettivi, check-up,
+/// proposte, scadenze di conformità e domande da fare. La Shell passa la conformità e le occasioni del cliente.
 extension CompositoreProspetti {
     static let titoloRiesame = "Riesame annuale"
 
-    static func riesame(_ f: FonteEve) -> ContenutoProspetto {
-        let r = MotoreRiesame.calcola(f)
+    static func riesame(_ f: FonteEve, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil) -> ContenutoProspetto {
+        let r = MotoreRiesame.calcola(f, conformita: conformita, occasioni: occasioni)
         let data: (Date) -> String = { Formati.dataBreve.string(from: $0) }
         var b: [BloccoProspetto] = []
         var n = 0
@@ -74,6 +75,20 @@ extension CompositoreProspetti {
                 righe: r.scadenze.map { p in
                     [.t(p.scadenza.map(data) ?? "—"), .f(p.nome), .c(p.canale), p.area == .protezione ? .n("copertura da rinnovare") : .t(Formati.euro(p.valore))]
                 })))
+        }
+
+        // Le occasioni dei prossimi 12 mesi (le ricorrenze sono rumore; il fisco ha il suo calendario)
+        let occasioniAnno = r.occasioni.filter { $0.tipo != .scadenzaFiscale && $0.tipo != .ricorrenzaGestione }
+        if !occasioniAnno.isEmpty {
+            sezione("Le occasioni dei prossimi 12 mesi")
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Data", peso: 0.9), ColonnaProspetto(titolo: "Occasione", peso: 2.2),
+                          ColonnaProspetto(titolo: "Canale", peso: 1), ColonnaProspetto(titolo: "Cosa cambia", peso: 3.9)],
+                righe: occasioniAnno.map { o -> [CellaProspetto] in
+                    let canale: CellaProspetto = o.canale.map { CellaProspetto.c($0) } ?? CellaProspetto.n("—")
+                    return [CellaProspetto.t(data(o.data)), CellaProspetto.f(o.titolo), canale, CellaProspetto.t(o.dettaglio)]
+                })))
+            b.append(.nota(TestiOccasioni.avvertenza))
         }
 
         if !r.obiettivi.isEmpty {
@@ -144,6 +159,23 @@ extension CompositoreProspetti {
             if daCompletare.count > mostrate.count {
                 b.append(.testo("…e altre \(daCompletare.count - mostrate.count): l'elenco completo è nella Panoramica del cliente."))
             }
+        }
+
+        // In regola: le scadenze di conformità dovute (le voci non richieste restano fuori)
+        if let e = r.conformita, !e.dovute.isEmpty {
+            sezione("In regola: scadenze di conformità")
+            b.append(.tabella(TabellaProspetto(
+                colonne: [ColonnaProspetto(titolo: "Voce", peso: 2.2), ColonnaProspetto(titolo: "Canale", peso: 1.1),
+                          ColonnaProspetto(titolo: "Registrata il", peso: 1), ColonnaProspetto(titolo: "Valida fino al", peso: 1),
+                          ColonnaProspetto(titolo: "Stato", peso: 1.1)],
+                righe: e.dovute.map { v -> [CellaProspetto] in
+                    let canale: CellaProspetto = v.canale.map { CellaProspetto.c($0) } ?? CellaProspetto.n("Tutti")
+                    let stato: CellaProspetto = v.stato <= .mancante
+                        ? CellaProspetto.f(TestiConformita.etichetta(v)) : CellaProspetto.t(TestiConformita.etichetta(v))
+                    return [CellaProspetto.f(TestiConformita.nome(v.tipo)), canale,
+                            CellaProspetto.t(v.data.map(data) ?? "—"), CellaProspetto.t(v.scadenza.map(data) ?? "—"), stato]
+                })))
+            b.append(.nota(TestiConformita.avvertenza))
         }
 
         sezione("Domande da fare")

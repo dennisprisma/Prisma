@@ -121,6 +121,7 @@ enum ProvaPromemoria {
         soloCompleanni.appuntamenti = false
         soloCompleanni.attivita = false
         soloCompleanni.scadenze = false
+        soloCompleanni.occasioni = false
         let solo = MotoreNotifiche.promemoria(dati, impostazioni: soloCompleanni, adesso: adesso, cal: cal)
         controlla(solo.count == 1 && solo.first?.gruppo == "clienti", "solo i tipi di promemoria accesi")
 

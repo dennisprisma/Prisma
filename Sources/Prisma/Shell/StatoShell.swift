@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 
 /// Stato della finestra Prisma: dati dell'archivio, finestre interne, backup, avvisi.
-enum VistaAgenda: Hashable { case settimana, mese }
+enum VistaAgenda: Hashable { case settimana, mese, occasioni }
 
 enum FiltroAttivita: Hashable { case aperte, completate, tutte }
 
@@ -61,6 +61,8 @@ final class StatoShell: ObservableObject {
     @Published var posizioneInDettaglio: String?
     /// Il pannello del dossier Posizioni a cui scorrere ("resistenza", "costi"); si consuma appena raggiunto.
     @Published var ancoraPosizioni: String?
+    /// Il gruppo delle Impostazioni a cui scorrere ("impostazioni-conformita", "impostazioni-occasioni"); si consuma appena raggiunto.
+    @Published var ancoraImpostazioni: String?
     /// I report spuntati per il fascicolo dell'incontro (per la sessione).
     @Published var sceltaFascicolo: Set<TipoProspetto> = TipoProspetto.fascicoloPredefinito
     /// L'appuntamento per cui si prepara il fascicolo (dà la data e il tipo d'incontro alla copertina).
@@ -97,6 +99,10 @@ final class StatoShell: ObservableObject {
     @Published var appuntamentoSelezionato: String?
     /// nil = tutti i clienti.
     @Published var filtroClienteAgenda: String?
+    /// L'occasione scelta in Agenda (calendario delle occasioni): non si salva.
+    @Published var occasioneSelezionata: Occasione?
+    /// Il gruppo di tipi della vista «Occasioni» (nil = tutti): non si salva.
+    @Published var gruppoOccasioniAgenda: GruppoOccasione?
     @Published var attivitaSelezionata: String?
     @Published var filtroStatoAttivita: FiltroAttivita = .aperte
     @Published var filtroClienteAttivita: String?
@@ -410,6 +416,7 @@ final class StatoShell: ObservableObject {
         dati.incontri.removeAll { $0.clienteId == id }
         dati.obiettivi.removeAll { $0.clienteId == id }
         dati.valutazioni.removeAll { $0.clienteId == id }
+        dati.schedeAdeguatezza.removeAll { $0.clienteId == id }
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
         if modoCliente == id { modoCliente = nil }
@@ -582,6 +589,7 @@ final class StatoShell: ObservableObject {
 
     func eliminaPosizione(_ id: String) {
         dati.posizioni.removeAll { $0.id == id }
+        dati.schedeAdeguatezza.removeAll { $0.posizioneId == id }
         // I commenti dei confronti che la usavano
         dati.commenti.removeAll { $0.id.hasPrefix("sostituzione·") && $0.id.components(separatedBy: "·").contains(id) }
     }
@@ -1048,7 +1056,7 @@ final class StatoShell: ObservableObject {
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
-        if case .riesame = scelta { return fonteEve(clienteAttivoId).map { CompositoreProspetti.riesame($0) } }
+        if case .riesame = scelta { return fonteEve(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId)) } }
         return CompositoreProspetti.componi(scelta, dati: dati, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
     }
 
@@ -1931,6 +1939,12 @@ final class StatoShell: ObservableObject {
             guard let s = p.scadenza, s >= inizio, s < fine else { continue }
             indice.scadenzePerGiorno[cal.startOfDay(for: s), default: []].append(p)
         }
+        // Le occasioni, se lo strato è acceso: un passaggio solo, dalla memoria (AgendaOccasioni.swift)
+        if dati.impostazioni.occasioni.inAgenda {
+            for o in occasioni(da: inizio, a: fine) where filtro == nil || o.clienteId == filtro {
+                indice.occasioniPerGiorno[cal.startOfDay(for: o.data), default: []].append(o)
+            }
+        }
         return indice
     }
 
@@ -1943,6 +1957,9 @@ final class StatoShell: ObservableObject {
     func mostraInAgenda(_ a: Appuntamento) {
         giornoAgenda = Calendar.current.startOfDay(for: a.inizio)
         appuntamentoSelezionato = a.id
+        occasioneSelezionata = nil
+        // L'elenco delle occasioni non mostra gli appuntamenti: si torna alla settimana
+        if vistaAgenda == .occasioni { vistaAgenda = .settimana }
         if filtroClienteAgenda != nil && filtroClienteAgenda != a.clienteId { filtroClienteAgenda = nil }
         apri(.agenda)
     }
@@ -1984,6 +2001,9 @@ final class StatoShell: ObservableObject {
         if prima == .pianificato && x.stato == .concluso { segnaConclusione(x.id) }
         giornoAgenda = Calendar.current.startOfDay(for: x.inizio)
         appuntamentoSelezionato = x.id
+        occasioneSelezionata = nil
+        // L'appuntamento salvato (anche quello preparato da un'occasione) si vede nella sua settimana
+        if vistaAgenda == .occasioni { vistaAgenda = .settimana }
         if filtroClienteAgenda != nil && filtroClienteAgenda != x.clienteId { filtroClienteAgenda = x.clienteId }
     }
 
@@ -2676,11 +2696,11 @@ final class StatoShell: ObservableObject {
 }
 
 enum SchedaImpostazioni: Hashable {
-    case esperienza, archivio, scorciatoie
+    case esperienza, proposte, archivio, scorciatoie
 }
 
 enum SchedaCliente: String, CaseIterable, Hashable {
-    case panoramica, bisogni, anagrafica, famiglia, profilo, note
+    case panoramica, bisogni, anagrafica, famiglia, profilo, inRegola, note
 
     var titolo: String {
         switch self {
@@ -2689,6 +2709,7 @@ enum SchedaCliente: String, CaseIterable, Hashable {
         case .anagrafica: return "Anagrafica"
         case .famiglia: return "Famiglia"
         case .profilo: return "Profilo"
+        case .inRegola: return "In regola"
         case .note: return "Note"
         }
     }

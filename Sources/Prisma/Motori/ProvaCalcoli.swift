@@ -1195,6 +1195,10 @@ enum ProvaCalcoli {
         ProvaCalcoliSeguito.esegui(verificaEsterna)
         ProvaCalcoliEsperienza.esegui(verificaEsterna)
         ProvaCalcoliAgenda.esegui(verificaEsterna)
+        // Giro 4: scheda di adeguatezza, scadenze di conformità («In regola»), calendario delle occasioni
+        ProvaCalcoliAdeguatezza.esegui(verificaEsterna)
+        ProvaCalcoliConformita.esegui(verificaEsterna)
+        ProvaCalcoliOccasioni.esegui(verificaEsterna)
 
         if errori == 0 {
             print("OK: motori di calcolo verificati")

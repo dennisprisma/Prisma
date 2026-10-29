@@ -534,7 +534,12 @@ struct ModuloCliente: View {
                         .toggleStyle(.checkbox)
                     }
                     CampoModulo(etichetta: "Commerciale") {
-                        Toggle("Consenso alle comunicazioni commerciali", isOn: $bozza.consensi.marketing).toggleStyle(.checkbox)
+                        // La data a ogni cambio, a minuti interi come il resto dell'archivio (scadenze di conformità)
+                        Toggle("Consenso alle comunicazioni commerciali", isOn: Binding(
+                            get: { bozza.consensi.marketing },
+                            set: { bozza.consensi.marketing = $0; bozza.consensi.dataMarketing = Appuntamento.alMinuto(Date()) }
+                        ))
+                        .toggleStyle(.checkbox)
                     }
                 }
             }

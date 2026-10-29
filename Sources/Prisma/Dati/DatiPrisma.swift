@@ -26,6 +26,8 @@ struct DatiPrisma: Codable, Equatable {
     var note: [Nota] = []
     /// Spazi di lavoro salvati dal consulente (quelli pronti di Prisma non si salvano).
     var spazi: [SpazioLavoro] = []
+    /// Schede di adeguatezza delle proposte (dalla versione 22 dell'archivio).
+    var schedeAdeguatezza: [SchedaAdeguatezza] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -49,7 +51,8 @@ struct DatiPrisma: Codable, Equatable {
     /// 19: data del valore e totale versato tra i dati letti dai documenti (estratti conto).
     /// 20: multiramo a due parti (rendimento, costi e rischio della gestione separata e dei fondi, ribilanciamento) nelle posizioni e nelle schede prodotto; dati di rischio delle parti nelle condizioni.
     /// 21: seguito delle proposte (esito «rimandata», giorni del seguito); dati non pertinenti per la completezza; orari di lavoro dell'agenda; esperienza per tipo di prodotto e capacità di sostenere perdite.
-    static let versioneAttuale = 21
+    /// 22: schede di adeguatezza delle proposte e documenti da consegnare per canale; scadenze di conformità dei clienti e regole di validità; impostazioni del calendario delle occasioni e promemoria delle occasioni.
+    static let versioneAttuale = 22
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
          simulazioni: [Simulazione] = [], analisi: [String: Analisi360] = [:], incontri: [Incontro] = [],
@@ -91,6 +94,7 @@ struct DatiPrisma: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, note, spazi, clienteAttivoId, impostazioni
+        case schedeAdeguatezza
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -112,6 +116,8 @@ struct DatiPrisma: Codable, Equatable {
         commenti = (try? c.decodeIfPresent([CommentoReport].self, forKey: .commenti)) ?? []
         spazi = (try? c.decodeIfPresent([SpazioLavoro].self, forKey: .spazi)) ?? []
         note = (try? c.decodeIfPresent([Nota].self, forKey: .note)) ?? []
+        // Schede di adeguatezza (dalla versione 22): una scheda illeggibile si scarta, le altre restano
+        schedeAdeguatezza = (try? c.decodeIfPresent(ElencoTollerante<SchedaAdeguatezza>.self, forKey: .schedeAdeguatezza))?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -144,12 +150,19 @@ struct Impostazioni: Codable, Equatable {
     var giorniSeguitoProposte = Impostazioni.giorniSeguitoPredefiniti
     /// Orari di lavoro dell'agenda: dove «Pianifica» cerca lo spazio libero (dalla versione 21).
     var orari = OrariLavoro()
+    /// Documenti da consegnare prima della firma, per canale (Impostazioni › Proposte). Dalla versione 22.
+    var consegna = ImpostazioniConsegna()
+    /// Validità delle scadenze di conformità (Impostazioni › Esperienza). Dalla versione 22.
+    var conformita = RegoleConformita()
+    /// Il calendario delle occasioni (dalla versione 22 dell'archivio).
+    var occasioni = ImpostazioniOccasioni()
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case nomeUtente, inizialiUtente, backup, eve, pdf, guidaNascosta, dimensioneTesto, aspetto, sfondoAnimato, pioggia
         case promemoria, ricercheSalvate, giorniSeguitoProposte, orari
+        case consegna, conformita, occasioni
     }
 
     init(from decoder: Decoder) throws {
@@ -176,6 +189,10 @@ struct Impostazioni: Codable, Equatable {
         giorniSeguitoProposte = Impostazioni.sceltaGiorniSeguito.contains(giorni) ? giorni : Impostazioni.giorniSeguitoPredefiniti
         // Orari di lavoro: gli archivi di prima non li hanno
         orari = (try? c.decodeIfPresent(OrariLavoro.self, forKey: .orari)) ?? OrariLavoro()
+        // Giro 4 (versione 22): gli archivi di prima non hanno documenti da consegnare, regole di conformità e occasioni
+        consegna = (try? c.decodeIfPresent(ImpostazioniConsegna.self, forKey: .consegna)) ?? ImpostazioniConsegna()
+        conformita = (try? c.decodeIfPresent(RegoleConformita.self, forKey: .conformita)) ?? RegoleConformita()
+        occasioni = (try? c.decodeIfPresent(ImpostazioniOccasioni.self, forKey: .occasioni)) ?? ImpostazioniOccasioni()
     }
 }
 
@@ -293,6 +310,8 @@ struct ImpostazioniPromemoria: Codable, Equatable {
     var attivita = true
     var scadenze = true
     var compleanni = true
+    /// Le occasioni dei clienti (riscatto, penali, età…) nel Centro notifiche del Mac (dalla versione 22).
+    var occasioni = true
     /// Quanti minuti prima dell'inizio arriva il promemoria di un appuntamento.
     var anticipoMinuti = 30
     /// Il nome del cliente nel promemoria (spento: solo l'ora e cosa fare).
@@ -305,6 +324,7 @@ struct ImpostazioniPromemoria: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case attivi, appuntamenti, attivita, scadenze, compleanni, anticipoMinuti, nomiClienti
+        case occasioni
     }
 
     init(from decoder: Decoder) throws {
@@ -317,6 +337,7 @@ struct ImpostazioniPromemoria: Codable, Equatable {
         let anticipo = (try? c.decodeIfPresent(Int.self, forKey: .anticipoMinuti)) ?? 30
         anticipoMinuti = ImpostazioniPromemoria.anticipi.contains(anticipo) ? anticipo : 30
         nomiClienti = (try? c.decodeIfPresent(Bool.self, forKey: .nomiClienti)) ?? true
+        occasioni = (try? c.decodeIfPresent(Bool.self, forKey: .occasioni)) ?? true
     }
 
     /// «15 minuti», «30 minuti», «1 ora».

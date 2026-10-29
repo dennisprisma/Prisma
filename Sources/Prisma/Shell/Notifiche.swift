@@ -27,6 +27,10 @@ struct Notifica: Identifiable, Hashable {
     let data: Date
     var canale: Canale?
     var destinazione: DestinazioneRicerca?
+    /// Per le notifiche di un cliente: la scheda del dossier da aprire (nil: la Panoramica).
+    var schedaCliente: SchedaCliente? = nil
+    /// Per le notifiche di più clienti: il testo della ricerca ⌘K da aprire.
+    var testoRicerca: String? = nil
 }
 
 enum MotoreNotifiche {
@@ -218,6 +222,27 @@ enum MotoreNotifiche {
                                    data: inizio, canale: una?.canale,
                                    destinazione: destinazioneEsperienza))
         }
+        // Schede di adeguatezza incomplete: firma da segnare su una proposta già accettata o documenti da consegnare
+        // su una proposta presentata. Solo dove la scheda esiste (i dati di prova non ne hanno).
+        let incomplete = MotoreAdeguatezza.daCompletare(schede: dati.schedeAdeguatezza, posizioni: dati.posizioni,
+                                                        voci: dati.impostazioni.consegna.voci, prodotti: dati.prodotti)
+        if let prima = incomplete.first {
+            let p = prima.posizione
+            let motivo: String
+            switch prima.motivo {
+            case .firma: motivo = "proposta accettata: segna la firma della scheda"
+            case .documenti(let m): motivo = m == 1 ? "1 documento da consegnare" : "\(m) documenti da consegnare"
+            }
+            let titoloAdeguatezza = incomplete.count == 1 ? "Scheda di adeguatezza di «\(p.nome)» da completare"
+                                                          : "\(incomplete.count) schede di adeguatezza da completare"
+            let destinazioneAdeguatezza: DestinazioneRicerca = incomplete.count == 1 ? .posizione(p.id) : .app(.posizioni)
+            elenco.append(Notifica(id: "adeguatezza-" + incomplete.map(\.posizione.id).joined(separator: ","),
+                                   gruppo: .daSistemare, app: .posizioni,
+                                   titolo: titoloAdeguatezza,
+                                   dettaglio: "\(nome(p.clienteId)) · \(motivo)", data: inizio,
+                                   canale: incomplete.count == 1 ? p.canale : nil,
+                                   destinazione: destinazioneAdeguatezza))
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = !MotoreFineAnno.ultimiGiorni(oggi) ? [] : MotoreFineAnno.conSpazio(clienti: dati.clienti, posizioni: dati.posizioni, oggi: oggi)
             .filter { f in f.scadenze.contains { $0.tipo == .deduzione && MotoreFineAnno.vicina($0, oggi: oggi) } }
@@ -228,6 +253,53 @@ enum MotoreNotifiche {
                                                                  : "\(deducibili.count) clienti possono ancora dedurre",
                                    dettaglio: "Versamenti alla previdenza entro il 31 dicembre" + (primo.risparmioPossibile >= 1 ? " · fino a \(Formati.euro(primo.risparmioPossibile)) di IRPEF in meno" : ""),
                                    data: inizio))
+        }
+        // Occasioni: date in cui cambia qualcosa nelle posizioni e nella famiglia, entro l'anticipo scelto (MotoreOccasioni).
+        // Passano da `stato.occasioni`, cioè dai clienti visibili: in modalità cliente non escono i nomi degli altri
+        let sceltaOccasioni = dati.impostazioni.occasioni
+        let fineOccasioni = cal.date(byAdding: .day, value: sceltaOccasioni.anticipoGiorni + 1, to: inizio) ?? inizio
+        let vicine = MotoreOccasioni.daNotificare(stato.occasioni(da: inizio, a: fineOccasioni), oggi: oggi,
+                                                  anticipoGiorni: sceltaOccasioni.anticipoGiorni, cal: cal)
+        // Le importanti una per una (al massimo 3), le altre in una voce sola: le notifiche non si riempiono di occasioni
+        let singole = Array(vicine.filter { $0.importanza == .alta }.prefix(3))
+        let altre = vicine.filter { o in !singole.contains(o) }
+        for o in singole + (altre.count == 1 ? altre : []) {
+            let giorni = cal.dateComponents([.day], from: inizio, to: cal.startOfDay(for: o.data)).day ?? 0
+            let quando: String
+            if giorni == 0 {
+                quando = "oggi"
+            } else if giorni == 1 {
+                quando = "domani"
+            } else {
+                quando = "tra \(giorni) giorni, \(Formati.dataEstesa.string(from: o.data))"
+            }
+            elenco.append(Notifica(id: "occasione-\(o.id)", gruppo: giorni == 0 ? .oggi : .prossimi, app: .agenda,
+                                   titolo: o.titolo,
+                                   dettaglio: "\(nome(o.clienteId)) · \(quando)",
+                                   data: o.data, canale: o.canale, destinazione: nil))
+        }
+        if altre.count > 1, let primaAltra = altre.first {
+            let canali = Set(altre.compactMap(\.canale))
+            let titoliAltre = altre.prefix(2).map(\.titolo).joined(separator: " · ")
+            elenco.append(Notifica(id: "occasioni-" + altre.map(\.id).joined(separator: ","), gruppo: .prossimi, app: .agenda,
+                                   titolo: "\(altre.count) occasioni nei prossimi \(sceltaOccasioni.anticipoGiorni) giorni",
+                                   dettaglio: titoliAltre + (altre.count > 2 ? " e altre" : ""),
+                                   data: primaAltra.data, canale: canali.count == 1 ? canali.first : nil, destinazione: nil))
+        }
+        // Conformità: questionari, documento, adeguata verifica e consensi scaduti o in scadenza (MotoreConformita).
+        // Solo i clienti visibili: in modalità cliente non escono i nomi degli altri
+        let esitiConformita = stato.conformitaClienti(oggi: oggi)
+        for a in MotoreConformita.avvisi(esitiConformita, oggi: oggi) {
+            let gruppoConformita: Notifica.Gruppo
+            switch a.urgenza {
+            case .scaduta: gruppoConformita = .daFare
+            case .entro30: gruppoConformita = a.giorni == 0 ? .oggi : .prossimi
+            case .entro60: gruppoConformita = .daSistemare
+            }
+            elenco.append(Notifica(id: a.id, gruppo: gruppoConformita, app: .clienti, titolo: a.titolo, dettaglio: a.dettaglio,
+                                   data: a.data, canale: a.canale,
+                                   destinazione: a.clienteId.map { DestinazioneRicerca.cliente($0) },
+                                   schedaCliente: a.clienteId == nil ? nil : .inRegola, testoRicerca: a.testoRicerca))
         }
         // Backup
         let b = dati.impostazioni.backup
@@ -301,11 +373,36 @@ extension StatoShell {
         if !nuove.isEmpty { notificheViste.formUnion(nuove) }
     }
 
+    /// Le scadenze di conformità dei clienti visibili; per oggi tenute da parte come gli altri dati ricavati
+    /// (la chiave comprende il giorno e la versione dei calcoli), per un altro giorno calcolate ogni volta.
+    /// Il centro notifiche si ricalcola a ogni disegno della barra.
+    func conformitaClienti(oggi: Date) -> [EsitoConformita] {
+        guard Calendar.current.isDateInToday(oggi) else {
+            return MotoreConformita.calcola(clienti: clienti, posizioni: dati.posizioni,
+                                            regole: dati.impostazioni.conformita, oggi: oggi)
+        }
+        let d = derivatiValidi()
+        if let elenco = d.conformitaClienti { return elenco }
+        let elenco = MotoreConformita.calcola(clienti: clienti, posizioni: dati.posizioni,
+                                              regole: dati.impostazioni.conformita, oggi: oggi)
+        d.conformitaClienti = elenco
+        return elenco
+    }
+
     func apriNotifica(_ n: Notifica) {
         // Prima l'apertura animata dell'app, poi la chiusura del pannello (senza animazione propria)
         defer { if pannelloNotifiche { pannelloNotifiche = false } }
+        // Più clienti (conformità): la ricerca ⌘K con il filtro già scritto
+        if let t = n.testoRicerca {
+            pannelloNotifiche = false
+            testoRicerca = t
+            cercaOvunque()
+            return
+        }
         if let d = n.destinazione {
             vai(a: d)
+            // Un cliente solo: la scheda del dossier dopo l'apertura (`apriCliente` mette la Panoramica)
+            if let s = n.schedaCliente { schedaCliente = s }
         } else if n.id.hasPrefix("beneficiari-"), let id = n.id.dropFirst("beneficiari-".count).split(separator: ",").first,
                   !n.id.contains(",") {
             // Un cliente solo: il suo passaggio generazionale in Posizioni
@@ -331,6 +428,17 @@ extension StatoShell {
             portafoglio = true
             posizioneInDettaglio = nil
             apri(.posizioni)
+        } else if n.id.hasPrefix("occasione-") {
+            // Un'occasione: la vista «Occasioni» dell'Agenda con l'occasione selezionata
+            mostraOccasione(String(n.id.dropFirst("occasione-".count)))
+        } else if n.id.hasPrefix("occasioni-") {
+            // Più occasioni: la vista «Occasioni» da oggi, senza filtri («occasione-» non è il prefisso di «occasioni-»)
+            filtroClienteAgenda = nil
+            gruppoOccasioniAgenda = nil
+            occasioneSelezionata = nil
+            giornoAgenda = Calendar.current.startOfDay(for: Date())
+            vistaAgenda = .occasioni
+            apri(.agenda)
         } else {
             apri(n.app)
         }
@@ -347,7 +455,7 @@ struct PromemoriaPianificato: Equatable {
     let id: String
     let titolo: String
     let corpo: String
-    /// Raggruppa i promemoria nel Centro notifiche: agenda, attivita, posizioni, clienti.
+    /// Raggruppa i promemoria nel Centro notifiche: agenda, attivita, posizioni, clienti, occasioni.
     let gruppo: String
     /// Quando arriva.
     let data: Date
@@ -470,6 +578,34 @@ extension MotoreNotifiche {
                 elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)compleanno-\(c.id)-\(anno)",
                                                     titolo: titolo, corpo: corpo, gruppo: "clienti",
                                                     data: quando, destinazione: .cliente(c.id)))
+            }
+        }
+        // Occasioni: N giorni prima (anticipo in Impostazioni › Occasioni) e il giorno stesso, alle 9; niente cifre
+        if scelte.occasioni {
+            let regole = dati.impostazioni.occasioni
+            let fino = cal.date(byAdding: .day, value: RegoleOccasioni.giorniPromemoria, to: adesso) ?? adesso
+            let occasioni = MotoreOccasioni.calcola(clienti: dati.clienti, posizioni: dati.posizioni, prodotti: dati.prodotti,
+                                                    da: adesso, a: fino, regole: regole, oggi: adesso, cal: cal)
+                .filter(MotoreOccasioni.perPromemoria)
+            let giorniPrima = Array(Set([regole.anticipoGiorni, 0])).sorted(by: >)
+            for o in occasioni {
+                for giorni in giorniPrima {
+                    guard let giorno = cal.date(byAdding: .day, value: -giorni, to: cal.startOfDay(for: o.data)),
+                          let quando = allOra(giorno), quando > adesso else { continue }
+                    let fra = giorni == 0 ? "Oggi" : "Tra \(giorni) giorni"
+                    let titolo = scelte.nomiClienti ? o.titolo : TestiOccasioni.titoloAnonimo(o)
+                    let corpo: String
+                    if scelte.nomiClienti {
+                        corpo = [fra, nome(o.clienteId) ?? "", o.canale?.nomeBreve ?? "", Formati.dataEstesa.string(from: o.data)]
+                            .filter { !$0.isEmpty }.joined(separator: " · ")
+                    } else {
+                        corpo = [fra, o.canale?.nomeBreve ?? "", dettagli].filter { !$0.isEmpty }.joined(separator: " · ")
+                    }
+                    let destinazione = o.posizioneId.map { DestinazioneRicerca.posizione($0) } ?? DestinazioneRicerca.cliente(o.clienteId)
+                    elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)occasione-\(o.id)-\(giorni)",
+                                                        titolo: titolo, corpo: corpo, gruppo: "occasioni",
+                                                        data: quando, destinazione: destinazione))
+                }
             }
         }
 
