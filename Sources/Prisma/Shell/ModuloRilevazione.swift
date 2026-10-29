@@ -49,7 +49,7 @@ struct ModuloRilevazione: View {
         } piede: {
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button("Aggiungi") {
                 salva(Rilevazione(data: data, controvalore: valore ?? 0, versato: versato))

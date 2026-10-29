@@ -96,13 +96,13 @@ struct ModuloAppuntamento: View {
         } piede: {
             if !nuovo {
                 Button { confermaEliminazione = true } label: {
-                    Text("Elimina…").foregroundColor(Colori.Rubrica.pericolo)
+                    Label("Elimina…", systemImage: "trash").foregroundColor(Colori.Rubrica.pericolo)
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                .buttonStyle(StileVetro())
             }
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(nuovo ? "Crea appuntamento" : "Salva modifiche") {
                 var a = bozza
@@ -231,13 +231,13 @@ struct ModuloAttivita: View {
         } piede: {
             if !nuova {
                 Button { confermaEliminazione = true } label: {
-                    Text("Elimina…").foregroundColor(Colori.Rubrica.pericolo)
+                    Label("Elimina…", systemImage: "trash").foregroundColor(Colori.Rubrica.pericolo)
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                .buttonStyle(StileVetro())
             }
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(nuova ? "Crea attività" : "Salva modifiche") {
                 var t = bozza

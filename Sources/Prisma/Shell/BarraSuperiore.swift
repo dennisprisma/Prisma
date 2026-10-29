@@ -153,6 +153,15 @@ struct BarraSuperiore: View {
                 }
             }
 
+            // La guida di Prisma (anche in modalità cliente): come funziona, le app, le parole
+            PulsanteBarra(aiuto: "Guida di Prisma: come funziona, le app, le parole (⌘?)",
+                          azione: { stato.apriGuida(.app(stato.appAttiva ?? .clienti)) }) {
+                Image(systemName: "questionmark.circle")
+                    .font(Tema.Testo.Shell.simboloBarra)
+                    .frame(width: Tema.Misura.iconaBarra, height: Tema.Misura.iconaBarra)
+                    .modifier(FormaPulsanteBarra())
+            }
+
             PulsanteBarra(aiuto: "Schermata di benvenuto", azione: { stato.blocca() }) {
                 Image(systemName: "lock")
                     .font(Tema.Testo.Shell.simboloBarra)

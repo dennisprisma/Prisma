@@ -257,13 +257,15 @@ struct VoceMenuAzioni {
 struct MenuAzioni<Etichetta: View>: View {
     let voci: () -> [VoceMenuAzioni]
     var margine: EdgeInsets = Tema.Misura.Documenti.pulsante
+    /// Compatta (28 pt) nelle righe; `.normale` (32 pt) nelle barre accanto agli altri pulsanti.
+    var taglia: TagliaPulsante = .compatta
     @ViewBuilder let etichetta: () -> Etichetta
 
     var body: some View {
         Button(action: apri) {
             etichetta()
         }
-        .buttonStyle(StileVetro(margine: margine))
+        .buttonStyle(StileVetro(margine: margine, taglia: taglia))
     }
 
     /// Il menu del Mac: modale finché non si sceglie, quindi il bersaglio delle voci vive abbastanza.
@@ -332,8 +334,10 @@ struct VuotoDocumenti: View {
                 passo(3, "Collega", "Colleghi il documento a una posizione o a una scheda: Prisma confronta e ti mostra le differenze.")
             }
             .fixedSize(horizontal: false, vertical: true)
-            Button("Scegli i file…", action: importa)
-                .buttonStyle(StileBlu())
+            Button(action: importa) {
+                Label("Scegli i file…", systemImage: "doc.badge.plus")
+            }
+            .buttonStyle(StileBlu(taglia: .grande))
             Text("I file vengono copiati nell'archivio di Prisma su questo Mac e finiscono nei backup. Nessun file lascia il computer.")
                 .font(Tema.Testo.didascalia)
                 .foregroundColor(Tema.Colore.inchiostroTerziario)

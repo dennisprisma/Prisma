@@ -70,11 +70,11 @@ struct InRegolaCliente: View {
                               pillola: TestiConformita.etichetta(v),
                               tono: v.stato.tono) {
             if rinnovabile {
-                Button("Rinnovato oggi") { stato.rinnovaOggi(id, v.tipo) }
+                Button { stato.rinnovaOggi(id, v.tipo) } label: { Label("Rinnovato oggi", systemImage: "checkmark") }
                     .buttonStyle(StileCuoioChiaro())
                     .help("Mette la data di oggi e lascia il resto com'è")
             }
-            Button("Modifica") { apriModulo() }
+            Button { apriModulo() } label: { Label("Modifica", systemImage: "pencil") }
                 .buttonStyle(StileVetro(margine: Tema.Misura.Conformita.margineAzione))
         }
     }
@@ -83,7 +83,7 @@ struct InRegolaCliente: View {
     private var piede: some View {
         let m = Tema.Misura.Conformita.self
         return VStack(alignment: .leading, spacing: m.spazioPiede) {
-            Button("Aggiorna le date") { apriModulo() }
+            Button { apriModulo() } label: { Label("Aggiorna le date", systemImage: "calendar") }
                 .buttonStyle(StileCuoioChiaro())
             Text(TestiConformita.avvertenza)
                 .font(Tema.Testo.Conformita.fonte)
@@ -143,8 +143,13 @@ struct RiquadroInRegola: View {
                         .foregroundColor(Tema.Colore.Conformita.titolo)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
-                    Button("Apri «In regola»") { stato.apriInRegola(clienteId) }
-                        .buttonStyle(StileCuoioChiaro())
+                    Button { stato.apriInRegola(clienteId) } label: {
+                        HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                            Text("Apri «In regola»")
+                            Image(systemName: "chevron.right")
+                        }
+                    }
+                    .buttonStyle(StileCollegamento())
                 }
             }
         }

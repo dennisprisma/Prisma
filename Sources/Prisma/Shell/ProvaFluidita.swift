@@ -75,6 +75,15 @@ enum ProvaFluidita {
         sessione.controlla(!PromemoriaMac.disponibili,
                            "Prova senza archivio, Portachiavi né permesso delle notifiche (stato non persistente, promemoria del Mac spenti)")
         guard sessione.errori == 0 else { return 1 }
+        // Il genio: i conti delle strisce (CurveGenio) e il verso dell'immagine nelle strisce (MotoreGenio),
+        // senza finestra. Gli errori fanno fallire la prova.
+        var erroriGenio = ProvaGenio.esegui()
+        if let e = MotoreGenio.provaVerso() { erroriGenio.append(e) }
+        if erroriGenio.isEmpty {
+            sessione.controlla(true, "Genio: strisce al loro posto a p = 0, dentro l'icona a p = 1, immagine dritta")
+        } else {
+            for e in erroriGenio { sessione.controlla(false, e) }
+        }
 
         let molti: DatiPrisma
         do {
@@ -146,6 +155,25 @@ enum ProvaFluidita {
 
         // Da qui in poi le app di lavoro restano aperte
         s.prepara(banco) { for app in lavoro where !stato.aperta(app) { stato.apri(app) } }
+
+        // L'istantanea del genio nella camera oscura (IstantaneaFinestra): quanto costa e se esce piena.
+        // Solo un'avvertenza: sul runner senza GPU il disegno è più lento che sul Mac.
+        if !pesanti, let f = stato.finestre.first(where: { $0.app == .posizioni }) {
+            let pronta = IstantaneaFinestra.cattura(f, stato: stato, area: stato.area, scala: 2, scuro: false)
+            let durata = ms(IstantaneaFinestra.ultimaDurata)
+            let soglia = ms(Tema.Moto.Finestre.genioAttesaMassimaIstantanea)
+            if let pronta {
+                let lato = "\(pronta.immagine.width)×\(pronta.immagine.height) px"
+                if IstantaneaFinestra.lenta {
+                    print("ATTENZIONE fluidità · istantanea del genio di Posizioni (\(lato)) in \(durata), oltre \(soglia): sul Mac si userebbe il ripiego")
+                } else {
+                    print("OK    fluidità · istantanea del genio di Posizioni (\(lato)) in \(durata) (soglia \(soglia))")
+                }
+            } else {
+                print("ATTENZIONE fluidità · istantanea del genio di Posizioni non riuscita o vuota (\(durata)): sul Mac si userebbe il ripiego")
+            }
+            IstantaneaFinestra.libera()
+        }
 
         // Cambio d'app: quella più in fondo torna in primo piano, a rotazione
         var portata: AppPrisma?

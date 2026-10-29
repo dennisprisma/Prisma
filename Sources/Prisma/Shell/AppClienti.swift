@@ -156,11 +156,30 @@ struct AppClienti: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+        } else if stato.dati.clienti.isEmpty {
+            // Rubrica vuota: il vuoto che spiega da dove si parte e che cosa fare
+            VuotoGuidato(
+                icona: "person.crop.circle.badge.plus",
+                titolo: "La rubrica è vuota",
+                perche: "Ogni analisi parte da una persona: chi è, la sua famiglia, il suo lavoro, che cosa le preme.",
+                passi: [
+                    ("Aggiungi", "Con «Nuovo cliente» in alto o dall'app Contatti."),
+                    ("Completa", "Prisma ti dice quali dati mancano."),
+                    ("Analizza", "Poi passa a Posizioni."),
+                ],
+                pulsante: "Importa i clienti…",
+                azione: { stato.importaClientiDaFile() },
+                secondario: ("Carica i clienti di prova", {
+                    stato.schedaImpostazioni = .archivio
+                    stato.apri(.impostazioni)
+                })
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             VStack(spacing: 10) {
                 IconaApp(app: .clienti, lato: Misure.Scrivania.icona)
-                Text("La rubrica è vuota.").font(Tipo.pannelloTitolo).foregroundColor(Colori.Rubrica.testo)
-                Text("Aggiungi il primo cliente con \"Nuovo cliente\".").font(Tipo.pannelloTesto).foregroundColor(Colori.Rubrica.secondario)
+                Text("Nessun cliente scelto.").font(Tipo.pannelloTitolo).foregroundColor(Colori.Rubrica.testo)
+                Text("Scegli un cliente nella rubrica a sinistra.").font(Tipo.pannelloTesto).foregroundColor(Colori.Rubrica.secondario)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -184,10 +203,12 @@ struct AppClienti: View {
                 RigaCampo(etichetta: "Indirizzo", valore: c.indirizzo)
                 RigaCampo(etichetta: "In rubrica dal", valore: Formati.dataEstesa.string(from: c.creatoIl))
             }
-            Button("Modifica la scheda") {
+            Button {
                 // La nota «Da ricordare» in attesa entra prima nella scheda: il modulo la salverebbe com'era
                 TestiRinviati.scriviOra()
                 modulo = stato.cliente(c.id) ?? c
+            } label: {
+                Label("Modifica la scheda", systemImage: "pencil")
             }
                 .buttonStyle(StileCuoioChiaro())
         }
@@ -226,10 +247,12 @@ struct AppClienti: View {
                 .padding(.vertical, 8)
                 .bordoBasso(Colori.Rubrica.filo)
             }
-            Button("＋ Aggiungi un familiare") {
+            Button {
                 familiare = ModificaFamiliare(clienteId: c.id, familiare: Familiare(nome: "", relazione: .coniuge), nuovo: true)
+            } label: {
+                Label("Aggiungi un familiare", systemImage: "plus")
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+            .buttonStyle(StileVetro())
             .padding(.top, 6)
         }
     }
@@ -284,10 +307,12 @@ struct AppClienti: View {
             Text("Il profilo orienta le analisi di Posizioni. Non sostituisce i questionari di adeguatezza ufficiali.")
                 .font(Tipo.rubricaTema)
                 .foregroundColor(Colori.Rubrica.secondario)
-            Button("Modifica il profilo") {
+            Button {
                 // La nota «Da ricordare» in attesa entra prima nella scheda: il modulo la salverebbe com'era
                 TestiRinviati.scriviOra()
                 modulo = stato.cliente(c.id) ?? c
+            } label: {
+                Label("Modifica il profilo", systemImage: "pencil")
             }
                 .buttonStyle(StileCuoioChiaro())
         }
@@ -330,7 +355,7 @@ struct AppClienti: View {
                             Text(n.titoloMostrato).font(Tipo.campoValore).foregroundColor(Colori.Rubrica.testo).lineLimit(1)
                             Spacer()
                             Text(Formati.giornoMeseBreve.string(from: n.aggiornataIl)).font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario)
-                            Text("›").font(Tipo.rubricaFreccia).foregroundColor(Colori.Rubrica.rigaFreccia)
+                            Image(systemName: "chevron.right").font(Tipo.rubricaFreccia).foregroundColor(Colori.Rubrica.rigaFreccia)
                         }
                         .padding(.vertical, 6)
                         .contentShape(Rectangle())
@@ -339,10 +364,12 @@ struct AppClienti: View {
                     .bordoBasso(Colori.Rubrica.rigaBordo)
                 }
             }
-            Button("＋ Nuova nota per \(c.nome)") {
+            Button {
                 stato.filtroClienteNote = c.id
                 stato.nuovaNota(clienteId: c.id)
                 stato.apri(.note)
+            } label: {
+                Label("Nuova nota per \(c.nome)", systemImage: "plus")
             }
             .buttonStyle(StileCuoioChiaro())
         }
@@ -394,7 +421,7 @@ struct ElencoRubrica: View, Equatable {
                 RigaRubrica(cliente: c, selezionato: c.id == attivo) { scegli(c.id) }
             }
             if clienti.isEmpty {
-                Text(ricercaVuota ? "Nessun cliente in rubrica." : "Nessun cliente trovato.")
+                Text(ricercaVuota ? "Nessun cliente in rubrica: aggiungine uno con «Nuovo cliente» in alto." : "Nessun cliente trovato.")
                     .font(Tipo.rubricaTema)
                     .foregroundColor(Colori.Rubrica.rigaTema)
                     .padding(16)
@@ -457,13 +484,16 @@ struct CampoRicerca: View {
                 .foregroundColor(Colori.Rubrica.cerca)
             TextField(segnaposto, text: $testo)
                 .textFieldStyle(.plain)
-                .font(Tipo.sistema(12))
+                .font(Tema.Testo.corpo)
                 .foregroundColor(Tema.Colore.inchiostro)
             if !testo.isEmpty {
                 Button { testo = "" } label: {
                     Image(systemName: "xmark.circle.fill").foregroundColor(Colori.Rubrica.cerca)
+                        .contentShape(Rectangle().inset(by: -Tema.Misura.Componenti.allargamentoClic))
                 }
                 .buttonStyle(StileSemplice())
+                .help("Cancella la ricerca")
+                .accessibilityLabel("Cancella la ricerca")
             }
         }
         .padding(.horizontal, Tema.Misura.Componenti.margineCampo)
@@ -511,8 +541,9 @@ struct IntestazioneDossier: View {
             }
             .buttonStyle(StileSemplice())
             .help(cliente.preferito ? "Togli dai preferiti" : "Aggiungi ai preferiti")
-            Button("Modifica", action: modifica)
-                .buttonStyle(StileCuoioChiaro())
+            .accessibilityLabel(cliente.preferito ? "Togli dai preferiti" : "Aggiungi ai preferiti")
+            Button(action: modifica) { Label("Modifica", systemImage: "pencil") }
+                .buttonStyle(StileVetro())
         }
         .padding(Misure.Rubrica.margineProfilo)
         .frame(minHeight: 86)

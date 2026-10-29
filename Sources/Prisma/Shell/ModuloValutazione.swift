@@ -70,11 +70,11 @@ struct ModuloValutazione: View {
                     stato.eliminaValutazione(bozza.id)
                     chiudi()
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
             }
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(nuova ? "Crea" : "Salva") {
                 var v = bozza

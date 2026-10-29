@@ -197,9 +197,9 @@ struct AppAgenda: View {
         .vetro(.sottile, forma: forma)
     }
 
-    /// La barra sopra il calendario: tutta intera se c'è posto; nelle finestre strette il selettore della vista
-    /// prende la larghezza delle sue voci, il menu dei clienti si stringe e «＋ Appuntamento» diventa «＋».
-    /// Nessun pulsante va mai a capo.
+    /// La barra sopra il calendario: tutta intera se c'è posto; nelle finestre strette il menu dei clienti
+    /// si stringe e «Appuntamento» diventa la sola icona «+» (con il suggerimento). Il selettore della vista
+    /// è sempre largo quanto le sue voci: nessuna parola tagliata, nessun pulsante a capo.
     private var barraStrumenti: some View {
         ViewThatFits(in: .horizontal) {
             rigaStrumenti(compatta: false)
@@ -213,43 +213,43 @@ struct AppAgenda: View {
         let m = Misure.AgendaImpaginazione.self
         let viste: [(VistaAgenda, String)] = [(.settimana, "Settimana"), (.mese, "Mese"), (.occasioni, "Occasioni")]
         let clienti: [(String?, String)] = [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) }
+        let mese = stato.vistaAgenda != .settimana
         return HStack(spacing: 8) {
             HStack(spacing: 4) {
-                Button("‹") { sposta(-1) }
-                    .buttonStyle(StileVetro(margine: m.pulsanteBarra))
-                    .fixedSize()
-                    .help(stato.vistaAgenda == .settimana ? "Settimana precedente" : "Mese precedente")
+                PulsanteIcona(simbolo: "chevron.left", aiuto: mese ? "Mese precedente" : "Settimana precedente") {
+                    sposta(-1)
+                }
+                .fixedSize()
                 Button("Oggi") {
                     stato.giornoAgenda = cal.startOfDay(for: Date())
                     stato.appuntamentoSelezionato = nil
                     stato.occasioneSelezionata = nil
                 }
-                .buttonStyle(StileVetro(margine: m.pulsanteBarra))
+                .buttonStyle(StileVetro())
                 .fixedSize()
-                Button("›") { sposta(1) }
-                    .buttonStyle(StileVetro(margine: m.pulsanteBarra))
-                    .fixedSize()
-                    .help(stato.vistaAgenda == .settimana ? "Settimana successiva" : "Mese successivo")
+                .help("Torna alla data di oggi")
+                PulsanteIcona(simbolo: "chevron.right", aiuto: mese ? "Mese successivo" : "Settimana successiva") {
+                    sposta(1)
+                }
+                .fixedSize()
             }
-            if compatta {
-                ControlloSegmenti(opzioni: viste, selezione: $stato.vistaAgenda)
-                    .fixedSize()
-            } else {
-                Segmentato(opzioni: viste, selezione: $stato.vistaAgenda)
-                    .frame(width: Misure.Occasioni.segmentiVista)
-            }
+            ControlloSegmenti(opzioni: viste, selezione: $stato.vistaAgenda)
+                .fixedSize()
             Spacer(minLength: 0)
             MenuTendina(selezione: $stato.filtroClienteAgenda, opzioni: clienti,
                         larghezza: compatta ? m.menuClientiCompatto : m.menuClienti)
+            // Il blu della finestra: l'azione che porta avanti il lavoro dell'Agenda
             if compatta {
                 Button { nuovoAppuntamento() } label: { Image(systemName: "plus") }
                     .buttonStyle(StileBlu())
                     .fixedSize()
                     .help("Nuovo appuntamento")
+                    .accessibilityLabel("Nuovo appuntamento")
             } else {
-                Button("＋ Appuntamento") { nuovoAppuntamento() }
+                Button { nuovoAppuntamento() } label: { Label("Appuntamento", systemImage: "plus") }
                     .buttonStyle(StileBlu())
                     .fixedSize()
+                    .help("Nuovo appuntamento")
             }
         }
     }
@@ -419,8 +419,10 @@ struct AppAgenda: View {
                 .font(Tipo.vuotoTesto)
                 .foregroundColor(Colori.Agenda.vuotoTesto)
                 .multilineTextAlignment(.center)
-            Button("Aggiungi un incontro") { nuovoAppuntamento() }
-                .buttonStyle(StileBlu())
+            // Il blu resta «Appuntamento» nella barra: qui l'azione consigliata in vetro dell'accento
+            Button { nuovoAppuntamento() } label: { Label("Aggiungi un incontro", systemImage: "plus") }
+                .buttonStyle(StileVetro(accento: true))
+                .fixedSize()
                 .padding(.top, 6)
         }
         .padding(EdgeInsets(top: 16, leading: 18, bottom: 16, trailing: 18))
@@ -682,12 +684,17 @@ struct RigaEventoAgenda: View {
         Button(action: azione) {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
+                    // Le ore non vanno mai a capo («09:3 / 0» con il testo molto grande)
                     Text(Formati.ora.string(from: evento.inizio))
                         .font(Tipo.eventoOra)
                         .foregroundColor(Colori.Agenda.ora)
+                        .lineLimit(1)
+                        .fixedSize()
                     Text(Formati.ora.string(from: evento.fine))
                         .font(Tipo.eventoFine)
                         .foregroundColor(Colori.Agenda.oraFine)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 .frame(width: Misure.Agenda.colonnaOra, alignment: .leading)
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -805,12 +812,15 @@ struct DettaglioAppuntamento: View {
                             .lineLimit(1)
                         Spacer(minLength: 0)
                         // La scheda del cliente a portata di clic, come «Apri dossier» nelle Note
-                        Button("Scheda cliente ↗") { stato.apriCliente(evento.clienteId) }
-                            .buttonStyle(StileSemplice())
-                            .font(Tipo.dettaglioCliente)
-                            .foregroundColor(Colori.Colonna.collegamento)
-                            .fixedSize()
-                            .help("Apri la scheda del cliente")
+                        Button { stato.apriCliente(evento.clienteId) } label: {
+                            HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                                Text("Scheda cliente")
+                                Image(systemName: "arrow.up.right")
+                            }
+                        }
+                        .buttonStyle(StileCollegamento())
+                        .fixedSize()
+                        .help("Apri la scheda del cliente")
                     }
                     .padding(.bottom, 7)
 
@@ -876,6 +886,7 @@ struct DettaglioAppuntamento: View {
                                 .padding(.vertical, 4)
                             }
                             .buttonStyle(StileSemplice())
+                            .help(t.completata ? "Segna come da fare" : "Segna come fatta")
                         }
                     }
                 }
@@ -887,33 +898,41 @@ struct DettaglioAppuntamento: View {
 
             // Le azioni in due gruppi: le principali in alto, le altre in una fila sola se c'è posto,
             // altrimenti due per riga (o una sotto l'altra): i titoli non si troncano mai
+            // Nessun blu nel dettaglio (il blu è «Appuntamento» nella barra): per prima l'azione consigliata,
+            // «Prepara l'incontro», in vetro dell'accento; l'analisi viene prima di Eve.
             let spazio = Misure.AgendaImpaginazione.spazioAzioni
             VStack(spacing: spazio) {
-                HStack(spacing: spazio) {
-                    azioneEve
-                    azioneModifica
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: spazio) {
+                        azioneIncontro
+                        azioneEve
+                    }
+                    VStack(spacing: spazio) {
+                        azioneIncontro
+                        azioneEve
+                    }
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: spazio) {
                         azioneConcluso(concluso)
+                        azioneModifica
                         azioneAttivita
-                        azioneIncontro
                         azioneFascicolo
                     }
                     VStack(spacing: spazio) {
                         HStack(spacing: spazio) {
                             azioneConcluso(concluso)
-                            azioneAttivita
+                            azioneModifica
                         }
                         HStack(spacing: spazio) {
-                            azioneIncontro
+                            azioneAttivita
                             azioneFascicolo
                         }
                     }
                     VStack(spacing: spazio) {
                         azioneConcluso(concluso)
+                        azioneModifica
                         azioneAttivita
-                        azioneIncontro
                         azioneFascicolo
                     }
                 }
@@ -926,22 +945,23 @@ struct DettaglioAppuntamento: View {
     // MARK: - Azioni del dettaglio
 
     private var azioneEve: some View {
-        PulsanteAzione(titolo: "✦ Prepara con Eve", principale: true) {
+        PulsanteAzione(titolo: "Prepara con Eve", simbolo: "sparkles") {
             stato.clienteAttivoId = evento.clienteId
             stato.apri(.eve)
         }
     }
 
     private var azioneModifica: some View {
-        PulsanteAzione(titolo: "Modifica", azione: modifica)
+        PulsanteAzione(titolo: "Modifica", simbolo: "pencil", azione: modifica)
     }
 
     private func azioneConcluso(_ concluso: Bool) -> some View {
-        PulsanteAzione(titolo: concluso ? "Riapri incontro" : "✓ Segna concluso") { stato.alternaConcluso(evento.id) }
+        PulsanteAzione(titolo: concluso ? "Riapri incontro" : "Segna concluso",
+                       simbolo: concluso ? "arrow.uturn.backward" : "checkmark") { stato.alternaConcluso(evento.id) }
     }
 
     private var azioneAttivita: some View {
-        PulsanteAzione(titolo: "＋ Attività collegata", azione: nuovaAttivita)
+        PulsanteAzione(titolo: "Attività collegata", simbolo: "checklist", azione: nuovaAttivita)
     }
 
     private var azioneFascicolo: some View {
@@ -962,7 +982,8 @@ struct DettaglioAppuntamento: View {
 
     private var azioneIncontro: some View {
         let aperto = stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
-        return PulsanteAzione(titolo: aperto ? "Apri l'incontro" : "Prepara l'incontro", simbolo: "clock") {
+        return PulsanteAzione(titolo: aperto ? "Apri l'incontro" : "Prepara l'incontro", principale: true,
+                              simbolo: "list.bullet.rectangle") {
             stato.apriIncontro(per: evento)
         }
         .help(aperto ? "Apri l'incontro: appunti e decisioni" : "Prepara l'incontro: temi, ascolto, prossimi passi")
@@ -996,8 +1017,9 @@ struct DettaglioAppuntamento: View {
                     .foregroundColor(Colori.Agenda.voceEtichetta)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button("Analizza in Posizioni ›") { stato.apriPosizione(p) }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 9, bottom: 4, trailing: 9)))
+            Button { stato.apriPosizione(p) } label: { Label("Analizza in Posizioni", systemImage: "chart.pie") }
+                .buttonStyle(StileVetro(taglia: .compatta))
+                .fixedSize()
                 .padding(.top, 2)
         }
         .padding(9)

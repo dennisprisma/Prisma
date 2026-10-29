@@ -210,9 +210,8 @@ struct SezioneComposizione: View {
     /// Un campo della colonna: l'etichetta sopra, il controllo sotto (le colonne sono strette).
     private func campo<V: View>(_ etichetta: String, @ViewBuilder _ controllo: () -> V) -> some View {
         VStack(alignment: .leading, spacing: M.spazioEtichetta) {
-            Text(etichetta)
-                .font(Tipo.campoEtichetta)
-                .foregroundColor(C.etichetta)
+            // Con la «i» del glossario sulle parole tecniche (Minimo garantito, Consolidamento, SRI…)
+            EtichettaConTermine(testo: etichetta, font: Tipo.campoEtichetta, colore: C.etichetta)
             controllo()
         }
         .frame(maxWidth: .infinity, alignment: .leading)

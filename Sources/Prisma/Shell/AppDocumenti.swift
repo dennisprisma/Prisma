@@ -191,11 +191,7 @@ struct ElencoDocumenti: View {
         VStack(spacing: 0) {
             HStack(spacing: Misure.ColonneStrumento.spazioTestata) {
                 CampoRicerca(testo: $ricerca, segnaposto: "Cerca nei documenti")
-                Button(action: importa) {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(StileVetro(margine: m.pulsanteIcona))
-                .help("Aggiungi documenti (anche trascinandoli qui)")
+                PulsanteIcona(simbolo: "plus", aiuto: "Aggiungi documenti (anche trascinandoli qui)", azione: importa)
             }
             .testataColonna()
             if mostrate.isEmpty {
@@ -204,8 +200,9 @@ struct ElencoDocumenti: View {
                         .font(Tema.Testo.corpo)
                         .foregroundColor(Tema.Colore.inchiostroSecondario)
                         .multilineTextAlignment(.center)
-                    Button("Mostra tutti", action: mostraTutti)
-                        .buttonStyle(StileVetro(margine: m.pulsante))
+                    Button(action: mostraTutti) { Label("Mostra tutti", systemImage: "line.3.horizontal.decrease.circle") }
+                        .buttonStyle(StileVetro())
+                        .fixedSize()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

@@ -13,8 +13,8 @@ struct PannelloPatrimonio: View {
                 if let d = p.differenzaProposte {
                     Pillola(testo: "Con le proposte \(d >= 0 ? "+" : "")\(Formati.euroBreve(d))", tono: d >= 0 ? .ok : .attenzione)
                 }
-                Button("Report per il cliente") { stato.apriProspetto(.patrimonio(report: true)) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                Button { stato.apriProspetto(.patrimonio(report: true)) } label: { Label("Report per il cliente", systemImage: "doc.richtext") }
+                    .buttonStyle(StileVetro())
                     .help("Apre in Prospetti il report del patrimonio nel tempo, da stampare o salvare in PDF")
             }
         } contenuto: {

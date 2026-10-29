@@ -111,7 +111,7 @@ struct ModuloImportaPosizioni: View {
                 .foregroundColor(Colori.Rubrica.secondario)
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(scelte.count == 1 ? "Importa 1 posizione" : "Importa \(scelte.count) posizioni") {
                 stato.importaPosizioni(scelte, nuoviClienti: nuoviClienti)

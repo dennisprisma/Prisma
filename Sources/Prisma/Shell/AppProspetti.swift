@@ -79,6 +79,12 @@ struct AppProspetti: View {
                  : scelta.tipo == .sostituzione ? "Servono due posizioni da confrontare: una in essere e un'alternativa, o due proposte."
                  : "Non c'è ancora niente da impaginare per questo cliente.")
                 .font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
+                .multilineTextAlignment(.center)
+            // Per chi comincia: la differenza tra i due documenti che Prisma impagina
+            Text("Il prospetto è il documento dettagliato per te; il report è la versione essenziale da lasciare al cliente.")
+                .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             if scelta.tipo == .valutazione { pulsanteNuova }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -267,13 +273,16 @@ struct AppProspetti: View {
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
             Text("Non si archivia nei Documenti di un cliente: salvalo in PDF dove preferisci.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
-            Button("Apri il Portafoglio in Posizioni ↗") {
+            Button {
                 stato.portafoglio = true
                 stato.apri(.posizioni)
+            } label: {
+                HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                    Text("Apri il Portafoglio in Posizioni")
+                    Image(systemName: "arrow.up.right")
+                }
             }
-            .buttonStyle(StileSemplice())
-            .font(Tipo.kpiNota)
-            .foregroundColor(Colori.Colonna.collegamento)
+            .buttonStyle(StileCollegamento())
         }
         .padding(12)
     }
@@ -301,14 +310,23 @@ struct AppProspetti: View {
                     }
                 }
                 if let a = r.prossimo {
-                    Button("In agenda: \(a.titolo), \(Formati.dataOra.string(from: a.inizio)) ↗") { stato.mostraInAgenda(a) }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.kpiNota)
-                        .foregroundColor(Colori.Colonna.collegamento)
+                    Button { stato.mostraInAgenda(a) } label: {
+                        HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                            Text("In agenda: \(a.titolo), \(Formati.dataOra.string(from: a.inizio))")
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Image(systemName: "arrow.up.right")
+                        }
+                    }
+                    .buttonStyle(StileCollegamento())
                 } else {
-                    Button("Fissa l'incontro di riesame") { moduloAppuntamento = stato.bozzaRiesame(cliente) }
-                        .buttonStyle(StileBlu())
-                        .disabled(stato.solaLettura)
+                    // Il blu della finestra è «Salva PDF…»: qui l'azione consigliata in vetro dell'accento
+                    Button { moduloAppuntamento = stato.bozzaRiesame(cliente) } label: {
+                        Label("Fissa l'incontro di riesame", systemImage: "calendar.badge.plus")
+                    }
+                    .buttonStyle(StileVetro(accento: true))
+                    .fixedSize()
+                    .disabled(stato.solaLettura)
                     Text("Un'ora, tra una settimana: l'ordine del giorno va nelle note dell'appuntamento.")
                         .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
                 }
@@ -442,11 +460,14 @@ struct AppProspetti: View {
                 }
                 Text("Importo, scadenza, rendimento e posizioni collegate si modificano nell'app Obiettivi.")
                     .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
-                Button("Apri Obiettivi") {
+                Button {
                     stato.obiettivoSelezionato = id.isEmpty ? nil : id
                     stato.apri(.obiettivi)
+                } label: {
+                    Label("Apri Obiettivi", systemImage: "target")
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .buttonStyle(StileVetro(taglia: .compatta))
+                .fixedSize()
             }
             .padding(12)
         }
@@ -473,11 +494,14 @@ struct AppProspetti: View {
             }
             Text("Fabbisogno, anni di sostegno, entrate sostitutive e riserva vengono dall'Analisi 360 (area Protezione); la famiglia dal dossier del cliente; le coperture dalle Posizioni.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
-            Button("Apri l'Analisi 360") {
+            Button {
                 stato.areaAnalisi = .protezione
                 stato.apri(.analisi360)
+            } label: {
+                Label("Apri l'Analisi 360", systemImage: "scope")
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            .buttonStyle(StileVetro(taglia: .compatta))
+            .fixedSize()
         }
         .padding(12)
     }
@@ -504,11 +528,14 @@ struct AppProspetti: View {
             }
             Text("Età di pensione, reddito desiderato, pensione pubblica e anni di integrazione vengono dall'Analisi 360 (area Previdenza); il reddito lordo annuo dal profilo del cliente; i piani dalle Posizioni.")
                 .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
-            Button("Apri l'Analisi 360") {
+            Button {
                 stato.areaAnalisi = .previdenza
                 stato.apri(.analisi360)
+            } label: {
+                Label("Apri l'Analisi 360", systemImage: "scope")
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+            .buttonStyle(StileVetro(taglia: .compatta))
+            .fixedSize()
         }
         .padding(12)
     }
@@ -569,8 +596,11 @@ struct AppProspetti: View {
                                 : "Prospetto per te: A4 verticale, quattro pagine con ogni cifra, da mostrare al cliente.")
                         .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
                     HStack {
-                        Button("Modifica ipotesi e testi…") { stato.valutazioneInModifica = stato.valutazione(id) }
-                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                        Button { stato.valutazioneInModifica = stato.valutazione(id) } label: {
+                            Label("Modifica ipotesi e testi…", systemImage: "pencil")
+                        }
+                        .buttonStyle(StileVetro(taglia: .compatta))
+                        .fixedSize()
                     }
                 }
                 pulsanteNuova
@@ -584,9 +614,13 @@ struct AppProspetti: View {
     }
 
     private var pulsanteNuova: some View {
-        Button("＋ Nuova valutazione") { stato.valutazioneInModifica = stato.nuovaValutazione() }
-            .buttonStyle(StileBlu())
-            .disabled(stato.prodottiValutabili.isEmpty)
+        // Il blu della finestra è «Salva PDF…»: la nuova valutazione è l'azione consigliata del pannello
+        Button { stato.valutazioneInModifica = stato.nuovaValutazione() } label: {
+            Label("Nuova valutazione", systemImage: "plus")
+        }
+        .buttonStyle(StileVetro(accento: true))
+        .fixedSize()
+        .disabled(stato.prodottiValutabili.isEmpty)
     }
 
     private func rigaValutazione(_ v: ValutazioneInvestimento, attiva: Bool) -> some View {
@@ -686,56 +720,82 @@ struct AppProspetti: View {
                 Text("\(d.genere) · \(d.cliente)").font(Tipo.chip).foregroundColor(Colori.Analisi.kpiNota).lineLimit(1)
             }
             Spacer()
+            // I pulsanti non vanno a capo né si tagliano: con le etichette se c'è posto, altrimenti i pulsanti di vetro
+            // con la sola icona (e il suggerimento); in una finestra stretta si accorcia il titolo
+            ViewThatFits(in: .horizontal) {
+                azioniBarra(d).environment(\.pulsantiSoloIcona, false)
+                azioniBarra(d).environment(\.pulsantiSoloIcona, true)
+            }
+            .layoutPriority(1)
+        }
+        .padding(EdgeInsets(top: 9, leading: 14, bottom: 9, trailing: 14))
+        .bordoBasso(Colori.Analisi.kpiBordo)
+    }
+
+    private func azioniBarra(_ d: DocumentoStampabile) -> some View {
+        HStack(spacing: 10) {
             if let id = archiviato {
-                Button("Archiviato in Documenti ↗") {
+                Button {
                     stato.documentoSelezionato = id
                     stato.apri(.documenti)
+                } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("Archiviato in Documenti")
+                        Image(systemName: "arrow.up.right")
+                    }
                 }
-                .buttonStyle(StileSemplice())
-                .font(Tipo.kpiNota)
-                .foregroundColor(Colori.Colonna.collegamento)
+                .buttonStyle(StileCollegamento())
+                .fixedSize()
             }
             if scelta.spuntoEve != nil {
-                Button("✦ Chiedi a Eve") { stato.chiediEveDelDocumento(scelta) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                Button { stato.chiediEveDelDocumento(scelta) } label: { Label("Chiedi a Eve", systemImage: "sparkles") }
+                    .buttonStyle(StileVetro())
                     .fixedSize()
                     .disabled(stato.eveInCorso)
-                    .help("Eve spiega le cifre di questo documento, per te")
+                    .help("Chiedi a Eve: spiega le cifre di questo documento, per te")
             }
             // Il portafoglio parla di tutti i clienti: non si mostra a un cliente
             if scelta.tipo != .portafoglio {
-                Button("▶ Presenta") {
+                Button {
                     // Presentare il prospetto del riesame salva la fotografia di oggi (memoria del riesame)
                     if case .riesame = scelta { stato.fotografaRiesame(stato.clienteAttivoId, origine: .prospetto) }
                     stato.presenta(d)
+                } label: {
+                    Label("Presenta", systemImage: "play.fill")
                 }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-                    .fixedSize()
-                    .help("Mostra il documento a tutto schermo, una pagina alla volta (← → per sfogliare, esc per uscire), in modalità cliente")
-            }
-            // I pulsanti non vanno a capo: in una finestra stretta si accorcia il titolo
-            Button("Stampa…") { if let dati = pdf(d) { StampaCarta.stampa(dati, formato: d.formato) } }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .buttonStyle(StileVetro())
                 .fixedSize()
+                .help("Presenta: il documento a tutto schermo, una pagina alla volta (← → per sfogliare, esc per uscire), in modalità cliente")
+            }
+            Button { if let dati = pdf(d) { StampaCarta.stampa(dati, formato: d.formato) } } label: {
+                Label("Stampa…", systemImage: "printer")
+            }
+            .buttonStyle(StileVetro())
+            .fixedSize()
+            .help("Stampa…")
             // Il portafoglio riguarda tutti i clienti: non va nei documenti di uno di loro
             if scelta.tipo != .portafoglio {
-                Button("Archivia nei Documenti") {
+                Button {
                     if let dati = pdf(d) { archiviato = stato.archiviaProspetto(dati, documento: d) }
+                } label: {
+                    Label("Archivia nei Documenti", systemImage: "archivebox")
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                .buttonStyle(StileVetro())
                 .fixedSize()
+                .help("Archivia nei Documenti del cliente")
             }
-            Button("Salva PDF…") {
+            // Il blu della finestra: tiene sempre la scritta
+            Button {
                 // Il portafoglio è per te: il foglio della password resta, senza proposta dai dati di un cliente
                 if let dati = pdf(d) {
                     daSalvare = PDFDaSalvare(dati: dati, nome: StampaCarta.nomeFile(d), cliente: scelta.tipo == .portafoglio ? nil : stato.clienteAttivo)
                 }
+            } label: {
+                Label("Salva PDF…", systemImage: "square.and.arrow.down")
             }
-                .buttonStyle(StileBlu())
-                .fixedSize()
+            .buttonStyle(StileBlu())
+            .fixedSize()
         }
-        .padding(EdgeInsets(top: 9, leading: 14, bottom: 9, trailing: 14))
-        .bordoBasso(Colori.Analisi.kpiBordo)
     }
 
     private func pdf(_ d: DocumentoStampabile) -> Data? {
@@ -824,16 +884,23 @@ private struct PannelloCommento: View {
                 }
             }
             HStack(spacing: 6) {
-                Button(stato.eveInCorso ? "Eve scrive…" : (salvato == nil ? "✦ Scrivi con Eve" : "✦ Riscrivi")) {
+                Button {
                     // Il commento salvato o le modifiche in corso non si perdono senza chiedere
                     if salvato != nil || !testo.isEmpty { confermaRiscrivi = true } else { stato.scriviCommentoConEve(scelta) }
+                } label: {
+                    Label(stato.eveInCorso ? "Eve scrive…" : (salvato == nil ? "Scrivi con Eve" : "Riscrivi"), systemImage: "sparkles")
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 9, bottom: 4, trailing: 9)))
+                .buttonStyle(StileVetro(taglia: .compatta))
+                .fixedSize()
                 .disabled(stato.eveInCorso)
                 if !testo.isEmpty && testo != salvato?.testo {
-                    Button("Salva") { stato.salvaCommento(scelta, testo: testo, bozzaDi: salvato?.bozzaDi) }
-                        .buttonStyle(StileBlu())
-                        .disabled(testo.count > CommentoEve.limite)
+                    // Il blu della finestra è «Salva PDF…»: il salvataggio del commento in vetro dell'accento
+                    Button { stato.salvaCommento(scelta, testo: testo, bozzaDi: salvato?.bozzaDi) } label: {
+                        Label("Salva", systemImage: "checkmark")
+                    }
+                    .buttonStyle(StileVetro(taglia: .compatta, accento: true))
+                    .fixedSize()
+                    .disabled(testo.count > CommentoEve.limite)
                 }
                 if salvato != nil {
                     Button("Togli") { stato.salvaCommento(scelta, testo: ""); testo = "" }

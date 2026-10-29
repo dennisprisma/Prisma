@@ -22,10 +22,11 @@ struct PannelloCoerenza: View {
         ) {
             HStack(spacing: 8) {
                 pillola
-                Button(mostraMetodo ? "Nascondi il metodo" : "Come si giudica?") { mostraMetodo.toggle() }
-                    .buttonStyle(StileSemplice())
-                    .font(Tipo.colonnaCollegamento)
-                    .foregroundColor(Colori.Colonna.collegamento)
+                Button { mostraMetodo.toggle() } label: {
+                    Label(mostraMetodo ? "Nascondi il metodo" : "Come si giudica?",
+                          systemImage: mostraMetodo ? "chevron.up" : "questionmark.circle")
+                }
+                .buttonStyle(StileCollegamento())
             }
         } contenuto: {
             VStack(alignment: .leading, spacing: M.spazioSezioni) {

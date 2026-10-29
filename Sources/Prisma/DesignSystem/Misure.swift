@@ -38,7 +38,8 @@ enum Misure {
     }
 
     enum Analisi {
-        static let rail: CGFloat = 210
+        /// Il tema usa 232; a 224 ci stanno «Attive · Proposte · Tutte» sulla scala leggibile.
+        static let rail: CGFloat = 224
         static let margineRail: CGFloat = 10
         static let segAltezza: CGFloat = 28
         static let navAltezza: CGFloat = 34
@@ -142,7 +143,8 @@ enum Misure {
         static let rientroAnelli: CGFloat = 0.12
         static let rigatura: CGFloat = 49
         static let segno: CGFloat = 3
-        static let colonnaOra: CGFloat = 40
+        /// Le ore («09:30») non vanno mai a capo, nemmeno con il testo «Molto grande».
+        static let colonnaOra: CGFloat = 48
         static let etichettaVoce: CGFloat = 58
         static let cellaMese: CGFloat = 34
         static let puntino: CGFloat = 4
@@ -246,9 +248,15 @@ enum Misure {
     }
 
     enum IntestazioneApp {
-        static let margineVerticale: CGFloat = 8
+        /// Pulsanti da 32 con 9 pt sopra e sotto: l'intestazione è alta almeno 50.
+        static let altezzaMinima: CGFloat = 50
+        static let margineVerticale: CGFloat = 9
+        /// Margine sopra e sotto il contenuto dell'app, sotto l'intestazione.
+        static let margineContenuto: CGFloat = 8
         static let margineOrizzontale: CGFloat = 12
         static let spazio: CGFloat = 10
+        /// Fra i pulsanti a destra dell'intestazione.
+        static let spazioAzioni: CGFloat = 8
     }
 
     /// Pulsanti in capsula del tema (raggio pari a circa metà dell'altezza).

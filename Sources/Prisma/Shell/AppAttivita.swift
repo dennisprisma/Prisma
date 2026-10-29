@@ -77,7 +77,8 @@ struct AppAttivita: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            Button("＋ Nuova attività") { nuova() }
+            // Il blu della finestra: sempre qui, in alto a destra
+            Button { nuova() } label: { Label("Nuova attività", systemImage: "plus") }
                 .buttonStyle(StileBlu())
                 .fixedSize()
         }
@@ -157,9 +158,10 @@ struct AppAttivita: View {
 
     private var filtri: some View {
         HStack(spacing: 9) {
-            Segmentato(opzioni: [(FiltroAttivita.aperte, "Aperte"), (FiltroAttivita.completate, "Completate"), (FiltroAttivita.tutte, "Tutte")],
-                       selezione: $stato.filtroStatoAttivita)
-                .frame(width: 260)
+            // Largo quanto le sue voci: con i testi più grandi nessuna voce si taglia
+            ControlloSegmenti(opzioni: [(FiltroAttivita.aperte, "Aperte"), (FiltroAttivita.completate, "Completate"), (FiltroAttivita.tutte, "Tutte")],
+                              selezione: $stato.filtroStatoAttivita)
+                .fixedSize()
             Spacer(minLength: 0)
             MenuTendina(selezione: $stato.filtroClienteAttivita,
                         opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
@@ -222,8 +224,10 @@ struct AppAttivita: View {
                 .font(Tipo.vuotoTesto)
                 .foregroundColor(Colori.Attivita.vuotoTesto)
                 .multilineTextAlignment(.center)
-            Button("＋ Nuova attività") { nuova() }
-                .buttonStyle(StileBlu())
+            // Il blu è già «Nuova attività» in alto: qui la stessa azione in vetro dell'accento
+            Button { nuova() } label: { Label("Nuova attività", systemImage: "plus") }
+                .buttonStyle(StileVetro(accento: true))
+                .fixedSize()
         }
         .padding(EdgeInsets(top: 36, leading: Misure.Attivita.margineRiga + 10, bottom: 30, trailing: 24))
         .frame(maxWidth: .infinity)
@@ -246,8 +250,9 @@ struct AppAttivita: View {
                         .foregroundColor(Colori.Attivita.vuotoTesto)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
-                    Button("Apri Agenda") { stato.apri(.agenda) }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                    Button { stato.apri(.agenda) } label: { Label("Apri Agenda", systemImage: "calendar") }
+                        .buttonStyle(StileVetro())
+                        .fixedSize()
                 }
                 .padding(.top, 40)
                 .frame(maxWidth: .infinity)
@@ -437,8 +442,9 @@ struct DettaglioAttivita: View {
                             Text("\(Formati.giornoMese.string(from: e.inizio)) · \(Formati.ora.string(from: e.inizio))")
                                 .font(Tipo.voceEtichetta)
                                 .foregroundColor(Colori.Attivita.collegamentoTesto)
-                            Button("Apri in Agenda") { stato.mostraInAgenda(e) }
-                                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 9, bottom: 4, trailing: 9)))
+                            Button { stato.mostraInAgenda(e) } label: { Label("Apri in Agenda", systemImage: "calendar") }
+                                .buttonStyle(StileVetro(taglia: .compatta))
+                                .fixedSize()
                                 .padding(.top, 2)
                         }
                         .padding(8)
@@ -449,16 +455,20 @@ struct DettaglioAttivita: View {
                 }
             }
             VStack(spacing: 6) {
-                PulsanteAzione(titolo: attivita.completata ? "Riapri attività" : "✓ Segna completata", principale: true) {
+                PulsanteAzione(titolo: attivita.completata ? "Riapri attività" : "Segna completata", principale: true,
+                               simbolo: attivita.completata ? "arrow.uturn.backward" : "checkmark") {
                     stato.alternaCompletata(attivita.id)
                 }
-                PulsanteAzione(titolo: "Modifica attività", azione: modifica)
-                HStack(spacing: 6) {
-                    PulsanteAzione(titolo: "✦ Chiedi a Eve") {
-                        stato.clienteAttivoId = attivita.clienteId
-                        stato.apri(.eve)
+                PulsanteAzione(titolo: "Modifica attività", simbolo: "pencil", azione: modifica)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        azioneEve
+                        azioneScheda
                     }
-                    PulsanteAzione(titolo: "Scheda cliente") { stato.apriCliente(attivita.clienteId) }
+                    VStack(spacing: 6) {
+                        azioneEve
+                        azioneScheda
+                    }
                 }
                 Text("Puoi sempre riaprire un'attività completata.")
                     .font(Tipo.quietoSuggerimento)
@@ -468,6 +478,17 @@ struct DettaglioAttivita: View {
             }
             .padding(.top, 8)
         }
+    }
+
+    private var azioneEve: some View {
+        PulsanteAzione(titolo: "Chiedi a Eve", simbolo: "sparkles") {
+            stato.clienteAttivoId = attivita.clienteId
+            stato.apri(.eve)
+        }
+    }
+
+    private var azioneScheda: some View {
+        PulsanteAzione(titolo: "Scheda cliente", simbolo: "person.crop.circle") { stato.apriCliente(attivita.clienteId) }
     }
 
     private func voce<V: View>(_ etichetta: String, @ViewBuilder _ valore: () -> V) -> some View {

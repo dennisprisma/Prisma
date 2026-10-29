@@ -78,7 +78,9 @@ struct FinestraInterna: View {
                 attiva: attiva,
                 chiudi: { stato.chiudi(finestra.app) },
                 riduci: { stato.riduci(finestra.app) },
-                ingrandisci: { stato.alternaIngrandimento(finestra.app) }
+                ingrandisci: { stato.alternaIngrandimento(finestra.app) },
+                // Chiudi e riduci sono sotto il puntatore: l'istantanea del genio si prepara adesso
+                prepara: { stato.preparaEffetto(finestra.app) }
             )
             .padding(.leading, Tema.Misura.origineSemafori.x)
 
@@ -182,6 +184,8 @@ private struct SemaforiFinestra: View {
     let chiudi: () -> Void
     let riduci: () -> Void
     let ingrandisci: () -> Void
+    /// Il puntatore è arrivato sui semafori (prepara l'istantanea per il genio e la chiusura).
+    let prepara: () -> Void
     @State private var sopra = false
 
     var body: some View {
@@ -192,7 +196,10 @@ private struct SemaforiFinestra: View {
             pallino(Tema.Colore.semaforoIngrandisci, .ingrandisci, ingrandisci)
         }
         .contentShape(Rectangle())
-        .onHover { sopra = $0 }
+        .onHover { dentro in
+            sopra = dentro
+            if dentro { prepara() }
+        }
     }
 
     private func pallino(_ colore: Color, _ segno: SegnoSemaforo.Tipo, _ azione: @escaping () -> Void) -> some View {
@@ -211,6 +218,16 @@ private struct SemaforiFinestra: View {
             .contentShape(Circle())
         }
         .buttonStyle(StileSemplice())
+        .help(SemaforiFinestra.aiuto(segno))
+    }
+
+    /// Il suggerimento al passaggio del mouse: a chi non conosce il Mac dice che cosa fa ogni pallino.
+    private static func aiuto(_ segno: SegnoSemaforo.Tipo) -> String {
+        switch segno {
+        case .chiudi: return "Chiudi"
+        case .riduci: return "Riduci nel dock"
+        case .ingrandisci: return "Ingrandisci (o doppio clic sulla barra)"
+        }
     }
 }
 

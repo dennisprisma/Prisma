@@ -196,23 +196,19 @@ struct StrisciaGuida: View {
                 .font(Tema.Testo.PannelliShell.testoGuida).foregroundColor(Tema.Colore.inchiostroSecondario)
                 .lineLimit(1)
             Spacer(minLength: 8)
+            // La striscia della scrivania è alta 34 pt: pulsanti compatti (28), come nelle righe
             if let p = prossimo {
                 Button(p.pulsante) { stato.eseguiPasso(p.azione) }
-                    .buttonStyle(StileBlu())
+                    .buttonStyle(StileBlu(taglia: .compatta))
+                    .fixedSize()
             }
-            Button("Tutti i passi") { elenco = true }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
-            Button {
+            Button { elenco = true } label: { Label("Tutti i passi", systemImage: "list.bullet") }
+                .buttonStyle(StileVetro(taglia: .compatta))
+                .fixedSize()
+            PulsanteIcona(simbolo: "xmark", aiuto: "Nascondi la guida (torna da Impostazioni → Esperienza)",
+                          taglia: .compatta, vetro: false) {
                 stato.dati.impostazioni.guidaNascosta = true
-            } label: {
-                Text("✕")
-                    .font(Tema.Testo.PannelliShell.chiudiGuida)
-                    .foregroundColor(Tema.Colore.inchiostroTerziario)
-                    .frame(width: Tema.Misura.Componenti.pulsanteMinimo, height: Tema.Misura.Componenti.pulsanteMinimo)
-                    .fondoPassaggio(.capsula)
             }
-            .buttonStyle(StileSemplice())
-            .help("Nascondi la guida (torna da Impostazioni → Esperienza)")
         }
         .padding(Tema.Misura.PannelliShell.guida)
         .frame(maxWidth: .infinity)

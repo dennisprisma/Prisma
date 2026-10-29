@@ -12,8 +12,8 @@ struct PannelloSuccessione: View {
                 if !s.daSistemare.isEmpty || s.conviventeEscluso != nil {
                     Pillola(testo: "Da sistemare", tono: .attenzione)
                 }
-                Button("Report per il cliente") { stato.apriProspetto(.successione(report: true)) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                Button { stato.apriProspetto(.successione(report: true)) } label: { Label("Report per il cliente", systemImage: "doc.richtext") }
+                    .buttonStyle(StileVetro())
                     .help("Apre in Prospetti il report del passaggio generazionale, da stampare o salvare in PDF")
             }
         } contenuto: {

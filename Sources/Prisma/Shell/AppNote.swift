@@ -97,8 +97,9 @@ struct AppNote: View {
                 VStack(spacing: 8) {
                     Text("Nessuna nota qui.").font(Tipo.noteVoceTitolo)
                     Text(stato.ricercaNote.isEmpty ? "Comincia da un pensiero." : "Prova un'altra ricerca.").font(Tipo.noteVoceTesto)
-                    Button("Scrivi una nota") { stato.nuovaNota() }
+                    Button { stato.nuovaNota() } label: { Label("Scrivi una nota", systemImage: "square.and.pencil") }
                         .buttonStyle(StileCuoioNote())
+                        .fixedSize()
                 }
                 .foregroundColor(Colori.Note.voceSecondario)
                 .multilineTextAlignment(.center)
@@ -159,8 +160,10 @@ struct AppNote: View {
     private func pagina(_ n: Nota) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Button(n.fissata ? "◆ In evidenza" : "◇ Fissa nota") {
+                Button {
                     stato.modificaNota(n.id) { $0.fissata.toggle() }
+                } label: {
+                    Label(n.fissata ? "In evidenza" : "Fissa nota", systemImage: n.fissata ? "pin.fill" : "pin")
                 }
                 .buttonStyle(StileCuoioNote(evidenziato: n.fissata))
                 .help(n.fissata ? "Togli dalla cima dell'elenco" : "Tieni la nota in cima all'elenco")
@@ -168,8 +171,9 @@ struct AppNote: View {
                 Text("Si salva da sola · \(Formati.ora.string(from: n.aggiornataIl))")
                     .font(Tipo.noteStato)
                     .foregroundColor(Colori.Note.stato)
-                Button("Elimina") { confermaEliminazione = true }
+                Button { confermaEliminazione = true } label: { Label("Elimina", systemImage: "trash") }
                     .buttonStyle(StileCuoioNote())
+                    .help("Elimina questa nota")
             }
             .padding(Misure.Note.barra)
             .background(CuoioNote())
@@ -195,11 +199,15 @@ struct AppNote: View {
                         opzioni: stato.clienti.map { ($0.id, $0.nome) }, stile: .carta)
                 .frame(maxWidth: 220, alignment: .leading)
             Spacer()
-            Button("Apri dossier ↗") { stato.apriCliente(n.clienteId) }
-                .buttonStyle(StileSemplice())
-                .font(Tipo.noteCollegamento)
-                .foregroundColor(Colori.Note.collegamento)
-                .help("Apri la scheda del cliente")
+            Button { stato.apriCliente(n.clienteId) } label: {
+                HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                    Text("Apri dossier")
+                    Image(systemName: "arrow.up.right")
+                }
+            }
+            .buttonStyle(StileCollegamento())
+            .fixedSize()
+            .help("Apri la scheda del cliente")
         }
         .padding(.bottom, 10)
         .bordoBasso(Colori.Note.lineaCliente)
@@ -218,18 +226,22 @@ struct AppNote: View {
             }
             Spacer(minLength: 8)
             // Prima si scrive l'ultimo testo digitato, poi si usa la nota
-            Button("＋ Crea attività") {
+            Button {
                 scritturaNota.subito()
                 modulo = stato.bozzaAttivitaDaNota(n.id)
+            } label: {
+                Label("Crea attività", systemImage: "plus")
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)))
+            .buttonStyle(StileVetro())
             .fixedSize()
             .help("Dall'appunto alla prossima azione, per lo stesso cliente")
-            Button("Esporta .txt") {
+            Button {
                 scritturaNota.subito()
                 esporta(stato.nota(n.id) ?? n)
+            } label: {
+                Label("Esporta .txt", systemImage: "square.and.arrow.up")
             }
-            .buttonStyle(StileVetro(margine: EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)))
+            .buttonStyle(StileVetro())
             .fixedSize()
             .help("Salva una copia di testo dove scegli tu")
         }
@@ -247,8 +259,10 @@ struct AppNote: View {
             Text("Scegli una nota o apri una pagina nuova.")
                 .font(Tipo.noteVuotoTesto)
                 .foregroundColor(Colori.Note.vuotoTesto)
-            Button("Nuova nota") { stato.nuovaNota() }
-                .buttonStyle(StileBlu())
+            // Il blu è «Nuova nota» nell'intestazione: qui la stessa azione, grande, in vetro dell'accento
+            Button { stato.nuovaNota() } label: { Label("Nuova nota", systemImage: "square.and.pencil") }
+                .buttonStyle(StileVetro(taglia: .grande, accento: true))
+                .fixedSize()
         }
         .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -284,6 +298,10 @@ private struct CampoCercaNote: View {
                     Image(systemName: "xmark.circle.fill").foregroundColor(Colori.Note.etichetta)
                 }
                 .buttonStyle(StileSemplice())
+                // Area di clic di 28 pt senza alzare il campo
+                .contentShape(Rectangle().inset(by: -Tema.Misura.Componenti.allargamentoClic))
+                .help("Cancella la ricerca")
+                .accessibilityLabel("Cancella la ricerca")
             }
         }
         .onAppear { if testo != stato.ricercaNote { testo = stato.ricercaNote } }
@@ -417,7 +435,8 @@ struct AzioneNuovaNota: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        Button("＋ Nuova nota") { stato.nuovaNota() }
+        Button { stato.nuovaNota() } label: { Label("Nuova nota", systemImage: "plus") }
             .buttonStyle(StileAqua())
+            .fixedSize()
     }
 }

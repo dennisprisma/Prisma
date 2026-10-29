@@ -9,7 +9,7 @@ extension Tema.Misura.Componenti {
     static let spiaStato: CGFloat = 7
     static let margineBarraStato: CGFloat = 14
     /// Barra delle schede dei risultati.
-    static let barraSchede: CGFloat = 44
+    static let barraSchede: CGFloat = 48
     static let margineSchede: CGFloat = 12
     /// Campo numerico delle ipotesi.
     static let campoNumerico: CGFloat = 28
@@ -239,7 +239,15 @@ struct SchedeRisultati<Valore: Hashable, Destra: View>: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            ControlloSegmenti(opzioni: opzioni, selezione: $selezione)
+            // Prima le voci intere, poi la versione compatta; solo come ultima risorsa si stringono
+            ViewThatFits(in: .horizontal) {
+                ControlloSegmenti(opzioni: opzioni, selezione: $selezione)
+                    .fixedSize()
+                ControlloSegmenti(opzioni: opzioni, selezione: $selezione, compatto: true)
+                    .fixedSize()
+                ControlloSegmenti(opzioni: opzioni, selezione: $selezione, compatto: true)
+            }
+            .layoutPriority(1)
             Spacer(minLength: 0)
             destra()
         }

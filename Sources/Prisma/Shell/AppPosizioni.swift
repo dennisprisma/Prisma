@@ -68,6 +68,9 @@ struct AppPosizioni: View {
                     } else if stato.portafoglio {
                         // Come nel dossier: gli indicatori contano in essere e proposte, lo stato filtra solo l'elenco
                         portafoglio
+                    } else if senzaPosizioni, let c = stato.clienteAttivo {
+                        // Il cliente non ha niente (e nessun filtro è attivo): il vuoto spiega che cosa fare
+                        vuotoPosizioni(c)
                     } else {
                         principale
                     }
@@ -244,6 +247,31 @@ struct AppPosizioni: View {
             .onAppear { if AppPosizioni.ancorePortafoglio.contains(stato.ancoraPosizioni ?? "") { scorri(lettore) } }
             .onChange(of: stato.ancoraPosizioni) { a in if AppPosizioni.ancorePortafoglio.contains(a ?? "") { scorri(lettore) } }
         }
+    }
+
+    // MARK: - Vuoto guidato
+
+    /// Il cliente attivo non ha nessuna posizione, né in essere né in proposta, e non c'è un filtro attivo.
+    private var senzaPosizioni: Bool {
+        filtroCanale == nil && area == nil && stato.posizioniCliente(stato.clienteAttivoId).isEmpty
+    }
+
+    private func vuotoPosizioni(_ c: Cliente) -> some View {
+        VuotoGuidato(
+            icona: "chart.pie",
+            titolo: "\(c.nome) non ha ancora posizioni",
+            perche: "Le posizioni sono ciò che il cliente ha già (polizze, fondi, piani pensione) e ciò che gli proponi. Da qui nascono tutte le analisi.",
+            passi: [
+                ("Aggiungi ciò che ha", "Con «Posizione», in alto a destra."),
+                ("Oppure leggilo da un documento", "Trascina il KID o la polizza in Documenti."),
+                ("Proponi", "Con «Proposta», sempre con il suo canale."),
+            ],
+            pulsante: "Posizione",
+            azione: { stato.richiestaNuovaPosizione = .inEssere },
+            secondario: ("Importa da Excel…", { stato.importaPosizioniDaFile() })
+        )
+        .disabled(stato.solaLettura)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Pannello principale

@@ -311,6 +311,7 @@ extension DatiPrisma {
         b.impostazioni.sfondoAnimato = a.impostazioni.sfondoAnimato
         b.impostazioni.pioggia = a.impostazioni.pioggia
         b.impostazioni.guidaNascosta = a.impostazioni.guidaNascosta
+        b.impostazioni.introduzioneVista = a.impostazioni.introduzioneVista
         b.impostazioni.backup = a.impostazioni.backup
         b.impostazioni.promemoria = a.impostazioni.promemoria
         b.impostazioni.eve = a.impostazioni.eve

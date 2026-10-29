@@ -51,6 +51,8 @@ enum ProvaBackup {
                 originale.posizioni[i].esito = .rimandata
             }
             originale.impostazioni.giorniSeguitoProposte = 30
+            // Giro 7: l'introduzione «Come funziona Prisma» vista (campo letto con tolleranza, senza alzare la versione)
+            originale.impostazioni.introduzioneVista = true
             // E gli orari di lavoro dell'agenda (nelle impostazioni)
             originale.impostazioni.orari.giorni = [2, 3, 4]
             originale.impostazioni.orari.margineMinuti = 30

@@ -318,7 +318,7 @@ struct CorpoPortafoglio: View, Equatable {
                         Spacer()
                         Text(r.ultimoContatto.map { Formati.dataBreve.string(from: $0) } ?? "—")
                             .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
-                        Button("Fissa") { moduloAppuntamento = stato.bozzaRicontatto(r) }
+                        Button { moduloAppuntamento = stato.bozzaRicontatto(r) } label: { Label("Fissa", systemImage: "calendar.badge.plus") }
                             .buttonStyle(StileVetro(margine: EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)))
                             .fixedSize()
                             .help("Fissa una telefonata in agenda: il cliente esce dall'elenco")
@@ -402,7 +402,7 @@ struct CorpoPortafoglio: View, Equatable {
                     .buttonStyle(StileVetro(margine: EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)))
                     .fixedSize()
                     .help("Apri il prospetto del riesame di \(d.cliente.nome)")
-                    Button("Fissa") { moduloAppuntamento = stato.bozzaRiesame(d.cliente.id) }
+                    Button { moduloAppuntamento = stato.bozzaRiesame(d.cliente.id) } label: { Label("Fissa", systemImage: "calendar.badge.plus") }
                         .buttonStyle(StileVetro(margine: EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)))
                         .fixedSize()
                         .disabled(chiave.solaLettura)
@@ -498,7 +498,7 @@ struct CorpoPortafoglio: View, Equatable {
                             .font(Tipo.numeroTabella).foregroundColor(Colori.Analisi.tabellaTesto)
                             .lineLimit(1)
                             .frame(width: m.colonnaValore, alignment: .trailing)
-                        Button("Fissa") { moduloAppuntamento = stato.bozzaSeguito(s) }
+                        Button { moduloAppuntamento = stato.bozzaSeguito(s) } label: { Label("Fissa", systemImage: "calendar.badge.plus") }
                             .buttonStyle(StileVetro(margine: m.pulsante))
                             .fixedSize()
                             .disabled(chiave.solaLettura)

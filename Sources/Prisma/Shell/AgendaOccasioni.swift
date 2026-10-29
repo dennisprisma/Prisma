@@ -209,9 +209,13 @@ struct RigaOccasioneAgenda: View {
                 Text(Formati.giorno.string(from: occasione.data))
                     .font(Tipo.eventoOra)
                     .foregroundColor(Colori.Agenda.ora)
+                    .lineLimit(1)
+                    .fixedSize()
                 Text(Formati.meseBreve.string(from: occasione.data))
                     .font(Tipo.eventoFine)
                     .foregroundColor(Colori.Agenda.oraFine)
+                    .lineLimit(1)
+                    .fixedSize()
             }
         } else {
             SimboloOccasione(tipo: occasione.tipo, canale: occasione.canale)
@@ -258,12 +262,15 @@ struct DettaglioOccasione: View {
                             .foregroundColor(Colori.Agenda.dettaglioCliente)
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        Button("Scheda cliente ↗") { stato.apriCliente(o.clienteId) }
-                            .buttonStyle(StileSemplice())
-                            .font(Tipo.dettaglioCliente)
-                            .foregroundColor(Colori.Colonna.collegamento)
-                            .fixedSize()
-                            .help("Apri la scheda del cliente")
+                        Button { stato.apriCliente(o.clienteId) } label: {
+                            HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                                Text("Scheda cliente")
+                                Image(systemName: "arrow.up.right")
+                            }
+                        }
+                        .buttonStyle(StileCollegamento())
+                        .fixedSize()
+                        .help("Apri la scheda del cliente")
                     }
                     .padding(.bottom, m.sottoCliente)
 
@@ -342,14 +349,14 @@ struct DettaglioOccasione: View {
     // MARK: - Azioni
 
     private var azioneAppuntamento: some View {
-        PulsanteAzione(titolo: "＋ Appuntamento", principale: true) {
+        PulsanteAzione(titolo: "Appuntamento", principale: true, simbolo: "calendar.badge.plus") {
             nuovoAppuntamento(stato.appuntamentoDaOccasione(occasione))
         }
         .help("Un incontro due settimane prima, con l'occasione e la fonte nelle note")
     }
 
     private var azioneAttivita: some View {
-        PulsanteAzione(titolo: "＋ Attività") {
+        PulsanteAzione(titolo: "Attività", simbolo: "checklist") {
             nuovaAttivita(stato.attivitaDaOccasione(occasione))
         }
         .help("Un'attività per prepararsi una settimana prima")
@@ -360,7 +367,7 @@ struct DettaglioOccasione: View {
             PulsanteAzione(titolo: "Analizza", simbolo: "chart.bar") { stato.apriPosizione(p) }
                 .help("Apri la posizione in Posizioni")
         } else {
-            PulsanteAzione(titolo: "Scheda cliente") { stato.apriCliente(occasione.clienteId) }
+            PulsanteAzione(titolo: "Scheda cliente", simbolo: "person.crop.circle") { stato.apriCliente(occasione.clienteId) }
                 .help("Apri la scheda del cliente")
         }
     }
@@ -422,8 +429,9 @@ struct DettaglioOccasione: View {
             Text(sottotitolo)
                 .font(Tipo.voceEtichetta)
                 .foregroundColor(Colori.Agenda.voceEtichetta)
-            Button("Analizza in Posizioni ›") { stato.apriPosizione(p) }
+            Button { stato.apriPosizione(p) } label: { Label("Analizza in Posizioni", systemImage: "chart.pie") }
                 .buttonStyle(StileVetro(margine: m.pulsanteRiquadro))
+                .fixedSize()
                 .padding(.top, m.sopraPulsante)
         }
         .padding(m.riquadro)
@@ -449,12 +457,15 @@ struct DettaglioOccasione: View {
             Text(sottotitolo)
                 .font(Tipo.voceEtichetta)
                 .foregroundColor(Colori.Agenda.voceEtichetta)
-            Button("Apri la famiglia ›") {
+            Button {
                 stato.clienteAttivoId = clienteId
                 stato.schedaCliente = .famiglia
                 stato.apri(.clienti)
+            } label: {
+                Label("Apri la famiglia", systemImage: "person.2")
             }
             .buttonStyle(StileVetro(margine: m.pulsanteRiquadro))
+            .fixedSize()
             .padding(.top, m.sopraPulsante)
         }
         .padding(m.riquadro)
@@ -586,12 +597,16 @@ struct ElencoOccasioniAgenda: View {
                 .foregroundColor(Colori.Agenda.vuotoTesto)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Apri Impostazioni › Occasioni") {
+            // Il blu della finestra resta «Appuntamento» nella barra: qui il vetro dell'accento
+            Button {
                 stato.schedaImpostazioni = .esperienza
                 stato.ancoraImpostazioni = "impostazioni-occasioni"
                 stato.apri(.impostazioni)
+            } label: {
+                Label("Apri Impostazioni › Occasioni", systemImage: "gearshape")
             }
-            .buttonStyle(StileBlu())
+            .buttonStyle(StileVetro(accento: true))
+            .fixedSize()
             .padding(.top, m.sopraPulsanteVuoto)
         }
         .padding(m.vuoto)

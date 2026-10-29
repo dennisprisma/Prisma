@@ -86,6 +86,8 @@ extension StatoShell {
             return
         }
         sistema.giroScrivania &+= 1
+        // Chiusa un attimo fa e non ancora tolta: si toglie ora e si riapre da capo
+        if sistema.inChiusura.contains(app) { completaChiusura(app) }
         if let f = finestre.first(where: { $0.app == app }) {
             if f.ridotta {
                 ripristina(app, da: origine)
@@ -111,8 +113,9 @@ extension StatoShell {
             }
             return
         }
-        // Il punto del genio si fissa riducendo; un'origine rimasta da prima non serve più
-        sistema.origini[app] = origine
+        // Come macOS: la finestra cresce dal punto da cui si apre (icona della scrivania, widget); dal dock (senza
+        // origine, con il dock in vista) dalla sua icona. Senza né l'uno né l'altro, al suo posto
+        sistema.origini[app] = origine ?? (finestreVisibili.isEmpty ? centroDock(app, nascosto: false) : nil)
         diColpo {
             finestre.append(f)
             sistema.inArrivo.insert(app)
@@ -126,8 +129,10 @@ extension StatoShell {
     }
 
     /// La finestra ridotta rientra dall'icona del dock («genio» al contrario): è rimasta montata, non si ricostruisce.
+    /// Con il motore la finestra vera torna subito (nascosta sotto la sua istantanea, che esce dall'icona): dock,
+    /// controlli e impaginazione si ridisegnano sotto il genio. Senza, il ripiego (solo scala).
     fileprivate func ripristina(_ app: AppPrisma, da origine: CGPoint?) {
-        guard finestre.contains(where: { $0.app == app }) else { return }
+        guard let f = finestre.first(where: { $0.app == app }) else { return }
         let m = Tema.Moto.Finestre.self
         guard persistente else {
             diColpo(implicite: false) {
@@ -136,17 +141,57 @@ extension StatoShell {
             }
             return
         }
-        // Come macOS: sempre dall'icona del dock (come sarà il dock adesso)
-        if let punto = centroDock(app) ?? origine { sistema.origini[app] = punto }
-        if sistema.spente.contains(app) {
-            // I controlli si riaccendono subito, di colpo: il costo cade prima del primo fotogramma del genio
-            diColpo { _ = sistema.spente.remove(app) }
-            Movimenti.alGiroDopo(m.ripristino, durata: m.durataRipristino) { [weak self] in self?.rimetti(app) }
-        } else {
-            // Ripristinata mentre il genio era ancora in corso: torna indietro da dove si trova
-            Movimenti.anima(m.ripristino, durata: m.durataRipristino) { rimetti(app) }
+        let durata = m.durataRipristino * rallentamento
+        // Ridotta a metà: torna su da dove si trova
+        if let motore = motoreGenio, f.ridotta,
+           motore.inverti(app, durata: durata, fatto: { [weak self] in self?.dopoRipristino(app) }) {
+            diColpo {
+                sistema.spente.remove(app)
+                rimetti(app)
+            }
+            aggiornaCoperte(dopo: durata)
+            return
         }
-        aggiornaCoperte(dopo: m.durataRipristino)
+        let calmo = Movimenti.calmo
+        // Come macOS: sempre dall'icona del dock, che durante il genio si vede (ferma al suo posto)
+        let punto = centroDock(app, nascosto: calmo ? nil : false) ?? origine
+        if let punto { sistema.origini[app] = punto }
+        if let motore = motoreGenio, !calmo, let punto, let foto = istantaneaRipristino(f) {
+            mostraDockPerEffetto(app)
+            // Prima Core Animation (flush dentro `genio`), poi lo stato, tutto di colpo
+            motore.genio(app, .ripristina, istantanea: foto, cornice: corniceInShell(f), icona: punto,
+                         lato: Tema.Misura.dockIcona, durata: durata, ombra: ombraFinestra(f)) { [weak self] in
+                self?.dopoRipristino(app)
+            }
+            diColpo {
+                sistema.nascoste.insert(app)
+                sistema.spente.remove(app)
+                rimetti(app)
+            }
+            aggiornaCoperte(dopo: durata)
+            return
+        }
+        // Ripiego: la finestra viva cresce dall'icona (solo scala)
+        if sistema.spente.contains(app) {
+            // I controlli si riaccendono subito, di colpo: il costo cade prima del primo fotogramma
+            diColpo { _ = sistema.spente.remove(app) }
+            Movimenti.alGiroDopo(m.ripristino, durata: durata) { [weak self] in self?.rimetti(app) }
+        } else {
+            // Ripristinata mentre il ripiego era ancora in corso: torna indietro da dove si trova
+            Movimenti.anima(m.ripristino, durata: durata) { rimetti(app) }
+        }
+        // Il dock in vista dopo il cambio animato (mai prima, nello stesso giro)
+        if !calmo {
+            mostraDockPerEffetto(app)
+            rilasciaDock(app, dopo: durata)
+        }
+        aggiornaCoperte(dopo: durata)
+    }
+
+    /// Il ripristino è finito: la finestra vera compare (il piano si toglie poco dopo) e il dock torna com'era.
+    fileprivate func dopoRipristino(_ app: AppPrisma) {
+        if sistema.nascoste.contains(app) { diColpo { _ = sistema.nascoste.remove(app) } }
+        rilasciaDock(app, dopo: 0)
     }
 
     /// Riporta l'app ridotta in primo piano (la transazione la dà chi chiama).
@@ -170,22 +215,60 @@ extension StatoShell {
         aggiornaCoperte(dopo: 0)
     }
 
-    /// Chiude l'app: breve, in accelerazione (la curva sta nella transizione di ShellView).
+    /// Chiude l'app. Con l'istantanea pronta (il puntatore è passato sui semafori) la sua copia svanisce con un
+    /// lieve rimpicciolimento; senza, come macOS, la finestra se ne va di colpo (niente vetro che sfuma, niente
+    /// fantasma). Con «Riduci movimento», nelle istantanee e nelle prove: la dissolvenza di sempre.
     func chiudi(_ app: AppPrisma) {
-        if aperta(app) {
-            Movimenti.anima(Tema.Moto.Finestre.chiusura, durata: Tema.Moto.Finestre.durataChiusura, animato: persistente) {
-                finestre.removeAll { $0.app == app }
-            }
-            if sistema.flip[app] != nil || sistema.inArrivo.contains(app) || sistema.spente.contains(app) {
-                diColpo {
-                    sistema.flip[app] = nil
-                    sistema.inArrivo.remove(app)
-                    sistema.spente.remove(app)
+        if let f = finestre.first(where: { $0.app == app }) {
+            let m = Tema.Moto.Finestre.self
+            if persistente && !Movimenti.calmo {
+                let genio = MotoreGenio.condiviso
+                // Un genio in corso per l'app finisce qui
+                genio.annulla(app)
+                var conIstantanea = false
+                if let motore = motoreGenio, !f.ridotta, !sistema.coperte.contains(app),
+                   let foto = genio.pronte[app], fresca(foto, per: f) {
+                    motore.dissolvi(app, istantanea: foto, cornice: corniceInShell(f)) { MotoreGenio.condiviso.dimentica(app) }
+                    conIstantanea = true
+                } else {
+                    genio.dimentica(app)
                 }
+                // Prima invisibile di colpo (così la sua uscita è senza transizione), poi via al giro dopo
+                diColpo(implicite: false) { _ = sistema.nascoste.insert(app) }
+                sistema.inChiusura.insert(app)
+                rilasciaDock(app, dopo: 0)
+                let dopo = conIstantanea ? m.durataChiusura : 0
+                DispatchQueue.main.async { [weak self] in self?.completaChiusura(app, coperteDopo: dopo) }
+            } else {
+                Movimenti.anima(m.chiusura, durata: m.durataChiusura, animato: persistente) {
+                    finestre.removeAll { $0.app == app }
+                }
+                if sistema.flip[app] != nil || sistema.inArrivo.contains(app) || sistema.spente.contains(app)
+                    || sistema.nascoste.contains(app) {
+                    diColpo {
+                        sistema.flip[app] = nil
+                        sistema.inArrivo.remove(app)
+                        sistema.spente.remove(app)
+                        sistema.nascoste.remove(app)
+                    }
+                }
+                aggiornaCoperte(dopo: m.durataChiusura)
             }
-            aggiornaCoperte(dopo: Tema.Moto.Finestre.durataChiusura)
         }
         if app == .eve { spegniVoceSeEveSparisce() }
+    }
+
+    /// Toglie davvero la finestra chiusa (il giro dopo `chiudi`, o subito se nel frattempo la si riapre).
+    fileprivate func completaChiusura(_ app: AppPrisma, coperteDopo: Double = 0) {
+        guard sistema.inChiusura.remove(app) != nil else { return }
+        diColpo(implicite: false) {
+            finestre.removeAll { $0.app == app }
+            if sistema.nascoste.contains(app) { sistema.nascoste.remove(app) }
+            if sistema.flip[app] != nil { sistema.flip[app] = nil }
+            if sistema.inArrivo.contains(app) { sistema.inArrivo.remove(app) }
+            if sistema.spente.contains(app) { sistema.spente.remove(app) }
+        }
+        aggiornaCoperte(dopo: coperteDopo)
     }
 
     /// Riduce l'app nel dock con il «genio»: la finestra resta montata, invisibile, con tutto il suo stato.
@@ -194,28 +277,203 @@ extension StatoShell {
         riduci(app, dockNascosto: finestreVisibili.contains { $0.app != app })
     }
 
-    /// `dockNascosto`: come sarà il dock a genio finito (dove sta l'icona in cui entra la finestra).
-    fileprivate func riduci(_ app: AppPrisma, dockNascosto: Bool) {
+    /// `dockNascosto`: come sarà il dock a genio finito. `conIstantanea`: false per le finestre oltre
+    /// genioIstantaneeTenute di «Mostra la scrivania» (ripiego, niente memoria in più).
+    /// Con il motore: prima Core Animation (l'istantanea a strisce entra nell'icona), poi lo stato, di colpo:
+    /// dock, area, scrivania e app si ridisegnano sotto il genio, che non dipende più dal thread principale.
+    fileprivate func riduci(_ app: AppPrisma, dockNascosto: Bool, conIstantanea: Bool = true) {
         guard let i = finestre.firstIndex(where: { $0.app == app }), !finestre[i].ridotta else { return }
         let m = Tema.Moto.Finestre.self
-        if persistente, let punto = centroDock(app, nascosto: dockNascosto) { sistema.origini[app] = punto }
-        Movimenti.anima(m.genio, durata: m.durataGenio, animato: persistente) {
+        guard persistente else {
+            diColpo(implicite: false) {
+                finestre[i].ridotta = true
+                sistema.spente.insert(app)
+            }
+            if app == .eve { spegniVoceSeEveSparisce() }
+            return
+        }
+        let durata = m.durataGenio * rallentamento
+        defer {
+            // Il campo con il cursore resta nella finestra ridotta: i tasti non devono finirci
+            NSApp.keyWindow?.makeFirstResponder(nil)
+            if app == .eve { spegniVoceSeEveSparisce() }
+        }
+        // Ripristinata a metà: torna giù da dove si trova
+        if let motore = motoreGenio,
+           motore.inverti(app, durata: durata, fatto: { [weak self] in self?.dopoRiduzione(app) }) {
+            diColpo { finestre[i].ridotta = true }
+            aggiornaCoperte(dopo: durata)
+            return
+        }
+        let calmo = Movimenti.calmo
+        // Il dock si vede durante il genio (anche se poi resta nascosto): il punto è la sua icona a riposo
+        let punto = centroDock(app, nascosto: calmo ? dockNascosto : false)
+        if let punto { sistema.origini[app] = punto }
+        let f = finestre[i]
+        if let motore = motoreGenio, !calmo, conIstantanea, let punto, let foto = istantaneaRiduzione(f) {
+            mostraDockPerEffetto(app)
+            // 1. Core Animation prima (il flush è dentro `genio`)
+            motore.genio(app, .riduci, istantanea: foto, cornice: corniceInShell(f), icona: punto,
+                         lato: Tema.Misura.dockIcona, durata: durata, ombra: ombraFinestra(f)) { [weak self] in
+                self?.dopoRiduzione(app)
+            }
+            // 2. Poi lo stato, tutto di colpo, sotto il genio
+            diColpo {
+                sistema.nascoste.insert(app)
+                finestre[i].ridotta = true
+            }
+            aggiornaCoperte(dopo: durata)
+            return
+        }
+        // Ripiego (istantanea lenta o non disponibile, «Riduci movimento»): la finestra viva rimpicciolisce verso
+        // l'icona e svanisce, solo con una scala
+        let ripiego = m.durataRipiegoGenio * rallentamento
+        Movimenti.anima(calmo ? Tema.Moto.dissolvenzaCalma : m.ripiegoGenio, durata: ripiego) {
             finestre[i].ridotta = true
         }
-        if persistente {
-            // A genio finito i controlli dell'app si spengono (se nel frattempo non è tornata)
-            Movimenti.dopo(m.durataGenio) { [weak self] in
-                guard let self, self.finestre.first(where: { $0.app == app })?.ridotta == true,
-                      !self.sistema.spente.contains(app) else { return }
-                self.sistema.spente.insert(app)
-            }
-        } else {
-            diColpo(implicite: false) { _ = sistema.spente.insert(app) }
+        // A movimento finito i controlli dell'app si spengono (se nel frattempo non è tornata)
+        Movimenti.dopo(ripiego) { [weak self] in
+            guard let self, self.finestre.first(where: { $0.app == app })?.ridotta == true,
+                  !self.sistema.spente.contains(app) else { return }
+            self.sistema.spente.insert(app)
         }
-        aggiornaCoperte(dopo: m.durataGenio)
-        // Il campo con il cursore resta nella finestra ridotta: i tasti non devono finirci
-        if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
-        if app == .eve { spegniVoceSeEveSparisce() }
+        // Il dock in vista dopo il cambio animato (mai prima, nello stesso giro)
+        if !calmo {
+            mostraDockPerEffetto(app)
+            rilasciaDock(app, dopo: ripiego)
+        }
+        // L'istantanea per il ripristino si prepara al giro dopo, mentre il ripiego scorre
+        if motoreGenio != nil, !calmo {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let f = self.finestre.first(where: { $0.app == app }), f.ridotta,
+                      MotoreGenio.condiviso.pronte[app] == nil else { return }
+                _ = self.catturaIstantanea(f)
+            }
+        }
+        aggiornaCoperte(dopo: ripiego)
+    }
+
+    /// La riduzione è finita: la finestra (ridotta, quindi invisibile) esce dalle nascoste e i suoi controlli si spengono.
+    fileprivate func dopoRiduzione(_ app: AppPrisma) {
+        let ridotta = finestre.first(where: { $0.app == app })?.ridotta == true
+        if sistema.nascoste.contains(app) || (ridotta && !sistema.spente.contains(app)) {
+            diColpo {
+                if sistema.nascoste.contains(app) { sistema.nascoste.remove(app) }
+                if ridotta && !sistema.spente.contains(app) { sistema.spente.insert(app) }
+            }
+        }
+        rilasciaDock(app, dopo: 0)
+    }
+
+    // MARK: - Istantanee ed effetti (MotoreGenio)
+
+    /// Il motore degli effetti: solo nell'app vera, con lo strato installato in una finestra visibile.
+    fileprivate var motoreGenio: MotoreGenio? { persistente ? MotoreGenio.condiviso.pronto : nil }
+
+    /// Con Maiusc premuto il genio va al rallentatore, come su macOS.
+    fileprivate var rallentamento: Double {
+        NSEvent.modifierFlags.contains(.shift) ? Tema.Moto.Finestre.fattoreRallentato : 1
+    }
+
+    /// L'area in cui si disegna la finestra: le ridotte tengono quella con il dock nascosto (come `livelloFinestre`).
+    fileprivate func areaDi(_ f: Finestra) -> CGRect {
+        f.ridotta ? ShellView.area(per: sistema.misura, dockNascosto: true) : area
+    }
+
+    /// La cornice della finestra nelle coordinate della shell (y in giù).
+    fileprivate func corniceInShell(_ f: Finestra) -> CGRect {
+        let a = areaDi(f)
+        return cornice(di: f, in: a).offsetBy(dx: a.minX, dy: a.minY)
+    }
+
+    /// L'ombra della finestra attiva, già sfocata (la stessa bitmap di OmbraVetroPronta).
+    fileprivate func ombraFinestra(_ f: Finestra) -> OmbraPrecalcolata.Pronta? {
+        let scala = MotoreGenio.condiviso.strato?.window?.backingScaleFactor ?? 2
+        return OmbraPrecalcolata.ombra(raggio: f.ingrandita ? Tema.Raggio.finestraIngrandita : Tema.Raggio.finestra,
+                                       strati: Tema.Ombra.finestra(attiva: true), scala: scala)
+    }
+
+    /// Un'istantanea pronta vale se è recente e della misura della finestra.
+    fileprivate func fresca(_ foto: IstantaneaFinestra.Pronta, per f: Finestra) -> Bool {
+        let c = cornice(di: f, in: areaDi(f))
+        return CACurrentMediaTime() - foto.quando < Tema.Moto.Finestre.genioValiditaIstantanea
+            && abs(foto.misura.width - c.width) < 0.5 && abs(foto.misura.height - c.height) < 0.5
+    }
+
+    /// Cattura ora l'istantanea della finestra e la mette da parte nel motore.
+    @discardableResult
+    fileprivate func catturaIstantanea(_ f: Finestra) -> IstantaneaFinestra.Pronta? {
+        guard let w = MotoreGenio.condiviso.strato?.window else { return nil }
+        let scuro = w.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        guard let foto = IstantaneaFinestra.cattura(f, stato: self, area: areaDi(f), scala: w.backingScaleFactor,
+                                                    scuro: scuro) else { return nil }
+        MotoreGenio.condiviso.tieni(f.app, foto)
+        return foto
+    }
+
+    /// Per la riduzione: quella preparata sui semafori se fresca; altrimenti la si cattura ora, se l'ultima
+    /// cattura non è stata lenta (se lo è stata: ripiego, e l'istantanea si prepara al giro dopo).
+    fileprivate func istantaneaRiduzione(_ f: Finestra) -> IstantaneaFinestra.Pronta? {
+        if let foto = MotoreGenio.condiviso.pronte[f.app], fresca(foto, per: f) { return foto }
+        guard !IstantaneaFinestra.lenta else { return nil }
+        return catturaIstantanea(f)
+    }
+
+    /// Per il ripristino: quella tenuta dalla riduzione (della misura giusta), o una nuova se la cattura è veloce.
+    fileprivate func istantaneaRipristino(_ f: Finestra) -> IstantaneaFinestra.Pronta? {
+        let c = cornice(di: f, in: areaDi(f))
+        if let foto = MotoreGenio.condiviso.pronte[f.app],
+           abs(foto.misura.width - c.width) < 0.5, abs(foto.misura.height - c.height) < 0.5 { return foto }
+        guard !IstantaneaFinestra.lenta else { return nil }
+        return catturaIstantanea(f)
+    }
+
+    /// Il puntatore è sui semafori: l'istantanea si prepara ora (al giro dopo), così chiudi e riduci partono senza
+    /// attesa. Non più spesso di genioIntervalloPreparazione, mai con un effetto o un movimento in corso.
+    func preparaEffetto(_ app: AppPrisma) {
+        guard persistente, motoreGenio != nil, !Movimenti.calmo else { return }
+        let motore = MotoreGenio.condiviso
+        let adesso = CACurrentMediaTime()
+        guard adesso - motore.ultimaPreparazione >= Tema.Moto.Finestre.genioIntervalloPreparazione else { return }
+        motore.ultimaPreparazione = adesso
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.bloccato, self.presentazione == nil,
+                  let f = self.finestre.first(where: { $0.app == app }), !f.ridotta,
+                  !motore.inCorso(app), self.sistema.flip[app] == nil, !self.sistema.inArrivo.contains(app),
+                  !self.sistema.nascoste.contains(app) else { return }
+            if let foto = motore.pronte[app], self.fresca(foto, per: f) { return }
+            self.catturaIstantanea(f)
+        }
+    }
+
+    /// Il dock resta in vista durante l'effetto dell'app (con il dock nascosto si mostra, come macOS).
+    fileprivate func mostraDockPerEffetto(_ app: AppPrisma) {
+        guard !sistema.dockPerEffetti.contains(app) else { return }
+        diColpo { _ = sistema.dockPerEffetti.insert(app) }
+    }
+
+    /// Dopo `dopo` secondi più il ritardo del dock, il dock torna com'era (si nasconde con la sua curva, se ci
+    /// sono finestre in vista), a meno che l'app non abbia nel frattempo un altro effetto.
+    fileprivate func rilasciaDock(_ app: AppPrisma, dopo: Double) {
+        guard sistema.dockPerEffetti.contains(app) else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + dopo + Tema.Moto.Dock.ritardoNascondi) { [weak self] in
+            guard let self, self.sistema.dockPerEffetti.contains(app), !MotoreGenio.condiviso.inCorso(app) else { return }
+            // Con la transazione vuota il dock scende con la sua animazione
+            self.diColpo { _ = self.sistema.dockPerEffetti.remove(app) }
+        }
+    }
+
+    /// Toglie di colpo tutti gli effetti in corso (blocco, presentazione, stop del Mac): le finestre tornano
+    /// come dice lo stato e il dock com'era.
+    func annullaEffetti() {
+        MotoreGenio.condiviso.annullaTutto()
+        // Le finestre chiuse un attimo fa restano nascoste: si tolgono al giro dopo
+        let restano = sistema.nascoste.intersection(sistema.inChiusura)
+        guard sistema.nascoste != restano || !sistema.dockPerEffetti.isEmpty else { return }
+        diColpo(implicite: false) {
+            if sistema.nascoste != restano { sistema.nascoste = restano }
+            if !sistema.dockPerEffetti.isEmpty { sistema.dockPerEffetti.removeAll() }
+        }
     }
 
     func alternaIngrandimento(_ app: AppPrisma) {
@@ -241,8 +499,12 @@ extension StatoShell {
             if pannelloNotifiche { pannelloNotifiche = false }
             if pannelloSpazi { pannelloSpazi = false }
             if pannelloAppAperte { pannelloAppAperte = false }
+            // La guida si chiude senza segnare l'introduzione come vista: riparte al prossimo sblocco
+            if sistema.guida != nil { sistema.guida = nil }
             if !bloccato { bloccato = true }
         }
+        // Gli effetti in corso finiscono di colpo (dopo il cambio animato: mai prima, nello stesso giro)
+        annullaEffetti()
         // Dalla schermata di blocco si torna sempre a Prisma completo (e la finestra esce dal tutto schermo)
         chiudiPresentazione()
         guard movimento else {
@@ -279,6 +541,8 @@ extension StatoShell {
         Movimenti.dopo(Tema.Moto.Sblocco.durataEntrata) { [weak self] in
             guard let self, self.sistema.giroBlocco == giro, !self.bloccato else { return }
             self.sistema.bloccatoStabile = false
+            // Al primo avvio parte l'introduzione «Come funziona Prisma»
+            self.dopoSblocco()
         }
     }
 
@@ -298,6 +562,8 @@ extension StatoShell {
         let giro = sistema.giroScrivania &+ 1
         sistema.giroScrivania = giro
         // A scrivania scoperta il dock ricompare: tutte le finestre entrano nelle loro icone
+        // Oltre genioIstantaneeTenute finestre il genio delle altre è il ripiego (memoria: 8 GB)
+        let tenute = Tema.Moto.Finestre.genioIstantaneeTenute
         for (k, app) in davanti.enumerated() {
             if k == 0 {
                 riduci(app, dockNascosto: false)
@@ -306,7 +572,7 @@ extension StatoShell {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(k) * Tema.Moto.Finestre.sfalsamento) { [weak self] in
                 // Nel frattempo si è aperta o portata davanti un'app: quella resta dov'è
                 guard let self, self.sistema.giroScrivania == giro else { return }
-                self.riduci(app, dockNascosto: false)
+                self.riduci(app, dockNascosto: false, conIstantanea: k < tenute)
             }
         }
     }

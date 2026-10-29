@@ -2,16 +2,16 @@ import AppKit
 import SwiftUI
 
 extension Tema.Misura.Componenti {
-    /// Menu a tendina: altezza come i pulsanti piccoli del tema, margini della capsula.
-    static let altezzaTendina: CGFloat = 28
-    static let margineSinistroTendina: CGFloat = 12
-    static let margineDestroTendina: CGFloat = 10
+    /// Menu a tendina: alto come i pulsanti normali e i campi (32), margini della capsula.
+    static let altezzaTendina: CGFloat = 32
+    static let margineSinistroTendina: CGFloat = 14
+    static let margineDestroTendina: CGFloat = 11
     static let spazioTendina: CGFloat = 8
 }
 
 extension Tema.Testo.Componenti {
     /// Le frecce su e giù a destra dell'etichetta del menu a tendina.
-    static let frecciaTendina = Font.system(size: 8, weight: .bold)
+    static let frecciaTendina = Font.system(size: 9, weight: .bold)
 }
 
 /// Il menu a tendina di Prisma: l'etichetta è una capsula come i pulsanti del tema e il clic apre
@@ -47,11 +47,12 @@ struct MenuTendina<Valore: Hashable>: View {
                         .font(Tema.Testo.Componenti.frecciaTendina)
                         .foregroundColor(Tema.Colore.inchiostroSecondario)
                 }
-                .font(Tema.Testo.pulsantePiccolo)
+                .font(Tema.Testo.pulsante)
                 .foregroundColor(Tema.Colore.inchiostro)
                 .padding(.leading, m.margineSinistroTendina)
                 .padding(.trailing, m.margineDestroTendina)
-                .frame(width: larghezza, height: m.altezzaTendina)
+                .frame(width: larghezza)
+                .frame(minHeight: m.altezzaTendina)
             )
             .contentShape(FormaVetro.capsula)
         }

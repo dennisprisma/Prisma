@@ -130,14 +130,14 @@ struct SchedaTFR: View {
                                                       set: { b.wrappedValue.aliquotaTFR = min(max($0, Console.aliquota.lowerBound), Console.aliquota.upperBound) }),
                                       unita: "%", intervallo: Console.aliquota, passo: Console.passo, decimali: 1)
                 }
-                Button("Riparti dai dati del cliente") {
+                Button {
                     bozza = nil
                     clienteBozza = nil
                     stato.ripartiTFR(cliente)
+                } label: {
+                    Label("Riparti dai dati del cliente", systemImage: "arrow.counterclockwise")
                 }
-                .buttonStyle(StileSemplice())
-                .font(F.collegamento)
-                .foregroundColor(K.collegamento)
+                .buttonStyle(StileCollegamento())
                 .help("Toglie le ipotesi salvate: retribuzione, anni alla pensione e anni nella previdenza ripartono dal dossier")
             }
             .padding(M.margineConsole)
@@ -253,30 +253,39 @@ struct SchedaTFR: View {
     private func pulsanti(_ disponibile: Bool) -> some View {
         HStack(spacing: M.spazioTestata) {
             if let id = archiviato {
-                Button("Archiviato in Documenti ↗") {
+                Button {
                     stato.documentoSelezionato = id
                     stato.apri(.documenti)
+                } label: {
+                    HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                        Text("Archiviato in Documenti")
+                        Image(systemName: "arrow.up.right")
+                    }
                 }
-                .buttonStyle(StileSemplice())
-                .font(F.nota)
-                .foregroundColor(K.collegamento)
+                .buttonStyle(StileCollegamento())
                 .fixedSize()
             }
-            Button("▶ Presenta") {
+            Button {
                 if let d = documento() { stato.presenta(d) }
+            } label: {
+                Label("Presenta", systemImage: "play.fill")
             }
             .buttonStyle(StileVetro(margine: M.marginePulsante))
             .fixedSize()
             .help("Mostra il documento a tutto schermo, una pagina alla volta, in modalità cliente")
-            Button("Salva PDF…") {
+            Button {
                 if let d = documento(), let dati = pdf(d) {
                     daSalvare = PDFDaSalvare(dati: dati, nome: StampaCarta.nomeFile(d), cliente: stato.clienteAttivo)
                 }
+            } label: {
+                Label("Salva PDF…", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(StileVetro(margine: M.marginePulsante))
             .fixedSize()
-            Button("Archivia nei Documenti") {
+            Button {
                 if let d = documento(), let dati = pdf(d) { archiviato = stato.archiviaProspetto(dati, documento: d) }
+            } label: {
+                Label("Archivia nei Documenti", systemImage: "archivebox")
             }
             .buttonStyle(StileVetro(margine: M.marginePulsante))
             .fixedSize()
@@ -458,10 +467,11 @@ struct SchedaTFR: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()
-                Button(mostraMetodo ? "Nascondi il metodo" : "Come si calcola?") { mostraMetodo.toggle() }
-                    .buttonStyle(StileSemplice())
-                    .font(F.collegamento)
-                    .foregroundColor(K.collegamento)
+                Button { mostraMetodo.toggle() } label: {
+                    Label(mostraMetodo ? "Nascondi il metodo" : "Come si calcola?",
+                          systemImage: mostraMetodo ? "chevron.up" : "questionmark.circle")
+                }
+                .buttonStyle(StileCollegamento())
             }
             if mostraMetodo {
                 NotaMetodo(testo: (TestiTFR.metodo + TestiTFR.semplificazioni).joined(separator: "\n"),

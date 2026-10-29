@@ -72,9 +72,8 @@ struct CampoModulo<Controllo: View>: View {
 
     private var riga: some View {
         HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.PannelliShell.spazioCampoModulo) {
-            Text(etichetta)
-                .font(Tipo.campoEtichetta)
-                .foregroundColor(Tema.Colore.inchiostroSecondario)
+            // Con la «i» del glossario sulle parole tecniche (Penali di riscatto, Periodo raccomandato…)
+            EtichettaConTermine(testo: etichetta, font: Tipo.campoEtichetta, colore: Tema.Colore.inchiostroSecondario)
                 .frame(width: Tema.Misura.PannelliShell.etichettaModulo, alignment: .trailing)
             controllo()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -548,11 +547,11 @@ struct ModuloCliente: View {
                 Button { confermaEliminazione = true } label: {
                     Text("Elimina il cliente…").foregroundColor(Colori.Rubrica.pericolo)
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                .buttonStyle(StileVetro())
             }
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(nuovo ? "Aggiungi" : "Salva") {
                 var c = bozza
@@ -659,11 +658,11 @@ struct ModuloFamiliare: View {
                 } label: {
                     Text("Elimina").foregroundColor(Colori.Rubrica.pericolo)
                 }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                .buttonStyle(StileVetro())
             }
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(modifica.nuovo ? "Aggiungi" : "Salva") {
                 salva(modifica)

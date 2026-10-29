@@ -77,10 +77,17 @@ struct Scrivania: View {
                 Label(stato.schermoIntero ? "Esci da schermo intero" : "Schermo intero",
                       systemImage: stato.schermoIntero ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
             }
+            // Per chi apre Prisma la prima volta: l'introduzione in 5 pagine
+            Button {
+                stato.apriGuida(.introduzione(0))
+            } label: {
+                Label("Come funziona", systemImage: "questionmark.circle")
+            }
+            .help("Come funziona Prisma: l'introduzione in 5 pagine (⌘? per tutta la guida)")
         }
         .buttonStyle(StilePulsanteVetro())
         .labelStyle(EtichettaPulsante())
-        // I tre vetri si campionano insieme (vetro nativo di macOS 26)
+        // I vetri si campionano insieme (vetro nativo di macOS 26)
         .gruppoVetro()
         .padding(.top, Tema.Misura.Shell.pulsantiAlto)
     }
@@ -110,7 +117,12 @@ struct Scrivania: View {
 
     private var piede: some View {
         HStack {
-            Text("Un clic per entrare. Il dock per cambiare app.")
+            Button {
+                stato.apriGuida(.introduzione(0))
+            } label: {
+                Text("Nuovo in Prisma? Apri la guida (⌘?)").underline()
+            }
+            .buttonStyle(StileSemplice())
             Spacer()
             Text(stato.dati.impostazioni.backup.ultimo.map { "Ultimo backup: \(Formati.dataOra.string(from: $0)) · archivio locale" }
                  ?? "Nessun backup ancora · archivio locale")
@@ -138,16 +150,6 @@ private struct TestoAppAperte: View {
         case 0: return "Nessuna app aperta"
         case 1: return "1 app aperta"
         default: return "\(sistema.elenco.count) app aperte"
-        }
-    }
-}
-
-/// Icona + testo dei pulsanti di vetro, con lo spazio del tema.
-struct EtichettaPulsante: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: Tema.Misura.Shell.pulsanteVetroSpazio) {
-            configuration.icon
-            configuration.title
         }
     }
 }

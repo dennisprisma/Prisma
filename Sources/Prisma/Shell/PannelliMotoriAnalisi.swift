@@ -26,9 +26,10 @@ struct IpotesiApribili: View {
                         .font(Tema.Testo.didascalia)
                 }
                 .foregroundColor(Tema.Colore.MotoriAnalisi.apriIpotesi)
-                .contentShape(Rectangle())
+                .contentShape(Rectangle().inset(by: -Tema.Misura.Componenti.allargamentoClic))
             }
             .buttonStyle(.plain)
+            .help(aperte ? "Nascondi i dettagli" : "Mostra i dettagli")
             if aperte {
                 NotaMetodo(testo: righe.map { "• " + $0 }.joined(separator: "\n"))
             }

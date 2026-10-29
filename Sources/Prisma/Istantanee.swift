@@ -389,6 +389,8 @@ enum Istantanee {
             s.alternaNotifiche()
         }),
         ("63-benvenuto", { s in
+            // Come dopo il primo avvio: senza l'invito all'introduzione (lo mostra la 220)
+            s.dati.impostazioni.introduzioneVista = true
             s.apri(.clienti)
             s.blocca()
         }),
@@ -1001,6 +1003,84 @@ enum Istantanee {
             s.schedaIncontro = .preparazione
             s.apri(.incontri)
         }),
+        // Avvio sulla schermata di benvenuto e guida di Prisma (G7). Il genio non si vede: è Core Animation
+        // sul Mac vero (le prove dei suoi conti stanno in --prova-fluidita)
+        ("220-avvio-benvenuto", { s in
+            // Il primo avvio: Prisma si apre sul blocco, nessuna app aperta, l'invito all'introduzione
+            s.dati.impostazioni.introduzioneVista = false
+            s.blocca()
+        }),
+        ("221-avvio-benvenuto-schermo-basso", { s in
+            s.dati.impostazioni.introduzioneVista = false
+            s.blocca()
+        }),
+        ("222-introduzione", { s in s.apriGuida(.introduzione(0)) }),
+        ("223-introduzione-app", { s in s.apriGuida(.introduzione(2)) }),
+        ("224-introduzione-percorso", { s in s.apriGuida(.introduzione(4)) }),
+        ("225-guida-posizioni", { s in
+            s.apri(.posizioni)
+            s.apriGuida(.app(.posizioni))
+        }),
+        ("226-guida-clienti", { s in
+            s.apri(.clienti)
+            s.apriGuida(.app(.clienti))
+        }),
+        ("227-glossario", { s in s.apriGuida(.glossario(nil)) }),
+        ("228-glossario-sri", { s in s.apriGuida(.glossario(.sri)) }),
+        ("229-introduzione-schermo-basso", { s in s.apriGuida(.introduzione(0)) }),
+        // I vuoti guidati: che cosa fare quando un'app non ha ancora dati
+        ("230-vuoto-posizioni", { s in
+            s.dati.posizioni.removeAll { $0.clienteId == "sofia" }
+            s.clienteAttivoId = "sofia"
+            s.apri(.posizioni)
+        }),
+        ("231-vuoto-clienti", { s in
+            s.dati.clienti.removeAll()
+            s.dati.posizioni.removeAll()
+            s.dati.simulazioni.removeAll()
+            s.dati.obiettivi.removeAll()
+            s.apri(.clienti)
+        }),
+        ("232-vuoto-obiettivi", { s in
+            s.dati.obiettivi.removeAll { $0.clienteId == "sofia" }
+            s.clienteAttivoId = "sofia"
+            s.apri(.obiettivi)
+        }),
+        ("233-vuoto-simulazioni", { s in
+            s.dati.simulazioni.removeAll { $0.clienteId == "sofia" }
+            s.clienteAttivoId = "sofia"
+            s.schedaSimulazioni = .scenari
+            s.apri(.simulazioni)
+        }),
+        // I pulsanti nuovi nelle finestre strette: l'intestazione e le barre passano alle sole icone
+        ("234-posizioni-finestra-stretta", { s in
+            s.apri(.posizioni)
+            s.alternaIngrandimento(.posizioni)
+            s.ridimensiona(.posizioni, dimensione: CGSize(width: 760, height: 640))
+        }),
+        ("235-posizioni-dettaglio-stretta", { s in
+            s.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
+            s.apri(.posizioni)
+            s.alternaIngrandimento(.posizioni)
+            s.ridimensiona(.posizioni, dimensione: CGSize(width: 820, height: 680))
+        }),
+        ("236-prospetti-finestra-stretta", { s in
+            s.clienteAttivoId = "giulia"
+            s.prospetto = .checkUp(report: false)
+            s.apri(.presentazioni)
+            s.alternaIngrandimento(.presentazioni)
+            s.ridimensiona(.presentazioni, dimensione: CGSize(width: 820, height: 680))
+        }),
+        ("237-documenti-stretta", { s in
+            s.apri(.documenti)
+            s.alternaIngrandimento(.documenti)
+            s.ridimensiona(.documenti, dimensione: CGSize(width: 820, height: 680))
+        }),
+        ("238-agenda-finestra-stretta", { s in
+            s.apri(.agenda)
+            s.alternaIngrandimento(.agenda)
+            s.ridimensiona(.agenda, dimensione: CGSize(width: 820, height: 680))
+        }),
         // Le scene in aspetto scuro: il suffisso "-scuro" le disegna così (vedi genera)
         ("53-ricerca-scuro", { s in
             s.apri(.posizioni)
@@ -1118,6 +1198,7 @@ enum Istantanee {
         }),
         ("5-clienti-panoramica-scuro", { $0.apri(.clienti) }),
         ("63-benvenuto-scuro", { s in
+            s.dati.impostazioni.introduzioneVista = true
             s.apri(.clienti)
             s.blocca()
         }),
@@ -1130,6 +1211,21 @@ enum Istantanee {
         ("90-impostazioni-aspetto-scuro", { s in
             s.apri(.impostazioni)
             s.schedaImpostazioni = .esperienza
+        }),
+        ("220-avvio-benvenuto-scuro", { s in
+            s.dati.impostazioni.introduzioneVista = false
+            s.blocca()
+        }),
+        ("222-introduzione-scuro", { s in s.apriGuida(.introduzione(0)) }),
+        ("225-guida-posizioni-scuro", { s in
+            s.apri(.posizioni)
+            s.apriGuida(.app(.posizioni))
+        }),
+        ("228-glossario-sri-scuro", { s in s.apriGuida(.glossario(.sri)) }),
+        ("230-vuoto-posizioni-scuro", { s in
+            s.dati.posizioni.removeAll { $0.clienteId == "sofia" }
+            s.clienteAttivoId = "sofia"
+            s.apri(.posizioni)
         }),
     ]
 

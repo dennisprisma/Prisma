@@ -133,13 +133,18 @@ struct ValoreRiga: View {
     }
 }
 
-/// Schede di un'app: controllo a segmenti del tema, largo quanto i testi.
+/// Schede di un'app: controllo a segmenti del tema, largo quanto i testi. Se lo spazio non basta, la
+/// versione compatta: mai una parola tagliata.
 struct SchedeApp<Valore: Hashable>: View {
     let opzioni: [(Valore, String)]
     @Binding var selezione: Valore
 
     var body: some View {
-        ControlloSegmenti(opzioni: opzioni, selezione: $selezione)
-            .fixedSize()
+        ViewThatFits(in: .horizontal) {
+            ControlloSegmenti(opzioni: opzioni, selezione: $selezione)
+                .fixedSize()
+            ControlloSegmenti(opzioni: opzioni, selezione: $selezione, compatto: true)
+                .fixedSize()
+        }
     }
 }

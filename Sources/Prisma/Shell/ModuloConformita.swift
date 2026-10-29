@@ -34,7 +34,7 @@ struct ModuloConformita: View {
         } piede: {
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: m.marginePiedeModulo))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button("Salva") {
                 var c = bozza

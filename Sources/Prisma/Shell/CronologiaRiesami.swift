@@ -67,17 +67,22 @@ struct CronologiaRiesami: View {
 
     private var azioni: some View {
         HStack(spacing: Tema.Misura.Memoria.spazioPulsanti) {
-            Button(TestiMemoria.salvaOggi) {
+            Button {
                 _ = stato.fotografaRiesame(cliente.id, origine: .manuale)
+            } label: {
+                Label(TestiMemoria.salvaOggi, systemImage: "camera")
             }
-            .buttonStyle(StileCuoioChiaro())
+            .buttonStyle(StileVetro())
             .help(TestiMemoria.aiutoSalvaOggi)
             .disabled(stato.solaLettura)
-            Button(TestiMemoria.preparaRiesame) {
+            // Il blu dell'app è «Nuovo cliente»: l'azione consigliata della scheda va nel vetro d'accento
+            Button {
                 stato.clienteAttivoId = cliente.id
                 stato.apriProspetto(.riesame)
+            } label: {
+                Label(TestiMemoria.preparaRiesame, systemImage: "doc.text")
             }
-            .buttonStyle(StileBlu())
+            .buttonStyle(StileVetro(accento: true))
             Spacer()
         }
     }
@@ -185,9 +190,7 @@ struct RigaMemoriaPanoramica: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Button(TestiMemoria.collegamentoCronologia) { stato.schedaCliente = .riesami }
-                    .buttonStyle(StileSemplice())
-                    .font(Tema.Testo.Memoria.collegamento)
-                    .foregroundColor(Colori.Colonna.collegamento)
+                    .buttonStyle(StileCollegamento())
             }
         }
     }

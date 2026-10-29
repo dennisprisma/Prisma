@@ -14,7 +14,11 @@ extension StatoShell {
         for nome in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification] {
             centro.publisher(for: nome)
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self] _ in self?.sospendiLavoriATempo() }
+                .sink { [weak self] _ in
+                    // Gli effetti delle finestre (Core Animation) finiscono di colpo: al risveglio tutto è fermo
+                    self?.annullaEffetti()
+                    self?.sospendiLavoriATempo()
+                }
                 .store(in: &abbonamenti)
         }
         for nome in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {

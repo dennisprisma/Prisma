@@ -14,9 +14,21 @@ enum Tipo {
     /// (Tipo.Documento, Tipo.Report, Tipo.Carta) e restano impaginati per la carta.
     nonisolated(unsafe) static var fattore: CGFloat = 1
 
-    /// SF alla dimensione data, moltiplicata per la Dimensione del testo.
+    /// SF alla dimensione data sulla scala leggibile (`Tema.Testo.leggibile`), moltiplicata per la Dimensione del testo.
     static func sistema(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
+        Font.system(size: Tema.Testo.leggibile(dimensione) * fattore, weight: peso)
+    }
+
+    /// Eccezioni alla scala leggibile (badge, tessere data, dock, assi, barra superiore, scrivania):
+    /// la dimensione del tema, moltiplicata solo per la Dimensione del testo.
+    static func fisso(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
         Font.system(size: dimensione * fattore, weight: peso)
+    }
+
+    /// Come `fisso`, arrotondato.
+    static func fissoArrotondato(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
+        let disegno: Font.Design = .rounded
+        return Font.system(size: dimensione * fattore, weight: peso, design: disegno)
     }
 
     /// Come `sistema`: nel tema c'è un solo carattere.
@@ -27,29 +39,29 @@ enum Tipo {
     /// SF arrotondato (`--font-r` del tema): numeri grandi, avatar, date.
     static func arrotondato(_ dimensione: CGFloat, _ peso: Font.Weight = .regular) -> Font {
         let disegno: Font.Design = .rounded
-        return Font.system(size: dimensione * fattore, weight: peso, design: disegno)
+        return Font.system(size: Tema.Testo.leggibile(dimensione) * fattore, weight: peso, design: disegno)
     }
 
     // Barra superiore
-    static let barraLogo = sistema(25, .bold)
-    static let barraMarchio = sistema(13, .bold)
-    static let barraOS = sistema(10)
-    static let barraApp = sistema(13, .medium)
-    static let barraOra = sistema(13, .medium).monospacedDigit()
-    static let barraTasto = sistema(11, .medium)
-    static let barraAvatar = arrotondato(10, .bold)
-    static let badgePiccolo = sistema(9.5, .bold)
+    static let barraLogo = fisso(25, .bold)
+    static let barraMarchio = fisso(13, .bold)
+    static let barraOS = fisso(10)
+    static let barraApp = fisso(13, .medium)
+    static let barraOra = fisso(13, .medium).monospacedDigit()
+    static let barraTasto = fisso(11, .medium)
+    static let barraAvatar = fissoArrotondato(10, .bold)
+    static let badgePiccolo = fisso(9.5, .bold)
 
     // Scrivania
-    static let scrivaniaKicker = sistema(11, .medium)
-    static let scrivaniaTitolo = sistema(30, .bold)
-    static let scrivaniaSottotitolo = sistema(13)
-    static let scrivaniaSezione = sistema(14, .bold)
-    static let scrivaniaPiede = sistema(11)
-    static let pulsanteVetro = sistema(12.5, .medium)
-    static let lanciatoreNome = contenuto(12, .semibold)
-    static let lanciatoreSottotitolo = contenuto(10.5)
-    static let badgeGrande = contenuto(10, .bold)
+    static let scrivaniaKicker = fisso(11, .medium)
+    static let scrivaniaTitolo = fisso(30, .bold)
+    static let scrivaniaSottotitolo = fisso(13)
+    static let scrivaniaSezione = fisso(14, .bold)
+    static let scrivaniaPiede = fisso(11)
+    static let pulsanteVetro = fisso(12.5, .medium)
+    static let lanciatoreNome = fisso(12, .semibold)
+    static let lanciatoreSottotitolo = fisso(10.5)
+    static let badgeGrande = fisso(10, .bold)
 
     // Colonna del cliente
     static let colonnaEtichetta = contenuto(10.5, .medium)
@@ -58,11 +70,11 @@ enum Tipo {
     static let colonnaScheda = sistema(11, .medium)
     static let colonnaIntestazione = sistema(10.5, .semibold)
     static let colonnaCollegamento = sistema(11, .semibold)
-    static let rigaSecondario = contenuto(11)
-    static let rigaNome = contenuto(13, .semibold)
-    static let rigaFreccia = contenuto(17)
+    static let rigaSecondario = fisso(11)
+    static let rigaNome = fisso(13, .semibold)
+    static let rigaFreccia = fisso(17)
     static let dataGiorno = arrotondato(19, .semibold)
-    static let dataMese = contenuto(9.5, .bold)
+    static let dataMese = fisso(9.5, .bold)
     static let eveTitolo = contenuto(13, .semibold)
     static let eveTesto = contenuto(11)
     static let avatar = arrotondato(13, .semibold)
@@ -105,32 +117,32 @@ enum Tipo {
     static let tabellaTesta = contenuto(11.5, .semibold)
     static let tabellaCella = contenuto(12)
     static let tabellaCellaForte = contenuto(13, .semibold)
-    static let assi = sistema(10)
+    static let assi = fisso(10)
     static let numeroTabella = contenuto(12).monospacedDigit()
 
     // Widget
-    static let widgetTitolo = sistema(13, .semibold)
-    static let widgetGiorno = contenuto(30, .bold)
-    static let widgetGiornoNome = contenuto(13, .medium)
-    static let widgetTesto = contenuto(12)
-    static let widgetNumero = contenuto(22, .medium)
-    static let piastrellaGiorno = contenuto(42)
-    static let piastrellaMese = contenuto(11)
-    static let kpiValoreWidget = contenuto(16, .semibold)
-    static let kpiEtichettaWidget = contenuto(11)
-    static let portafoglioTotale = contenuto(26, .bold)
-    static let widgetMetricaValore = contenuto(17)
-    static let widgetMetricaEtichetta = contenuto(10)
-    static let calendarioMese = contenuto(13, .bold)
-    static let calendarioGiornoSettimana = contenuto(17, .medium)
-    static let calendarioNumero = sistema(70, .light)
-    static let calendarioAnno = contenuto(12)
-    static let calendarioOra = contenuto(13, .bold)
-    static let clienteNome = contenuto(21, .bold)
-    static let cartoncinoValore = contenuto(19, .medium)
-    static let borsaTotale = contenuto(30, .light)
-    static let borsaRiga = contenuto(13, .medium)
-    static let borsaPillola = contenuto(12, .bold)
+    static let widgetTitolo = fisso(13, .semibold)
+    static let widgetGiorno = fisso(30, .bold)
+    static let widgetGiornoNome = fisso(13, .medium)
+    static let widgetTesto = fisso(12)
+    static let widgetNumero = fisso(22, .medium)
+    static let piastrellaGiorno = fisso(42)
+    static let piastrellaMese = fisso(11)
+    static let kpiValoreWidget = fisso(16, .semibold)
+    static let kpiEtichettaWidget = fisso(11)
+    static let portafoglioTotale = fisso(26, .bold)
+    static let widgetMetricaValore = fisso(17)
+    static let widgetMetricaEtichetta = fisso(10)
+    static let calendarioMese = fisso(13, .bold)
+    static let calendarioGiornoSettimana = fisso(17, .medium)
+    static let calendarioNumero = fisso(70, .light)
+    static let calendarioAnno = fisso(12)
+    static let calendarioOra = fisso(13, .bold)
+    static let clienteNome = fisso(21, .bold)
+    static let cartoncinoValore = fisso(19, .medium)
+    static let borsaTotale = fisso(30, .light)
+    static let borsaRiga = fisso(13, .medium)
+    static let borsaPillola = fisso(12, .bold)
     /// Ex scrittura a mano delle note: nel tema anche le note sono in SF.
     static let manoTitolo = sistema(19, .bold)
     static let mano = sistema(14)
@@ -145,9 +157,9 @@ enum Tipo {
     static let agendaOcchiello = contenuto(10.5, .semibold)
     static let agendaTitolo = contenuto(21, .medium)
     static let agendaPeriodo = contenuto(12)
-    static let targhettaMese = contenuto(9.5, .bold)
+    static let targhettaMese = fisso(9.5, .bold)
     static let targhettaGiorno = arrotondato(24, .semibold)
-    static let targhettaSettimana = contenuto(9)
+    static let targhettaSettimana = fisso(9)
     static let giornoSettimana = contenuto(11)
     static let giornoNumero = contenuto(22)
     static let giornoNota = contenuto(10)
@@ -247,11 +259,11 @@ enum Tipo {
     static let verdetto = contenuto(14)
 
     // Dock
-    static let dockSuggerimento = sistema(12, .semibold)
-    static let dockEtichetta = sistema(10, .medium)
+    static let dockSuggerimento = fisso(12, .semibold)
+    static let dockEtichetta = fisso(10, .medium)
 
     // Finestre
-    static let finestraTitolo = sistema(13, .semibold)
+    static let finestraTitolo = fisso(13, .semibold)
     static let finestraContesto = sistema(11)
     static let finestraAffianca = sistema(15)
     /// I simboli ×, −, + sui semafori (7 pt nel tema, su cerchi da 13).

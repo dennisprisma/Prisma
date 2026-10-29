@@ -211,7 +211,7 @@ struct ModuloPosizione: View {
         } piede: {
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(nuova ? "Aggiungi" : "Salva") {
                 var p = bozza
@@ -432,10 +432,8 @@ struct ModuloPosizione: View {
                         spiegazione: "Con le date vere il rendimento dei versamenti del cliente è esatto. Se ne inserisci uno, inserisci tutti i versamenti, anche il primo: Prisma userà solo questi. Con i soli riscatti parziali, i versamenti si ricostruiscono da decorrenza e premi.")
             ForEach(elenco.indices, id: \.self) { i in rigaMovimento(i) }
             HStack(spacing: m.spazioRiga) {
-                Button("＋ Movimento") { aggiungiMovimento() }
-                    .buttonStyle(StileSemplice())
-                    .font(Tema.Testo.Inserimento.azione)
-                    .foregroundColor(Tema.Colore.Inserimento.azione)
+                Button { aggiungiMovimento() } label: { Label("Movimento", systemImage: "plus") }
+                    .buttonStyle(StileCollegamento())
                 Spacer(minLength: m.spazioRiga)
                 if !elenco.isEmpty {
                     Text(riepilogoMovimenti(elenco))
@@ -565,10 +563,8 @@ struct ModuloPosizione: View {
                         }
                     }
                 }
-                Button("＋ Anno con penale") { aggiungiPenale() }
-                    .buttonStyle(StileSemplice())
-                    .font(Tema.Testo.Inserimento.azione)
-                    .foregroundColor(Tema.Colore.Inserimento.azione)
+                Button { aggiungiPenale() } label: { Label("Anno con penale", systemImage: "plus") }
+                    .buttonStyle(StileCollegamento())
                 Text(penali.isEmpty ? "Nessuna penale." : "Dal \(penali.count + 2)° anno nessuna penale.")
                     .font(Tema.Testo.Inserimento.nota)
                     .foregroundColor(Tema.Colore.Inserimento.nota)

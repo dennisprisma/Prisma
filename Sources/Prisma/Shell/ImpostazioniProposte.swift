@@ -133,7 +133,7 @@ private struct ModuloVoceDocumento: View {
                     stato.dati.impostazioni.consegna.voci.removeAll { $0.id == voceId }
                     chiudi()
                 } label: {
-                    Text("Elimina").foregroundColor(K.elimina)
+                    Label("Elimina", systemImage: "trash").foregroundColor(K.elimina)
                 }
                 .buttonStyle(StileVetro(margine: M.marginePulsante))
                 Spacer()

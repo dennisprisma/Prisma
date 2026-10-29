@@ -44,7 +44,7 @@ struct ModuloImportaClienti: View {
                 .foregroundColor(Colori.Rubrica.secondario)
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(scelti.count == 1 ? "Importa 1 cliente" : "Importa \(scelti.count) clienti") {
                 stato.importaClienti(scelti)

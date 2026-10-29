@@ -37,7 +37,7 @@ struct AppProdotti: View {
                 } else {
                     VStack(spacing: 8) {
                         Text("Nessuna scheda con questi filtri.").font(Tipo.strumentoTitolo).foregroundColor(Colori.Strumenti.titolo)
-                        Button("＋ Nuova scheda") { nuova() }.buttonStyle(StileBlu())
+                        Button { nuova() } label: { Label("Nuova scheda", systemImage: "plus") }.buttonStyle(StileBlu())
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -83,11 +83,17 @@ struct AppProdotti: View {
                         .padding(.vertical, 6)
                 }
                 HStack(spacing: 8) {
-                    Button(p.condizioni == nil ? "Aggiungi le condizioni…" : "Modifica le condizioni…") { moduloCondizioni = p }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    Button { moduloCondizioni = p } label: {
+                        Label(p.condizioni == nil ? "Aggiungi le condizioni…" : "Modifica le condizioni…",
+                              systemImage: p.condizioni == nil ? "plus" : "pencil")
+                    }
+                    .buttonStyle(StileVetro())
                     if p.condizioni != nil {
-                        Button("Valuta per \(stato.clienteAttivo?.nome ?? "il cliente")…") { stato.valutaProdotto(p.id) }
-                            .buttonStyle(StileBlu())
+                        // Il blu della scheda è «Crea una proposta»: la valutazione va nel vetro d'accento
+                        Button { stato.valutaProdotto(p.id) } label: {
+                            Label("Valuta per \(stato.clienteAttivo?.nome ?? "il cliente")…", systemImage: "chart.line.uptrend.xyaxis")
+                        }
+                        .buttonStyle(StileVetro(accento: true))
                     }
                 }
                 .padding(.top, 8)
@@ -162,9 +168,7 @@ struct AppProdotti: View {
         VStack(spacing: 0) {
             HStack(spacing: Misure.ColonneStrumento.spazioTestata) {
                 CampoRicerca(testo: $ricerca, segnaposto: "Cerca prodotto o compagnia")
-                Button("＋") { nuova() }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
-                    .help("Nuova scheda prodotto")
+                PulsanteIcona(simbolo: "plus", aiuto: "Nuova scheda prodotto") { nuova() }
             }
             .testataColonna()
             ScrollView {
@@ -258,10 +262,12 @@ struct AppProdotti: View {
                         .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                     if p.daVerificare { Pillola(testo: "Da rileggere sul KID", tono: .attenzione) }
                 }
-                Button("Segna verificata oggi") {
+                Button {
                     var x = p
                     x.verificatoIl = Calendar.current.startOfDay(for: Date())
                     stato.salvaProdotto(x)
+                } label: {
+                    Label("Segna verificata oggi", systemImage: "checkmark")
                 }
                 .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
             }
@@ -360,7 +366,7 @@ struct AppProdotti: View {
                                     Text(u.stato == .proposta ? "Proposta · \((u.esito ?? .bozza).nome.lowercased())" : "In essere")
                                         .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
                                     Spacer()
-                                    Text("Apri ›").font(Tipo.kpiNota).foregroundColor(Colori.Colonna.collegamento)
+                                    (Text("Apri ") + Text(Image(systemName: "chevron.right"))).font(Tipo.kpiNota).foregroundColor(Colori.Colonna.collegamento)
                                 }
                                 .foregroundColor(Colori.Analisi.tabellaTesto)
                                 .padding(.vertical, 7)
@@ -371,19 +377,19 @@ struct AppProdotti: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    Button("Crea una proposta per \(cliente)") { stato.proponi(p) }
+                    Button { stato.proponi(p) } label: { Label("Crea una proposta per \(cliente)", systemImage: "plus") }
                         .buttonStyle(StileBlu())
                     if p.area.proiettabile {
-                        Button("Simula") { stato.simula(p) }
-                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                        Button { stato.simula(p) } label: { Label("Simula", systemImage: "slider.horizontal.3") }
+                            .buttonStyle(StileVetro())
                     }
-                    Button("Modifica") { modulo = p }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                    Button { modulo = p } label: { Label("Modifica", systemImage: "pencil") }
+                        .buttonStyle(StileVetro())
                     Spacer()
                     Button { confermaEliminazione = true } label: {
-                        Text("Elimina la scheda…").foregroundColor(Colori.Analisi.erroreTesto)
+                        Label("Elimina la scheda…", systemImage: "trash").foregroundColor(Colori.Analisi.erroreTesto)
                     }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                    .buttonStyle(StileVetro())
                 }
                 NotaMetodo(testo: "I costi della scheda entrano nelle proposte, nelle simulazioni e nei confronti così come sono scritti: tienili allineati al KID in vigore. L'ISC di una forma pensionistica non è una commissione di gestione: inserisci i costi che il modello applica davvero.")
             }
@@ -461,7 +467,7 @@ struct ModuloProdotto: View {
         } piede: {
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
             Button(nuovo ? "Aggiungi" : "Salva") {
                 var p = bozza

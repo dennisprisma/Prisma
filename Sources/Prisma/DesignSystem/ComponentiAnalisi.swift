@@ -5,7 +5,7 @@ import SwiftUI
 extension Tema.Misura.Componenti {
     /// Voce della barra laterale (.side-item): margini e altezza minima.
     static let voceLaterale = EdgeInsets(top: 7, leading: 8, bottom: 7, trailing: 8)
-    static let voceLateraleMinima: CGFloat = 30
+    static let voceLateraleMinima: CGFloat = 34
     static let quadratinoVoce: CGFloat = 10
     /// Intestazione di sezione della barra laterale (.side-sec).
     static let sezioneLaterale = EdgeInsets(top: 12, leading: 8, bottom: 4, trailing: 8)
@@ -13,8 +13,8 @@ extension Tema.Misura.Componenti {
     static let spazioTessere: CGFloat = 10
     static let tessera = EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
     /// Chip neutro (pozzetto) e contatore delle voci.
-    static let chipNeutro: CGFloat = 18
-    static let margineChipNeutro: CGFloat = 7
+    static let chipNeutro: CGFloat = 22
+    static let margineChipNeutro: CGFloat = 8
     static let margineContatore: CGFloat = 6
     /// Barra divisa per canale (.split): altezza, stacco tra i due colori, larghezza minima di un tratto.
     static let barraCanali: CGFloat = 10
@@ -43,8 +43,8 @@ extension Tema.Testo.Componenti {
     static let spaziaturaValore = Tema.Testo.spaziatura(-0.01, 18)
     /// Titolo dei pannelli di analisi.
     static let titoloPannello = Tema.Testo.sf(15, .semibold)
-    /// Etichette degli assi dei grafici.
-    static let asse = Tema.Testo.sf(10.5).monospacedDigit()
+    /// Etichette degli assi dei grafici: fuori dalla scala leggibile (`distanzaEtichette` è tarata su questa misura).
+    static let asse = Tema.Testo.sfFisso(10.5).monospacedDigit()
 }
 
 // MARK: - Controlli dell'elenco laterale
@@ -183,10 +183,9 @@ struct KPI<Nota: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(titolo)
-                .font(Tema.Testo.secondario)
-                .foregroundColor(Tema.Colore.inchiostroSecondario)
-                .lineLimit(2)
+            // La «i» accanto alle parole tecniche (SRI, RIY, …) la mette da sé l'etichetta
+            EtichettaConTermine(testo: titolo, font: Tema.Testo.secondario, colore: Tema.Colore.inchiostroSecondario,
+                                righe: 2)
                 .fixedSize(horizontal: false, vertical: true)
             Text(valore)
                 .font(Tema.Testo.valoreTessera)

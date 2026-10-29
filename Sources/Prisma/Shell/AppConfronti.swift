@@ -106,11 +106,15 @@ struct AppConfronti: View {
         }
         if let a, let b {
             EtichettaRail(testo: "Prospetto")
-            Button("Prospetto in PDF") { stato.apriProspetto(.confronto(a.voce, b.voce)) }
-                .buttonStyle(StileBlu())
+            Button { stato.apriProspetto(.confronto(a.voce, b.voce)) } label: {
+                Label("Prospetto in PDF", systemImage: "doc.text")
+            }
+            .buttonStyle(StileBlu())
             if case .posizione(let ia) = a.voce, case .posizione(let ib) = b.voce {
-                Button("Restare o cambiare…") { stato.apriProspetto(.sostituzione(ia, ib, report: false)) }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                Button { stato.apriProspetto(.sostituzione(ia, ib, report: false)) } label: {
+                    Label("Restare o cambiare…", systemImage: "arrow.triangle.branch")
+                }
+                .buttonStyle(StileVetro())
             }
             Text("Ipotesi, esiti e differenze anno per anno, impaginati su carta.")
                 .font(Tipo.kpiNota)
@@ -139,7 +143,7 @@ struct AppConfronti: View {
                     stato.portafoglio = false
                     stato.apri(.posizioni)
                 }
-                    .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                    .buttonStyle(StileVetro())
                 Button("Apri il simulatore") { stato.apri(.simulazioni) }
                     .buttonStyle(StileBlu())
             }

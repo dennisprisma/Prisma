@@ -193,9 +193,7 @@ struct PannelloAdeguatezza: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     Button("Conferma") { stato.modificaScheda(posizione) { $0.collegamento = c } }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.kpiNota)
-                        .foregroundColor(K.collegamento)
+                        .buttonStyle(StileCollegamento())
                 }
             }
         }
@@ -255,9 +253,7 @@ struct PannelloAdeguatezza: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     Button("Usa") { stato.modificaScheda(posizione) { $0.posizioneSostituitaId = s.id } }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.kpiNota)
-                        .foregroundColor(K.collegamento)
+                        .buttonStyle(StileCollegamento())
                 }
             }
         }
@@ -331,13 +327,16 @@ struct PannelloAdeguatezza: View {
             ForEach(esito.documenti) { d in
                 voceDocumento(d)
             }
-            Button("Modifica l'elenco in Impostazioni ↗") {
+            Button {
                 stato.schedaImpostazioni = .proposte
                 stato.apri(.impostazioni)
+            } label: {
+                HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                    Text("Modifica l'elenco in Impostazioni")
+                    Image(systemName: "arrow.up.right")
+                }
             }
-            .buttonStyle(StileSemplice())
-            .font(Tipo.kpiNota)
-            .foregroundColor(K.collegamento)
+            .buttonStyle(StileCollegamento())
         }
     }
 
@@ -390,23 +389,29 @@ struct PannelloAdeguatezza: View {
     private var pulsantiPDF: some View {
         VStack(alignment: .leading, spacing: M.spazioPulsanti) {
             HStack(spacing: M.spazioPulsanti) {
-                Button("▶ Presenta") {
+                Button {
                     if let d = stato.documentoAdeguatezza(posizione) { stato.presenta(d) }
+                } label: {
+                    Label("Presenta", systemImage: "play.fill")
                 }
                 .buttonStyle(StileVetro(margine: M.marginePulsante))
                 .fixedSize()
                 .help("Mostra la scheda a tutto schermo, una pagina alla volta, in modalità cliente")
-                Button("Salva PDF…") {
+                Button {
                     if let d = stato.documentoAdeguatezza(posizione), let dati = pdf(d) {
                         daSalvare = PDFDaSalvare(dati: dati, nome: StampaCarta.nomeFile(d), cliente: stato.cliente(posizione.clienteId))
                     }
+                } label: {
+                    Label("Salva PDF…", systemImage: "square.and.arrow.down")
                 }
                 .buttonStyle(StileVetro(margine: M.marginePulsante))
                 .fixedSize()
-                Button("Stampa…") {
+                Button {
                     if let d = stato.documentoAdeguatezza(posizione), let dati = pdf(d) {
                         StampaCarta.stampa(dati, formato: d.formato)
                     }
+                } label: {
+                    Label("Stampa…", systemImage: "printer")
                 }
                 .buttonStyle(StileVetro(margine: M.marginePulsante))
                 .fixedSize()
@@ -414,21 +419,26 @@ struct PannelloAdeguatezza: View {
             // I Documenti sono quelli del cliente attivo: si archivia solo la sua scheda
             if posizione.clienteId == stato.clienteAttivoId {
                 HStack(spacing: M.spazioPulsanti) {
-                    Button("Archivia nei Documenti") {
+                    Button {
                         if let d = stato.documentoAdeguatezza(posizione), let dati = pdf(d) {
                             archiviato = stato.archiviaProspetto(dati, documento: d)
                         }
+                    } label: {
+                        Label("Archivia nei Documenti", systemImage: "archivebox")
                     }
                     .buttonStyle(StileVetro(margine: M.marginePulsante))
                     .fixedSize()
                     if let id = archiviato {
-                        Button("Archiviata in Documenti ↗") {
+                        Button {
                             stato.documentoSelezionato = id
                             stato.apri(.documenti)
+                        } label: {
+                            HStack(spacing: Tema.Misura.Componenti.spazioSimboloPulsante) {
+                                Text("Archiviata in Documenti")
+                                Image(systemName: "arrow.up.right")
+                            }
                         }
-                        .buttonStyle(StileSemplice())
-                        .font(Tipo.kpiNota)
-                        .foregroundColor(K.collegamento)
+                        .buttonStyle(StileCollegamento())
                     }
                 }
             }
@@ -444,19 +454,20 @@ struct PannelloAdeguatezza: View {
                     .foregroundColor(K.testo)
                 Spacer(minLength: 0)
                 Button("Togli la firma") { stato.togliFirmaScheda(posizione) }
-                    .buttonStyle(StileSemplice())
-                    .font(Tipo.kpiNota)
-                    .foregroundColor(K.collegamento)
+                    .buttonStyle(StileCollegamento())
             }
         } else {
-            Button("Segna come firmata…") {
+            // Il blu della finestra è nella barra della posizione: qui il vetro d'accento
+            Button {
                 if esito.pronta {
                     stato.firmaScheda(posizione)
                 } else {
                     confermaFirma = true
                 }
+            } label: {
+                Label("Segna come firmata…", systemImage: "signature")
             }
-            .buttonStyle(StileBlu())
+            .buttonStyle(StileVetro(accento: true))
             .fixedSize()
             .help("Registra in Prisma che il cliente ha firmato la scheda: i colori di adesso restano registrati")
         }

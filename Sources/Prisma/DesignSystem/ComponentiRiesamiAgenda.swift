@@ -120,11 +120,14 @@ struct StrisciaRiesami: View {
     }
 
     private var collegamento: some View {
-        Button("Nel Portafoglio ›", action: apriPortafoglio)
-            .buttonStyle(StileSemplice())
-            .font(Tipo.riesameCompatto)
-            .foregroundColor(Colori.Colonna.collegamento)
-            .fixedSize()
+        Button(action: apriPortafoglio) {
+            HStack(spacing: Misure.RiesamiAgenda.spazioFreccia) {
+                Text("Nel Portafoglio")
+                Image(systemName: "chevron.right")
+            }
+        }
+        .buttonStyle(StileCollegamento())
+        .fixedSize()
             .help("I riesami di tutti i clienti nel Portafoglio di Posizioni")
     }
 
@@ -249,8 +252,11 @@ struct SchedaRiesameAgenda: View {
                     .buttonStyle(StileVetro(margine: m.pulsante))
                     .help("Apri il prospetto del riesame di \(voce.nome)")
                 Spacer(minLength: 0)
-                Button("Pianifica", action: pianifica)
-                    .buttonStyle(StileBlu())
+                // L'azione consigliata della scheda, in vetro con l'accento: il blu dell'Agenda è «Appuntamento»
+                Button(action: pianifica) {
+                    Label("Pianifica", systemImage: "calendar.badge.plus")
+                }
+                .buttonStyle(StileVetro(margine: m.pulsante, accento: true))
                     .disabled(solaLettura)
                     .help("Cerca il primo spazio libero di un'ora negli orari di lavoro, senza sovrapposizioni, con l'ordine del giorno nelle note")
             }

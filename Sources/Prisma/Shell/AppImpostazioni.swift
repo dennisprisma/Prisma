@@ -120,8 +120,18 @@ struct AppImpostazioni: View {
         }
     }
 
-    /// I pulsanti di vetro nelle righe (come «Crea backup»).
+    /// I pulsanti di vetro nelle righe (come «Prova»).
     private var margineVetro: EdgeInsets { EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10) }
+
+    /// I segmenti delle righe: interi se c'è posto, altrimenti nella versione compatta (mai voci tagliate).
+    private func segmenti<Valore: Hashable>(_ opzioni: [(Valore, String)], _ selezione: Binding<Valore>) -> some View {
+        ViewThatFits(in: .horizontal) {
+            ControlloSegmenti(opzioni: opzioni, selezione: selezione)
+                .fixedSize()
+            ControlloSegmenti(opzioni: opzioni, selezione: selezione, compatto: true)
+                .fixedSize()
+        }
+    }
 
     // MARK: Esperienza
 
@@ -147,21 +157,15 @@ struct AppImpostazioni: View {
     private var gruppoAspetto: some View {
         GruppoImpostazioni(titolo: "Aspetto") {
             RigaImpostazione(titolo: "Aspetto", sottotitolo: "Automatico segue il Mac, di giorno e di sera") {
-                ControlloSegmenti(opzioni: AspettoInterfaccia.allCases.map { ($0, $0.nome) },
-                                  selezione: $stato.dati.impostazioni.aspetto)
-                    .fixedSize()
+                segmenti(AspettoInterfaccia.allCases.map { ($0, $0.nome) }, $stato.dati.impostazioni.aspetto)
             }
             RigaImpostazione(titolo: "Sfondo", sottotitolo: "L'acqua della scrivania con le gocce al rallentatore; si ferma da sola quando non si vede") {
-                ControlloSegmenti(opzioni: [(true, "Animato"), (false, "Fermo")],
-                                  selezione: $stato.dati.impostazioni.sfondoAnimato)
-                    .fixedSize()
+                segmenti([(true, "Animato"), (false, "Fermo")], $stato.dati.impostazioni.sfondoAnimato)
             }
             RigaImpostazione(titolo: "Pioggia", sottotitolo: stato.dati.impostazioni.sfondoAnimato
                                 ? "Quante gocce cadono sull'acqua"
                                 : "Con lo sfondo fermo non piove", ultima: true) {
-                ControlloSegmenti(opzioni: IntensitaPioggia.allCases.map { ($0, $0.nome) },
-                                  selezione: $stato.dati.impostazioni.pioggia)
-                    .fixedSize()
+                segmenti(IntensitaPioggia.allCases.map { ($0, $0.nome) }, $stato.dati.impostazioni.pioggia)
                     .disabled(!stato.dati.impostazioni.sfondoAnimato)
                     .opacity(stato.dati.impostazioni.sfondoAnimato ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
             }
@@ -190,14 +194,10 @@ struct AppImpostazioni: View {
                 }
             }
             RigaImpostazione(titolo: "Margine tra gli appuntamenti", sottotitolo: "Tempo libero lasciato prima e dopo ogni appuntamento") {
-                ControlloSegmenti(opzioni: AppImpostazioni.opzioniMargini,
-                                  selezione: $stato.dati.impostazioni.orari.margineMinuti)
-                    .fixedSize()
+                segmenti(AppImpostazioni.opzioniMargini, $stato.dati.impostazioni.orari.margineMinuti)
             }
             RigaImpostazione(titolo: "Riesami al giorno", sottotitolo: "Oltre, il riesame va al giorno dopo: ognuno chiede la sua preparazione") {
-                ControlloSegmenti(opzioni: AppImpostazioni.opzioniRiesami,
-                                  selezione: $stato.dati.impostazioni.orari.riesamiAlGiorno)
-                    .fixedSize()
+                segmenti(AppImpostazioni.opzioniRiesami, $stato.dati.impostazioni.orari.riesamiAlGiorno)
             }
             RigaImpostazione(titolo: "Festività nazionali",
                              sottotitolo: "Capodanno, Epifania, Pasqua e Pasquetta, 25 aprile, 1° maggio, 2 giugno, Ferragosto, 4 ottobre, Ognissanti, Immacolata, Natale e Santo Stefano",
@@ -364,7 +364,7 @@ struct AppImpostazioni: View {
                                 ? "Non consentiti da macOS: attivali in Impostazioni di Sistema › Notifiche › Prisma" : nil) {
                 HStack(spacing: 8) {
                     if negati {
-                        Button("Apri Impostazioni di Sistema") { PromemoriaMac.apriImpostazioniDiSistema() }
+                        Button { PromemoriaMac.apriImpostazioniDiSistema() } label: { Label("Apri Impostazioni di Sistema", systemImage: "gearshape") }
                             .buttonStyle(StileVetro(margine: margineVetro))
                     }
                     Toggle("", isOn: Binding(get: { stato.dati.impostazioni.promemoria.attivi },
@@ -411,7 +411,7 @@ struct AppImpostazioni: View {
                         .labelsHidden()
                 }
                 RigaImpostazione(titolo: "Prova", sottotitolo: "Manda subito un promemoria per vedere come arriva", ultima: true) {
-                    Button("Prova") { stato.provaPromemoria() }
+                    Button { stato.provaPromemoria() } label: { Label("Prova", systemImage: "bell") }
                         .buttonStyle(StileVetro(margine: margineVetro))
                         .disabled(negati)
                 }
@@ -433,7 +433,7 @@ struct AppImpostazioni: View {
                         .campoTesto()
                         .frame(width: 110)
                         .onSubmit { stato.verificaMotoreLocale() }
-                    Button("Verifica") { stato.verificaMotoreLocale() }
+                    Button { stato.verificaMotoreLocale() } label: { Label("Verifica", systemImage: "arrow.clockwise") }
                         .buttonStyle(StileVetro(margine: margineVetro))
                 }
             }
@@ -459,7 +459,7 @@ struct AppImpostazioni: View {
                     MenuTendina(selezione: $stato.dati.impostazioni.eve.voce,
                                 opzioni: [(String?.none, "Automatica")] + voci.map { (String?.some($0.identifier), VoceEve.nome($0)) },
                                 larghezza: 190)
-                    Button("Ascolta") { stato.provaVoce() }
+                    Button { stato.provaVoce() } label: { Label("Ascolta", systemImage: "speaker.wave.2") }
                         .buttonStyle(StileVetro(margine: margineVetro))
                 }
             }
@@ -484,17 +484,17 @@ struct AppImpostazioni: View {
             }
             RigaImpostazione(titolo: "Prova il microfono",
                              sottotitolo: stato.esitoProvaMicrofono ?? "Tre secondi di ascolto senza riconoscimento: dice se il microfono sente") {
-                Button("Prova") { stato.provaMicrofono() }
+                Button { stato.provaMicrofono() } label: { Label("Prova", systemImage: "mic") }
                     .buttonStyle(StileVetro(margine: margineVetro))
                     .disabled(stato.esitoProvaMicrofono == "In prova… parla per tre secondi")
             }
             RigaImpostazione(titolo: "Prova il riconoscimento",
                              sottotitolo: stato.esitoProvaRiconoscimento ?? "Senza microfono: Eve dice una frase e la fa capire a ogni riconoscimento (nuovo, dettatura di sistema, classico). Poi «Copia» e mandami il risultato") {
                 HStack(spacing: 8) {
-                    Button("Prova") { stato.provaRiconoscimento() }
+                    Button { stato.provaRiconoscimento() } label: { Label("Prova", systemImage: "waveform") }
                         .buttonStyle(StileVetro(margine: margineVetro))
                         .disabled(stato.esitoProvaRiconoscimento == "In prova…")
-                    Button("Copia") { stato.copiaDiagnosticaVoce() }
+                    Button { stato.copiaDiagnosticaVoce() } label: { Label("Copia", systemImage: "doc.on.doc") }
                         .buttonStyle(StileVetro(margine: margineVetro))
                 }
             }
@@ -553,8 +553,8 @@ struct AppImpostazioni: View {
                     MenuTendina(selezione: $stato.dati.impostazioni.dimensioneTesto,
                                 opzioni: DimensioneTesto.allCases.map { ($0, $0.nome) }, larghezza: 140)
                     if stato.dati.impostazioni.dimensioneTesto.fattore != Tipo.fattore {
-                        Button("Riapri ora") { stato.riapri() }
-                            .buttonStyle(StileVetro(margine: EdgeInsets(top: 3, leading: 9, bottom: 3, trailing: 9)))
+                        Button { stato.riapri() } label: { Label("Riapri ora", systemImage: "arrow.clockwise") }
+                            .buttonStyle(StileVetro(taglia: .compatta))
                     }
                 }
             }
@@ -562,6 +562,9 @@ struct AppImpostazioni: View {
                 Toggle("", isOn: Binding(get: { !stato.dati.impostazioni.guidaNascosta }, set: { stato.dati.impostazioni.guidaNascosta = !$0 }))
                     .toggleStyle(StileInterruttore())
                     .labelsHidden()
+            }
+            RigaImpostazione(titolo: "Come funziona Prisma", sottotitolo: "L'introduzione in 5 pagine e le parole della finanza") {
+                ValoreRiga(testo: "Apri") { stato.apriGuida(.introduzione(0)) }
             }
             RigaImpostazione(titolo: "Schermo intero", sottotitolo: "Dedica tutto lo schermo a Prisma", ultima: true) {
                 ValoreRiga(testo: stato.schermoIntero ? "Attivo" : "Attiva") { stato.alternaSchermoIntero() }
@@ -579,8 +582,10 @@ struct AppImpostazioni: View {
                     if stato.backupInCorso {
                         ProgressView().controlSize(.small)
                     }
-                    Button("Crea backup") { stato.creaBackup() }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)))
+                    Button { stato.creaBackup() } label: { Label("Crea backup", systemImage: "externaldrive") }
+                        // L'azione consigliata dell'archivio, in vetro dell'accento
+                        .buttonStyle(StileVetro(accento: true))
+                        .fixedSize()
                         .disabled(stato.backupInCorso)
                 }
                 RigaImpostazione(titolo: "Backup automatico settimanale", sottotitolo: testoAutomatico, avvertenza: avvertenzaBackup) {
@@ -652,8 +657,8 @@ struct AppImpostazioni: View {
                         .font(Tipo.informazioniTesto)
                         .foregroundColor(Colori.Analisi.erroreTesto)
                         .fixedSize(horizontal: false, vertical: true)
-                    Button("Riprendi i backup automatici") { stato.riprendiBackupAutomatici() }
-                        .buttonStyle(StileVetro(margine: EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)))
+                    Button { stato.riprendiBackupAutomatici() } label: { Label("Riprendi i backup automatici", systemImage: "arrow.clockwise") }
+                        .buttonStyle(StileVetro(taglia: .compatta))
                 }
                 .padding(.horizontal, 4)
             }
@@ -716,7 +721,7 @@ struct AppImpostazioni: View {
             HStack(spacing: Tema.Misura.Componenti.spazioTendina) {
                 Spacer(minLength: 0)
                 Button("Annulla") { stato.chiediPasswordBackup = false }
-                    .buttonStyle(StileVetro(margine: margineVetro))
+                    .buttonStyle(StileVetro())
                 Button("Salva") { salvaPassword() }
                     .buttonStyle(StileBlu())
             }

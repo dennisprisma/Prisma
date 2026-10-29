@@ -54,9 +54,9 @@ struct ModuloSalvaPDF: View {
         } piede: {
             Spacer()
             Button("Annulla") { chiudi() }
-                .buttonStyle(StileVetro(margine: EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)))
+                .buttonStyle(StileVetro())
                 .keyboardShortcut(.cancelAction)
-            Button("Salva…") {
+            Button {
                 let dati = proteggi ? StampaCarta.protetto(pdf.dati, password: password) : pdf.dati
                 chiudi()
                 guard let dati else {
@@ -65,6 +65,8 @@ struct ModuloSalvaPDF: View {
                 }
                 // Il pannello di salvataggio dopo la chiusura del foglio
                 DispatchQueue.main.async { StampaCarta.salva(dati, nome: pdf.nome) }
+            } label: {
+                Label("Salva…", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(StileBlu())
             .disabled(!valida)

@@ -61,10 +61,11 @@ extension Misure {
 
 extension Tipo {
     static let spaziTitolo = Tema.Testo.sezione
-    static let spaziSottotitolo = Tema.Testo.secondario
-    static let spaziSezione = Tema.Testo.sf(12, .semibold)
-    static let spaziNome = Tema.Testo.sf(13, .semibold)
-    static let spaziApp = Tema.Testo.didascalia
+    // Il pannello degli spazi sta fuori dalle app: la scala resta quella approvata
+    static let spaziSottotitolo = Tema.Testo.sfFisso(12)
+    static let spaziSezione = Tema.Testo.sfFisso(12, .semibold)
+    static let spaziNome = Tema.Testo.sfFisso(13, .semibold)
+    static let spaziApp = Tema.Testo.sfFisso(11.5)
 }
 
 /// La disposizione dello spazio in piccolo: lo sfondo e le finestre con l'icona dell'app.
