@@ -187,7 +187,9 @@ struct PannelloAggiornaValori: View {
 
     private var testata: some View {
         HStack(alignment: .center, spacing: m.spazioComandi) {
-            TitoloStrumento(occhiello: TestiAggiornaValori.occhiello, titolo: TestiAggiornaValori.titolo)
+            // Dopo la registrazione la testata dice «Valori registrati» e il riepilogo non la ripete
+            TitoloStrumento(occhiello: TestiAggiornaValori.occhiello,
+                            titolo: sessione.riepilogo == nil ? TestiAggiornaValori.titolo : TestiAggiornaValori.titoloRiepilogo)
             Spacer(minLength: m.spazioComandi)
             if sessione.riepilogo == nil {
                 SegmentiAnalisi(opzioni: AggiornaValori.Scheda.allCases.map { ($0, TestiAggiornaValori.nomeScheda($0)) },
@@ -300,6 +302,7 @@ struct PannelloAggiornaValori: View {
                     DatePicker("", selection: $dataComune, displayedComponents: .date)
                         .labelsHidden()
                         .datePickerStyle(.field)
+                        .environment(\.locale, Formati.italiano)
                         .frame(width: m.campoData)
                 }
                 Spacer(minLength: m.spazioComandi)
@@ -392,10 +395,11 @@ struct PannelloAggiornaValori: View {
             CellaImportoValori(alto: e.precedente.map(Formati.euro) ?? "—",
                         basso: e.dataPrecedente.map(TestiAggiornaValori.al),
                         larghezza: m.colonnaImporto)
+            // La quota in gestione separata nell'aiuto: tutte le righe restano alte uguali
             CellaImportoValori(alto: e.riga.valore.map(Formati.euro) ?? "—",
                         basso: e.data.map(TestiAggiornaValori.al),
-                        terzo: e.quotaGestione.map(TestiAggiornaValori.gestioneSeparata),
                         larghezza: m.colonnaImporto)
+                .help(e.quotaGestione.map(TestiAggiornaValori.gestioneSeparata) ?? "")
             cellaVariazione(e)
             Pillola(testo: pillola.testo, tono: pillola.tono)
                 .padding(.horizontal, m.margineCella)
@@ -458,10 +462,11 @@ struct PannelloAggiornaValori: View {
 
     @ViewBuilder private func cellaVariazione(_ e: AggiornaValori.Esito) -> some View {
         if e.stato == .aggiorna, let v = e.variazione {
-            let netta = e.risultato.flatMap { abs($0 - v) >= 0.5 ? TestiAggiornaValori.netta($0) : nil }
+            let netta: String? = e.risultato.flatMap { abs($0 - v) >= 0.5 ? TestiAggiornaValori.netta($0) : nil }
+            let percentuale: String? = e.variazionePct.map(TestiAggiornaValori.percentualeSegno)
+            // «netta» sulla riga della percentuale: tutte le righe restano alte uguali
             CellaImportoValori(alto: TestiAggiornaValori.euroSegno(v),
-                        basso: e.variazionePct.map(TestiAggiornaValori.percentualeSegno),
-                        terzo: netta,
+                        basso: TestiAggiornaValori.sottoVariazione(percentuale: percentuale, netta: netta),
                         colore: Tema.Colore.AggiornaValori.segno(v),
                         larghezza: m.colonnaVariazione)
         } else {
@@ -488,7 +493,7 @@ struct PannelloAggiornaValori: View {
                 }
                 let canali: [(Canale?, String)] = [(nil, TestiAggiornaValori.canaleTutti),
                                                    (.alleanza, Canale.alleanza.nomeBreve),
-                                                   (.indipendente, Canale.indipendente.nomeBreve)]
+                                                   (.indipendente, TestiAggiornaValori.canaleIndipendente)]
                 SegmentiAnalisi(opzioni: canali, selezione: $canale)
                     .frame(width: m.segmentiCanale)
                 Spacer(minLength: m.spazioComandi)
@@ -498,6 +503,7 @@ struct PannelloAggiornaValori: View {
                 DatePicker("", selection: $dataComune, displayedComponents: .date)
                     .labelsHidden()
                     .datePickerStyle(.field)
+                    .environment(\.locale, Formati.italiano)
                     .frame(width: m.campoData)
             }
             if elencoGriglia.isEmpty {
@@ -582,8 +588,10 @@ struct PannelloAggiornaValori: View {
         let elenco = r.posizioni.compactMap { indice[$0] }
         let mostrate = Array(elenco.prefix(m.riepilogoMassimo))
         return VStack(alignment: .leading, spacing: m.spazioSezioni) {
-            TitoloStrumento(occhiello: TestiAggiornaValori.occhiello, titolo: TestiAggiornaValori.titoloRiepilogo,
-                            testo: TestiAggiornaValori.testoRiepilogo(r))
+            Text(TestiAggiornaValori.testoRiepilogo(r))
+                .font(Tema.Testo.corpo)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .fixedSize(horizontal: false, vertical: true)
             FasciaKPI {
                 KPI(titolo: TestiAggiornaValori.kpiAggiornati, valore: "\(r.attuali)") { EmptyView() }
                 KPI(titolo: TestiAggiornaValori.kpiStorico, valore: "\(r.storico)") { EmptyView() }
@@ -728,6 +736,9 @@ struct RigaGriglia: View, Equatable {
                 Pillola(testo: p.testo, tono: p.tono)
                     .padding(.horizontal, m.margineCella)
             }
+        } else {
+            // Senza esito la colonna resta vuota ma occupa il suo posto: le altre non slittano
+            Color.clear.frame(width: m.colonnaVariazioneGriglia, height: Tema.Misura.filo)
         }
     }
 }

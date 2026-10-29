@@ -42,7 +42,8 @@ struct AppImpostazioni: View {
                                 case .scorciatoie: scorciatoie
                                 }
                             }
-                            .padding(EdgeInsets(top: 2, leading: 2, bottom: 12, trailing: 2))
+                            // In fondo lo spazio della barra di stato delle altre app: l'ultimo gruppo non tocca il bordo
+                            .padding(EdgeInsets(top: 2, leading: 2, bottom: Misure.Analisi.barraStato, trailing: 2))
                         }
                         // Senza barra di scorrimento: i gruppi restano larghi uguali in tutte le schede
                         .scrollIndicators(.hidden)
@@ -417,6 +418,8 @@ struct AppImpostazioni: View {
             }
             .disabled(!scelte.attivi)
             .opacity(scelte.attivi ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
+            // Con i promemoria spenti anche gli interruttori accesi diventano grigi: non sembrano più attivi
+            .saturation(scelte.attivi ? 1 : Tema.Misura.RifinitureScrivania.saturazioneSpento)
         }
     }
 

@@ -71,7 +71,8 @@ enum Misure {
     }
 
     enum Rubrica {
-        static let indice: CGFloat = 220
+        /// Colonna della rubrica: 240, perché i nomi lunghi (rubrica con decine di clienti) restino interi.
+        static let indice: CGFloat = 240
         static let raggioLibro: CGFloat = Tema.Raggio.gruppo
         static let avatarElenco: CGFloat = 34
         static let avatarProfilo: CGFloat = 40
@@ -272,6 +273,10 @@ enum Misure {
         /// Capsula di vetro del tema (toast).
         static let raggio: CGFloat = 20
         static let distanzaBasso: CGFloat = 100
+        /// Con una finestra aperta l'avviso si posa 12 pt sopra la sua barra di stato (alta 36, a 8 dal bordo).
+        static let distanzaBarraStato: CGFloat = 8 + Misure.Analisi.barraStato + 12
+        /// Margine laterale minimo dentro la finestra, per le finestre strette.
+        static let margineLato: CGFloat = 16
         static let margine = EdgeInsets(top: 13, leading: 19, bottom: 13, trailing: 19)
         /// Il riquadro tratteggiato quando si trascina un file su Prisma.
         static let rilascioRaggio: CGFloat = Tema.Raggio.scheda
@@ -287,7 +292,8 @@ enum Misure {
         static let schedeAltezza: CGFloat = 30
         static let schedeMargine: CGFloat = 13
         static let spazioGruppi: CGFloat = 18
-        static let informazioniLarghezza: CGFloat = 0.38
+        /// La colonna delle informazioni a destra: più stretta, la lista delle impostazioni ha più spazio.
+        static let informazioniLarghezza: CGFloat = 0.3
         static let informazioniMargine: CGFloat = 20
         static let iconaInformazioni: CGFloat = 61
     }

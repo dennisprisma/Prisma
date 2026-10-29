@@ -98,8 +98,11 @@ struct CorpoShell: View {
                 }
 
                 if let testo = stato.avviso {
+                    let posto = postoAvviso(misura: geo.size, area: area)
                     VistaAvviso(testo: testo)
-                        .frame(width: geo.size.width, height: geo.size.height - Misure.Avvisi.distanzaBasso, alignment: .bottom)
+                        .padding(.horizontal, Misure.Avvisi.margineLato)
+                        .frame(width: posto.width, height: posto.height, alignment: .bottom)
+                        .offset(x: posto.minX, y: posto.minY)
                         .transition(transizioneAvviso)
                         .allowsHitTesting(false)
                 }
@@ -258,6 +261,19 @@ struct CorpoShell: View {
 
     private func curvaPannello(_ aperto: Bool, _ entrata: Animation, _ uscita: Animation) -> Animation? {
         modoIstantanea ? nil : Movimenti.curva(aperto ? entrata : uscita)
+    }
+
+    /// Dove si posa l'avviso (allineato in basso al centro del riquadro): sopra la barra di stato della finestra
+    /// attiva, centrato su di essa, così non copre il contenuto; senza finestre aperte, sopra il dock.
+    private func postoAvviso(misura: CGSize, area: CGRect) -> CGRect {
+        let tutto = CGRect(x: 0, y: 0, width: misura.width, height: max(0, misura.height - Misure.Avvisi.distanzaBasso))
+        guard let app = sistema.appAttiva, let f = sistema.elenco.first(where: { $0.app == app }), !f.ridotta else {
+            return tutto
+        }
+        let c = stato.cornice(di: f, in: area)
+        let sopra = Misure.Avvisi.distanzaBarraStato
+        guard c.height > sopra else { return tutto }
+        return CGRect(x: area.minX + c.minX, y: area.minY + c.minY, width: c.width, height: c.height - sopra)
     }
 
     /// L'avviso sale appena e cresce dal basso; esce in dissolvenza (tema :898).

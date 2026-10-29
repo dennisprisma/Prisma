@@ -63,7 +63,8 @@ struct MenuTendina<Valore: Hashable>: View {
     @ViewBuilder private func fondo<V: View>(_ contenuto: V) -> some View {
         switch stile {
         case .vetro:
-            contenuto.vetro(.chip, forma: .capsula)
+            // Come i pulsanti di vetro: pozzetto, filo e ombra corta, visibili anche sulle schede bianche
+            contenuto.vetro(.chip, forma: .capsula, interattivo: true)
         case .scuro:
             contenuto.vetro(.chip, forma: .capsula, riempimento: Tema.Colore.chipSopra)
         case .carta:

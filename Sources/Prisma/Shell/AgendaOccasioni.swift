@@ -170,10 +170,12 @@ struct RigaOccasioneAgenda: View {
                         .font(Tipo.eventoCliente)
                         .foregroundColor(Colori.Agenda.eventoCliente)
                         .lineLimit(1)
+                    // Tipo, cifra e cosa cambia su due righe: il testo intero resta nel dettaglio
                     Text(riepilogo)
                         .font(Tipo.eventoDettagli)
                         .foregroundColor(Colori.Agenda.eventoDettagli)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 Text("›")
@@ -288,24 +290,28 @@ struct DettaglioOccasione: View {
                         riquadroPersona(f, clienteId: o.clienteId)
                     }
 
+                    // La fonte in didascalia del tema, leggibile come le altre note del dettaglio
                     VStack(alignment: .leading, spacing: m.spazioNota) {
                         Text("FONTE")
                             .font(Tipo.voceEtichetta)
                             .tracking(m.tracciaEtichetta)
                             .foregroundColor(Colori.Agenda.notaEtichetta)
                         Text(o.fonte)
-                            .font(Tipo.quietoSuggerimento)
-                            .foregroundColor(Colori.Agenda.voceEtichetta)
+                            .font(Tema.Testo.didascalia)
+                            .foregroundColor(Tema.Colore.inchiostroSecondario)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(TestiOccasioni.avvertenza)
-                            .font(Tipo.quietoSuggerimento)
+                            .font(Tema.Testo.didascalia)
                             .foregroundColor(Colori.Agenda.occasioneFonte)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, m.intornoNota)
                 }
                 .padding(.trailing, m.margineScorrimento)
+                .padding(.bottom, Misure.AgendaImpaginazione.sfumaturaDettaglio / 2)
             }
+            // L'ultima riga sfuma sopra le azioni invece di finire tagliata a metà
+            .sfumaturaBordiScorrimento(sotto: Misure.AgendaImpaginazione.sfumaturaDettaglio)
 
             // Le azioni come nel dettaglio dell'appuntamento: in una fila se c'è posto, altrimenti su due livelli
             let spazio = Misure.AgendaImpaginazione.spazioAzioni
@@ -609,8 +615,8 @@ struct QuietoOccasioni: View {
                 .foregroundColor(Colori.Agenda.quietoTesto)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Quali tipi vedere e con quanto anticipo saperlo si sceglie in Impostazioni › Occasioni.")
-                .font(Tipo.quietoSuggerimento)
-                .foregroundColor(Colori.Agenda.quietoSuggerimento)
+                .font(Tema.Testo.didascalia)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, m.sopraSuggerimento)
                 .bordoAlto(Colori.Agenda.azioniBordo)

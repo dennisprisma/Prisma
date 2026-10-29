@@ -26,6 +26,14 @@ extension Tema.Misura.Componenti {
     /// Punto finale della linea principale dei grafici.
     static let puntoGrafico: CGFloat = 9
     static let puntoGraficoPiccolo: CGFloat = 6
+    /// Assi dei grafici: intervalli dell'asse dei valori, distanza minima tra due etichette dell'asse
+    /// orizzontale e quanto sale l'etichetta della tacca più bassa, così non tocca la prima data.
+    static let taccheAsse: Double = 4
+    static let distanzaEtichette: CGFloat = 48
+    static let alzataPrimaTacca: CGFloat = 6
+    /// Linea dell'atteso nel grafico dell'andamento: spessore e tratti (quelli della legenda tratteggiata).
+    static let lineaAtteso: CGFloat = 1.6
+    static let trattiAtteso: [CGFloat] = [4, 3]
 }
 
 extension Tema.Testo.Componenti {
@@ -41,23 +49,65 @@ extension Tema.Testo.Componenti {
 
 // MARK: - Controlli dell'elenco laterale
 
-/// Controllo a segmenti delle app di analisi: voci di larghezza uguale.
+/// Controllo a segmenti delle app di analisi: voci di larghezza uguale finché ogni voce si legge intera.
+/// Se lo spazio non basta le voci prendono la larghezza del loro testo, poi la versione compatta
+/// (come le schede della rubrica): mai una parola tagliata a metà finché c'è un modo di scriverla intera.
 struct SegmentiAnalisi<Valore: Hashable>: View {
     let opzioni: [(Valore, String)]
     @Binding var selezione: Valore
 
     var body: some View {
-        ControlloSegmenti(opzioni: opzioni, selezione: $selezione, riempi: true)
+        ViewThatFits(in: .horizontal) {
+            uguali(compatto: false)
+            testo(compatto: false)
+            uguali(compatto: true)
+            testo(compatto: true)
+            // Ultima risorsa: la versione compatta che si stringe nello spazio che c'è
+            ControlloSegmenti(opzioni: opzioni, selezione: $selezione, riempi: true, compatto: true)
+        }
+    }
+
+    /// Voci di larghezza uguale. La larghezza ideale è quella della voce più lunga (scritta come scelta)
+    /// ripetuta per tutte: copie nascoste la misurano, così il controllo si sceglie solo se nessuna voce si taglia.
+    private func uguali(compatto: Bool) -> some View {
+        let quante = opzioni.count
+        return ZStack {
+            ForEach(Array(opzioni.enumerated()), id: \.offset) { _, opzione in
+                HStack(spacing: 0) {
+                    ForEach(0..<quante, id: \.self) { _ in
+                        ControlloSegmenti(opzioni: [opzione], selezione: .constant(opzione.0), compatto: compatto)
+                    }
+                }
+                .fixedSize()
+                .hidden()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .overlay {
+            ControlloSegmenti(opzioni: opzioni, selezione: $selezione, riempi: true, compatto: compatto)
+        }
+    }
+
+    /// Voci larghe quanto il loro testo, allineate a sinistra.
+    private func testo(compatto: Bool) -> some View {
+        ControlloSegmenti(opzioni: opzioni, selezione: $selezione, compatto: compatto)
+            .fixedSize()
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 /// Voce della barra laterale (.side-item): fondo leggero al passaggio, accento al 17% se scelta.
+/// Il titolo lungo va a capo su due righe invece di troncarsi; la voce scelta porta `idScelta`,
+/// così l'elenco laterale della cornice la porta in vista all'apertura.
 struct VoceNavigazione: View {
     let titolo: String
     var colore: Color? = nil
     var conteggio: Int? = nil
     let attiva: Bool
     let azione: () -> Void
+
+    /// L'id della voce scelta (sta su un fondo trasparente, non sulla voce: la voce non cambia identità).
+    static let idScelta = "voce-navigazione-scelta"
 
     var body: some View {
         let m = Tema.Misura.Componenti.self
@@ -71,7 +121,8 @@ struct VoceNavigazione: View {
                 Text(titolo)
                     .font(Tema.Testo.Componenti.voce)
                     .foregroundColor(Tema.Colore.inchiostro)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 if let conteggio, conteggio > 0 {
                     Text("\(conteggio)")
@@ -89,6 +140,9 @@ struct VoceNavigazione: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(StileSemplice())
+        .background {
+            if attiva { Color.clear.id(Self.idScelta) }
+        }
     }
 }
 
@@ -257,6 +311,8 @@ struct GraficoAnello: View {
 }
 
 /// Grafico di una proiezione: area del valore, linea tratteggiata del versato, griglia e assi.
+/// Tacche tonde (0, 20k, 40k…), anni diradati perché non si tocchino; senza cifre da disegnare
+/// (tutte le serie a zero) al posto del grafico c'è una riga con `vuoto`.
 struct GraficoProiezione: View {
     struct Serie: Identifiable {
         let id: String
@@ -266,42 +322,53 @@ struct GraficoProiezione: View {
     }
 
     let serie: [Serie]
+    /// La riga al posto del grafico quando non c'è nulla da disegnare.
+    var vuoto: String = "Nessuna cifra da disegnare: il grafico compare con il primo versamento"
+
+    /// Tutte le serie a zero (nessun capitale né versamento): il grafico sarebbe solo l'asse.
+    private var senzaCifre: Bool {
+        !serie.flatMap(\.punti).contains { abs($0.valore) >= 0.5 || abs($0.versato) >= 0.5 }
+    }
 
     var body: some View {
+        if senzaCifre {
+            NotaMetodo(testo: vuoto)
+        } else {
+            grafico
+        }
+    }
+
+    private var grafico: some View {
         GeometryReader { geo in
-            let sinistra = Tema.Misura.Componenti.graficoSinistra
-            let basso = Tema.Misura.Componenti.graficoBasso
+            let m = Tema.Misura.Componenti.self
+            let sinistra = m.graficoSinistra
+            let basso = m.graficoBasso
             let w = max(1, geo.size.width - sinistra - 6)
             let h = max(1, geo.size.height - basso - 6)
             let tutti = serie.flatMap(\.punti)
-            let massimo = max(tutti.map { max($0.valore, $0.versato) }.max() ?? 1, 1) * 1.08
             // Un patrimonio negativo (debiti oltre le attività) resta dentro il grafico
-            let minimo = min(tutti.map { min($0.valore, $0.versato) }.min() ?? 0, 0) * 1.08
+            let scala = AsseGrafico.scala(minimo: tutti.map { min($0.valore, $0.versato) }.min() ?? 0,
+                                          massimo: tutti.map { max($0.valore, $0.versato) }.max() ?? 0)
             let anni = max(tutti.map(\.anno).max() ?? 1, 1)
             let x: (Int) -> CGFloat = { sinistra + CGFloat($0) / CGFloat(anni) * w }
-            let y: (Double) -> CGFloat = { 6 + h - CGFloat(($0 - minimo) / (massimo - minimo)) * h }
-            let divisioni = 4
+            let y: (Double) -> CGFloat = { 6 + h - CGFloat(($0 - scala.minimo) / (scala.massimo - scala.minimo)) * h }
+            let etichette = AsseGrafico.diradate(etichetteAsse(anni, x: x))
             ZStack(alignment: .topLeading) {
                 // Griglia orizzontale ed etichette dell'asse dei valori
-                ForEach(0...divisioni, id: \.self) { i in
-                    let v = minimo + (massimo - minimo) * Double(i) / Double(divisioni)
+                ForEach(Array(scala.tacche.enumerated()), id: \.offset) { i, v in
                     Path { p in
                         p.move(to: CGPoint(x: sinistra, y: y(v)))
                         p.addLine(to: CGPoint(x: sinistra + w, y: y(v)))
                     }
                     .stroke(Tema.Colore.separatore, lineWidth: 1)
-                    Text(Formati.euroBreve(v))
-                        .font(Tema.Testo.Componenti.asse)
-                        .foregroundColor(Tema.Colore.inchiostroTerziario)
+                    AsseGrafico.etichettaValore(v)
                         .frame(width: sinistra - 6, alignment: .trailing)
-                        .position(x: (sinistra - 6) / 2, y: y(v))
+                        .position(x: (sinistra - 6) / 2, y: y(v) - (i == 0 ? m.alzataPrimaTacca : 0))
                 }
-                // Etichette degli anni
-                ForEach(etichetteAnni(anni), id: \.self) { a in
-                    Text(a == 0 ? "Oggi" : "+\(a) a")
-                        .font(Tema.Testo.Componenti.asse)
-                        .foregroundColor(Tema.Colore.inchiostroTerziario)
-                        .position(x: x(a), y: geo.size.height - basso / 2)
+                // Etichette degli anni: la prima parte dal bordo sinistro, l'ultima finisce sul destro
+                ForEach(Array(etichette.enumerated()), id: \.offset) { _, e in
+                    AsseGrafico.etichettaData(e.testo, x: e.x, da: sinistra, a: sinistra + w)
+                        .position(x: e.x, y: geo.size.height - basso / 2)
                 }
                 if let principale = serie.first(where: \.principale) ?? serie.first {
                     // Versato cumulato (tratteggiato)
@@ -335,7 +402,7 @@ struct GraficoProiezione: View {
                         Circle()
                             .fill(Tema.Colore.Componenti.puntoGrafico)
                             .overlay { Circle().stroke(s.colore, lineWidth: 2) }
-                            .frame(width: Tema.Misura.Componenti.puntoGrafico, height: Tema.Misura.Componenti.puntoGrafico)
+                            .frame(width: m.puntoGrafico, height: m.puntoGrafico)
                             .position(x: x(ultimo.anno), y: y(ultimo.valore))
                     }
                 }
@@ -344,11 +411,79 @@ struct GraficoProiezione: View {
         .frame(height: Misure.Analisi.grafico)
     }
 
-    private func etichetteAnni(_ anni: Int) -> [Int] {
+    /// Gli anni sull'asse (al più sette, l'ultimo sempre), con la loro posizione.
+    private func etichetteAsse(_ anni: Int, x: (Int) -> CGFloat) -> [(testo: String, x: CGFloat)] {
         let passo = max(1, Int((Double(anni) / 6).rounded(.up)))
         var elenco = Array(stride(from: 0, through: anni, by: passo))
         if elenco.last != anni { elenco.append(anni) }
-        return elenco
+        return elenco.map { a -> (testo: String, x: CGFloat) in (testo: a == 0 ? "Oggi" : "+\(a) a", x: x(a)) }
+    }
+}
+
+/// Assi dei grafici dell'app (proiezione e andamento): tacche tonde, etichette che non si toccano.
+enum AsseGrafico {
+    /// Scala dell'asse dei valori: dallo zero (o dal minimo, se negativo) a un massimo tondo,
+    /// con un passo tondo (1, 2, 2,5 o 5 per una potenza di dieci) e al più cinque intervalli.
+    struct Scala {
+        let minimo: Double
+        let massimo: Double
+        let passo: Double
+        var tacche: [Double] { Array(stride(from: minimo, through: massimo + passo / 1_000, by: passo)) }
+    }
+
+    static func scala(minimo grezzoMinimo: Double, massimo grezzoMassimo: Double) -> Scala {
+        let basso = min(grezzoMinimo, 0)
+        let alto = max(grezzoMassimo, 0)
+        // Mai meno di un euro di passo: niente «1 € / 1 € / 1 €» sull'asse
+        let passo = max(MisuraAsse.passo(alto - basso, tacche: Tema.Misura.Componenti.taccheAsse), 1)
+        let minimo = (basso / passo).rounded(.down) * passo
+        let massimo = max((alto / passo).rounded(.up) * passo, minimo + passo)
+        return Scala(minimo: minimo, massimo: massimo, passo: passo)
+    }
+
+    /// «40k €», «2,5k €», «1,2 mln €», «500 €»: abbastanza cifre da non ripetere due tacche uguali.
+    static func testoValore(_ v: Double) -> String {
+        let migliaia = v / 1_000
+        if abs(v) >= 1_000, abs(v) < 1_000_000, abs(migliaia - migliaia.rounded()) > 0.001 {
+            return "\(Formati.numeroFormatter.string(from: NSNumber(value: migliaia)) ?? "")k €"
+        }
+        return Formati.euroBreve(v)
+    }
+
+    static func etichettaValore(_ v: Double) -> some View {
+        Text(testoValore(v))
+            .font(Tema.Testo.Componenti.asse)
+            .foregroundColor(Tema.Colore.inchiostroTerziario)
+            .lineLimit(1)
+    }
+
+    /// Etichetta dell'asse orizzontale: quella sul bordo sinistro del grafico parte dal suo punto, quella
+    /// sul bordo destro vi finisce, le altre sono centrate (`position` mette il centro della cornice,
+    /// larga zero, sul punto). Così «Oggi» non tocca la cifra dello zero e «+10 a» non esce dal bordo.
+    static func etichettaData(_ testo: String, x: CGFloat, da sinistra: CGFloat, a destra: CGFloat) -> some View {
+        let allineamento: Alignment = x <= sinistra + 0.5 ? .leading : (x >= destra - 0.5 ? .trailing : .center)
+        return Text(testo)
+            .font(Tema.Testo.Componenti.asse)
+            .foregroundColor(Tema.Colore.inchiostroTerziario)
+            .lineLimit(1)
+            .fixedSize()
+            .frame(width: 0, alignment: allineamento)
+    }
+
+    /// Dirada le etichette dell'asse orizzontale: toglie i doppioni (lo stesso «ott 26» due volte) e quelle
+    /// più vicine di `distanzaEtichette` alla precedente. L'ultima resta sempre: si toglie quella prima.
+    static func diradate(_ elenco: [(testo: String, x: CGFloat)]) -> [(testo: String, x: CGFloat)] {
+        let distanza = Tema.Misura.Componenti.distanzaEtichette
+        guard let ultima = elenco.last else { return [] }
+        var tenute: [(testo: String, x: CGFloat)] = []
+        for e in elenco.dropLast() {
+            if let precedente = tenute.last, precedente.testo == e.testo || e.x - precedente.x < distanza { continue }
+            tenute.append(e)
+        }
+        while let precedente = tenute.last, precedente.testo == ultima.testo || ultima.x - precedente.x < distanza {
+            tenute.removeLast()
+        }
+        return tenute + [ultima]
     }
 }
 

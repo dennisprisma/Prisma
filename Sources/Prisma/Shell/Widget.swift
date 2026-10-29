@@ -94,9 +94,11 @@ extension View {
 
 extension View {
     /// Cornice dei widget: vetro spesso del tema (raggio 26), contenuto tagliato alla forma.
+    /// Dentro, chip e pulsanti di vetro restano quelli chiari del tema: stanno sul vetro, non su schede bianche.
     func corniceWidget(raggio: CGFloat = Tema.Raggio.widget) -> some View {
         let forma = FormaVetro.arrotondata(raggio)
         return frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .environment(\.chipDelTema, true)
             .clipShape(forma)
             .vetro(.spesso, forma: forma)
     }
@@ -107,7 +109,7 @@ extension View {
             VStack(spacing: 0) {
                 Rectangle()
                 LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                    .frame(height: Tema.Misura.Shell.sfumaturaElenco)
+                    .frame(height: Tema.Misura.RifinitureScrivania.sfumaturaElenco)
             }
         }
     }
@@ -272,7 +274,7 @@ private struct CorpoWidgetAgenda: View, Equatable {
             IntestazioneWidget(titolo: "Prossimi incontri") {
                 CollegamentoApp(testo: "Apri Agenda", app: .agenda)
             }
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
                     let eventi = Array(stato.prossimiAppuntamenti.prefix(6))
                     if eventi.isEmpty {
@@ -380,7 +382,8 @@ private struct CorpoWidgetCliente: View, Equatable {
                             aperte: stato.attivitaAperte.filter { $0.clienteId == id }.count)
         // Su schermi più bassi il widget si accorcia invece di accavallarsi agli altri: ViewThatFits
         // misura l'altezza che serve a ogni variante e prende la prima che ci sta, in quest'ordine:
-        // tutto; senza la nota; senza i pulsanti; una riga di numeri con i pulsanti; solo quella;
+        // tutto; senza la nota; con la nota ma senza i pulsanti; senza nota né pulsanti; una riga di numeri
+        // con i pulsanti; solo quella;
         // poi la sola testata, che entra sempre.
         // Il GeometryReader fissa la misura del widget alla sua cella: anche l'ultima variante,
         // se mai non ci stesse, resta dentro la cornice invece di sporgere sui vicini.
@@ -388,6 +391,7 @@ private struct CorpoWidgetCliente: View, Equatable {
             ViewThatFits(in: .vertical) {
                 contenuto(numeri, righe: 2, nota: true, pulsanti: true)
                 contenuto(numeri, righe: 2, nota: false, pulsanti: true)
+                contenuto(numeri, righe: 2, nota: true, pulsanti: false)
                 contenuto(numeri, righe: 2, nota: false, pulsanti: false)
                 contenuto(numeri, righe: 1, nota: false, pulsanti: true)
                 contenuto(numeri, righe: 1, nota: false, pulsanti: false)
@@ -414,7 +418,7 @@ private struct CorpoWidgetCliente: View, Equatable {
                         HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
                             dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
                             dato("Premi annui", Formati.euro(r.premiAnnui))
-                            dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euroBreve(r.valoreProposte))")
+                            dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euro(r.valoreProposte))")
                         }
                     }
                 }
@@ -569,7 +573,7 @@ private struct CorpoWidgetAttivita: View, Equatable {
                                icona: .attivita) {
                 CollegamentoApp(testo: "Apri Attività", app: .attivita)
             }
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 0) {
                     if aperte.isEmpty {
                         ElencoVuoto(testo: "Tutto fatto.")
@@ -614,7 +618,7 @@ private struct CorpoWidgetScadenze: View, Equatable {
             IntestazioneWidget(titolo: "In scadenza entro \(RiepilogoPosizioni.giorniScadenza) giorni", icona: .posizioni) {
                 CollegamentoApp(testo: "Apri Posizioni", app: .posizioni, prima: { stato.portafoglio = false })
             }
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
                     if scadenze.isEmpty {
                         ElencoVuoto(testo: "Nessuna nei prossimi \(RiepilogoPosizioni.giorniScadenza) giorni.")

@@ -20,7 +20,8 @@ enum ReportSostituzione {
         var cartellini: [(String, [String])] = []
         if e.sostituzione {
             cartellini.append(("Oggi", [t.a.nome, CifreDoc.euro(e.valoreOggi)]))
-            cartellini.append(("Alternativa", [t.b.nome]))
+            // Anche l'alternativa ha la sua cifra: quanto si investe davvero dopo i costi dell'uscita
+            cartellini.append(("Alternativa", [t.b.nome, "\(CifreDoc.euro(e.investitoCambio)) investiti"]))
         } else {
             cartellini.append(("Le due proposte", [t.a.nome, t.b.nome]))
             cartellini.append(("Capitale", [CifreDoc.euro(e.valoreOggi)]))

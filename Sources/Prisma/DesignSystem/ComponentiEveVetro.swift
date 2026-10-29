@@ -82,6 +82,11 @@ extension Tema.Misura {
     enum EveChat {
         // Colonna del contesto (.side con .eve-ctx)
         static let contesto: CGFloat = 280
+        /// Eve affiancata a un'altra app: sotto questa larghezza della finestra il contesto si stringe.
+        static let sogliaContestoStretto: CGFloat = 700
+        static let contestoStretto: CGFloat = 220
+        /// In fondo alla colonna del contesto le tessere sfumano invece di finire tagliate.
+        static let sfumaturaContesto: CGFloat = 24
         static let margineContesto: CGFloat = 14
         static let spazioContesto: CGFloat = 18
         static let spazioSezione: CGFloat = 8
@@ -114,6 +119,8 @@ extension Tema.Misura {
         static let scalaOnda: CGFloat = 0.7
         /// L'onda nella capsula della barra: le prime 14 barre, per lasciare spazio ai comandi della voce.
         static let barreOnda = 14
+        /// L'onda a riposo quando Qwen non è pronto: spenta.
+        static let opacitaOndaSpenta: Double = 0.35
         static let margineAzioneBarra = EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)
 
         // Conversazione (.chat, .msg, .bub)
@@ -137,13 +144,15 @@ extension Tema.Misura {
         static let sferaBenvenuto: CGFloat = 52
         static let testoBenvenuto: CGFloat = 470
         static let margineBenvenuto: CGFloat = 36
+        /// L'ultima risposta sfuma sopra la fila degli spunti.
+        static let sfumaturaMessaggi: CGFloat = 24
 
         // Spunti (.sugg) e scrittura (.composer, .ico-btn)
         static let spunto: CGFloat = 30
         static let margineSpunto: CGFloat = 12
         static let spazioSpunto: CGFloat = 6
         static let spazioSpunti: CGFloat = 8
-        static let sfumaturaSpunti: CGFloat = 28
+        static let sfumaturaSpunti: CGFloat = 40
         static let margineScrittura = EdgeInsets(top: 8, leading: 20, bottom: 12, trailing: 20)
         static let spazioScrittura: CGFloat = 8
         static let margineComposer = EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 6)
@@ -280,7 +289,7 @@ struct ChipAzioneEve: View {
             .lineLimit(1)
             .padding(.horizontal, m.margineAzione)
             .frame(height: m.azione)
-            .vetro(.chip, forma: .capsula, riempimento: sopra ? Tema.Colore.chipSopra : nil)
+            .vetro(.chip, forma: .capsula, riempimento: sopra ? Tema.Colore.chipControlloSopra : nil)
             .contentShape(FormaVetro.capsula)
             .onHover { sopra = $0 }
     }

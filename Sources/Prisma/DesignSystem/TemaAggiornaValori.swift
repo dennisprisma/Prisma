@@ -41,10 +41,12 @@ extension Tema.Misura {
         static let rigaVerticale: CGFloat = 6
         // Elenco
         static let colonnaSpunta: CGFloat = 26
-        static let colonnaRiga: CGFloat = 34
+        /// Larga abbastanza per l'intestazione «Riga» (a 34 pt si leggeva «…»).
+        static let colonnaRiga: CGFloat = 44
         static let colonnaPosizioneMinima: CGFloat = 200
         static let colonnaImporto: CGFloat = 120
-        static let colonnaVariazione: CGFloat = 130
+        /// Con la percentuale e la variazione netta sulla stessa riga («+1,8% · netta −10 €»).
+        static let colonnaVariazione: CGFloat = 160
         static let colonnaEsito: CGFloat = 140
         // Griglia
         static let colonnaCliente: CGFloat = 130

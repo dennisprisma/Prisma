@@ -23,7 +23,7 @@ extension Misure {
         /// Altezza massima del pannello rispetto alla shell (tema: max-height 70vh).
         static let altezzaQuota: CGFloat = 0.7
         /// Altezza dell'area dei risultati: cresce con i risultati, tra questi due valori.
-        static let risultatiMinima: CGFloat = 300
+        static let risultatiMinima: CGFloat = 360
         static let risultatiMassima: CGFloat = 470
         /// Altezza dell'area quando non c'è niente da mostrare (nessun risultato).
         static let nessunRisultato: CGFloat = 64
@@ -48,6 +48,10 @@ extension Misure {
         static let intestazioneSpazio: CGFloat = 12
         static let cifraMargineVerticale: CGFloat = 6
         static let azioniSpazio: CGFloat = 8
+        /// Le azioni dell'anteprima stanno in un piede fisso sotto la parte che scorre: margini del piede.
+        static let azioniMargine = EdgeInsets(top: 10, leading: 18, bottom: 12, trailing: 18)
+        /// La parte che scorre sfuma sopra il piede delle azioni.
+        static let sfumaturaAnteprima: CGFloat = 16
         static let testoAnteprimaRighe = 6
         // Striscia dei filtri e dei totali
         static let strisciaMargine = EdgeInsets(top: 0, leading: 12, bottom: 8, trailing: 12)

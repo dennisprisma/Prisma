@@ -123,9 +123,18 @@ struct AppProdotti: View {
 
     @ViewBuilder private var rail: some View {
         DossierRail()
+        // Il canale come in Documenti e in Posizioni: una voce per canale, un secondo clic toglie il filtro
         EtichettaRail(testo: "Canale")
-        SegmentiAnalisi(opzioni: [(Canale?.none, "Tutti"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")],
-                        selezione: $stato.filtroCanaleProdotti)
+        VStack(spacing: 0) {
+            ForEach(Canale.allCases) { c in
+                VoceNavigazione(titolo: c.nomeBreve, colore: Tema.Colore.canale(c),
+                                conteggio: stato.prodotti.filter { $0.canale == c }.count,
+                                attiva: stato.filtroCanaleProdotti == c) {
+                    stato.filtroCanaleProdotti = stato.filtroCanaleProdotti == c ? nil : c
+                }
+                .help(Self.aiutoCanale(c, attivo: stato.filtroCanaleProdotti == c))
+            }
+        }
         EtichettaRail(testo: "Aree")
         VStack(spacing: 0) {
             VoceNavigazione(titolo: "Tutte le aree", conteggio: stato.prodotti.count, attiva: stato.filtroAreaProdotti == nil) {
@@ -139,6 +148,12 @@ struct AppProdotti: View {
             }
         }
         CollegatiRail(app: [.posizioni, .confronti, .simulazioni])
+    }
+
+    /// L'aiuto di una voce del canale: il secondo clic sulla voce scelta toglie il filtro.
+    static func aiutoCanale(_ c: Canale, attivo: Bool) -> String {
+        if attivo { return "Clic di nuovo per vedere tutti i canali" }
+        return c == .alleanza ? "Solo le schede Alleanza" : "Solo le schede indipendenti"
     }
 
     // MARK: - Elenco
@@ -166,21 +181,27 @@ struct AppProdotti: View {
 
     private func rigaElenco(_ p: Prodotto, attiva: Bool) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
+            // Il nome va a capo (due righe) invece di troncarsi; canale e «da verificare» sulla prima riga
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 RoundedRectangle(cornerRadius: Tema.Raggio.quadratinoCanale, style: .continuous)
                     .fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 8)
-                Text(p.nome).font(Tipo.tabellaCellaForte).foregroundColor(Colori.Analisi.tabellaTesto).lineLimit(1)
+                Text(p.nome)
+                    .font(Tipo.tabellaCellaForte)
+                    .foregroundColor(Colori.Analisi.tabellaTesto)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
                 Spacer(minLength: 4)
+                if p.daVerificare {
+                    Pillola(testo: "Da verificare", tono: .attenzione)
+                }
                 EtichettaCanale(canale: p.canale, compatta: true)
             }
-            HStack(spacing: 6) {
-                Text(Self.riassunto(p))
-                    .font(Tipo.chip)
-                    .foregroundColor(Colori.Analisi.kpiNota)
-                if p.daVerificare {
-                    Text("DA VERIFICARE").font(Tipo.chip).foregroundColor(Colori.Analisi.attenzioneTesto)
-                }
-            }
+            Text(Self.riassunto(p))
+                .font(Tipo.chip)
+                .foregroundColor(Colori.Analisi.kpiNota)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
         .voceElencoStrumento(attiva: attiva)
@@ -251,6 +272,36 @@ struct AppProdotti: View {
 
     // MARK: - Dettaglio
 
+    /// Dove va l'etichetta del canale nella testata della scheda.
+    enum PostoEtichetta { case completa, compatta, sotto }
+
+    /// Barretta dell'area, nome, sottotitolo ed etichetta del canale.
+    private func testata(_ p: Prodotto, etichetta: PostoEtichetta) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            Capsule(style: .continuous).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 46)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(p.nome)
+                    .font(Tipo.profiloNome)
+                    .tracking(-0.4)
+                    .foregroundColor(Colori.Analisi.kpiValore)
+                    .lineLimit(etichetta == .sotto ? 2 : 1)
+                    .fixedSize(horizontal: false, vertical: etichetta == .sotto)
+                Text([p.area.nome, p.tipologia, p.emittente].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(Tipo.kpiNota)
+                    .foregroundColor(Colori.Analisi.kpiNota)
+                    .lineLimit(etichetta == .sotto ? 2 : 1)
+                if etichetta == .sotto {
+                    EtichettaCanale(canale: p.canale, compatta: true)
+                }
+            }
+            .layoutPriority(1)
+            if etichetta != .sotto {
+                Spacer(minLength: 8)
+                EtichettaCanale(canale: p.canale, compatta: etichetta == .compatta)
+            }
+        }
+    }
+
     private func dettaglio(_ p: Prodotto) -> some View {
         let parametri = p.parametriEsempio
         let esito = MotoreProiezione.calcola(parametri)
@@ -262,15 +313,12 @@ struct AppProdotti: View {
         let cliente = stato.clienteAttivo?.nome ?? "il cliente"
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 14) {
-                    Capsule(style: .continuous).fill(Colori.Analisi.area(p.area)).frame(width: 8, height: 46)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(p.nome).font(Tipo.profiloNome).tracking(-0.4).foregroundColor(Colori.Analisi.kpiValore)
-                        Text([p.area.nome, p.tipologia, p.emittente].filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota)
-                    }
-                    Spacer()
-                    EtichettaCanale(canale: p.canale)
+                // L'etichetta del canale accanto al nome se c'è posto, poi compatta, poi sotto il titolo:
+                // in una colonna stretta il nome non si legge mai una lettera per riga
+                ViewThatFits(in: .horizontal) {
+                    testata(p, etichetta: .completa)
+                    testata(p, etichetta: .compatta)
+                    testata(p, etichetta: .sotto)
                 }
                 if p.area.proiettabile {
                     FasciaKPI {

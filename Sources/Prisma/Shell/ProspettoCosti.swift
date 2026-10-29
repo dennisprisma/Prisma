@@ -48,7 +48,7 @@ private struct PaginaCostiOggi: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Valore", CifreDoc.euro(a.valore), "\(a.voci.count) \(a.voci.count == 1 ? "posizione" : "posizioni") con i costi")
                 CifraProspetto("Quest'anno", CifreDoc.euro(a.euroAnno), a.costoMedio.map { "media \(CifreDoc.percento($0, decimali: 2)) l'anno" } ?? "")
                 CifraProspetto("In 10 anni", CifreDoc.togli(a.perso10), "rendimenti persi compresi", colore: C.negativo)

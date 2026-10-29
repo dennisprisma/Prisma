@@ -1,5 +1,17 @@
 import SwiftUI
 
+/// Le cifre con il segno nelle viste dell'app: il meno attaccato all'importo come in `Formati`
+/// («−57 €», «+2.039 €»). I documenti su carta restano con `CifreDoc` («− 57 €»).
+enum CifreVista {
+    /// «+2.039 €», «−620 €», «+0 €».
+    static func euroSegno(_ v: Double) -> String {
+        v.rounded() < 0 ? Formati.euro(v) : "+" + Formati.euro(abs(v))
+    }
+
+    /// Una sottrazione: «−57 €» anche se l'importo è positivo.
+    static func togli(_ v: Double) -> String { Formati.euro(-abs(v)) }
+}
+
 // MARK: - Riscatto anno per anno
 
 /// Il riscatto anno per anno di una polizza o di un fondo: quanto incasserebbe il cliente chiudendo il
@@ -122,7 +134,7 @@ struct PannelloRiscatto: View {
         let anni = ultima?.anni ?? 0
         return KPI(titolo: "Dopo \(anni) \(anni == 1 ? "anno" : "anni")", valore: ultima.map { Formati.euro($0.netto) } ?? "—", ultimo: true) {
             if let u = ultima {
-                Text("netti · guadagno \(CifreDoc.euroSegno(u.guadagno))")
+                Text("netti · guadagno \(CifreVista.euroSegno(u.guadagno))")
             } else {
                 Text("netti")
             }
@@ -139,7 +151,8 @@ struct PannelloRiscatto: View {
                 testa("Versato", M.colonnaImporto)
                 testa("Valore", M.colonnaImporto)
                 testa("Penale", M.colonnaPenale)
-                testa("Imposte e bollo", M.colonnaImporto)
+                testa("Imposte", M.colonnaImporto)
+                    .help("Imposte e bollo")
                 testa("Netto", M.colonnaNetto)
                 testa("Guadagno", M.colonnaImporto)
             }
@@ -175,10 +188,10 @@ struct PannelloRiscatto: View {
             cella(Formati.euro(r.versato), M.colonnaImporto, colore: colore)
             cella(Formati.euro(r.valore), M.colonnaImporto, colore: colore)
             cella(r.penalePercento > 0 ? CifreDoc.percento(r.penalePercento) : "—", M.colonnaPenale, colore: colore)
-            cella(tasse > 0.5 ? CifreDoc.togli(tasse) : "—", M.colonnaImporto, colore: colore)
+            cella(tasse > 0.5 ? CifreVista.togli(tasse) : "—", M.colonnaImporto, colore: colore)
             if r.possibile {
                 cella(Formati.euro(r.netto), M.colonnaNetto, colore: colore, forte: true)
-                cella(CifreDoc.euroSegno(r.guadagno), M.colonnaImporto,
+                cella(CifreVista.euroSegno(r.guadagno), M.colonnaImporto,
                       colore: r.guadagno.rounded() < 0 ? C.negativo : colore)
             } else {
                 cella("non riscattabile", M.colonnaNetto, colore: C.rigaSpenta)

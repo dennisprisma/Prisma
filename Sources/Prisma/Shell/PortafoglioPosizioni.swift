@@ -452,6 +452,18 @@ struct CorpoPortafoglio: View, Equatable {
 
     // MARK: - Proposte da riprendere
 
+    /// L'importo di una proposta ferma: il premio annuo per le coperture, altrimenti il valore o il primo
+    /// versamento; «—» se la proposta non ha ancora un importo (mai «0 €»).
+    static func importoSeguito(_ p: Posizione) -> String {
+        if p.area == .protezione {
+            return p.premioAnnuo >= 0.5 ? Formati.euro(p.premioAnnuo) + " l'anno" : "—"
+        }
+        if p.valore >= 0.5 { return Formati.euro(p.valore) }
+        if p.versamentoIniziale >= 0.5 { return Formati.euro(p.versamentoIniziale) }
+        if p.premioAnnuo >= 0.5 { return Formati.euro(p.premioAnnuo) + " l'anno" }
+        return "—"
+    }
+
     /// Le proposte ferme, dalla più ferma: un clic apre la proposta, «Fissa» la telefonata di seguito, «Esito» la chiude.
     private func seguito(_ elenco: [PropostaInSospeso], giorni: Int) -> some View {
         let m = Misure.Seguito.self
@@ -464,7 +476,7 @@ struct CorpoPortafoglio: View, Equatable {
             ForEach(elenco.prefix(m.righePortafoglio)) { s in
                 let pos = s.posizione
                 // Le coperture con il premio annuo, il resto con il valore (fuori dal Text: tipi leggeri)
-                let importo: String = pos.area == .protezione ? Formati.euro(pos.premioAnnuo) + " l'anno" : Formati.euro(pos.valore)
+                let importo: String = Self.importoSeguito(pos)
                 Button { stato.apriPosizione(pos) } label: {
                     HStack(spacing: m.spazio) {
                         Pillola(testo: TestiSeguito.giorni(s.giorni), tono: s.urgente ? .errore : .attenzione)

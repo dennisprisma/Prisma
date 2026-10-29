@@ -61,9 +61,15 @@ enum Vetro {
     nonisolated(unsafe) static var nativo = true
     /// Spazio attorno alla superficie in cui si disegnano le ombre.
     static let margineOmbre: CGFloat = 160
+    /// Lo stesso per l'ombra corta dei pulsanti di vetro.
+    static let margineOmbreChip: CGFloat = 6
 }
 
 private struct ChiaveVetroSemplificato: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private struct ChiaveChipDelTema: EnvironmentKey {
     static let defaultValue = false
 }
 
@@ -72,6 +78,13 @@ extension EnvironmentValues {
     var vetroSemplificato: Bool {
         get { self[ChiaveVetroSemplificato.self] }
         set { self[ChiaveVetroSemplificato.self] = newValue }
+    }
+
+    /// true dentro i widget della scrivania: la variante `.chip` torna il chip chiaro del tema, che sul vetro
+    /// sopra l'acqua si vede bene (fuori dai widget sta quasi sempre su schede bianche e prende il pozzetto).
+    var chipDelTema: Bool {
+        get { self[ChiaveChipDelTema.self] }
+        set { self[ChiaveChipDelTema.self] = newValue }
     }
 }
 
@@ -123,6 +136,7 @@ struct ModificatoreVetro: ViewModifier {
     @Environment(\.vetroSemplificato) private var semplificatoQui
     @Environment(\.accessibilityReduceTransparency) private var trasparenzaRidotta
     @Environment(\.colorScheme) private var schema
+    @Environment(\.chipDelTema) private var chipDelTema
 
     init(variante: VarianteVetro, forma: FormaVetro, tinta: Color? = nil, riempimento: Color? = nil,
          interattivo: Bool = false, ombra: Bool = true) {
@@ -176,7 +190,9 @@ struct ModificatoreVetro: ViewModifier {
         case .spesso, .leggero, .pannello: return Tema.Ombra.vetro(scuro: schema == .dark)
         case .finestra(let attiva): return Tema.Ombra.finestra(attiva: attiva)
         case .laterale: return Tema.Ombra.laterale
-        case .sottile, .chip: return []
+        // Solo i pulsanti e le tendine (interattivi) hanno l'ombra del `.btn`: i chip e le capsule dei canali no
+        case .chip: return interattivo ? Tema.Ombra.chip : []
+        case .sottile: return []
         }
     }
 
@@ -206,7 +222,8 @@ struct ModificatoreVetro: ViewModifier {
         case .sottile:
             return C.scheda
         case .chip:
-            return colorato ? C.chipColorato : C.chip
+            if chipDelTema { return colorato ? C.chipColorato : C.chip }
+            return colorato ? C.chipControlloColorato : C.chipControllo
         }
     }
 
@@ -238,7 +255,8 @@ struct ModificatoreVetro: ViewModifier {
             OmbraVetroPronta(raggio: raggio, strati: strati)
                 .animation(nil, value: variante)
         } else {
-            OmbreVetro(forma: forma, strati: strati)
+            // I pulsanti hanno un'ombra corta: basta un margine piccolo, niente strati grandi da disegnare
+            OmbreVetro(forma: forma, strati: strati, margine: variante == .chip ? Vetro.margineOmbreChip : Vetro.margineOmbre)
                 .animation(nil, value: variante)
         }
     }
@@ -315,7 +333,8 @@ struct ModificatoreVetro: ViewModifier {
             }
         case .laterale, .chip:
             ZStack {
-                forma.strokeBorder(Tema.Colore.bordoChip, lineWidth: Tema.Misura.filo)
+                forma.strokeBorder(variante == .chip && !chipDelTema ? Tema.Colore.bordoControllo : Tema.Colore.bordoChip,
+                                   lineWidth: Tema.Misura.filo)
                 filo(Tema.Colore.riflessoAlto, spostamento: 1)
             }
         case .sottile:
@@ -414,9 +433,10 @@ private struct FuoriForma: Shape {
 private struct OmbreVetro: View {
     let forma: FormaVetro
     let strati: [StratoOmbra]
+    var margine: CGFloat = Vetro.margineOmbre
 
     var body: some View {
-        let m = Vetro.margineOmbre
+        let m = margine
         ZStack {
             ForEach(0..<strati.count, id: \.self) { i in
                 forma.inset(by: max(0, -strati[i].espansione))

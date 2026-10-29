@@ -122,7 +122,7 @@ struct PannelloRiferimento: View {
         HStack(spacing: M.spazioLegenda) {
             LegendaLinea(colore: K.valore, testo: T.legendaValore)
             if c.punti.contains(where: { $0.atteso != nil }) {
-                LegendaLinea(colore: K.linea, testo: T.legendaLinea(c.serie))
+                LegendaLinea(colore: K.linea, testo: T.legendaLinea(c.serie), tratteggio: true)
             }
             if c.punti.contains(where: { $0.versato != nil }) {
                 LegendaLinea(colore: K.versato, testo: T.legendaVersato, tratteggio: true)

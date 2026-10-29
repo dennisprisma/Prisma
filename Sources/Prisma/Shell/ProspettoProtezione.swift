@@ -147,7 +147,7 @@ private struct PaginaFabbisogno: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Fabbisogno caso morte", CifreDoc.euro(e.fabbisogno), "oltre al disponibile")
                 CifraProspetto("Coperture in essere", CifreDoc.euro(e.capitaleVita), "capitali caso morte")
                 CifraProspetto("Divario", CifreDoc.euro(e.divario), "oggi", colore: e.divario > 1 ? C.negativo : C.positivo)

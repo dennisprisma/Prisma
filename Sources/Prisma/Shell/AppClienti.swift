@@ -113,16 +113,19 @@ struct AppClienti: View {
             Segmentato(opzioni: [(false, "Tutti"), (true, "★ Preferiti")], selezione: $soloPreferiti)
                 .padding(EdgeInsets(top: 7, leading: 11, bottom: 7, trailing: 11))
 
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 ElencoRubrica(clienti: elenco, attivo: stato.clienteAttivoId, ricercaVuota: ricerca.isEmpty,
                               scegli: { stato.clienteAttivoId = $0 })
                     .equatable()
             }
-            Text("\(stato.clienti.count) \(stato.clienti.count == 1 ? "contatto" : "contatti") · sempre a portata di mano")
+            // Su una riga: se la frase intera non ci sta resta solo il numero dei contatti
+            let contatti = "\(stato.clienti.count) \(stato.clienti.count == 1 ? "contatto" : "contatti")"
+            ViewThatFits(in: .horizontal) {
+                Text("\(contatti) · sempre a portata di mano").tracking(0.6).lineLimit(1)
+                Text(contatti).tracking(0.6).lineLimit(1)
+            }
                 .font(Tipo.rubricaPiede)
-                .tracking(0.6)
                 .foregroundColor(Colori.Rubrica.piede)
-                .multilineTextAlignment(.center)
                 .padding(8)
                 .frame(maxWidth: .infinity)
                 .bordoAlto(Colori.Rubrica.piedeBordo)
@@ -422,14 +425,11 @@ struct RigaRubrica: View {
                 }
                 .lineLimit(1)
                 Spacer(minLength: 2)
+                // Solo la stella dei preferiti: la freccia sulle altre righe rubava spazio ai nomi
                 if cliente.preferito {
                     Text("★")
                         .font(Tipo.contenuto(14, .bold))
                         .foregroundColor(Colori.Rubrica.stella)
-                } else {
-                    Text("›")
-                        .font(Tipo.rubricaFreccia)
-                        .foregroundColor(Colori.Rubrica.rigaFreccia)
                 }
             }
             .padding(Misure.Rubrica.margineRiga)

@@ -19,8 +19,9 @@ extension Tema.Misura {
         /// Tessera del tipo nell'elenco e, più grande, nella barra del dettaglio.
         static let tessera: CGFloat = 30
         static let tesseraGrande: CGFloat = 38
-        /// Pallino «da leggere» (come in Mail).
+        /// Segno «da leggere»: un cerchio vuoto (non un pallino blu, che si confonderebbe con Alleanza).
         static let puntoNuovo: CGFloat = 8
+        static let bordoNuovo: CGFloat = 1.5
         /// Righe dell'elenco.
         static let rigaElenco = EdgeInsets(top: 7, leading: 8, bottom: 7, trailing: 10)
         static let spazioRiga: CGFloat = 10
@@ -105,8 +106,8 @@ extension Tema.Raggio {
 extension Tema.Colore {
     /// Colori dell'app Documenti.
     enum Documenti {
-        /// Pallino «da leggere», come in Mail.
-        static let nuovo = Tema.Colore.accento
+        /// Il cerchio vuoto «da leggere»: inchiostro, fuori dalla coppia blu Alleanza / cuoio indipendente.
+        static let nuovo = Tema.Colore.inchiostroSecondario
         static let tessera = Tema.Colore.pozzetto
         static let simbolo = Tema.Colore.inchiostroSecondario
         static let daControllare = Tema.Colore.accento

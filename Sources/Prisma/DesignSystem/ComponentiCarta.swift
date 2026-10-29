@@ -37,16 +37,23 @@ enum ImpaginatoreProspetto {
         for (i, b) in c.blocchi.enumerated() {
             switch b {
             case .tabella(let t):
+                // Righe ad altezza variabile: una cella di testo lunga va a capo (fino a tre righe)
+                let alte = altezzeRighe(t)
+                let totale: CGFloat = t.totale == nil ? 0 : M.rigaTotale
                 var inizio = 0
                 while true {
                     let restanti = t.righe.count - inizio
-                    let totale: CGFloat = t.totale == nil ? 0 : M.rigaTotale
-                    let tutte = M.testaTabella + CGFloat(restanti) * M.rigaTabella + totale
+                    let tutte = M.testaTabella + somma(alte, da: inizio, a: t.righe.count) + totale
                     if tutte <= resto {
                         metti(.tabella(parte(t, da: inizio, a: t.righe.count, ultima: true)), tutte)
                         break
                     }
-                    let entrano = Int(floor((resto - M.testaTabella) / M.rigaTabella))
+                    var entrano = 0
+                    var usato = M.testaTabella
+                    while inizio + entrano < t.righe.count && usato + alte[inizio + entrano] <= resto {
+                        usato += alte[inizio + entrano]
+                        entrano += 1
+                    }
                     if entrano < min(M.righeMinime, restanti) && !paginaVuota {
                         nuovaPagina()
                         continue
@@ -54,7 +61,7 @@ enum ImpaginatoreProspetto {
                     // Almeno due righe passano alla pagina dopo, per non lasciare una riga sola
                     var n = max(1, min(entrano, restanti))
                     if restanti - n < 2 { n = max(1, restanti - 2) }
-                    metti(.tabella(parte(t, da: inizio, a: inizio + n, ultima: false)), M.testaTabella + CGFloat(n) * M.rigaTabella)
+                    metti(.tabella(parte(t, da: inizio, a: inizio + n, ultima: false)), M.testaTabella + somma(alte, da: inizio, a: inizio + n))
                     inizio += n
                     nuovaPagina()
                 }
@@ -82,9 +89,48 @@ enum ImpaginatoreProspetto {
     private static func altezzaMinima(_ b: BloccoProspetto) -> CGFloat {
         if case .tabella(let t) = b {
             let righe = min(t.righe.count, M.righeMinime)
-            return M.testaTabella + CGFloat(righe) * M.rigaTabella + (t.righe.count <= M.righeMinime && t.totale != nil ? M.rigaTotale : 0)
+            let alte = altezzeRighe(t)
+            return M.testaTabella + somma(alte, da: 0, a: righe) + (t.righe.count <= M.righeMinime && t.totale != nil ? M.rigaTotale : 0)
         }
         return min(altezza(b), 140)
+    }
+
+    private static func somma(_ alte: [CGFloat], da: Int, a: Int) -> CGFloat {
+        guard da < a else { return 0 }
+        return alte[da..<a].reduce(0, +)
+    }
+
+    /// Larghezza di ogni colonna di una tabella su carta (pesi sulla larghezza utile).
+    static func larghezzeColonne(_ colonne: [ColonnaProspetto]) -> [CGFloat] {
+        let somma = colonne.reduce(0) { $0 + $1.peso }
+        return colonne.map { CGFloat($0.peso / max(somma, 0.01)) * M.larghezzaUtile }
+    }
+
+    /// Le altezze delle righe di una tabella, misurate prima di disegnare.
+    static func altezzeRighe(_ t: TabellaProspetto) -> [CGFloat] {
+        let w = larghezzeColonne(t.colonne)
+        return t.righe.map { altezzaRiga($0, colonne: t.colonne, larghezze: w) }
+    }
+
+    /// Una riga è alta una riga di tabella; di più quando un testo delle colonne allineate a sinistra non
+    /// entra nella sua colonna e va a capo (fino a `righeCella` righe, poi si tronca). Numeri ed etichette
+    /// dei canali restano su una riga.
+    static func altezzaRiga(_ riga: [CellaProspetto], colonne: [ColonnaProspetto], larghezze w: [CGFloat]) -> CGFloat {
+        var testo: CGFloat = 0
+        for (i, c) in colonne.enumerated() where i < riga.count && i < w.count && !c.destra && riga[i].canale == nil {
+            let cella = riga[i]
+            let font = cella.forte ? Tipo.Carta.nsTabellaForte : Tipo.Carta.nsTabella
+            let larghezza = max(0, w[i] - 8)
+            // Su una riga: l'altezza resta quella fissa della tabella
+            let unaRiga = (cella.testo as NSString).size(withAttributes: [.font: font]).width
+            guard ceil(unaRiga) > larghezza - 6 else { continue }
+            let linea = ceil(font.ascender - font.descender + font.leading)
+            let massima = linea * CGFloat(M.righeCella) + M.interlineaCella * CGFloat(M.righeCella - 1)
+            // altezzaTesto aggiunge 3 punti di agio: qui il margine della riga li sostituisce
+            let misurata = altezzaTesto(cella.testo, font: font, larghezza: larghezza, interlinea: M.interlineaCella) - 3
+            testo = max(testo, min(misurata, massima))
+        }
+        return max(M.rigaTabella, ceil(testo + M.margineCella * 2))
     }
 
     static func altezza(_ b: BloccoProspetto) -> CGFloat {
@@ -94,7 +140,7 @@ enum ImpaginatoreProspetto {
         case .indicatori: return M.indicatori
         case .voci(let v): return righeVoci(v).reduce(0) { $0 + altezzaRigaVoci($1) }
         case .tabella(let t):
-            return M.testaTabella + CGFloat(t.righe.count) * M.rigaTabella + (t.totale == nil ? 0 : M.rigaTotale)
+            return M.testaTabella + altezzeRighe(t).reduce(0, +) + (t.totale == nil ? 0 : M.rigaTotale)
         case .grafico: return M.grafico + M.legenda
         case .testo(let s): return altezzaTesto(s, font: Tipo.Carta.nsTesto, larghezza: w, interlinea: M.interlinea)
         case .avviso(let s):
@@ -156,7 +202,8 @@ struct PaginaCarta: View {
         }
         .padding(EdgeInsets(top: M.margineAlto, leading: M.margineLato, bottom: M.margineBasso, trailing: M.margineLato))
         .frame(width: M.pagina.width, height: M.pagina.height)
-        .background(Colori.Carta.foglio)
+        // Carta bianca, come i prospetti di `FoglioProspetto`: le due famiglie di prospetti hanno la stessa veste
+        .background(Colori.Carta.foglioProspetto)
         // Su carta le etichette dei canali sono quelle opache da stampa, e tutto resta chiaro
         .environment(\.etichetteStampa, true)
         .environment(\.colorScheme, .light)
@@ -164,14 +211,14 @@ struct PaginaCarta: View {
 
     private var testataPrima: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Il logo da solo: il genere è già nell'occhiello sotto («Prospetto di dettaglio · …»).
+            // La riga tiene l'altezza di prima, così l'impaginazione della prima pagina non cambia
             HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
-                    LogoPrismaConNome(colore: Colori.Carta.logo, altezza: M.logoTestata)
-                    Text(verbatim: genere.uppercased()).font(Tipo.Carta.testataPiccola).tracking(1.5).foregroundColor(Colori.Carta.intestazione)
-                }
+                LogoPrismaConNome(colore: Colori.Carta.logo, altezza: M.logoTestata)
                 Spacer()
                 Text(verbatim: Formati.dataEstesa.string(from: contenuto.data)).font(Tipo.Carta.data).foregroundColor(Colori.Carta.testoTenue)
             }
+            .frame(height: M.rigaLogoPrima)
             .padding(.bottom, 9)
             Rectangle().fill(Colori.Carta.filettoForte).frame(height: 2)
             Text(verbatim: contenuto.occhiello.uppercased())
@@ -323,23 +370,22 @@ struct BloccoCarta: View {
     }
 }
 
-/// Tabella su carta: intestazione con filetto forte, righe alterne, totale in grassetto.
+/// Tabella su carta: intestazione con filetto forte, righe alterne, totale in grassetto. Le celle di testo
+/// lunghe vanno a capo e la riga si alza (le altezze sono quelle misurate dall'impaginatore).
 struct TabellaCarta: View {
     let tabella: TabellaProspetto
 
-    private var larghezze: [CGFloat] {
-        let somma = tabella.colonne.reduce(0) { $0 + $1.peso }
-        return tabella.colonne.map { CGFloat($0.peso / max(somma, 0.01)) * M.larghezzaUtile }
-    }
-
     var body: some View {
-        let w = larghezze
+        let w = ImpaginatoreProspetto.larghezzeColonne(tabella.colonne)
+        let alte = ImpaginatoreProspetto.altezzeRighe(tabella)
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: 0) {
                 ForEach(Array(tabella.colonne.enumerated()), id: \.offset) { i, c in
+                    // Le intestazioni lunghe vanno su due righe invece di troncarsi
                     Text(verbatim: c.titolo.uppercased()).font(Tipo.Carta.tabellaTesta).tracking(0.5)
-                        .foregroundColor(Colori.Carta.intestazione).lineLimit(1).truncationMode(.tail)
-                        .frame(width: max(0, w[i] - 8), alignment: c.destra ? .trailing : .leading)
+                        .foregroundColor(Colori.Carta.intestazione).lineLimit(M.righeTesta).truncationMode(.tail)
+                        .multilineTextAlignment(c.destra ? .trailing : .leading)
+                        .frame(width: max(0, w[i] - 8), alignment: c.destra ? .bottomTrailing : .bottomLeading)
                         .padding(.horizontal, 4)
                 }
             }
@@ -347,8 +393,8 @@ struct TabellaCarta: View {
             .frame(height: M.testaTabella, alignment: .bottom)
             .overlay(Rectangle().fill(Colori.Carta.filettoForte).frame(height: 1), alignment: .bottom)
             ForEach(Array(tabella.righe.enumerated()), id: \.offset) { r, riga in
-                rigaVista(riga, larghezze: w)
-                    .frame(height: M.rigaTabella)
+                rigaVista(riga, larghezze: w, righe: M.righeCella)
+                    .frame(height: r < alte.count ? alte[r] : M.rigaTabella)
                     .background(tabella.evidenzia.contains(r) ? Colori.Carta.evidenza : (r % 2 == 1 ? Colori.Carta.zebra : Color.clear))
                     .overlay(Rectangle().fill(Colori.Carta.filettoRiga).frame(height: 0.5), alignment: .bottom)
             }
@@ -357,37 +403,57 @@ struct TabellaCarta: View {
                     var c = cella
                     c.forte = true
                     return c
-                }, larghezze: w)
+                }, larghezze: w, righe: 1)
                     .frame(height: M.rigaTotale)
                     .overlay(Rectangle().fill(Colori.Carta.filettoForte).frame(height: 0.8), alignment: .top)
             }
         }
     }
 
-    private func rigaVista(_ riga: [CellaProspetto], larghezze w: [CGFloat]) -> some View {
+    private func rigaVista(_ riga: [CellaProspetto], larghezze w: [CGFloat], righe: Int) -> some View {
         HStack(spacing: 0) {
             ForEach(Array(tabella.colonne.enumerated()), id: \.offset) { i, colonna in
-                cella(i < riga.count ? riga[i] : .t(""), destra: colonna.destra)
+                cella(i < riga.count ? riga[i] : .t(""), destra: colonna.destra, righe: colonna.destra ? 1 : righe)
                     .frame(width: max(0, w[i] - 8), alignment: colonna.destra ? .trailing : .leading)
                     .padding(.horizontal, 4)
             }
         }
     }
 
-    @ViewBuilder private func cella(_ c: CellaProspetto, destra: Bool) -> some View {
+    @ViewBuilder private func cella(_ c: CellaProspetto, destra: Bool, righe: Int) -> some View {
         if let canale = c.canale {
-            // fixedSize: l'etichetta tiene la sua misura e la scala la riduce senza invadere la colonna accanto
-            EtichettaCanale(canale: canale, compatta: true)
-                .fixedSize()
-                .scaleEffect(M.scalaEtichetta, anchor: destra ? .trailing : .leading)
+            // fixedSize: l'etichetta tiene la sua misura e la scala la riduce senza invadere la colonna accanto.
+            // Una cella con i due canali ("Alleanza · Indipendente") mostra le due etichette.
+            let canali = c.canaliEtichette(primo: canale)
+            HStack(spacing: M.spazioEtichette) {
+                ForEach(canali, id: \.self) { EtichettaCanale(canale: $0, compatta: true) }
+            }
+            .fixedSize()
+            .scaleEffect(M.scalaEtichetta, anchor: destra ? .trailing : .leading)
         } else {
             Text(verbatim: c.testo)
                 .font(c.forte ? Tipo.Carta.tabellaForte : Tipo.Carta.tabella)
                 .foregroundColor(c.tenue ? Colori.Carta.testoTenue : Colori.Carta.testo)
-                // Stessa grandezza in ogni riga: il testo troppo lungo si tronca, non si rimpicciolisce
-                .lineLimit(1)
+                // Stessa grandezza in ogni riga: il testo lungo va a capo (righe misurate), oltre si tronca
+                .lineLimit(righe)
+                .lineSpacing(M.interlineaCella)
                 .truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: righe > 1)
         }
+    }
+}
+
+extension CellaProspetto {
+    /// Una cella con le etichette di più canali (per esempio i canali di un cliente): due etichette compatte.
+    static func canali(_ elenco: [Canale]) -> CellaProspetto {
+        guard let primo = elenco.first else { return .n("—") }
+        return CellaProspetto(testo: elenco.map(\.nomeBreve).joined(separator: " · "), canale: primo)
+    }
+
+    /// I canali da disegnare come etichette: quelli scritti nel testo della cella, o solo il suo canale.
+    func canaliEtichette(primo: Canale) -> [Canale] {
+        let scritti = Canale.allCases.filter { k in testo.components(separatedBy: " · ").contains(k.nomeBreve) }
+        return scritti.count > 1 ? scritti : [primo]
     }
 }
 

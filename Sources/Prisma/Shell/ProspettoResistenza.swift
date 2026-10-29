@@ -58,7 +58,7 @@ private struct PaginaMercati: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Patrimonio finanziario", CifreDoc.euro(r.patrimonioFinanziario), "senza immobili e debiti")
                 CifraProspetto("Mercati in forte calo", t.mercati.map { CifreDoc.togli($0.perdita) } ?? "—",
                                t.mercati.map { "il \(CifreDoc.percento($0.quota * 100)) del finanziario" } ?? "", colore: C.negativo)
@@ -159,10 +159,9 @@ private struct PaginaCrisi: View {
         VStack(alignment: .leading, spacing: 10) {
             SezioneProspetto(titolo: "Le crisi del passato sul patrimonio di oggi",
                              testo: Text(verbatim: "Le variazioni vere di tre anni difficili, classe per classe (azioni, titoli di Stato, obbligazioni societarie), applicate alla composizione di ogni posizione di oggi. Sono stime indicative, non previsioni: dicono quanto perderebbe oggi il patrimonio finanziario se tornasse un anno così. Gestioni separate e conti restano fermi."))
-            HStack(spacing: 6) {
+            FilaCifre {
                 ForEach(crisi) { k in
-                    CifraProspetto("\(k.crisi.anno) · \(k.crisi.titolo)", cifraCrisiDoc(k.perdita), notaCifra(k),
-                                   colore: k.perdita > 0.5 ? coloreGiudizio(k.giudizio, C) : C.positivo)
+                    CifraProspetto("\(k.crisi.anno) · \(k.crisi.titolo)", cifraCrisiDoc(k.perdita), notaCifra(k), colore: coloreCifra(k))
                 }
             }
             TabellaCanali(colonne: colonne, gruppi: gruppi)
@@ -190,6 +189,14 @@ private struct PaginaCrisi: View {
                 }
             }
         }
+    }
+
+    /// Una perdita non è mai verde: dentro il profilo resta nel tono del testo (il giudizio è nella nota),
+    /// al limite o oltre prende il colore del giudizio; senza perdita è verde.
+    private func coloreCifra(_ k: EsitoCrisi) -> Color {
+        guard k.perdita > 0.5 else { return C.positivo }
+        if case .dentro? = k.giudizio { return C.titolo }
+        return coloreGiudizio(k.giudizio, C)
     }
 
     private func notaCifra(_ k: EsitoCrisi) -> String {

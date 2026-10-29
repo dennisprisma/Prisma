@@ -4,7 +4,7 @@ import Foundation
 /// senza gli importi in euro (`Formati.euro` usa lo spazio non separabile).
 enum TestiAggiornaValori {
     static let titolo = "Aggiorna i valori"
-    static let occhiello = "POSIZIONI IN ESSERE"
+    static let occhiello = "Posizioni in essere"
 
     static func nomeScheda(_ s: AggiornaValori.Scheda) -> String {
         switch s {
@@ -62,7 +62,7 @@ enum TestiAggiornaValori {
     static func filtroDaControllare(_ n: Int) -> String { "Da controllare (\(n))" }
 
     static func pulsanteNonTrovate(_ n: Int) -> String {
-        n == 1 ? "Importa come nuove la riga non trovata" : "Importa come nuove le \(n) righe non trovate"
+        n == 1 ? "Importa come nuova la riga non trovata" : "Importa come nuove le \(n) righe non trovate"
     }
 
     static let importaComeNuove = "Importa come posizioni nuove"
@@ -125,14 +125,14 @@ enum TestiAggiornaValori {
                     return "valore zero: se la polizza è stata riscattata o è scaduta, chiudila dalla sua scheda"
                 }
                 let pct = (e.risultatoPct ?? e.variazionePct).map(percentualeSegno) ?? "—"
-                return "variazione del \(pct)\(e.mesi.map { " in \(mesi($0))" } ?? ""): controlla che il valore sia in euro e della polizza giusta"
+                return "variazione del \(pct)\(e.mesi.map { " \(inMesi($0))" } ?? ""): controlla che il valore sia in euro e della polizza giusta"
             }
             var parti: [String] = []
             if let a = abbinamento(e.abbinamento) { parti.append(a) }
             if e.correzione {
                 parti.append("corregge il valore dello stesso giorno")
             } else if let m = e.mesi {
-                parti.append("in \(mesi(m))")
+                parti.append(inMesi(m))
             }
             if e.versatoStimato { parti.append("versato stimato con i premi del periodo") }
             return parti.joined(separator: " · ")
@@ -164,6 +164,9 @@ enum TestiAggiornaValori {
 
     private static func mesi(_ n: Int) -> String { n == 1 ? "1 mese" : "\(n) mesi" }
 
+    /// «in 3 mesi», «in 1 mese»; due valori dello stesso mese: «nello stesso mese» (mai «in 0 mesi»).
+    private static func inMesi(_ n: Int) -> String { n <= 0 ? "nello stesso mese" : "in \(mesi(n))" }
+
     // MARK: - Griglia
 
     static func conteggioFermi(_ n: Int) -> String {
@@ -194,12 +197,19 @@ enum TestiAggiornaValori {
     static let segnapostoVersato = "facoltativo"
     static let tuttiIClienti = "Tutti i clienti"
     static let canaleTutti = "Tutti"
+    /// Il canale indipendente nel filtro della griglia, breve come nella colonna laterale.
+    static let canaleIndipendente = "Indip."
     static let dataComune = "Data comune"
     static let senzaData = "senza data"
     static func al(_ d: Date) -> String { "al \(data(d))" }
     static func numeroContratto(_ n: String) -> String { "n. \(n)" }
     static func gestioneSeparata(_ q: Double) -> String { "GS \(percentuale(q))" }
     static func netta(_ v: Double) -> String { "netta \(euroSegno(v))" }
+    /// La riga sotto la variazione: la percentuale e, se diversa, la variazione netta («+1,8% · netta −10 €»).
+    static func sottoVariazione(percentuale: String?, netta: String?) -> String? {
+        let parti = [percentuale, netta].compactMap { $0 }
+        return parti.isEmpty ? nil : parti.joined(separator: " · ")
+    }
     static let scegli = "Scegli…"
 
     // MARK: - Piede e riepilogo

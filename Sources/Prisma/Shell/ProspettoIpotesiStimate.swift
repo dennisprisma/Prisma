@@ -74,14 +74,15 @@ struct PaginaIpotesiStimate: View {
                 TabellaDoc(larghezza: FoglioProspetto<EmptyView>.larghezza,
                            colonne: [ColonnaDoc(titolo: TestiIpotesiStimate.colonnaDato, peso: 1.8, destra: false),
                                      ColonnaDoc(titolo: TestiIpotesiStimate.colonnaStato, peso: 0.8, destra: false),
-                                     ColonnaDoc(titolo: TestiIpotesiStimate.colonnaIpotesi, peso: 3.6, destra: false),
-                                     ColonnaDoc(titolo: TestiIpotesiStimate.colonnaCanale, peso: 0.8, destra: false)],
+                                     ColonnaDoc(titolo: TestiIpotesiStimate.colonnaIpotesi, peso: 3.2, destra: false),
+                                     // Larga quanto l'etichetta compatta dell'indipendente
+                                     ColonnaDoc(titolo: TestiIpotesiStimate.colonnaCanale, peso: 1.2, destra: false)],
                            righe: mostrate.map { riga($0) }, fontTesta: T.pTabellaTesta, altezzaTesta: D.rigaTabellaProspetto)
                 if altre > 0 {
-                    Text(verbatim: TestiIpotesiStimate.altre(altre, report: false)).font(T.pTabellaNota).foregroundColor(C.tenue)
+                    Text(verbatim: TestiIpotesiStimate.altre(altre, report: false)).font(T.pNotaLeggibile).foregroundColor(C.tenue)
                 }
             }
-            Text(verbatim: TestiCompletezza.metodo).font(T.pTabellaNota).foregroundColor(C.tenue)
+            Text(verbatim: TestiCompletezza.metodo).font(T.pNotaLeggibile).foregroundColor(C.tenue)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -90,14 +91,19 @@ struct PaginaIpotesiStimate: View {
     private func riga(_ v: VoceCompletezza) -> RigaDoc {
         let parti = TestiIpotesiStimate.parti(v)
         var dato = CellaDoc(parti.dato, sotto: parti.posizione, font: T.pTabellaForte)
-        dato.fontSotto = T.pTabellaNota
+        dato.fontSotto = T.pNotaLeggibile
         dato.righe = 2
         var ipotesi = CellaDoc(v.ipotesi.isEmpty ? TestiIpotesiStimate.vuoto : v.ipotesi, font: T.pTabella)
         ipotesi.righe = 2
-        // Il canale nel colore da stampa (blu Alleanza, cuoio indipendente): la tavolozza usa
-        // Tema.Colore.canaleAlleanzaStampa e canaleIndipendenteStampa
-        let canale = v.canale.map { c in CellaDoc(c.nomeBreve, colore: C.canale(c), font: T.pTabellaForte) }
-            ?? CellaDoc(TestiIpotesiStimate.vuoto, colore: C.tenue, font: T.pTabella)
+        // Il canale come etichetta compatta da stampa (blu Alleanza, cuoio indipendente), come nelle altre tabelle
+        let canale: CellaDoc
+        if let c = v.canale {
+            var cella = CellaDoc(c.nomeBreve, font: T.pTabellaForte)
+            cella.canale = c
+            canale = cella
+        } else {
+            canale = CellaDoc(TestiIpotesiStimate.vuoto, colore: C.tenue, font: T.pTabella)
+        }
         return RigaDoc(celle: [dato, CellaDoc(v.stato.nome, colore: C.statoDato(v.stato), font: T.pTabellaForte), ipotesi, canale],
                        altezza: D.rigaTabellaProspetto * 2)
     }
@@ -148,9 +154,9 @@ struct SlideIpotesiStimate: View {
                 Text(verbatim: v.stato.nome.uppercased()).font(T.occhiello).tracking(D.tracciatoOcchiello)
                     .foregroundColor(C.statoDato(v.stato))
                 Spacer(minLength: 0)
-                // Il canale della posizione, nel colore da stampa
+                // Il canale della posizione: l'etichetta compatta da stampa
                 if let c = v.canale {
-                    Text(verbatim: c.nome).font(T.minimo).foregroundColor(C.canale(c)).lineLimit(1)
+                    EtichettaCanale(canale: c, compatta: true)
                 }
             }
             Text(verbatim: v.ipotesiCliente).font(T.corpo).foregroundColor(C.testo)

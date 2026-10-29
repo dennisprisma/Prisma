@@ -14,6 +14,11 @@ extension Tema.Misura.Componenti {
     /// Campo numerico delle ipotesi.
     static let campoNumerico: CGFloat = 28
     static let margineCampoNumerico: CGFloat = 8
+    /// Stacco tra l'etichetta di un'ipotesi e la pillola «stimato» quando la pillola scende sotto.
+    static let spazioPillolaSotto: CGFloat = 3
+    /// In fondo all'elenco laterale che scorre le ultime voci sfumano sopra il piede «Archivio locale»:
+    /// si capisce che sotto c'è altro.
+    static let sfumaturaRail: CGFloat = 16
     /// Scheda della tabella (.tbl dentro una .card): margini attorno alle righe.
     static let margineTabella = EdgeInsets(top: 6, leading: 6, bottom: 4, trailing: 6)
     /// Riquadro della nota sul metodo.
@@ -50,10 +55,18 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
-                    // L'elenco scorre se è lungo: la finestra non si allunga mai sotto il dock
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 6) { rail() }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    // L'elenco scorre se è lungo: la finestra non si allunga mai sotto il dock.
+                    // All'apertura porta in vista la voce scelta (anche quando è in fondo all'elenco).
+                    ScrollViewReader { lettore in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 6) { rail() }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.bottom, m.sfumaturaRail / 2)
+                        }
+                        .sfumaturaBordiScorrimento(sotto: m.sfumaturaRail)
+                        .onAppear {
+                            DispatchQueue.main.async { lettore.scrollTo(VoceNavigazione.idScelta) }
+                        }
                     }
                     ArchivioLocaleRail()
                 }
@@ -270,22 +283,49 @@ struct CampoIpotesi: View {
         }
     }
 
+    /// L'etichetta dell'ipotesi: al massimo due righe, a capo tra le parole.
+    private var testoEtichetta: some View {
+        Text(etichetta)
+            .font(Tema.Testo.corpo)
+            .foregroundColor(Tema.Colore.inchiostro)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func pillolaStimata(_ aiuto: String) -> some View {
+        Pillola(testo: TestiCompletezza.stimato, tono: .attenzione)
+            .help(aiuto)
+    }
+
     private var riga: some View {
         let m = Tema.Misura.Componenti.self
         let forma = FormaVetro.arrotondata(Tema.Raggio.miniatura)
         return HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: Tema.Misura.Completezza.spazioRiga) {
-                    Text(etichetta).font(Tema.Testo.corpo).foregroundColor(Tema.Colore.inchiostro)
-                    if let stimata {
-                        Pillola(testo: TestiCompletezza.stimato, tono: .attenzione)
-                            .help(stimata)
+                if let stimata {
+                    // La pillola sta accanto all'etichetta se c'è posto, altrimenti scende sotto:
+                    // l'etichetta va a capo tra le parole, mai dentro una parola
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Tema.Misura.Completezza.spazioRiga) {
+                            testoEtichetta.fixedSize()
+                            pillolaStimata(stimata)
+                        }
+                        VStack(alignment: .leading, spacing: Tema.Misura.Componenti.spazioPillolaSotto) {
+                            testoEtichetta
+                            pillolaStimata(stimata)
+                        }
                     }
+                } else {
+                    testoEtichetta
                 }
                 if let nota {
-                    Text(nota).font(Tema.Testo.didascalia).foregroundColor(Tema.Colore.inchiostroSecondario)
+                    Text(nota)
+                        .font(Tema.Testo.didascalia)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .layoutPriority(1)
             Spacer(minLength: 4)
             TextField("", value: Binding(get: { valore },
                                          set: { valore = min(max($0, intervallo.lowerBound), intervallo.upperBound) }),

@@ -60,7 +60,7 @@ private struct PaginaDueStrade: View {
                 scheda(e.cambio, titolo: e.sostituzione ? "Alternativa · se cambia" : "Proposta B")
             }
             if let f = e.finale {
-                HStack(spacing: 6) {
+                FilaCifre {
                     CifraProspetto("\(t.nomeResto) · netto", CifreDoc.euro(f.nettoResto), "dopo \(t.periodo)", colore: C.premio)
                     CifraProspetto("\(t.nomeCambio) · netto", CifreDoc.euro(f.nettoCambio), "dopo \(t.periodo)", colore: C.intermedio)
                     CifraProspetto("Differenza", CifreDoc.euroSegno(f.differenza), "a favore di \(f.differenza >= 0 ? t.nomeCambio.lowercased() : t.nomeResto.lowercased())",

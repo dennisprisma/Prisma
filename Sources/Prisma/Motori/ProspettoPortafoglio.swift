@@ -44,12 +44,13 @@ extension CompositoreProspetti {
 
         sezione("Per cliente")
         b.append(.tabella(TabellaProspetto(
-            colonne: [ColonnaProspetto(titolo: "Cliente", peso: 2), ColonnaProspetto(titolo: "Canali", peso: 1.5),
+            // I canali come etichette compatte (due, per chi segue entrambi): la colonna è larga quanto basta
+            colonne: [ColonnaProspetto(titolo: "Cliente", peso: 1.6), ColonnaProspetto(titolo: "Canali", peso: 1.9),
                       ColonnaProspetto(titolo: "Attività", peso: 1.2, destra: true), ColonnaProspetto(titolo: "Premi annui", peso: 1.1, destra: true),
                       ColonnaProspetto(titolo: "Assicurato", peso: 1.3, destra: true), ColonnaProspetto(titolo: "Proposte", peso: 0.9, destra: true),
                       ColonnaProspetto(titolo: "Quota", peso: 0.7, destra: true)],
             righe: p.clienti.map { v in
-                [.f(v.cliente.nome), .t(v.canali.map(\.nomeBreve).joined(separator: " · ")), .t(euro(v.attivita)),
+                [.f(v.cliente.nome), CellaProspetto.canali(v.canali), .t(euro(v.attivita)),
                  .t(v.premiAnnui > 0 ? euro(v.premiAnnui) : "—"), .t(v.capitaleAssicurato > 0 ? euro(v.capitaleAssicurato) : "—"),
                  .t(v.proposteAperte > 0 ? "\(v.proposteAperte)" : "—"), .t(quota(v.quota))]
             })))

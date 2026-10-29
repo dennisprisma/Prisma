@@ -82,6 +82,8 @@ struct CellaDoc {
     var coloreSotto: Color? = nil
     /// Righe di testo ammesse (1 per i numeri, di più per le spiegazioni).
     var righe = 1
+    /// Se c'è, la cella mostra l'etichetta compatta del canale (da stampa) al posto del testo.
+    var canale: Canale? = nil
 
     init(_ testo: String, sotto: String = "", colore: Color? = nil, font: Font = Tipo.Documento.corpo) {
         self.testo = testo
@@ -98,6 +100,8 @@ struct RigaDoc {
     /// Filetto sotto la riga.
     var filetto: Color? = nil
     var spessore: CGFloat = 0.6
+    /// Con `variabile` la riga è alta quanto il suo testo (le celle su più righe), almeno `altezza`.
+    var variabile = false
 }
 
 /// Tabella a colonne pesate: testate a due righe, righe di altezza fissa, filetti sottili.
@@ -147,19 +151,30 @@ struct TabellaDoc: View {
                 HStack(spacing: 0) {
                     ForEach(Array(colonne.enumerated()), id: \.offset) { i, c in
                         let cella = i < r.celle.count ? r.celle[i] : CellaDoc("")
+                        // Riga variabile: le celle prendono l'altezza della più alta, almeno quella indicata
+                        let alta: CGFloat? = r.variabile ? nil : r.altezza
+                        let minima: CGFloat? = r.variabile ? r.altezza : nil
+                        let massima: CGFloat? = r.variabile ? CGFloat.infinity : nil
+                        let allineamento: Alignment = c.destra ? .trailing : .leading
                         VStack(alignment: c.destra ? .trailing : .leading, spacing: 1) {
-                            Text(verbatim: cella.testo).font(cella.font).foregroundColor(cella.colore ?? p.testo)
-                                .lineLimit(cella.righe).minimumScaleFactor(cella.righe > 1 ? 0.9 : 0.65)
-                                .fixedSize(horizontal: false, vertical: cella.righe > 1)
+                            if let canale = cella.canale {
+                                EtichettaCanale(canale: canale, compatta: true)
+                            } else {
+                                Text(verbatim: cella.testo).font(cella.font).foregroundColor(cella.colore ?? p.testo)
+                                    .lineLimit(cella.righe).minimumScaleFactor(cella.righe > 1 ? 0.9 : 0.65)
+                                    .fixedSize(horizontal: false, vertical: cella.righe > 1)
+                            }
                             if !cella.sotto.isEmpty {
                                 Text(verbatim: cella.sotto).font(cella.fontSotto).foregroundColor(cella.coloreSotto ?? p.tenue).lineLimit(1).truncationMode(.tail)
                             }
                         }
                         .padding(.horizontal, margine)
-                        .frame(width: w[i], height: r.altezza, alignment: c.destra ? .trailing : .leading)
+                        .frame(width: w[i], height: alta, alignment: allineamento)
+                        .frame(minHeight: minima, maxHeight: massima, alignment: allineamento)
                         .background(colonneEvidenziate.contains(i) ? p.riquadro : Color.clear)
                     }
                 }
+                .fixedSize(horizontal: false, vertical: r.variabile)
                 .background(r.sfondo)
                 .overlay(Rectangle().fill(r.filetto ?? p.filetto).frame(height: r.spessore), alignment: .bottom)
             }
@@ -294,6 +309,7 @@ struct SerieDoc: Identifiable {
 /// Una linea verticale punteggiata segna, se c'è, l'anno di pareggio.
 struct GraficoLineeDoc: View {
     @Environment(\.paletteDocumento) private var p
+    @Environment(\.documentoInSala) private var inSala
     let serie: [SerieDoc]
     let etichetteAsse: [String]
     var pareggio: Int? = nil
@@ -356,11 +372,15 @@ struct GraficoLineeDoc: View {
                             .position(x: x(i), y: y(v))
                     }
                     if let ultimo = s.valori.last {
+                        // In sala: corpo più grande e il nome nell'inchiostro del testo (la cifra resta nel colore della linea)
                         VStack(alignment: .leading, spacing: 0) {
-                            Text(verbatim: s.nome).font(fontValori.weight(.bold)).lineLimit(1)
-                            Text(verbatim: CifreDoc.euro(ultimo)).font(fontValori.weight(.bold))
+                            Text(verbatim: s.nome).font(inSala ? Tipo.Report.etichettaFinaleSala : fontValori.weight(.bold)).lineLimit(1)
+                                .minimumScaleFactor(inSala ? 0.8 : 1)
+                                .foregroundColor(inSala ? p.testo : s.colore)
+                            Text(verbatim: CifreDoc.euro(ultimo)).font(inSala ? Tipo.Report.etichettaFinaleSala : fontValori.weight(.bold))
+                                .foregroundColor(s.colore)
                         }
-                        .foregroundColor(s.colore).frame(width: destra - 8, alignment: .leading)
+                        .frame(width: destra - 8, alignment: .leading)
                         .position(x: x(s.valori.count - 1) + 6 + (destra - 8) / 2, y: etichette[indice])
                     }
                 }

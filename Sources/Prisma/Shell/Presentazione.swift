@@ -150,6 +150,8 @@ struct VistaPresentazione: View {
                 VStack(spacing: 0) {
                     Spacer(minLength: Misure.Presentazione.margine)
                     p.pagine[min(p.pagina, p.pagine.count - 1)]
+                        // In sala le etichette piccole (valori finali dei grafici, piede) si leggono da lontano
+                        .environment(\.documentoInSala, true)
                         .frame(width: p.formato.width, height: p.formato.height)
                         .scaleEffect(scala)
                         .frame(width: p.formato.width * scala, height: p.formato.height * scala)

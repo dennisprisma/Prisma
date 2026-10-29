@@ -150,6 +150,13 @@ enum Tema {
         static let chip = d(bianco(0.46), bianco(0.1))
         static let chipSopra = d(bianco(0.74), bianco(0.18))
         static let bordoChip = d(bianco(0.75), bianco(0.14))
+        /// Pulsanti di vetro, chip in capsula e tendine (la variante `.chip` del vetro): in chiaro stanno quasi
+        /// sempre su schede bianche, dove il chip bianco del tema sparisce, quindi prendono il pozzetto (--well)
+        /// e un filo scuro; in scuro restano il chip del tema.
+        static let chipControllo = d(nero(0.05), bianco(0.1))
+        static let chipControlloSopra = d(nero(0.085), bianco(0.18))
+        static let chipControlloColorato = d(nero(0.05), bianco(0.08))
+        static let bordoControllo = d(nero(0.09), bianco(0.14))
         /// Pozzetto: campi, segmented, tasti.
         static let pozzetto = d(nero(0.055), bianco(0.07))
         /// Pozzetto scuro: interruttore spento, barre di scorrimento, cerchio della spunta, semafori inattivi.
@@ -410,6 +417,8 @@ enum Tema {
 
         static let laterale = [StratoOmbra(colore: Color(r: 0, g: 0, b: 0, a: 0.35), y: 8, sfocatura: 24, espansione: -14)]
         static let pulsante = StratoOmbra(colore: Color(r: 0, g: 0, b: 0, a: 0.08), y: 1, sfocatura: 2)
+        /// Pulsanti di vetro e tendine (0 1px 2px rgba(0,0,0,.08) del `.btn`): li stacca dalle schede bianche.
+        static let chip = [pulsante]
         static let pulsantePrimario = StratoOmbra(colore: Colore.accento.opacity(0.7), y: 3, sfocatura: 10, espansione: -3)
         static let cursore = StratoOmbra(colore: Color(r: 0, g: 0, b: 0, a: 0.18), y: 1, sfocatura: 4)
         static let pomello = StratoOmbra(colore: Color(r: 0, g: 0, b: 0, a: 0.22), y: 2, sfocatura: 5)

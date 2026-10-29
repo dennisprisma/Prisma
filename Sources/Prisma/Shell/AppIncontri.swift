@@ -145,15 +145,17 @@ struct AppIncontri: View {
                     colonnaDossier(i)
                 }
             } else {
-                // Schede e colonna alte uguali: le schede si allungano fino in fondo alla colonna (o il contrario)
-                HStack(alignment: .top, spacing: m.spazio) {
-                    grigliaTemi(i, colonne: colonne, confermate: confermate)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    colonnaDossier(i)
-                        .frame(width: colonna)
-                        .frame(maxHeight: .infinity, alignment: .top)
+                // Schede e colonna alte uguali: le schede si allungano fino in fondo alla colonna (o il contrario),
+                // e insieme riempiono almeno l'altezza della pagina invece di lasciare un vuoto sotto
+                AltezzaAlmeno(minimo: area.height).callAsFunction {
+                    HStack(alignment: .top, spacing: m.spazio) {
+                        grigliaTemi(i, colonne: colonne, confermate: confermate)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        colonnaDossier(i)
+                            .frame(width: colonna)
+                            .frame(maxHeight: .infinity, alignment: .top)
+                    }
                 }
-                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -188,9 +190,12 @@ struct AppIncontri: View {
             .toggleStyle(.checkbox)
             .font(Tipo.incontroOcchiello)
             .disabled(i.stato == .concluso)
-            Text(tema.1).font(Tipo.incontroDomanda).foregroundColor(Colori.Incontri.testo)
+            // Un tema non scelto resta una scheda piena: si attenuano solo i testi, sempre leggibili
+            Text(tema.1).font(Tipo.incontroDomanda)
+                .foregroundColor(scelto ? Colori.Incontri.testo : Tema.Colore.inchiostroSecondario)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(tema.2).font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
+            Text(tema.2).font(Tipo.incontroNota)
+                .foregroundColor(scelto ? Colori.Incontri.secondario : Tema.Colore.inchiostroTerziario)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             HStack {
@@ -215,7 +220,6 @@ struct AppIncontri: View {
         .frame(maxWidth: .infinity, minHeight: Misure.IncontriImpaginazione.temaAltezzaMinima,
                maxHeight: .infinity, alignment: .topLeading)
         .modifier(CartaIncontro())
-        .opacity(scelto ? 1 : 0.6)
     }
 
     private func colonnaDossier(_ i: Incontro) -> some View {
@@ -311,7 +315,7 @@ struct AppIncontri: View {
                             // Un campo per incontro e domanda: cambiando incontro la bozza riparte da quello nuovo
                             FoglioRighe(testo: campo(b, d), solaLettura: solaLettura, salvaOra: { stato.salvaOra() })
                                 .id("\(i.id)-\(d.id)")
-                                .frame(height: altezzaDomanda)
+                                .frame(height: solaLettura ? nil : altezzaDomanda)
                         }
                         .padding(10)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -325,7 +329,7 @@ struct AppIncontri: View {
                         Text("APPUNTI DELL'INCONTRO").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Incontri.citazione)
                         FoglioRighe(testo: b.appunti, solaLettura: solaLettura, salvaOra: { stato.salvaOra() })
                             .id("\(i.id)-appunti")
-                            .frame(height: altezzaAppunti)
+                            .frame(height: solaLettura ? nil : altezzaAppunti)
                         Spacer(minLength: 0)
                     }
                     .padding(10)
@@ -335,7 +339,7 @@ struct AppIncontri: View {
                         Text("DECISIONI CONDIVISE").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Incontri.citazione)
                         FoglioRighe(testo: b.decisioni, solaLettura: solaLettura, salvaOra: { stato.salvaOra() })
                             .id("\(i.id)-decisioni")
-                            .frame(height: altezzaAppunti)
+                            .frame(height: solaLettura ? nil : altezzaAppunti)
                         Text("Una decisione per riga, con il verbo all'inizio («Preparare…», «Inviare…»): diventeranno attività.")
                             .font(Tipo.incontroNota).foregroundColor(Colori.Incontri.secondario)
                             .fixedSize(horizontal: false, vertical: true)
@@ -493,7 +497,14 @@ struct AppIncontri: View {
                     .font(Tema.Testo.Strumenti.spunta)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(etichetta(p)).font(Tipo.bisognoArea).foregroundColor(colore(p))
+                        // Il colore dell'area resta nel segno; l'occhiello è in inchiostro secondario, leggibile
+                        HStack(spacing: Misure.IncontriImpaginazione.spazioSegnoProposta) {
+                            Circle()
+                                .fill(colore(p))
+                                .frame(width: Misure.IncontriImpaginazione.segnoProposta,
+                                       height: Misure.IncontriImpaginazione.segnoProposta)
+                            Text(etichetta(p)).font(Tipo.bisognoArea).foregroundColor(Tema.Colore.inchiostroSecondario)
+                        }
                         Text(p.titolo).font(Tipo.incontroTitolo).foregroundColor(Colori.Incontri.testo)
                     }
                     if !p.fonte.isEmpty {
@@ -629,13 +640,13 @@ struct FoglioRighe: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             if solaLettura {
-                ScrollView {
-                    Text(testo.isEmpty ? "—" : testo)
-                        .font(Tipo.incontroScrittura)
-                        .foregroundColor(Colori.Incontri.testo)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                }
+                // In sola lettura il pozzetto è alto quanto il testo (scorre la pagina, non il campo)
+                Text(testo.isEmpty ? "—" : testo)
+                    .font(Tipo.incontroScrittura)
+                    .foregroundColor(Colori.Incontri.testo)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
             } else {
                 TestoRinviato(testo: $testo, salvaOra: salvaOra) { bozza in
                     TextEditor(text: bozza)
@@ -646,7 +657,25 @@ struct FoglioRighe: View {
                 }
             }
         }
-        .padding(4)
+        .padding(Misure.IncontriImpaginazione.margineFoglio)
         .pozzettoTestoLungo()
+    }
+}
+
+/// Contenitore di una sola vista che la propone alta almeno `minimo`: dentro uno ScrollView le schede flessibili
+/// riempiono la pagina quando il contenuto è corto, e la pagina scorre quando è più lungo.
+private struct AltezzaAlmeno: Layout {
+    let minimo: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let vista = subviews.first else { return .zero }
+        let ideale = vista.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil)).height
+        return vista.sizeThatFits(ProposedViewSize(width: proposal.width, height: max(ideale, minimo)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let vista = subviews.first else { return }
+        vista.place(at: bounds.origin, anchor: .topLeading,
+                    proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
     }
 }

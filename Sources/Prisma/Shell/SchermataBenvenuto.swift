@@ -310,6 +310,15 @@ struct PannelloAppAperte: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, m.appAperteMargine * 2)
+        } else if aperte.count < colonne {
+            // Meno app delle colonne: le schede, larghe come nella griglia, stanno al centro
+            HStack(spacing: m.appAperteSpazio) {
+                ForEach(aperte) { f in
+                    SchedaAppAperta(finestra: f, inPrimoPiano: f.app == sistema.appAttiva)
+                        .frame(width: larghezzaScheda)
+                }
+            }
+            .frame(maxWidth: .infinity)
         } else {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: m.schedaAppMinima), spacing: m.appAperteSpazio)],
                       spacing: m.appAperteSpazio) {
@@ -318,6 +327,24 @@ struct PannelloAppAperte: View {
                 }
             }
         }
+    }
+
+    /// Lo spazio dentro il pannello (largo al massimo `appAperteLarghezza`) e le colonne della griglia adattiva.
+    private var larghezzaInterna: CGFloat {
+        let m = Tema.Misura.Shell.self
+        return m.appAperteLarghezza - 2 * m.appAperteMargine
+    }
+
+    private var colonne: Int {
+        let m = Tema.Misura.Shell.self
+        return max(1, Int((larghezzaInterna + m.appAperteSpazio) / (m.schedaAppMinima + m.appAperteSpazio)))
+    }
+
+    /// La larghezza che una scheda avrebbe nella griglia piena.
+    private var larghezzaScheda: CGFloat {
+        let m = Tema.Misura.Shell.self
+        let n = CGFloat(colonne)
+        return max(m.schedaAppMinima, (larghezzaInterna - m.appAperteSpazio * (n - 1)) / n)
     }
 }
 
@@ -354,8 +381,9 @@ private struct SchedaAppAperta: View {
             .truncationMode(.tail)
             .frame(maxWidth: .infinity)
             .padding(m.schedaAppMargine)
-            .background(forma.fill(sopra ? Tema.Colore.chipSopra : Tema.Colore.chip))
-            .overlay(forma.strokeBorder(Tema.Colore.bordoChip, lineWidth: Tema.Misura.filo))
+            // Pozzetto e filo: in chiaro le schede si staccano dal fondo del pannello
+            .background(forma.fill(sopra ? Tema.Colore.chipControlloSopra : Tema.Colore.pozzetto))
+            .overlay(forma.strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo))
             .contentShape(forma)
         }
         .buttonStyle(StileSemplice())

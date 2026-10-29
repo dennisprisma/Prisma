@@ -92,13 +92,14 @@ private func gruppiFinanziari(_ voci: [VoceResoconto], C: PaletteDocumento, tota
     }
 }
 
+// Versato e rendimento più larghi: «3.000 €/anno» e la testata «Rend. annuo» entrano senza rimpicciolirsi
 private let colonneFinanziarie = [
-    ColonnaDoc(titolo: "Posizione", sottotitolo: "area · tipologia", peso: 2.6, destra: false),
+    ColonnaDoc(titolo: "Posizione", sottotitolo: "area · tipologia", peso: 2.3, destra: false),
     ColonnaDoc(titolo: "Decorrenza", sottotitolo: "durata", peso: 0.95),
-    ColonnaDoc(titolo: "Versato", sottotitolo: "versamenti", peso: 1),
+    ColonnaDoc(titolo: "Versato", sottotitolo: "versamenti", peso: 1.15),
     ColonnaDoc(titolo: "Valore", sottotitolo: "data", peso: 1.05),
     ColonnaDoc(titolo: "Risultato", sottotitolo: "sul versato", peso: 1.1),
-    ColonnaDoc(titolo: "Rend. annuo", sottotitolo: "dei versamenti", peso: 0.8),
+    ColonnaDoc(titolo: "Rend. annuo", sottotitolo: "dei versamenti", peso: 0.95),
     ColonnaDoc(titolo: "Ultimi 12 mesi", sottotitolo: "netto versamenti", peso: 1.05),
     ColonnaDoc(titolo: "Costi stimati", sottotitolo: "in un anno", peso: 0.95),
 ]
@@ -132,7 +133,7 @@ private struct PaginaQuadro: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(e.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Patrimonio netto", CifreDoc.euro(e.riepilogo.patrimonioNetto),
                                e.riepilogo.debiti > 0 ? "attività \(CifreDoc.euro(e.riepilogo.attivita)) − debiti" : "nessun debito")
                 CifraProspetto("Posizioni finanziarie", CifreDoc.euro(e.valoreFinanziario), "investimento, risparmio, previdenza")
@@ -141,7 +142,7 @@ private struct PaginaQuadro: View {
                                colore: e.risultato < -0.5 ? C.negativo : C.positivo)
                 CifraProspetto("Rendimento medio", e.rendimentoAnnuo.map { CifreDoc.variazione($0) } ?? "—", "annuo, dei versamenti")
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Ultimi 12 mesi", e.variazione12.map { CifreDoc.euroSegno($0) } ?? "—",
                                e.variazione12Percento.map { "\(CifreDoc.variazione($0)) netto versamenti" } ?? "serve lo storico dei valori",
                                colore: (e.variazione12 ?? 0) < -0.5 ? C.negativo : nil)
@@ -501,7 +502,7 @@ private struct PaginaAndamento: View {
                 GraficoLineeDoc(serie: serie, etichetteAsse: etichette, fontAssi: T.pAssi, fontValori: T.pAssi)
                     .frame(width: grafico, height: 112)
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
+                    FilaCifre {
                         CifraProspetto("Rendimento", CifreDoc.variazione(a.rendimentoAnnuo ?? a.rendimentoPeriodo),
                                        a.rendimentoAnnuo != nil ? "l'anno, netto dei costi" : "in \(TestiResoconto.mesi(a.anni)), netto dei costi")
                         CifraProspetto("Atteso", a.attesoConfrontabile.map { CifreDoc.percento($0) } ?? "—",
@@ -535,7 +536,7 @@ private struct PaginaFisco: View {
         return VStack(alignment: .leading, spacing: 10) {
             SezioneProspetto(titolo: "Se si chiudesse tutto oggi: imposte e netto incassabile",
                              testo: Text(verbatim: "Per ogni posizione finanziaria: penale di riscatto (se il prodotto ha le condizioni del contratto), bollo maturato, imposta sul guadagno con l'aliquota del suo regime e importo netto. Cifre al centesimo; per la previdenza la prestazione al pensionamento (le altre cause sono nella pagina seguente)."))
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Valore oggi", CifreDoc.euro(e.valoreFinanziario), "posizioni finanziarie")
                 CifraProspetto("Penali e bollo", e.penaliFinanziarie > 0.005 ? CifreDoc.togli(e.penaliFinanziarie) : "—", "maturati al riscatto")
                 CifraProspetto("Imposte stimate", e.imposteFinanziarie > 0.005 ? CifreDoc.togli(e.imposteFinanziarie) : "—", "sul guadagno",

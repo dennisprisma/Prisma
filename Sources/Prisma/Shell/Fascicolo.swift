@@ -86,7 +86,16 @@ extension StatoShell {
                                         cartellini: [("Documenti", ["\(parti.count)"]), ("Pagine", ["\(pagina - 1)"])])
         let apertura = ImpaginaReport.pagine(copertina: AnyView(copertina), interne: [AnyView(IndiceFascicolo(voci: voci))],
                                              intestazione: "Fascicolo dell'incontro · \(c.nome)")
-        return DocumentoStampabile(report: Self.titoloFascicolo(data, conOra: incontro != nil), cliente: c.nome, pagine: apertura + parti.flatMap(\.1.pagine))
+        // Il piede di ogni pagina conta dall'inizio del fascicolo, come l'indice
+        let totalePagine = pagina - 1
+        var tutte: [AnyView] = apertura.map {
+            AnyView($0.environment(\.numerazioneFascicolo, NumerazioneFascicolo(scostamento: 0, totale: totalePagine)))
+        }
+        for (i, parte) in parti.enumerated() {
+            let numerazione = NumerazioneFascicolo(scostamento: voci[i].1 - 1, totale: totalePagine)
+            tutte += parte.1.pagine.map { AnyView($0.environment(\.numerazioneFascicolo, numerazione)) }
+        }
+        return DocumentoStampabile(report: Self.titoloFascicolo(data, conOra: incontro != nil), cliente: c.nome, pagine: tutte)
     }
 
     /// «Fascicolo dell'incontro del 28/10/2026 ore 10:00»: con data e ora dell'appuntamento l'archivio in Documenti

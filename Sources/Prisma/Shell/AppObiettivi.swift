@@ -30,6 +30,10 @@ struct AppObiettivi: View {
                             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                                 ForEach(elenco) { o in scheda(o) }
                             }
+                            // Probabilità e posizioni dell'obiettivo scelto: a tutta larghezza, sotto le schede
+                            if let o = scelto {
+                                lavoroObiettivo(o)
+                            }
                             suggerimenti
                         }
                         .padding(EdgeInsets(top: 16, leading: 18, bottom: 18, trailing: 18))
@@ -169,36 +173,24 @@ struct AppObiettivi: View {
         }
     }
 
-    // MARK: - Dettaglio
+    // MARK: - Probabilità e posizioni (colonna centrale)
 
-    private func dettaglio(_ o: Obiettivo) -> some View {
-        let posizioni = stato.posizioniCliente(cliente).filter { $0.stato == .inEssere && !$0.area.passivo && $0.area != .protezione && $0.area != .immobili }
-        let a = AvanzamentoObiettivo(o, posizioni: posizioni)
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(o.area.nome.uppercased()).font(Tipo.chip).tracking(0.5).foregroundColor(Colori.Bisogni.area(o.area))
-                Text(o.titolo).font(Tipo.dettaglioTitolo).foregroundColor(Colori.Strumenti.titolo)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !o.note.isEmpty {
-                    Text(o.note).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
-                }
-                VStack(spacing: 0) {
-                    RigaDato("Obiettivo", Formati.euro(o.importo), larghezza: 130)
-                    RigaDato("Entro", "\(Formati.dataEstesa.string(from: o.scadenza)) (\(o.mesiMancanti) mesi)", larghezza: 130)
-                    RigaDato("Già da parte", Formati.euro(a.accantonato), larghezza: 130)
-                    RigaDato("Mancano", Formati.euro(a.mancante), larghezza: 130)
-                    RigaDato("Versamento necessario", a.mancante <= 0 ? "Obiettivo raggiunto"
-                             : a.versamentoNecessario.map { "\(Formati.euro($0)) al mese al \(Formati.percentuale(o.rendimento))" } ?? "Scadenza passata",
-                             larghezza: 130)
-                    RigaDato("Versamenti già attivi", "\(Formati.euro(a.versamentiAttivi)) al mese", larghezza: 130)
-                }
-                if a.mancante > 0, let v = a.versamentoNecessario, v > a.versamentiAttivi {
-                    NotaMetodo(testo: "Con i versamenti attivi mancano \(Formati.euro(v - a.versamentiAttivi)) al mese: si può allungare la data, ridurre l'importo o aggiungere un piano. Il simulatore parte già da questi numeri.")
-                }
+    /// Le posizioni in essere che possono lavorare per un obiettivo (niente debiti, coperture, immobili).
+    private var posizioniAdatte: [Posizione] {
+        stato.posizioniCliente(cliente).filter { $0.stato == .inEssere && !$0.area.passivo && $0.area != .protezione && $0.area != .immobili }
+    }
+
+    /// Sotto le schede, per l'obiettivo scelto: la probabilità di arrivarci con il ventaglio e le posizioni collegate.
+    private func lavoroObiettivo(_ o: Obiettivo) -> some View {
+        let posizioni = posizioniAdatte
+        return PannelloAnalisi(titolo: o.titolo, nota: "Le probabilità di arrivarci e le posizioni che lavorano per l'obiettivo") {
+            EmptyView()
+        } contenuto: {
+            VStack(alignment: .leading, spacing: Tema.Misura.MotoriAnalisi.spazioSezioni) {
                 // Scenari con le probabilità: calcolati una volta all'apertura e ricordati (non a ogni ridisegno)
                 if o.scadenza > Date() {
                     SezioneProbabilitaObiettivo(esito: CacheMotoriAnalisi.scenari(o, posizioni: posizioni), importo: o.importo)
-                        .padding(.vertical, Tema.Misura.MotoriAnalisi.spazioElenco)
+                        .padding(.bottom, Tema.Misura.MotoriAnalisi.spazioElenco)
                 }
                 Text("POSIZIONI CHE LAVORANO PER L'OBIETTIVO").font(Tipo.incontroOcchiello).tracking(0.8).foregroundColor(Colori.Strumenti.occhiello)
                 if posizioni.isEmpty {
@@ -220,6 +212,38 @@ struct AppObiettivi: View {
                         }
                     }
                     .toggleStyle(.checkbox)
+                }
+            }
+        }
+        .padding(Tema.Misura.MotoriAnalisi.riquadroObiettivo)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .riquadroStrumento()
+    }
+
+    // MARK: - Dettaglio
+
+    private func dettaglio(_ o: Obiettivo) -> some View {
+        let a = AvanzamentoObiettivo(o, posizioni: posizioniAdatte)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(o.area.nome.uppercased()).font(Tipo.chip).tracking(0.5).foregroundColor(Colori.Bisogni.area(o.area))
+                Text(o.titolo).font(Tipo.dettaglioTitolo).foregroundColor(Colori.Strumenti.titolo)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !o.note.isEmpty {
+                    Text(o.note).font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).fixedSize(horizontal: false, vertical: true)
+                }
+                VStack(spacing: 0) {
+                    RigaDato("Obiettivo", Formati.euro(o.importo), larghezza: 130)
+                    RigaDato("Entro", "\(Formati.dataEstesa.string(from: o.scadenza)) (\(o.mesiMancanti) mesi)", larghezza: 130)
+                    RigaDato("Già da parte", Formati.euro(a.accantonato), larghezza: 130)
+                    RigaDato("Mancano", Formati.euro(a.mancante), larghezza: 130)
+                    RigaDato("Versamento necessario", a.mancante <= 0 ? "Obiettivo raggiunto"
+                             : a.versamentoNecessario.map { "\(Formati.euro($0)) al mese al \(Formati.percentuale(o.rendimento))" } ?? "Scadenza passata",
+                             larghezza: 130)
+                    RigaDato("Versamenti già attivi", "\(Formati.euro(a.versamentiAttivi)) al mese", larghezza: 130)
+                }
+                if a.mancante > 0, let v = a.versamentoNecessario, v > a.versamentiAttivi {
+                    NotaMetodo(testo: "Con i versamenti attivi mancano \(Formati.euro(v - a.versamentiAttivi)) al mese: si può allungare la data, ridurre l'importo o aggiungere un piano. Il simulatore parte già da questi numeri.")
                 }
                 VStack(spacing: 6) {
                     PulsanteAzione(titolo: "Simula il piano", principale: true) { stato.simula(o) }

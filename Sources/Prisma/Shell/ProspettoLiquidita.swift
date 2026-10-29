@@ -36,7 +36,7 @@ private struct PaginaCapitali: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("In scadenza", CifreDoc.euro(e.nettoInScadenza), e.scadenze.isEmpty ? "nessuna posizione" : "netto, \(e.scadenze.count) \(e.scadenze.count == 1 ? "posizione" : "posizioni")")
                 CifraProspetto("Liquidità oggi", CifreDoc.euro(e.liquiditaAttuale), "conti e depositi")
                 CifraProspetto("Totale disponibile", CifreDoc.euro(e.totale), "da destinare")
@@ -121,7 +121,7 @@ private struct PaginaSalvadanai: View {
                        }, fontTesta: T.pTabellaTesta, fontTestaSotto: T.pTabellaNota, altezzaTesta: 18, margine: 4)
             SezioneProspetto(titolo: "Fermi sul conto o destinati: dopo \(IpotesiLiquidita.anniConfronto) anni, in euro di oggi",
                              testo: Text(verbatim: "Rendimenti netti del 26%, tolta l'inflazione del \(CifreDoc.condizione(IpotesiCalcolo.inflazione)) annuo."))
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Oggi", CifreDoc.euro(e.totale), "totale disponibile")
                 CifraProspetto("Tutto fermo sul conto", CifreDoc.euro(e.realeFermo), "al \(CifreDoc.condizione(IpotesiLiquidita.conto)) lordo", colore: C.negativo)
                 CifraProspetto("Destinati", CifreDoc.euro(e.realeDestinato), "nei quattro salvadanai", colore: C.positivo)

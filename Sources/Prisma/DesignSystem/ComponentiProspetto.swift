@@ -94,9 +94,36 @@ struct PuntoElenco: View {
     }
 }
 
-/// Una cifra in evidenza: etichetta, valore, nota.
+/// Una fila di cifre in evidenza alte uguali: se una nota va su due righe, le schede accanto la seguono.
+/// Senza la fila (un `HStack` qualunque) ogni scheda resta alta quanto il suo testo.
+struct FilaCifre<Contenuto: View>: View {
+    var spazio: CGFloat = D.spazioCifre
+    @ViewBuilder let contenuto: () -> Contenuto
+
+    var body: some View {
+        HStack(spacing: spazio) { contenuto() }
+            .environment(\.cifreAltezzaPiena, true)
+            // L'altezza della fila è quella della scheda più alta, non lo spazio libero della pagina
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct ChiaveCifreAltezzaPiena: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Dentro `FilaCifre` le schede prendono l'altezza della fila.
+    var cifreAltezzaPiena: Bool {
+        get { self[ChiaveCifreAltezzaPiena.self] }
+        set { self[ChiaveCifreAltezzaPiena.self] = newValue }
+    }
+}
+
+/// Una cifra in evidenza: etichetta, valore, nota (fino a due righe, sempre allo stesso corpo).
 struct CifraProspetto: View {
     @Environment(\.paletteDocumento) private var C
+    @Environment(\.cifreAltezzaPiena) private var altezzaPiena
     let etichetta: String
     let valore: String
     let nota: String
@@ -113,10 +140,12 @@ struct CifraProspetto: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(verbatim: etichetta).font(T.pKpiEtichetta).foregroundColor(C.tenue).lineLimit(1).minimumScaleFactor(0.8)
             Text(verbatim: valore).font(T.pKpiValore).foregroundColor(colore ?? C.titolo).lineLimit(1).minimumScaleFactor(0.7)
-            Text(verbatim: nota).font(T.pKpiNota).foregroundColor(C.tenue).lineLimit(1).minimumScaleFactor(0.8)
+            // La nota va a capo invece di rimpicciolirsi o troncarsi
+            Text(verbatim: nota).font(T.pKpiNota).foregroundColor(C.tenue).lineLimit(D.righeNotaCifra)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(9)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: altezzaPiena ? CGFloat.infinity : nil, alignment: .topLeading)
         .riquadroDoc(C.riquadro, raggio: D.raggioPiccolo)
     }
 }

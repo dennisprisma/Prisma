@@ -88,12 +88,14 @@ struct PannelloNotifiche: View {
                         .font(Tipo.notificaTitolo)
                         .foregroundColor(Colori.Notifiche.voceTitolo)
                         .lineLimit(2)
-                    HStack(spacing: 6) {
+                    // Il dettaglio va su due righe: su una sola si troncava quasi sempre («apri «In reg…»)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
                         if let c = n.canale { EtichettaCanale(canale: c, compatta: true) }
                         Text(n.dettaglio)
                             .font(Tipo.notificaDettaglio)
                             .foregroundColor(Colori.Notifiche.voceDettaglio)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .multilineTextAlignment(.leading)

@@ -51,7 +51,7 @@ private struct PaginaTraguardo: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Obiettivo alla scadenza", CifreDoc.euro(e.importoScadenza), "\(CifreDoc.euro(e.importoOggi)) di oggi + inflazione")
                 CifraProspetto("Da parte oggi", CifreDoc.euro(e.disponibileOggi), "accantonato e posizioni collegate")
                 CifraProspetto("Si arriva a", CifreDoc.euro(e.proiezione), "netto, alla scadenza")
@@ -173,7 +173,7 @@ private struct PaginaProbabilita: View {
         VStack(alignment: .leading, spacing: 10) {
             SezioneProspetto(titolo: "Scenari con le probabilità",
                              testo: Text(verbatim: "\(Formati.numeroFormatter.string(from: NSNumber(value: mc.traiettorie)) ?? "") percorsi possibili dei mercati, anno per anno, con la volatilità di ogni posizione: in quanti casi il capitale finale, al netto delle imposte, raggiunge l'obiettivo rivalutato di \(CifreDoc.euro(mc.traguardo)). È una stima statistica sulle ipotesi del piano, non una previsione."))
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Probabilità di arrivarci", "\(mc.suDieci) su 10", "\(CifreDoc.percento(mc.probabilita * 100, decimali: 0)) dei percorsi",
                                colore: coloreProbabilita)
                 CifraProspetto("Sfavorevole", CifreDoc.euro(mc.p10), "1 caso su 10 va peggio", colore: C.sfavorevole)

@@ -40,7 +40,7 @@ private struct PaginaIncassi: View {
                 CampoProspetto(etichetta: "Consulente", valore: TestiValutazione.consulente)
                 CampoProspetto(etichetta: "Data", valore: CifreDoc.dataBreve(t.v.data)).frame(width: 90)
             }
-            HStack(spacing: 6) {
+            FilaCifre {
                 CifraProspetto("Premio unico versato", CifreDoc.euro(t.e.premio), "versamento iniziale")
                 CifraProspetto("Costo di ingresso", CifreDoc.euro(t.e.ingresso),
                       "\(CifreDoc.condizione(t.c.costoIngresso))" + (t.c.costoIngressoMassimo.map { ", massimo \(CifreDoc.euro($0))" } ?? ""))

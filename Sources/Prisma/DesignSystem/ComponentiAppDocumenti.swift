@@ -41,7 +41,7 @@ struct TestataGruppoDocumenti: View {
     }
 }
 
-/// Una riga dell'elenco dei documenti: tessera, titolo con il pallino «da leggere», pagine e data, stato e collegamento.
+/// Una riga dell'elenco dei documenti: tessera, titolo con il segno «da leggere», pagine e data, stato e collegamento.
 struct RigaDocumento: View {
     let voce: MotoreDocumenti.Voce
     /// «p. 3 · …» quando la ricerca ha trovato le parole solo nel testo del documento.
@@ -55,17 +55,20 @@ struct RigaDocumento: View {
         HStack(alignment: .top, spacing: m.spazioRiga) {
             TesseraDocumento(categoria: d.genere)
             VStack(alignment: .leading, spacing: m.spazioTestiRiga) {
-                HStack(spacing: m.spazioStatoRiga) {
+                // Il titolo va su due righe e si tronca in coda, non a metà
+                HStack(alignment: .firstTextBaseline, spacing: m.spazioStatoRiga) {
                     if daLeggere {
                         Circle()
-                            .fill(Tema.Colore.Documenti.nuovo)
+                            .strokeBorder(Tema.Colore.Documenti.nuovo, lineWidth: m.bordoNuovo)
                             .frame(width: m.puntoNuovo, height: m.puntoNuovo)
+                            .help("Da leggere")
                     }
                     Text(d.titolo)
                         .font(Tema.Testo.titolo)
                         .foregroundColor(Tema.Colore.inchiostro)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(Self.meta(d))
                     .font(Tema.Testo.didascalia)
@@ -86,7 +89,8 @@ struct RigaDocumento: View {
         .voceElencoStrumento(attiva: attiva)
     }
 
-    /// La terza riga, solo se serve: lo stato che chiede attenzione e il collegamento con il canale.
+    /// La terza riga, solo se serve: lo stato che chiede attenzione e il collegamento con il canale. Se il nome
+    /// collegato non entra resta l'icona del collegamento, con il nome nell'aiuto.
     @ViewBuilder private var statoECollegamento: some View {
         let stato = voce.indicatori.stato
         let mostraStato: Bool = {
@@ -96,31 +100,42 @@ struct RigaDocumento: View {
             }
         }()
         if mostraStato || voce.nomeCollegato != nil {
-            HStack(spacing: Tema.Misura.Documenti.spazioStatoRiga) {
-                switch stato {
-                case .inLettura:
-                    ProgressView().controlSize(.mini)
-                    Text(stato.etichetta)
-                        .font(Tema.Testo.didascalia)
-                        .foregroundColor(Tema.Colore.inchiostroSecondario)
-                case .conDifferenze:
-                    Pillola(testo: stato.etichetta, tono: .attenzione)
-                case .illeggibile:
-                    Pillola(testo: stato.etichetta, tono: .errore)
-                default:
-                    EmptyView()
-                }
-                if let nome = voce.nomeCollegato {
-                    Image(systemName: "link")
-                        .font(Tema.Testo.didascalia)
-                        .foregroundColor(Tema.Colore.inchiostroTerziario)
+            ViewThatFits(in: .horizontal) {
+                rigaStato(stato, conNome: true)
+                rigaStato(stato, conNome: false)
+            }
+        }
+    }
+
+    private func rigaStato(_ stato: MotoreDocumenti.Stato, conNome: Bool) -> some View {
+        HStack(spacing: Tema.Misura.Documenti.spazioStatoRiga) {
+            switch stato {
+            case .inLettura:
+                ProgressView().controlSize(.mini)
+                Text(stato.etichetta)
+                    .font(Tema.Testo.didascalia)
+                    .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    .lineLimit(1)
+            case .conDifferenze:
+                Pillola(testo: stato.etichetta, tono: .attenzione)
+            case .illeggibile:
+                Pillola(testo: stato.etichetta, tono: .errore)
+            default:
+                EmptyView()
+            }
+            if let nome = voce.nomeCollegato {
+                Image(systemName: "link")
+                    .font(Tema.Testo.didascalia)
+                    .foregroundColor(Tema.Colore.inchiostroTerziario)
+                    .help(nome)
+                if conNome {
                     Text(nome)
                         .font(Tema.Testo.didascalia)
                         .foregroundColor(Tema.Colore.inchiostroSecondario)
                         .lineLimit(1)
-                    if let canale = voce.canale {
-                        EtichettaCanale(canale: canale, compatta: true)
-                    }
+                }
+                if let canale = voce.canale {
+                    EtichettaCanale(canale: canale, compatta: true)
                 }
             }
         }
