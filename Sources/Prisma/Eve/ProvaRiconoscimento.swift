@@ -66,11 +66,11 @@ final class ProvaRiconoscimento: NSObject {
         guard esito != nil, !passato else { return }
         passato = true
         let pezzi = coda.sync { audio }
-        guard let primo = pezzi.first else {
-            chiudi("La voce di Eve non ha prodotto audio da provare: in «Voce di Eve» premi «Ascolta» e, se non si sente, scegli un'altra voce.")
-            return
+        if let primo = pezzi.first {
+            DiagnosticaVoce.annota("Prova: \(pezzi.count) pezzi di voce, \(DiagnosticaVoce.descrivi(primo.format))")
         }
-        DiagnosticaVoce.annota("Prova: \(pezzi.count) pezzi di voce, \(DiagnosticaVoce.descrivi(primo.format))")
+        // Anche senza audio si prepara il riconoscimento: se non può partire, quel motivo conta più della voce muta
+        // (la sintesi a volte non dà audio, per esempio sul simulatore iOS)
         fase = "preparazione del riconoscimento"
         let scelta = self.scelta
         Task {
@@ -80,7 +80,11 @@ final class ProvaRiconoscimento: NSObject {
                 case .failure(let e):
                     self.chiudi("Con «\(scelta.nome)» il riconoscimento non è partito: \(e.messaggio)")
                 case .success(let t):
-                    guard self.esito != nil else { t.annulla(); return }   // la prova è già scaduta
+                    guard self.esito != nil, !pezzi.isEmpty else {   // la prova è già scaduta, o non c'è audio
+                        t.annulla()
+                        self.chiudi("La voce di Eve non ha prodotto audio da provare: in «Voce di Eve» premi «Ascolta» e, se non si sente, scegli un'altra voce.")
+                        return
+                    }
                     self.fase = "riconoscimento"
                     self.ascolta(t, pezzi)
                 }
