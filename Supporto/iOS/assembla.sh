@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Assembla a mano Prisma.app per il simulatore iOS (niente .xcodeproj, niente asset catalog).
 #
-# Uso: Supporto/iOS/assembla.sh <cartella prodotti> <Prisma.app da creare>
+# Uso: Supporto/iOS/assembla.sh <cartella prodotti> <Prisma.app da creare> [simulatore|dispositivo]
+#   Il terzo argomento (predefinito: simulatore) sceglie la piattaforma: «dispositivo» prepara il .app
+#   per iPhone e iPad veri, da installare con AltStore o Sideloadly (che lo firmano con l'ID Apple).
 #   <cartella prodotti>: dove xcodebuild (o swift build --triple …-ios…-simulator) ha messo
 #   l'eseguibile Prisma e il bundle delle risorse Prisma_Prisma.bundle
 #   (di solito build/ios/Build/Products/Release-iphonesimulator).
@@ -11,13 +13,19 @@
 # del .app, quindi Risorse.bundle e MotoriEve trovano tutto senza modifiche al codice.
 set -euo pipefail
 
-if [ $# -ne 2 ]; then
-    echo "Uso: $0 <cartella prodotti> <Prisma.app>" >&2
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+    echo "Uso: $0 <cartella prodotti> <Prisma.app> [simulatore|dispositivo]" >&2
     exit 2
 fi
 
 PROD="$1"
 APP="$2"
+DESTINAZIONE="${3:-simulatore}"
+case "$DESTINAZIONE" in
+    simulatore) ATTESA="IOSSIMULATOR"; NUMERO=7; PIATTAFORMA_PLIST="iPhoneSimulator" ;;
+    dispositivo) ATTESA="IOS"; NUMERO=2; PIATTAFORMA_PLIST="iPhoneOS" ;;
+    *) echo "Destinazione sconosciuta: $DESTINAZIONE" >&2; exit 2 ;;
+esac
 RADICE="$(cd "$(dirname "$0")/../.." && pwd)"
 PLIST_ORIGINE="$RADICE/Supporto/iOS/Info.plist"
 
@@ -29,15 +37,15 @@ find "$PROD" -maxdepth 2 | head -40 || true
 ESEGUIBILE="$PROD/Prisma"
 [ -f "$ESEGUIBILE" ] && [ -x "$ESEGUIBILE" ] || errore "Eseguibile Prisma non trovato in $PROD"
 
-# Deve essere un binario per il simulatore iOS, non per il Mac
+# Deve essere un binario iOS della piattaforma scelta (simulatore o dispositivo), non per il Mac
 if PIATTAFORMA="$(xcrun vtool -show-build "$ESEGUIBILE" 2>/dev/null)"; then
     echo "$PIATTAFORMA"
-    grep -q IOSSIMULATOR <<< "$PIATTAFORMA" || errore "Prisma non è compilato per il simulatore iOS"
+    grep -Eq "platform $ATTESA\$|platform $ATTESA[[:space:]]" <<< "$PIATTAFORMA" || errore "Prisma non è compilato per: $DESTINAZIONE"
 else
     PIATTAFORMA="$(otool -l "$ESEGUIBILE" | grep -A4 LC_BUILD_VERSION || true)"
     echo "$PIATTAFORMA"
-    # In LC_BUILD_VERSION la piattaforma 7 è il simulatore iOS
-    grep -Eq 'platform (7|IOSSIMULATOR)' <<< "$PIATTAFORMA" || errore "Prisma non è compilato per il simulatore iOS"
+    # In LC_BUILD_VERSION la piattaforma 2 è iOS, la 7 il simulatore iOS
+    grep -Eq "platform ($NUMERO|$ATTESA)\$|platform ($NUMERO|$ATTESA)[[:space:]]" <<< "$PIATTAFORMA" || errore "Prisma non è compilato per: $DESTINAZIONE"
 fi
 
 rm -rf "$APP"
@@ -50,6 +58,8 @@ if [ -n "${GITHUB_SHA:-}" ]; then
     # Il commit nella diagnostica, come sul Mac
     /usr/libexec/PlistBuddy -c "Add :PrismaCommit string ${GITHUB_SHA:0:7}" "$APP/Info.plist"
 fi
+# La piattaforma del pacchetto: simulatore o iPhone/iPad veri
+/usr/libexec/PlistBuddy -c "Set :CFBundleSupportedPlatforms:0 $PIATTAFORMA_PLIST" "$APP/Info.plist"
 # Formato binario, come quello prodotto da Xcode
 plutil -convert binary1 "$APP/Info.plist"
 
@@ -81,7 +91,7 @@ else
     echo "Design/Icone/AppIcon.png assente: nessuna icona"
 fi
 
-# Firma ad-hoc (il simulatore la accetta; avvicina il .app a quello per il dispositivo)
+# Firma ad-hoc: il simulatore la accetta; sul dispositivo AltStore o Sideloadly la sostituiscono con l'ID Apple
 codesign --force --sign - --timestamp=none "$APP"
 
 # ---- Verifica ----
@@ -120,4 +130,4 @@ fi
 
 codesign --verify --strict --verbose=2 "$APP"
 du -sh "$APP"
-echo "Prisma.app per il simulatore iOS assemblata e verificata"
+echo "Prisma.app per iOS ($DESTINAZIONE) assemblata e verificata"

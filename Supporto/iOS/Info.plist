@@ -4,8 +4,8 @@
   Info.plist di Prisma per iPhone e iPad (scritto a mano: niente Xcode, niente asset catalog).
   Lo copia Supporto/iOS/assembla.sh nella radice di Prisma.app.
   - MinimumOSVersion deve coincidere con .iOS(.v17) di Package.swift.
-  - CFBundleSupportedPlatforms: per ora solo il simulatore (nessuna firma); per un
-    dispositivo vero servirà iPhoneOS e un identificativo registrato.
+  - CFBundleSupportedPlatforms: qui il simulatore; assembla.sh lo cambia in iPhoneOS per Prisma.ipa,
+    da installare su iPhone e iPad con AltStore o Sideloadly (che firmano con l'ID Apple).
   - Le icone AppIcon*.png le genera assembla.sh da Design/Icone/AppIcon.png.
   - Il tipo local.prisma.backup è il backup cifrato (.zip.cifrato) creato da Prisma sul Mac.
   - Eve in rete locale (NSLocalNetworkUsageDescription, NSAllowsLocalNetworking) arriva in un giro successivo.
