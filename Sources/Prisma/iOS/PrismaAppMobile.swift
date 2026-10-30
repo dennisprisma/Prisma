@@ -35,6 +35,9 @@ struct PrismaAppMobile: App {
         if argomenti.contains("--prova-eve") {
             EsitoProva.esci("prova-eve", codice: ProvaEve.esegui())
         }
+        if argomenti.contains("--prova-dock") {
+            EsitoProva.esci("prova-dock", codice: ProvaDockMobile.esegui())
+        }
         if argomenti.contains("--prova-carico") {
             EsitoProva.esci("prova-carico", codice: ProvaCarico.esegui())
         }
@@ -85,21 +88,25 @@ private struct AvvioMobile: View {
 }
 
 /// La radice di Prisma su iPhone e iPad: apertura del backup se l'archivio non ha ancora dati veri, poi
-/// il guscio dell'iPad (larghezza regolare) o quello dell'iPhone (compatta). Aspetto chiaro, scuro o
-/// automatico come in Impostazioni; l'avviso temporaneo dello stato in basso.
+/// la scrivania dell'iPad (larghezza regolare) o quella dell'iPhone (compatta). Sotto tutto una sola acqua,
+/// animata come sul Mac: sopravvive al cambio di guscio (Split View, Slide Over) e all'apertura del backup.
+/// Aspetto chiaro, scuro o automatico come in Impostazioni; l'avviso temporaneo dello stato in basso.
 struct RadiceMobile: View {
     @ObservedObject var mobile: StatoMobile
     @Environment(\.horizontalSizeClass) private var larghezza
     @Environment(\.scenePhase) private var fase
 
     var body: some View {
-        Group {
-            if mobile.mostraApertura {
-                AperturaBackup()
-            } else if larghezza == .regular {
-                GuscioiPad()
-            } else {
-                GuscioiPhone()
+        ZStack {
+            AcquaMobile()
+            Group {
+                if mobile.mostraApertura {
+                    AperturaBackup()
+                } else if larghezza == .regular {
+                    GuscioiPad()
+                } else {
+                    GuscioiPhone()
+                }
             }
         }
         .modifier(AspettoEAvvisoMobile(nascondiAvviso: mobile.mostraApertura))
@@ -115,6 +122,18 @@ struct RadiceMobile: View {
     }
 }
 
+/// L'acqua della scrivania sotto tutto (un solo CAMetalLayer per la scena): osserva StatoShell solo per sapere se
+/// può muoversi (Impostazioni › Sfondo, la sala opaca della presentazione) e quanta pioggia cade. Il resto
+/// (background, scena inattiva, «Riduci movimento», risparmio energetico) lo decide SfondoAcquaMobile.
+private struct AcquaMobile: View {
+    @EnvironmentObject var stato: StatoShell
+
+    var body: some View {
+        Materiale.SfondoScrivania(animato: stato.dati.impostazioni.sfondoAnimato && stato.presentazione == nil,
+                                  intensita: stato.dati.impostazioni.pioggia.forza)
+    }
+}
+
 /// Osserva lo StatoShell solo per l'aspetto e per l'avviso: il guscio sotto non si ricalcola per questo.
 private struct AspettoEAvvisoMobile: ViewModifier {
     @EnvironmentObject var stato: StatoShell
@@ -126,7 +145,8 @@ private struct AspettoEAvvisoMobile: ViewModifier {
                 if let avviso = stato.avviso, !nascondiAvviso {
                     VistaAvviso(testo: avviso)
                         .padding(.horizontal, Tema.Misura.Mobile.margine)
-                        .padding(.bottom, Tema.Misura.Mobile.rigaMinima)
+                        // Sopra il dock, come .toast del tema (bottom: dock-space + 4)
+                        .padding(.bottom, Tema.Misura.Mobile.avvisoBasso)
                         .transition(.opacity)
                         .allowsHitTesting(false)
                 }

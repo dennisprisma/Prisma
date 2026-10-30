@@ -3,7 +3,8 @@
 #
 # Uso: Supporto/iOS/prove.sh <udid> [prova …]
 #   Senza elenco esegue tutte le prove del giro 1:
-#     verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-eve backup-ditto
+#     verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-eve prova-dock backup-ditto
+#   «prova-dock» (giro 3): il lato delle icone del dock di iPhone e iPad (fitDock del tema) e le app del dock.
 #   «backup-ditto» è una sequenza: l'app prepara un archivio di prova (--prepara-campione-backup),
 #   lo script lo comprime con ditto sul runner (gli stessi argomenti di Backup.swift) e l'app lo
 #   cifra, decifra, estrae con LettoreZip e ripristina (--prova-backup-ditto <zip>).
@@ -26,7 +27,7 @@ LIMITE="${PRISMA_LIMITE_PROVA:-600}"   # secondi per prova
 if [ $# -gt 0 ]; then
     PROVE=("$@")
 else
-    PROVE=(verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-eve backup-ditto)
+    PROVE=(verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-eve prova-dock backup-ditto)
 fi
 
 # macOS non ha `timeout`: un'app bloccata non deve bloccare il job fino al limite di GitHub

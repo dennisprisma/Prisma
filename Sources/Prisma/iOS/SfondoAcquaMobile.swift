@@ -4,17 +4,21 @@ import UIKit
 import Metal
 import QuartzCore
 
-// Lo sfondo d'acqua animato dell'iPad: lo stesso shader (ShaderAcqua, compilato una volta da ProgrammaAcqua) e la
-// stessa fisica (FisicaAcqua) della scrivania del Mac, in una UIView con CAMetalLayer e CADisplayLink.
+// Lo sfondo d'acqua animato di iPhone e iPad: lo stesso shader (ShaderAcqua, compilato una volta da ProgrammaAcqua),
+// la stessa fisica (FisicaAcqua) e la stessa pioggia della scrivania del Mac, in una UIView con CAMetalLayer e
+// CADisplayLink. Mai una versione semplificata: sul telefono le gocce sono quelle del Mac (CLAUDE.md).
 // Regole del Mac (CLAUDE.md, Sfondo della scrivania):
 // - 30 fotogrammi al secondo, 20 con il risparmio energetico (rallenta, non si ferma);
 // - il disegno (fisica, uniformi, GPU) è sulla coda propria, fuori dal thread principale: il battito dello schermo
 //   sul thread principale sceglie solo il fotogramma e lo accoda;
-// - si ferma con l'app in background, con «Riduci movimento», con «Sfondo fermo» nelle Impostazioni e sotto la
-//   presentazione (`animato` falso);
+// - si ferma con l'app in background o la scena inattiva (Centro di controllo, elenco delle app), con «Riduci
+//   movimento», con «Sfondo fermo» nelle Impostazioni e sotto la presentazione (`animato` falso); con il dispositivo
+//   caldo potrà rallentare a 20 fotogrammi come con il risparmio energetico (`Misure.Acqua.caldoRallenta`, spento);
 // - senza Metal, se lo shader non si compila o mancano i buffer resta il fermo-immagine (`rinuncia`): succede anche
 //   nel simulatore senza GPU vera del runner.
-// L'iPhone resta col fermo-immagine (SfondoAcqua decide), le istantanee iOS pure.
+// Le istantanee iOS restano col fermo-immagine (SfondoAcqua decide). Una sola acqua per scena: RadiceMobile.
+// La pioggia è in gocce al secondo, come sul Mac (non per area): sul telefono sembra più fitta. Se un giorno
+// andasse diradata, si fa solo qui (intensità × area vista / 1440 × 900), mai in SfondoAcquaFisica.swift.
 
 /// La tela: una UIView il cui layer è il CAMetalLayer, che non riceve tocchi.
 final class TelaAcquaMobile: UIView {
@@ -25,8 +29,8 @@ final class TelaAcquaMobile: UIView {
 
     /// La misura in punti e in pixel del drawable è cambiata (thread principale).
     var cambioMisura: ((CGSize, CGSize) -> Void)?
-    /// La vista è entrata in una finestra o ne è uscita.
-    var cambioFinestra: (() -> Void)?
+    /// La vista è entrata in una finestra o ne è uscita (con la scena della finestra, nil fuori da una finestra).
+    var cambioFinestra: ((UIWindowScene?) -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -45,14 +49,16 @@ final class TelaAcquaMobile: UIView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         aggiornaRisoluzione()
-        cambioFinestra?()
+        // La scena si legge qui: prima di entrare in una finestra è nil
+        cambioFinestra?(window?.windowScene)
     }
 
-    /// Pixel del drawable: quelli dello schermo per `quotaRisoluzione` (l'acqua è morbida, la GPU fa meno lavoro).
+    /// Pixel del drawable: `Misure.Acqua.pixelPerPunto` per punto, come il Mac Retina (l'acqua è morbida, la GPU fa
+    /// meno lavoro). iPhone a 3× → metà dei pixel dello schermo; iPad e iPhone a 2× → tre quarti, come il Mac.
     func aggiornaRisoluzione() {
         let scala = window?.screen.scale ?? traitCollection.displayScale
         let lato = bounds.size
-        let q = Misure.Acqua.quotaRisoluzione
+        let q = min(1, Misure.Acqua.pixelPerPunto / max(1, scala))
         let pixel = CGSize(width: max(1, (lato.width * scala * q).rounded()), height: max(1, (lato.height * scala * q).rounded()))
         strato.contentsScale = scala * q
         cambioMisura?(lato, pixel)
@@ -98,8 +104,8 @@ private final class BersaglioBattito: NSObject {
     }
 }
 
-/// Il disegno dell'acqua sull'iPad, come RendererAcqua sul Mac:
-/// - thread principale: quando muoversi (background, Riduci movimento, impostazioni) e il ritmo;
+/// Il disegno dell'acqua su iPhone e iPad, come RendererAcqua sul Mac:
+/// - thread principale: quando muoversi (background, scena inattiva, Riduci movimento, impostazioni) e il ritmo;
 /// - CADisplayLink (thread principale, pochissimo lavoro): sceglie il fotogramma e lo accoda;
 /// - coda del disegno: fisica, profili, uniformi e GPU, con il tempo vero dello schermo.
 /// Fra i thread passa solo `Condiviso`, sotto `serratura` (tenuta per poche istruzioni, mai durante il disegno).
@@ -134,6 +140,9 @@ final class RendererAcquaMobile: NSObject {
     private var pronta = false
     private var staccato = false
     private var inBackground = false
+    /// La scena della finestra è attiva (non coperta dal Centro di controllo, dall'elenco delle app, da un avviso).
+    private var scenaAttiva = true
+    private weak var scena: UIWindowScene?
     private var link: CADisplayLink?
 
     // Solo coda del disegno
@@ -159,6 +168,8 @@ final class RendererAcquaMobile: NSObject {
                            name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
         centro.addObserver(self, selector: #selector(statoCambiato(_:)),
                            name: .NSProcessInfoPowerStateDidChange, object: nil)
+        centro.addObserver(self, selector: #selector(statoCambiato(_:)),
+                           name: ProcessInfo.thermalStateDidChangeNotification, object: nil)
         inBackground = UIApplication.shared.applicationState == .background
     }
 
@@ -185,7 +196,10 @@ final class RendererAcquaMobile: NSObject {
         condiviso.scuro = scuro
         serratura.unlock()
         v.cambioMisura = { [weak self] lato, pixel in self?.misura(lato: lato, pixel: pixel) }
-        v.cambioFinestra = { [weak self] in self?.aggiornaMoto() }
+        v.cambioFinestra = { [weak self] scena in
+            self?.osserva(scena)
+            self?.aggiornaMoto()
+        }
         v.aggiornaRisoluzione()
         codaDisegno.async { [weak self] in self?.strato = s }
         ProgrammaAcqua.condiviso.richiedi { [weak self] stato in self?.pronto(stato) }
@@ -279,6 +293,42 @@ final class RendererAcquaMobile: NSObject {
         }
     }
 
+    /// La tela è entrata in un'altra finestra: si seguono l'attivazione e la disattivazione della sua scena
+    /// (sull'iPad in Split View e Stage Manager la scena resta attiva: l'acqua continua).
+    private func osserva(_ nuova: UIWindowScene?) {
+        if let nuova, nuova === scena { return }
+        let centro = NotificationCenter.default
+        if let vecchia = scena {
+            centro.removeObserver(self, name: UIScene.willDeactivateNotification, object: vecchia)
+            centro.removeObserver(self, name: UIScene.didActivateNotification, object: vecchia)
+        }
+        scena = nuova
+        guard let nuova else {
+            scenaAttiva = true
+            return
+        }
+        centro.addObserver(self, selector: #selector(scenaDisattivata(_:)),
+                           name: UIScene.willDeactivateNotification, object: nuova)
+        centro.addObserver(self, selector: #selector(scenaAttivata(_:)),
+                           name: UIScene.didActivateNotification, object: nuova)
+        // All'avvio la scena può essere ancora inattiva: l'acqua parte con `didActivate`
+        scenaAttiva = nuova.activationState == .foregroundActive
+    }
+
+    @objc private func scenaDisattivata(_ nota: Notification) {
+        sulMain { [weak self] in
+            self?.scenaAttiva = false
+            self?.aggiornaMoto()
+        }
+    }
+
+    @objc private func scenaAttivata(_ nota: Notification) {
+        sulMain { [weak self] in
+            self?.scenaAttiva = true
+            self?.aggiornaMoto()
+        }
+    }
+
     @objc private func statoCambiato(_ nota: Notification) {
         // la notifica del risparmio energetico arriva da un thread qualsiasi
         DispatchQueue.main.async { [weak self] in self?.aggiornaMoto() }
@@ -288,11 +338,13 @@ final class RendererAcquaMobile: NSObject {
         if Thread.isMainThread { fai() } else { DispatchQueue.main.async(execute: fai) }
     }
 
-    /// L'acqua si muove se richiesto, con la vista in una finestra, l'app in primo piano e senza «Riduci movimento».
-    /// Con il risparmio energetico solo un ritmo più basso. Da ferma il CAMetalLayer tiene l'ultima immagine.
+    /// L'acqua si muove se richiesto, con la vista in una finestra, l'app in primo piano con la scena attiva e senza
+    /// «Riduci movimento». Con il risparmio energetico (o il dispositivo caldo) solo un ritmo più basso. Da ferma il
+    /// CAMetalLayer tiene l'ultima immagine.
     func aggiornaMoto() {
         guard !staccato, let v = vista else { return }
-        let muovi = animato && pronta && v.window != nil && !inBackground && !UIAccessibility.isReduceMotionEnabled
+        let muovi = animato && pronta && v.window != nil && !inBackground && scenaAttiva
+            && !UIAccessibility.isReduceMotionEnabled
         aggiornaRitmo()
         guard muovi != inMoto else { return }
         inMoto = muovi
@@ -307,7 +359,9 @@ final class RendererAcquaMobile: NSObject {
     }
 
     private func aggiornaRitmo() {
-        let nuovo = ProcessInfo.processInfo.isLowPowerModeEnabled
+        let info = ProcessInfo.processInfo
+        let caldo = Misure.Acqua.caldoRallenta && (info.thermalState == .serious || info.thermalState == .critical)
+        let nuovo = info.isLowPowerModeEnabled || caldo
             ? Misure.Acqua.fotogrammiAlSecondoBassoConsumo : Misure.Acqua.fotogrammiAlSecondo
         guard nuovo != ritmo else { return }
         ritmo = nuovo
@@ -492,9 +546,18 @@ final class RendererAcquaMobile: NSObject {
 }
 
 extension SfondoAcqua {
-    /// Sull'iPad l'acqua si muove (fuori dalle istantanee); sull'iPhone resta il fermo-immagine.
-    static var animabileSuiOS: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad && !CommandLine.arguments.contains("--istantanee-ios")
-    }
+    /// Su iPhone e iPad l'acqua si muove come sul Mac (fuori dalle istantanee, dove resta il fermo-immagine).
+    static var animabileSuiOS: Bool { !CommandLine.arguments.contains("--istantanee-ios") }
+}
+
+extension Misure.Acqua {
+    /// Pixel del drawable per punto, come il Mac Retina (2 × quotaRisoluzione 0,75): l'acqua è morbida e il drawable
+    /// resta sotto gli 0,8 Mpx anche sull'iPhone più grande. `dpr` per lo shader vale 1,5 ovunque: i fili delle onde
+    /// hanno lo spessore del Mac.
+    static let pixelPerPunto: CGFloat = 1.5
+    /// Proposta da far confermare all'utente (per ora spenta: l'acqua resta quella del Mac, 30 fotogrammi, 20 solo
+    /// con il risparmio energetico): con il dispositivo caldo (`thermalState` serio o critico) rallentare a 20
+    /// fotogrammi, come con il risparmio energetico. Rallenta, non si ferma.
+    static let caldoRallenta = false
 }
 #endif

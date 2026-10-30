@@ -1,43 +1,168 @@
 #if os(iOS)
 import SwiftUI
 
-/// Il guscio dell'iPhone: cinque schede per la consultazione (Clienti, Posizioni, Agenda, Notifiche, Altro).
-/// Nel giro 1 sono elenchi in sola lettura, con le cifre dei motori di Prisma (le stesse del Mac) e il canale
-/// sempre in vista. Le modifiche rapide arrivano nel giro 3.
+/// Il guscio dell'iPhone: la scrivania del tema a una colonna (`@media (max-width: 760px)` di
+/// Design/tema-liquid-glass.html) con la barra in alto e il dock in basso; un'app alla volta in una finestra di
+/// vetro fra la barra e il dock (deskRect del tema), che entra ed esce con il movimento del Mac. Sotto tutto l'acqua
+/// animata di RadiceMobile. Si torna alla scrivania con l'icona Scrivania del dock, con il marchio o con la ✕.
 struct GuscioiPhone: View {
     @EnvironmentObject var mobile: StatoMobile
+    @EnvironmentObject var stato: StatoShell
+    /// Sotto una finestra, a movimento d'apertura finito, la scrivania esce dalla gerarchia (memoria, vetri).
+    @State private var scrivaniaTolta = false
+    @State private var giroMovimento = 0
+
+    private typealias D = Tema.Misura.Mobile.Dock
 
     var body: some View {
-        TabView(selection: $mobile.schedaiPhone) {
+        // La safe area si legge da fuori: dentro una vista che la ignora i margini valgono zero
+        GeometryReader { esterno in
+        let sicuro = esterno.safeAreaInsets
+        GeometryReader { geo in
+            let misura = geo.size
+            let sottoBarra = sicuro.top + Tema.Misura.Mobile.Barra.altezza
+            let voci = DisposizioneDockMobile.app(.telefono, consentita: { stato.appConsentita($0) }).count + 2
+            let lato = DisposizioneDockMobile.lato(elementi: voci, larghezza: misura.width, massimo: D.massimoTelefono)
+            let sopraDock = D.dalBassoTelefono + DisposizioneDockMobile.altezza(lato: lato)
+            ZStack(alignment: .topLeading) {
+                // Sotto una finestra, a movimento finito, la scrivania esce dalla gerarchia: niente vetri da ricampionare.
+                // Nelle istantanee (niente movimento) non c'è già più
+                if mobile.appAperta == nil || (mobile.persistente && !scrivaniaTolta) {
+                    ScrivaniaTelefono(alto: sottoBarra, basso: sopraDock + Tema.Misura.Mobile.Scrivania.sopraDock,
+                                      inFondo: mobile.scrivaniaInFondo)
+                        .frame(width: misura.width, height: misura.height)
+                        .allowsHitTesting(mobile.appAperta == nil)
+                        .accessibilityHidden(mobile.appAperta != nil)
+                }
+
+                if let app = mobile.appAperta {
+                    FinestraMobile(app: app,
+                                   cornice: Self.cornice(misura: misura, sottoBarra: sottoBarra, sopraDock: sopraDock),
+                                   spazio: misura, raggio: Tema.Raggio.Mobile.finestraTelefono,
+                                   origine: mobile.origineApertura, animata: mobile.persistente) {
+                        AppTelefono(app: app)
+                    }
+                    .id(app)
+                }
+
+                BarraMobile(compatta: true, alto: sicuro.top)
+
+                DockMobile(stile: .telefono, larghezza: misura.width)
+                    .padding(.bottom, D.dalBassoTelefono)
+                    .frame(width: misura.width, height: misura.height, alignment: .bottom)
+
+                PannelliMobile(sistema: stato.sistema, sottoBarra: sottoBarra, misura: misura)
+            }
+            .frame(width: misura.width, height: misura.height, alignment: .topLeading)
+            // Una volta, qui, sulla vista che ignora la safe area: le origini dei widget e del dock sono nel suo spazio
+            .coordinateSpace(name: ShellView.spazioShell)
+        }
+        .ignoresSafeArea(.container)
+        }
+        .onChange(of: mobile.appAperta) { nuova in aggiornaScrivania(nuova) }
+        .modifier(SceltaFileiPad())
+        .modifier(EsportaBackupiPad())
+    }
+
+    /// La finestra fra la barra e il dock (deskRect del tema: x 8, y barra + 6, larghezza w − 16).
+    static func cornice(misura: CGSize, sottoBarra: CGFloat, sopraDock: CGFloat) -> CGRect {
+        let y = sottoBarra + Tema.Misura.Mobile.Finestra.sopra
+        let basso = misura.height - sopraDock - Tema.Misura.Mobile.Finestra.sopraDock
+        return CGRect(x: Tema.Misura.Mobile.Finestra.margine, y: y,
+                      width: max(0, misura.width - 2 * Tema.Misura.Mobile.Finestra.margine),
+                      height: max(0, basso - y))
+    }
+
+    /// La scrivania resta sotto la finestra che entra per la durata del movimento, poi si toglie; torna subito con
+    /// la scrivania (la finestra esce sopra di lei). Passando da un'app all'altra resta tolta.
+    private func aggiornaScrivania(_ app: AppPrisma?) {
+        giroMovimento &+= 1
+        guard app != nil else {
+            scrivaniaTolta = false
+            return
+        }
+        guard !scrivaniaTolta else { return }
+        let giro = giroMovimento
+        DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.Finestre.durataApertura) {
+            if giroMovimento == giro && mobile.appAperta != nil { scrivaniaTolta = true }
+        }
+    }
+}
+
+/// L'app dell'iPhone dentro la finestra: la sua NavigationStack (Clienti, Posizioni e Agenda con i percorsi del giro 1;
+/// Attività, Note, Documenti e Impostazioni in sola lettura), le altre col segnaposto. Sulla radice la ✕ della
+/// finestra a sinistra, come i semafori del tema; il titolo piccolo (la finestra è bassa).
+struct AppTelefono: View {
+    @EnvironmentObject var mobile: StatoMobile
+    let app: AppPrisma
+
+    var body: some View {
+        switch app {
+        case .clienti:
             NavigationStack(path: $mobile.percorsoClienti) {
-                ClientiTelefono().destinazioniTelefono()
+                ClientiTelefono().radiceFinestra(app).destinazioniTelefono()
             }
-            .tabItem { Label(SchedaTelefono.clienti.titolo, systemImage: SchedaTelefono.clienti.simbolo) }
-            .tag(SchedaTelefono.clienti)
-
+            .fondoNavigazioneTrasparente()
+        case .posizioni:
             NavigationStack(path: $mobile.percorsoPosizioni) {
-                PosizioniTelefono().destinazioniTelefono()
+                PosizioniTelefono().radiceFinestra(app).destinazioniTelefono()
             }
-            .tabItem { Label(SchedaTelefono.posizioni.titolo, systemImage: SchedaTelefono.posizioni.simbolo) }
-            .tag(SchedaTelefono.posizioni)
-
+            .fondoNavigazioneTrasparente()
+        case .agenda:
             NavigationStack(path: $mobile.percorsoAgenda) {
-                AgendaTelefono().destinazioniTelefono()
+                AgendaTelefono().radiceFinestra(app).destinazioniTelefono()
             }
-            .tabItem { Label(SchedaTelefono.agenda.titolo, systemImage: SchedaTelefono.agenda.simbolo) }
-            .tag(SchedaTelefono.agenda)
-
+            .fondoNavigazioneTrasparente()
+        default:
             NavigationStack {
-                NotificheTelefono()
+                contenuto.radiceFinestra(app)
             }
-            .tabItem { Label(SchedaTelefono.notifiche.titolo, systemImage: SchedaTelefono.notifiche.simbolo) }
-            .tag(SchedaTelefono.notifiche)
+            .fondoNavigazioneTrasparente()
+        }
+    }
 
-            NavigationStack {
-                AltroTelefono()
+    @ViewBuilder private var contenuto: some View {
+        switch app {
+        case .attivita: AttivitaTelefono()
+        case .note: NoteTelefono()
+        case .documenti: DocumentiTelefono()
+        case .impostazioni: ImpostazioniTelefono()
+        case .eve:
+            InArrivoMobile(app: .eve, titolo: "Eve è sul Mac", testo: MotoreLocale.nonSuiOS)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .navigationTitle(app.titolo)
+        default:
+            InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .navigationTitle(app.titolo)
+        }
+    }
+}
+
+extension View {
+    /// La radice di un'app nella finestra dell'iPhone: la ✕ a sinistra, il titolo piccolo, la barra senza fondo.
+    func radiceFinestra(_ app: AppPrisma) -> some View {
+        toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                PulsanteChiudiFinestra(app: app)
             }
-            .tabItem { Label(SchedaTelefono.altro.titolo, systemImage: SchedaTelefono.altro.simbolo) }
-            .tag(SchedaTelefono.altro)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+    }
+
+    /// La NavigationStack dentro la finestra di vetro: senza fondo proprio (si vede il vetro della finestra).
+    func fondoNavigazioneTrasparente() -> some View {
+        modifier(FondoNavigazioneTrasparente())
+    }
+}
+
+private struct FondoNavigazioneTrasparente: ViewModifier {
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.containerBackground(Color.clear, for: .navigation)
+        } else {
+            content
         }
     }
 }
@@ -67,10 +192,9 @@ extension View {
     }
 }
 
-/// Lo sfondo d'acqua fermo con un elenco che scorre sopra.
+/// Un elenco che scorre dentro la finestra di vetro (il vetro e l'acqua sotto li disegnano la finestra e RadiceMobile).
 struct FondoTelefono<Contenuto: View>: View {
     @ViewBuilder let contenuto: () -> Contenuto
-    @Environment(\.colorScheme) private var schema
 
     var body: some View {
         ScrollView {
@@ -79,19 +203,17 @@ struct FondoTelefono<Contenuto: View>: View {
             }
             .padding(M.margine)
         }
-        .background { SfondoAcquaFermo(scuro: schema == .dark).ignoresSafeArea() }
     }
 }
 
-/// Titolo di una sezione degli elenchi (in maiuscolo, come le sezioni del Mac).
+/// Titolo di una sezione degli elenchi (in maiuscolo, come le sezioni del Mac), sul vetro della finestra.
 struct SezioneTelefono: View {
     let titolo: String
 
     var body: some View {
         Text(titolo.uppercased())
             .font(Tipo.Mobile.sezione)
-            .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
-            .aloneSfondo()
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
             .padding(.top, M.spazioRiga)
             .padding(.horizontal, M.spazioTesto)
     }
@@ -161,7 +283,7 @@ private struct ClientiTelefono: View {
             .sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending }
         FondoTelefono {
             if elenco.isEmpty {
-                VuotoTelefono(testo: cerca.isEmpty ? "Nessun cliente: apri il backup del Mac da Altro." : "Nessun cliente con «\(cerca)».")
+                VuotoTelefono(testo: cerca.isEmpty ? "Nessun cliente: apri il backup del Mac dal centro di controllo." : "Nessun cliente con «\(cerca)».")
             }
             ForEach(elenco) { cliente in
                 NavigationLink(value: DestinazioneTelefono.cliente(cliente.id)) {
@@ -324,8 +446,7 @@ private struct PosizioniTelefono: View {
                         Spacer(minLength: M.spazioRiga)
                         Text(Formati.euro(delCanale.reduce(0) { $0 + $1.valore }))
                             .font(Tipo.Mobile.rigaValore)
-                            .foregroundColor(Tema.Colore.inchiostroSfondo)
-                            .aloneSfondo()
+                            .foregroundColor(Tema.Colore.inchiostro)
                     }
                     .padding(.top, M.spazioRiga)
                     ForEach(delCanale) { posizione in
@@ -570,114 +691,6 @@ private struct DettaglioAppuntamentoTelefono: View {
         }
         .navigationTitle("Appuntamento")
         .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-// MARK: - Notifiche
-
-/// Gli stessi avvisi del centro notifiche del Mac, ricavati dai dati (promemoria, scadenze, riesami).
-private struct NotificheTelefono: View {
-    @EnvironmentObject var stato: StatoShell
-
-    var body: some View {
-        let notifiche = stato.notifiche
-        FondoTelefono {
-            if notifiche.isEmpty {
-                VuotoTelefono(testo: "Niente da segnalare: nessuna scadenza, nessun promemoria.")
-            }
-            ForEach(Notifica.Gruppo.allCases) { gruppo in
-                let delGruppo = notifiche.filter { $0.gruppo == gruppo }
-                if !delGruppo.isEmpty {
-                    SezioneTelefono(titolo: gruppo.titolo)
-                    ForEach(delGruppo) { notifica in
-                        RigaNotificaTelefono(notifica: notifica)
-                    }
-                }
-            }
-        }
-        .navigationTitle("Notifiche")
-    }
-}
-
-private struct RigaNotificaTelefono: View {
-    let notifica: Notifica
-
-    var body: some View {
-        HStack(alignment: .top, spacing: M.spazioRiga) {
-            IconaApp(app: notifica.app, lato: M.iconaLaterale)
-            VStack(alignment: .leading, spacing: M.spazioTesto) {
-                Text(notifica.titolo)
-                    .font(Tipo.Mobile.rigaNome)
-                    .foregroundColor(Tema.Colore.inchiostro)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !notifica.dettaglio.isEmpty {
-                    Text(notifica.dettaglio)
-                        .font(Tipo.Mobile.rigaDettaglio)
-                        .foregroundColor(Tema.Colore.inchiostroSecondario)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let canale = notifica.canale {
-                    EtichettaCanale(canale: canale, compatta: true)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .schedaTelefono()
-    }
-}
-
-// MARK: - Altro
-
-private struct AltroTelefono: View {
-    @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var stato: StatoShell
-
-    var body: some View {
-        FondoTelefono {
-            Button {
-                mobile.apriBackup()
-            } label: {
-                HStack(spacing: M.spazioRiga) {
-                    Image(systemName: "lock.doc")
-                        .font(Tipo.Mobile.titolo)
-                        .foregroundColor(Tema.Colore.accento)
-                        .frame(width: M.iconaLaterale)
-                    VStack(alignment: .leading, spacing: M.spazioTesto) {
-                        Text("Apri un backup del Mac")
-                            .font(Tipo.Mobile.rigaNome)
-                            .foregroundColor(Tema.Colore.inchiostro)
-                        Text(StatoMobile.soloDatiDiProva(stato.dati) ? "Ora ci sono i dati di prova"
-                                                                       : "\(stato.dati.clienti.count) clienti su questo iPhone")
-                            .font(Tipo.Mobile.rigaDettaglio)
-                            .foregroundColor(Tema.Colore.inchiostroSecondario)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(Tema.Colore.inchiostroTerziario)
-                }
-                .schedaTelefono()
-            }
-            .buttonStyle(.plain)
-
-            SezioneTelefono(titolo: "Sul Mac")
-            ForEach([AppPrisma.presentazioni, .eve, .impostazioni]) { app in
-                HStack(alignment: .top, spacing: M.spazioRiga) {
-                    IconaApp(app: app, lato: M.iconaLaterale)
-                    VStack(alignment: .leading, spacing: M.spazioTesto) {
-                        Text(app.titolo)
-                            .font(Tipo.Mobile.rigaNome)
-                            .foregroundColor(Tema.Colore.inchiostro)
-                        Text(app == .eve ? MotoreLocale.nonSuiOS : StatoShell.soloSulMacPerOra)
-                            .font(Tipo.Mobile.rigaDettaglio)
-                            .foregroundColor(Tema.Colore.inchiostroSecondario)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .schedaTelefono()
-            }
-        }
-        .navigationTitle("Altro")
     }
 }
 #endif

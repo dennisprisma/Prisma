@@ -20,7 +20,9 @@ enum IstantaneeMobile {
         let prepara: @MainActor (StatoMobile) -> Void
     }
 
-    /// Le scene dell'iPad e dell'iPhone (le dimensioni vengono dal dispositivo: ognuno scatta le sue).
+    /// Le scene dell'iPad e dell'iPhone (le dimensioni vengono dal dispositivo: ognuno scatta le sue). Dal giro 3 le
+    /// app stanno nella finestra di vetro sopra la scrivania (`m.apri`), e ci sono le scene della scrivania, del
+    /// dock e dei pannelli. Prima `m.apri`, poi i percorsi dell'iPhone: le icone li azzerano.
     static func scene(iPad: Bool) -> [Scena] {
         var elenco: [Scena] = [
             Scena(nome: "1-apertura-backup") { m in m.apriBackup() },
@@ -28,124 +30,159 @@ enum IstantaneeMobile {
                 m.simulaScelta(nome: "Prisma 2026-10-29 09.12.04.zip.cifrato", protetto: true,
                                fase: .errore("La password non è corretta: riprova."))
             },
-            Scena(nome: "3-clienti") { m in
-                m.appiPad = .clienti
-                m.schedaiPhone = .clienti
-            },
+            Scena(nome: "3-clienti") { m in m.apri(.clienti) },
             Scena(nome: "4-clienti-scheda") { m in
                 m.stato.clienteAttivoId = "marco"
-                m.appiPad = .clienti
-                m.schedaiPhone = .clienti
+                m.apri(.clienti)
                 m.percorsoClienti = [.cliente("marco")]
             },
-            Scena(nome: "5-posizioni") { m in
-                m.appiPad = .posizioni
-                m.schedaiPhone = .posizioni
-            },
+            Scena(nome: "5-posizioni") { m in m.apri(.posizioni) },
             Scena(nome: "6-posizioni-dettaglio") { m in
                 m.stato.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
-                m.appiPad = .posizioni
-                m.schedaiPhone = .posizioni
+                m.apri(.posizioni)
                 m.percorsoPosizioni = [.posizione("pos-giulia-etf-azionario-globale")]
             },
             Scena(nome: "7-agenda") { m in
                 m.stato.appuntamentoSelezionato = "event-marco"
-                m.appiPad = .agenda
-                m.schedaiPhone = .agenda
+                m.apri(.agenda)
             },
         ]
         if iPad {
             elenco += [
-                Scena(nome: "8-simulazioni") { m in m.appiPad = .simulazioni },
-                Scena(nome: "9-eve") { m in m.appiPad = .eve },
+                Scena(nome: "8-simulazioni") { m in m.apri(.simulazioni) },
+                Scena(nome: "9-eve") { m in m.apri(.eve) },
                 Scena(nome: "10-impostazioni-archivio") { m in
                     m.stato.schedaImpostazioni = .archivio
-                    m.appiPad = .impostazioni
+                    m.apri(.impostazioni)
                 },
                 Scena(nome: "11-ricerca") { m in
                     m.stato.testoRicerca = "Marco"
-                    m.appiPad = .clienti
+                    m.apri(.clienti)
                     m.stato.cercaOvunque()
                 },
-                // Giro 2: tutte le app dell'iPad, in verticale (la colonna di dettaglio più stretta del 13")
+                // Tutte le app dell'iPad, in verticale (la finestra più stretta del 13")
                 Scena(nome: "12-analisi360") { m in
                     m.stato.clienteAttivoId = "giulia"
-                    m.appiPad = .analisi360
+                    m.apri(.analisi360)
                 },
                 Scena(nome: "13-incontri") { m in
                     m.stato.clienteAttivoId = "marco"
-                    m.appiPad = .incontri
+                    m.apri(.incontri)
                 },
                 Scena(nome: "14-obiettivi") { m in
                     m.stato.clienteAttivoId = "giulia"
                     m.stato.obiettivoSelezionato = "obiettivo-giulia-casa"
-                    m.appiPad = .obiettivi
+                    m.apri(.obiettivi)
                 },
                 Scena(nome: "15-confronti") { m in
                     m.stato.clienteAttivoId = "giulia"
-                    m.appiPad = .confronti
+                    m.apri(.confronti)
                 },
-                Scena(nome: "16-prodotti") { m in m.appiPad = .prodotti },
-                Scena(nome: "17-attivita") { m in m.appiPad = .attivita },
-                Scena(nome: "18-note") { m in m.appiPad = .note },
+                Scena(nome: "16-prodotti") { m in m.apri(.prodotti) },
+                Scena(nome: "17-attivita") { m in m.apri(.attivita) },
+                Scena(nome: "18-note") { m in m.apri(.note) },
                 // Documenti: il KID di Giulia (nelle istantanee senza il file PDF: c'è la scheda dei dati)
                 Scena(nome: "19-documenti") { m in
                     m.stato.clienteAttivoId = "giulia"
                     m.stato.documentoSelezionato = "doc-giulia-kid"
-                    m.appiPad = .documenti
+                    m.apri(.documenti)
                 },
                 // Prospetti: le pagine del PDF in anteprima, come a schermo sul Mac
                 Scena(nome: "20-prospetti-resoconto") { m in
                     m.stato.clienteAttivoId = "giulia"
                     m.stato.apriProspetto(.resoconto(report: false))
-                    m.appiPad = .presentazioni
+                    m.apri(.presentazioni)
                 },
                 Scena(nome: "21-prospetto-proposta") { m in
                     m.stato.clienteAttivoId = "giulia"
                     m.stato.apriProspetto(.posizione("pos-giulia-piano-previdenziale-integrativo"))
-                    m.appiPad = .presentazioni
+                    m.apri(.presentazioni)
                 },
                 Scena(nome: "22-impostazioni") { m in
                     m.stato.schedaImpostazioni = .esperienza
-                    m.appiPad = .impostazioni
+                    m.apri(.impostazioni)
                 },
-                Scena(nome: "23-ricerca-app") { m in
-                    m.stato.testoRicerca = "Giulia"
-                    m.appiPad = .ricerca
-                },
+                // La scrivania del Mac sull'iPad in verticale: due colonne di widget, il dock senza nomi
+                Scena(nome: "41-scrivania-verticale") { m in m.mostraHome() },
                 // Le stesse app con l'iPad in orizzontale: le colonne del Mac tornano affiancate
                 Scena(nome: "30-clienti-orizzontale", orizzontale: true) { m in
                     m.stato.clienteAttivoId = "marco"
-                    m.appiPad = .clienti
+                    m.apri(.clienti)
                 },
-                Scena(nome: "31-posizioni-orizzontale", orizzontale: true) { m in m.appiPad = .posizioni },
+                Scena(nome: "31-posizioni-orizzontale", orizzontale: true) { m in m.apri(.posizioni) },
                 Scena(nome: "32-posizioni-dettaglio-orizzontale", orizzontale: true) { m in
                     m.stato.posizioneInDettaglio = "pos-giulia-etf-azionario-globale"
-                    m.appiPad = .posizioni
+                    m.apri(.posizioni)
                 },
                 Scena(nome: "33-documenti-orizzontale", orizzontale: true) { m in
                     m.stato.clienteAttivoId = "giulia"
                     m.stato.documentoSelezionato = "doc-giulia-kid"
-                    m.appiPad = .documenti
+                    m.apri(.documenti)
                 },
                 Scena(nome: "34-prospetti-orizzontale", orizzontale: true) { m in
                     m.stato.clienteAttivoId = "giulia"
                     m.stato.apriProspetto(.resoconto(report: false))
-                    m.appiPad = .presentazioni
+                    m.apri(.presentazioni)
                 },
                 Scena(nome: "35-impostazioni-orizzontale", orizzontale: true) { m in
                     m.stato.schedaImpostazioni = .archivio
-                    m.appiPad = .impostazioni
+                    m.apri(.impostazioni)
+                },
+                // La scrivania in orizzontale: la bacheca del Mac, il dock con i nomi; poi i pannelli
+                Scena(nome: "40-scrivania-orizzontale", orizzontale: true) { m in m.mostraHome() },
+                Scena(nome: "42-scrivania-notifiche", orizzontale: true) { m in
+                    m.mostraHome()
+                    m.stato.alternaNotifiche()
+                },
+                Scena(nome: "43-scrivania-controllo", orizzontale: true) { m in
+                    m.mostraHome()
+                    m.pannello = .controllo
+                },
+                Scena(nome: "44-app-aperte", orizzontale: true) { m in
+                    m.apri(.clienti)
+                    m.apri(.posizioni)
+                    m.apri(.agenda)
+                    m.pannello = .appAperte
                 },
             ]
         } else {
             elenco += [
                 Scena(nome: "8-agenda-dettaglio") { m in
-                    m.schedaiPhone = .agenda
+                    m.apri(.agenda)
                     m.percorsoAgenda = [.appuntamento("event-marco")]
                 },
-                Scena(nome: "9-notifiche") { m in m.schedaiPhone = .notifiche },
-                Scena(nome: "10-altro") { m in m.schedaiPhone = .altro },
+                // Il centro notifiche del Mac sotto la barra, sopra la scrivania
+                Scena(nome: "9-notifiche") { m in
+                    m.mostraHome()
+                    m.stato.alternaNotifiche()
+                },
+                Scena(nome: "10-impostazioni") { m in m.apri(.impostazioni) },
+                // La scrivania del tema a una colonna: in cima e in fondo (Scadenze, Portafoglio, piede, dock)
+                Scena(nome: "40-scrivania") { m in m.mostraHome() },
+                Scena(nome: "41-scrivania-giu") { m in
+                    m.mostraHome()
+                    m.scrivaniaInFondo = true
+                },
+                Scena(nome: "43-ricerca") { m in
+                    m.mostraHome()
+                    m.stato.testoRicerca = "Marco"
+                    m.stato.cercaOvunque()
+                },
+                Scena(nome: "44-controllo") { m in
+                    m.mostraHome()
+                    m.pannello = .controllo
+                },
+                Scena(nome: "45-tutte-le-app") { m in
+                    m.mostraHome()
+                    m.pannello = .tutteLeApp
+                },
+                Scena(nome: "46-attivita") { m in m.apri(.attivita) },
+                Scena(nome: "47-note") { m in m.apri(.note) },
+                Scena(nome: "48-documenti") { m in
+                    m.stato.clienteAttivoId = "giulia"
+                    m.apri(.documenti)
+                },
+                Scena(nome: "49-in-arrivo") { m in m.apri(.analisi360) },
             ]
         }
         return elenco
