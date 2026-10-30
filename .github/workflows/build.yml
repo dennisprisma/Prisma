@@ -379,6 +379,62 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Prisma per iPhone e iPad VERI, da installare con AltStore o Sideloadly (firma con l'ID Apple gratuito).
+  # Compila per iphoneos (arm64) senza firma, assembla il .app e lo impacchetta in Prisma.ipa (Payload/Prisma.app).
+  ipa:
+    permissions:
+      contents: read
+    # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Seleziona Xcode 26
+        run: |
+          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XC" ]; then
+            echo "::error::Xcode 26 non trovato sul runner: Prisma per iOS ha bisogno dell'SDK iOS 26"
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          echo "Uso $XC"
+
+      - name: Compila per iPhone e iPad
+        run: |
+          mkdir -p build
+          PROD=build/ipa/Build/Products/Release-iphoneos
+          echo "PROD=$PROD" >> "$GITHUB_ENV"
+          set +e
+          xcodebuild build \
+            -scheme Prisma \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -derivedDataPath build/ipa \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/ipa.log | grep --line-buffered -E 'error:|BUILD'
+          stato=${PIPESTATUS[0]}
+          set -e
+          if [ "$stato" -ne 0 ]; then
+            grep -E '(^|: )error:' build/ipa.log | sed "s#$GITHUB_WORKSPACE/##g" | sort -u | head -100
+            exit "$stato"
+          fi
+          test -x "$PROD/Prisma"
+
+      - name: Assembla Prisma.ipa
+        run: |
+          bash Supporto/iOS/assembla.sh "$PROD" build/Payload/Prisma.app dispositivo
+          (cd build && ditto -c -k --sequesterRsrc --keepParent Payload Prisma.ipa)
+          ls -la build/Prisma.ipa
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Prisma-iOS
+          path: build/Prisma.ipa
+          retention-days: 30
+
   # Un solo push -f sul branch anteprime: le PNG del Mac dove sono sempre state, quelle di iOS in ios/.
   # Aspetta entrambi i job (Mac e iOS). Parte anche se iOS è rosso (le anteprime Mac, e le PNG iOS scattate
   # prima dell'errore, servono a capire il problema), purché la build Mac sia riuscita: il rosso di iOS
