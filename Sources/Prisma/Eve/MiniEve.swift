@@ -119,7 +119,7 @@ struct CifreMiniEve: Equatable {
             let inScadenza = f.posizioni
                 .filter { $0.stato == .inEssere && ($0.scadenza.map { $0 >= Calendar.current.startOfDay(for: oggi) && $0 <= limite } ?? false) }
                 .sorted { ($0.scadenza ?? oggi) < ($1.scadenza ?? oggi) }
-            c.righe = inScadenza.map { riga($0, sotto: "Scade il \(Formati.giornoMese.string(from: $0.scadenza ?? oggi))") }
+            c.righe = inScadenza.map { riga($0, sotto: "Scade " + conArticolo(Formati.giornoMese.string(from: $0.scadenza ?? oggi))) }
             if !inScadenza.isEmpty { c.linea = linea(inScadenza, fonte: f, oggi: oggi, limite: limite) }
             c.fonte = "Cifre dai calcoli di Posizioni · calcolate oggi alle \(calcolate)"
             c.azioni = [AzioneMiniEve(titolo: "Apri in Posizioni", simbolo: "arrow.up.forward", tipo: .posizioni, primaria: true),
@@ -146,6 +146,11 @@ struct CifreMiniEve: Equatable {
                     AzioneMiniEve(titolo: "Prospetto", simbolo: "doc", tipo: .prospetto(prospetto(argomento)))]
         c.seguiti = argomento == .prossimiPassi ? [spunto(.checkUp), spunto(.proposte)] : [spunto(.prossimiPassi), spunto(.scadenze)]
         return c
+    }
+
+    /// «il 3 marzo», ma «l'8 marzo» e «l'11 gennaio».
+    static func conArticolo(_ data: String) -> String {
+        data.hasPrefix("8 ") || data.hasPrefix("11 ") ? "l'" + data : "il " + data
     }
 
     /// Il prospetto più vicino all'argomento della domanda.

@@ -81,6 +81,8 @@ enum ProvaMiniEve {
                   "Mini Eve: la linea del tempo con le scadenze e l'obiettivo oltre l'orizzonte")
         controlla(mini.cifre.fonte?.hasPrefix("Cifre dai calcoli di Posizioni") == true, "Mini Eve: la riga della fonte")
         controlla(mini.cifre.azioni.first?.primaria == true && mini.cifre.azioni.first?.tipo == .posizioni, "Mini Eve: il primo pulsante porta in Posizioni")
+        controlla(CifreMiniEve.conArticolo("11 gennaio") == "l'11 gennaio" && CifreMiniEve.conArticolo("3 marzo") == "il 3 marzo",
+                  "Mini Eve: «l'11 gennaio», «il 3 marzo»")
         controlla(!mini.cifre.seguiti.isEmpty, "Mini Eve: gli spunti per continuare")
 
         // Un pulsante porta nell'app e chiude la mini finestra
