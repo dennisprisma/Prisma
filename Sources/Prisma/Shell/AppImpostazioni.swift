@@ -446,17 +446,51 @@ struct AppImpostazioni: View {
     }
 
     private var gruppoEve: some View {
-        GruppoImpostazioni(titolo: "Eve") {
-            RigaImpostazione(titolo: "Qwen sul Mac",
-                             sottotitolo: stato.disponibilitaLocale.motivo ?? "Pronto: \(stato.dati.impostazioni.eve.modelloLocale) con Ollama, solo su questo Mac",
-                             avvertenza: stato.disponibilitaLocale.pronto ? nil : "Eve risponde solo con Qwen: serve l'app gratuita Ollama aperta, con il modello qwen3:4b (circa 2,5 GB di memoria mentre risponde)") {
+        let eve = stato.dati.impostazioni.eve
+        return GruppoImpostazioni(titolo: "Eve") {
+            RigaImpostazione(titolo: stato.qwen.nome,
+                             sottotitolo: stato.disponibilitaLocale.motivo ?? "Pronto: \(eve.modello) con \(eve.fornitore.nome), solo su questo Mac",
+                             avvertenza: stato.disponibilitaLocale.pronto ? nil : "Eve risponde solo con il modello sul Mac: serve l'app gratuita Ollama con il modello \(MotoreLocale.modelloPredefinito) (circa 3,5 GB di memoria mentre risponde)") {
                 HStack(spacing: 8) {
-                    TextField("qwen3:4b", text: $stato.dati.impostazioni.eve.modelloLocale)
+                    TextField(eve.fornitore == .ollama ? MotoreLocale.modelloPredefinito : "nome del modello", text: $stato.dati.impostazioni.eve.modello)
                         .campoTesto()
-                        .frame(width: 110)
+                        .frame(width: 130)
                         .onSubmit { stato.verificaMotoreLocale() }
                     Button { stato.verificaMotoreLocale() } label: { Label("Verifica", systemImage: "arrow.clockwise") }
                         .buttonStyle(StileVetro(margine: margineVetro))
+                }
+            }
+            RigaImpostazione(titolo: "Fornitore del modello",
+                             sottotitolo: "Ollama, oppure un server compatibile OpenAI (MLX, llama.cpp, LM Studio). Solo indirizzi del Mac (127.0.0.1)") {
+                HStack(spacing: 8) {
+                    MenuTendina(selezione: $stato.dati.impostazioni.eve.fornitore,
+                                opzioni: TipoFornitore.allCases.map { ($0, $0.nome) }, larghezza: 170)
+                        .onChange(of: stato.dati.impostazioni.eve.fornitore) { _ in stato.verificaMotoreLocale() }
+                    TextField(eve.fornitore == .ollama ? FornitoreOllama.indirizzoPredefinito : FornitoreCompatibileOpenAI.indirizzoPredefinito,
+                              text: $stato.dati.impostazioni.eve.indirizzo)
+                        .campoTesto()
+                        .frame(width: 170)
+                        .onSubmit { stato.verificaMotoreLocale() }
+                }
+            }
+            RigaImpostazione(titolo: "Ragionamento", sottotitolo: "Automatico: Eve ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
+                MenuTendina(selezione: $stato.dati.impostazioni.eve.ragionamento,
+                            opzioni: SceltaRagionamento.allCases.map { ($0, $0.nome) }, larghezza: 170)
+            }
+            RigaImpostazione(titolo: "Pronta all'avvio", sottotitolo: "All'apertura di Prisma Eve avvia Ollama e carica il modello: la prima risposta non aspetta") {
+                Toggle("", isOn: $stato.dati.impostazioni.eve.prontaAllAvvio)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
+            RigaImpostazione(titolo: "Confronta i modelli",
+                             sottotitolo: stato.avanzamentoConfronto ?? "Le stesse domande di prova (sui clienti fittizi) a ogni modello, uno alla volta: risposte e tempi affiancati in una pagina") {
+                HStack(spacing: 8) {
+                    TextField(ConfrontoModelli.predefiniti, text: $stato.dati.impostazioni.eve.modelliConfronto)
+                        .campoTesto()
+                        .frame(width: 230)
+                    Button { stato.confrontaModelli() } label: { Label("Confronta", systemImage: "square.split.2x1") }
+                        .buttonStyle(StileVetro(margine: margineVetro))
+                        .disabled(stato.avanzamentoConfronto != nil)
                 }
             }
             RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier del cliente, sul Mac e nei backup", ultima: true) {

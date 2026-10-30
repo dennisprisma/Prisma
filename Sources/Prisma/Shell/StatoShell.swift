@@ -211,6 +211,13 @@ final class StatoShell: ObservableObject {
     @Published var conversazioneAVoce = false
     /// Qwen sul Mac (Ollama): pronto o perché no. Si aggiorna con `verificaMotoreLocale()`.
     @Published var disponibilitaLocale = DisponibilitaEve.nonDisponibile("Ollama non ancora verificato.")
+    /// La risposta di Eve mentre arriva (osservata solo dalla bolla in arrivo).
+    let flussoEve = FlussoEve()
+    /// La risposta in corso: si interrompe con una nuova conversazione.
+    var compitoEve: Task<Void, Never>?
+    /// Il confronto tra modelli (Impostazioni › Eve): a che punto è, e dove sta l'ultimo rapporto.
+    @Published var avanzamentoConfronto: String?
+    @Published var rapportoConfronto: URL?
     /// Nelle istantanee e nelle prove, dove Qwen non c'è: Eve risponde subito con i calcoli di Prisma.
     var rispostePreparate = false
     /// L'appuntamento chiesto a Eve a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
@@ -300,7 +307,7 @@ final class StatoShell: ObservableObject {
             #elseif os(iOS)
             // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
             #endif
-            verificaMotoreLocale()
+            preparaEve()
             DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
             aggiornaElencoBackup()
             // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
@@ -1639,6 +1646,31 @@ final class StatoShell: ObservableObject {
         }
     }
 
+    /// All'avvio, qualche secondo dopo la finestra: se serve apre Ollama e carica il modello (solo sul Mac).
+    func preparaEve() {
+        guard persistente else { return }
+        #if os(macOS)
+        guard dati.impostazioni.eve.prontaAllAvvio else { return verificaMotoreLocale() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPreparazioneEve) { [weak self] in
+            guard let self else { return }
+            let eve = self.dati.impostazioni.eve
+            Task.detached(priority: .utility) {
+                let d = await AvvioModello.prepara(eve)
+                await MainActor.run { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
+            }
+        }
+        #else
+        verificaMotoreLocale()
+        #endif
+    }
+
+    static let attesaPreparazioneEve: TimeInterval = 3
+
+    /// Dove si trova il consulente: per la riga di contesto di Eve.
+    func ambienteEve(cliente id: String) -> AmbienteEve {
+        AmbienteEve(oggi: Date(), appAperte: finestre.map { $0.app.titolo }, cliente: cliente(id)?.nome)
+    }
+
     func conversazione(_ id: String) -> [MessaggioEve] {
         dati.impostazioni.eve.conservaConversazioni ? (dati.conversazioni[id] ?? []) : (conversazioniTemporanee[id] ?? [])
     }
@@ -1657,6 +1689,9 @@ final class StatoShell: ObservableObject {
 
     func nuovaConversazione() {
         let id = evePortafoglio ? EvePortafoglio.chiave : clienteAttivoId
+        // Una risposta ancora in arrivo si ferma qui
+        compitoEve?.cancel()
+        compitoEve = nil
         dati.conversazioni[id] = nil
         conversazioniTemporanee[id] = nil
     }
@@ -1878,20 +1913,65 @@ final class StatoShell: ObservableObject {
         }
         // Le azioni proposte restano quelle calcolate da Prisma, anche quando il testo lo scrive Qwen
         let proposte = richiesta.spunto == .proposte ? MotoriEve.sintesi.componi(richiesta).proposte : nil
-        conQwen(cliente: id) { modello in
+        let piano = NucleoEve.piano(richiesta, impostazioni: dati.impostazioni.eve, ambiente: ambienteEve(cliente: id))
+        conQwen(cliente: id) { _ in
+            // La risposta arriva a pezzi e si vede mentre Eve la scrive (FlussoEve, bolla in arrivo)
+            let motore = self.qwen
             self.eveInCorso = true
-            Task { @MainActor in
+            let generazione = self.flussoEve.inizia(piano.scelta, motore: motore.nome)
+            self.compitoEve = Task { @MainActor in
                 do {
-                    let r = try await modello.rispondi(richiesta)
-                    self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: r.testo, titolo: r.titolo, motore: modello.nome, proposte: proposte), cliente: id)
+                    // I pezzi arrivano fuori dal thread principale: la bolla si aggiorna sul principale
+                    let r = try await motore.scrivi(piano) { p in
+                        DispatchQueue.main.async { self.flussoEve.aggiorna(p, generazione: generazione) }
+                    }
+                    var m = MessaggioEve(autore: .eve, testo: r.testo, motore: motore.nome, proposte: proposte)
+                    m.modalita = piano.scelta.modalita
+                    self.aggiungiMessaggio(m, cliente: id)
+                } catch is CancellationError {
+                    // Nuova conversazione: la risposta interrotta non resta
                 } catch {
                     self.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: error.localizedDescription,
-                                                        titolo: "Eve non ha potuto rispondere", motore: modello.nome, proposte: proposte), cliente: id)
+                                                        titolo: "Eve non ha potuto rispondere", motore: motore.nome, proposte: proposte), cliente: id)
                 }
+                self.flussoEve.chiudi()
                 self.eveInCorso = false
+                self.compitoEve = nil
             }
         }
         return true
+    }
+
+    // MARK: - Confronto tra modelli
+
+    /// Le stesse domande di prova ai modelli scelti in Impostazioni › Eve, sui dati di prova: il rapporto
+    /// (una pagina con le risposte e i tempi affiancati) si apre a confronto finito.
+    func confrontaModelli() {
+        #if os(macOS)
+        guard avanzamentoConfronto == nil else { return }
+        let modelli = ConfrontoModelli.elenco(dati.impostazioni.eve.modelliConfronto)
+        guard !modelli.isEmpty else { return mostraAvviso("Scrivi i modelli da confrontare, separati da virgole.") }
+        // I dati di prova di Prisma, mai quelli dei clienti veri
+        guard let fonte = StatoShell(persistente: false).fonteEve(ConfrontoModelli.clienteProva) else { return }
+        let eve = dati.impostazioni.eve
+        avanzamentoConfronto = "Preparo il confronto…"
+        Task { @MainActor in
+            let r = await ConfrontoModelli.esegui(modelli: modelli, eve: eve, fonte: fonte) { passo in
+                Task { @MainActor in self.avanzamentoConfronto = passo }
+            }
+            let file = FileManager.default.temporaryDirectory.appendingPathComponent("Confronto modelli di Eve.html")
+            do {
+                try ConfrontoModelli.html(r).write(to: file, atomically: true, encoding: .utf8)
+                self.rapportoConfronto = file
+                NSWorkspace.shared.open(file)
+            } catch {
+                self.mostraAvviso("Il rapporto del confronto non si è potuto salvare: \(error.localizedDescription)")
+            }
+            self.avanzamentoConfronto = nil
+        }
+        #else
+        mostraAvviso(StatoShell.soloSulMacPerOra)
+        #endif
     }
 
     // MARK: - Proposte di Eve

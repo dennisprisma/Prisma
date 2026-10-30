@@ -1,73 +1,55 @@
 import Foundation
 
-/// Secondo motore di Eve: un modello aperto, Qwen 3, che gira sul Mac con Ollama (un'app gratuita che si
-/// scarica a parte). Prisma gli parla solo a un indirizzo del Mac stesso (127.0.0.1): un indirizzo di un altro
-/// computer viene rifiutato, così nessun dato dei clienti esce dal Mac.
-/// Sul MacBook Pro M1 da 8 GB la taglia giusta è la 4B (circa 2,5 GB di memoria mentre lavora).
+/// Il motore di Eve: il modello sul Mac, raggiunto con il fornitore scelto (Ollama o un server compatibile
+/// OpenAI), sempre a un indirizzo del Mac stesso: nessun dato dei clienti esce dal computer.
+/// Sul MacBook Pro M1 da 8 GB la taglia giusta è la 4B (circa 3,5 GB di memoria mentre lavora).
 struct MotoreLocale: MotoreEve, MotoreGenerativo {
-    static let indirizzoPredefinito = "http://127.0.0.1:11434"
-    static let modelloPredefinito = "qwen3:4b"
-    /// Ollama tiene il modello in memoria solo per poco dopo l'ultima risposta: sul Mac da 8 GB la RAM torna libera.
-    static let restaInMemoria = "3m"
-    static let attesaMassima: TimeInterval = 120
+    static let indirizzoPredefinito = FornitoreOllama.indirizzoPredefinito
+    /// Qwen 3.5 da 4 miliardi di parametri (ollama.com/library/qwen3.5).
+    static let modelloPredefinito = "qwen3.5:4b"
+    /// Il modello predefinito delle versioni di prima: chi non l'aveva cambiato passa al nuovo.
+    static let modelloPrecedente = "qwen3:4b"
+    /// Dopo l'ultima risposta il modello resta in memoria per un po', poi la RAM torna libera.
+    static let restaInMemoria = "10m"
+    /// Il ragionamento può tacere a lungo prima della prima parola.
+    static let attesaMassima: TimeInterval = 180
 
-    let indirizzo: String
-    let modello: String
+    let fornitore: FornitoreModello
     let disponibilita: DisponibilitaEve
+    let restaInMemoria: String
 
-    init(_ eve: ImpostazioniEve, disponibilita: DisponibilitaEve) {
-        indirizzo = eve.indirizzoLocale
-        modello = eve.modelloLocale.trimmingCharacters(in: .whitespaces)
+    init(_ eve: ImpostazioniEve, disponibilita: DisponibilitaEve, sessione: URLSession = .shared) {
+        fornitore = FornitoriEve.crea(eve, sessione: sessione)
         self.disponibilita = disponibilita
+        restaInMemoria = eve.restaInMemoria
     }
 
-    var nome: String { "Qwen sul Mac" }
-    var descrizione: String { "\(modello) con Ollama, sul Mac: nessun dato esce dal computer." }
+    var modello: String { fornitore.modello }
 
-    // MARK: - Indirizzo, solo locale
+    /// «Qwen sul Mac», «Gemma sul Mac»…: il nome del modello, senza la taglia.
+    var nome: String { Self.nome(modello) }
 
-    /// L'indirizzo di Ollama se è sul Mac stesso; nil per qualsiasi altro computer.
-    static func indirizzoLocale(_ testo: String) -> URL? {
-        guard let url = URL(string: testo.trimmingCharacters(in: .whitespaces)), url.scheme == "http" || url.scheme == "https",
-              let host = url.host?.lowercased(), ["127.0.0.1", "localhost", "::1", "[::1]"].contains(host) else { return nil }
-        return url
+    static func nome(_ modello: String) -> String {
+        let famiglia = modello.split(separator: ":").first.map(String.init) ?? modello
+        let lettere = famiglia.prefix { $0.isLetter }
+        return lettere.isEmpty ? "Modello sul Mac" : String(lettere.prefix(1)).uppercased() + String(lettere.dropFirst()) + " sul Mac"
     }
 
-    private func url(_ percorso: String) throws -> URL {
-        #if os(iOS)
-        throw ErroreEve(messaggio: Self.nonSuiOS)
-        #elseif os(macOS)
-        guard let base = Self.indirizzoLocale(indirizzo) else {
-            throw ErroreEve(messaggio: "Prisma parla solo con un modello sul Mac (127.0.0.1): l'indirizzo «\(indirizzo)» non è locale.")
-        }
-        return base.appendingPathComponent(percorso)
-        #endif
-    }
+    var descrizione: String { "\(modello) con \(fornitore.nome), sul Mac: nessun dato esce dal computer." }
 
     // MARK: - Disponibilità
 
-    /// Chiede a Ollama quali modelli ha: pronto se c'è quello scelto.
+    /// Pronto se il fornitore risponde e ha il modello scelto.
     static func verifica(_ eve: ImpostazioniEve) async -> DisponibilitaEve {
-        guard let base = indirizzoLocale(eve.indirizzoLocale) else {
-            return .nonDisponibile("L'indirizzo di Ollama deve essere sul Mac (127.0.0.1): un altro computer riceverebbe i dati dei clienti.")
+        let f = FornitoriEve.crea(eve)
+        guard IndirizzoLocale.url(f.indirizzo) != nil else {
+            return .nonDisponibile("L'indirizzo di \(f.nome) deve essere sul Mac (127.0.0.1): un altro computer riceverebbe i dati dei clienti.")
         }
         #if os(iOS)
-        // Su iPhone e iPad Qwen non c'è ancora (arriverà dal Mac in rete locale): Eve lo dice e non risponde
-        _ = base
+        // Su iPhone e iPad il modello non c'è ancora (arriverà dal Mac in rete locale): Eve lo dice e non risponde
         return .nonDisponibile(nonSuiOS)
-        #elseif os(macOS)
-        var r = URLRequest(url: base.appendingPathComponent("api/tags"), timeoutInterval: 3)
-        r.httpMethod = "GET"
-        guard case let (dati, risposta)? = try? await URLSession.shared.data(for: r),
-              (risposta as? HTTPURLResponse)?.statusCode == 200 else {
-            return .nonDisponibile("Ollama non è aperto: avvia l'app Ollama sul Mac (si scarica gratis da ollama.com) e scegli il modello \(eve.modelloLocale).")
-        }
-        let modelli = Self.modelli(dati)
-        let voluto = eve.modelloLocale.trimmingCharacters(in: .whitespaces).lowercased()
-        guard modelli.contains(where: { Self.stessoModello($0, voluto) }) else {
-            return .nonDisponibile("Ollama è aperto ma manca il modello \(voluto): scaricalo dall'app Ollama (o con «ollama pull \(voluto)»).")
-        }
-        return .pronto
+        #else
+        return await f.verifica()
         #endif
     }
 
@@ -76,67 +58,73 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
     static let nonSuiOS = "Eve su iPhone e iPad non è ancora disponibile: Qwen lavora sul Mac. Usa Eve da Prisma sul Mac."
     #endif
 
-    /// I nomi dei modelli nella risposta di /api/tags.
-    static func modelli(_ dati: Data) -> [String] {
-        struct Elenco: Decodable { struct Modello: Decodable { let name: String }; let models: [Modello] }
-        return ((try? JSONDecoder().decode(Elenco.self, from: dati))?.models ?? []).map { $0.name.lowercased() }
-    }
-
-    /// «qwen3» vale come «qwen3:latest».
-    static func stessoModello(_ a: String, _ b: String) -> Bool {
-        func pieno(_ s: String) -> String { s.contains(":") ? s : s + ":latest" }
-        return pieno(a) == pieno(b)
-    }
-
     // MARK: - Risposte
 
+    /// Una risposta intera, per commenti e spiegazioni (modalità lavoro, senza ragionamento).
     func genera(istruzioni: String, richiesta: String) async throws -> String {
-        try await chiedi([("system", istruzioni), ("user", richiesta)])
+        var opzioni = OpzioniModello()
+        opzioni.restaInMemoria = restaInMemoria
+        return try await scrivi([MessaggioModello(ruolo: .sistema, testo: istruzioni), MessaggioModello(ruolo: .utente, testo: richiesta)],
+                                opzioni: opzioni).testo
     }
 
     func rispondi(_ r: RichiestaEve) async throws -> RispostaEve {
-        let (istruzioni, prompt) = PromptEve.chat(r)
-        let testo = try await chiedi([("system", istruzioni), ("user", prompt)])
-        guard !testo.isEmpty else { throw ErroreEve(messaggio: "Il modello non ha prodotto una risposta. Riprova con una domanda più precisa.") }
+        var eve = ImpostazioniEve()
+        eve.restaInMemoria = restaInMemoria
+        let testo = try await scrivi(NucleoEve.piano(r, impostazioni: eve, ambiente: AmbienteEve(cliente: r.fonte.cliente.nome))).testo
         return RispostaEve(titolo: nil, testo: testo)
     }
 
-    private func chiedi(_ messaggi: [(String, String)]) async throws -> String {
-        var r = URLRequest(url: try url("api/chat"), timeoutInterval: Self.attesaMassima)
-        r.httpMethod = "POST"
-        r.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        r.httpBody = try JSONSerialization.data(withJSONObject: Self.corpo(modello: modello, messaggi: messaggi))
-        let dati: Data
-        let risposta: URLResponse
-        do {
-            (dati, risposta) = try await URLSession.shared.data(for: r)
-        } catch {
-            throw ErroreEve(messaggio: "Qwen sul Mac non ha risposto: controlla che l'app Ollama sia aperta.")
-        }
-        guard (risposta as? HTTPURLResponse)?.statusCode == 200 else {
-            throw ErroreEve(messaggio: "Ollama ha rifiutato la richiesta (modello \(modello)): \(String(data: dati, encoding: .utf8)?.prefix(200) ?? "")")
-        }
-        return Self.testo(dati)
+    func scrivi(_ piano: PianoEve, aggiorna: ((ParzialeEve) -> Void)? = nil) async throws -> (testo: String, statistiche: StatisticheModello?) {
+        try await scrivi(piano.messaggi, opzioni: piano.opzioni, aggiorna: aggiorna)
     }
 
-    /// La richiesta per /api/chat: niente «ragionamento» a voce alta (Qwen 3 lo farebbe), poca fantasia, una sola risposta.
-    static func corpo(modello: String, messaggi: [(String, String)]) -> [String: Any] {
-        [
-            "model": modello,
-            "messages": messaggi.map { ["role": $0.0, "content": $0.1] },
-            "stream": false,
-            "think": false,
-            "keep_alive": restaInMemoria,
-            "options": ["temperature": 0.3, "num_ctx": 8192],
-        ]
+    /// La risposta mentre arriva: `aggiorna` riceve il testo visibile fin qui (senza ragionamento) al massimo
+    /// una volta ogni `intervalloAggiornamenti`, così l'interfaccia non ridisegna a ogni parola.
+    func scrivi(_ messaggi: [MessaggioModello], opzioni: OpzioniModello,
+                aggiorna: ((ParzialeEve) -> Void)? = nil) async throws -> (testo: String, statistiche: StatisticheModello?) {
+        var filtro = FiltroPensiero()
+        var testo = "", pensiero = ""
+        var statistiche: StatisticheModello?
+        var ultimo = Date.distantPast
+        var parlato = false
+        for try await pezzo in fornitore.flusso(messaggi, opzioni: opzioni) {
+            switch pezzo {
+            case .testo(let t):
+                let f = filtro.filtra(t)
+                testo += f.testo
+                pensiero += f.ragionamento
+            case .ragionamento(let t):
+                pensiero += t
+            case .strumento:
+                // Fase c: le azioni con tool calling. Per ora non si chiedono strumenti.
+                break
+            case .fine(let s):
+                statistiche = s
+            }
+            // La prima parola si vede subito, poi al massimo un aggiornamento ogni `intervalloAggiornamenti`
+            let prima = !testo.isEmpty && !parlato
+            if let aggiorna, prima || Date().timeIntervalSince(ultimo) >= Self.intervalloAggiornamenti {
+                ultimo = Date()
+                parlato = !testo.isEmpty
+                aggiorna(ParzialeEve(testo: NucleoEve.pulisci(testo), pensa: !pensiero.isEmpty))
+            }
+        }
+        testo += filtro.svuota()
+        let finale = NucleoEve.pulisci(testo)
+        aggiorna?(ParzialeEve(testo: finale, pensa: !pensiero.isEmpty))
+        guard !finale.isEmpty else {
+            throw ErroreEve(messaggio: "Il modello non ha prodotto una risposta. Riprova con una domanda più precisa.")
+        }
+        return (finale, statistiche)
     }
 
-    /// Il testo della risposta di Ollama, senza l'eventuale ragionamento tra <think> e </think>.
-    static func testo(_ dati: Data) -> String {
-        struct Risposta: Decodable { struct Messaggio: Decodable { let content: String }; let message: Messaggio }
-        let grezzo = (try? JSONDecoder().decode(Risposta.self, from: dati))?.message.content ?? ""
-        return grezzo.replacingOccurrences(of: #"(?s)<think>.*?</think>"#, with: "", options: .regularExpression)
-            .replacingOccurrences(of: "**", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
+    static let intervalloAggiornamenti: TimeInterval = 0.06
+}
+
+/// Il testo di una risposta mentre arriva.
+struct ParzialeEve: Equatable {
+    var testo: String
+    /// Il modello sta ragionando (o ha ragionato) prima di rispondere.
+    var pensa: Bool
 }

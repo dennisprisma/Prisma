@@ -315,6 +315,15 @@ enum Istantanee {
             s.chiediEve(SpuntoEve.incontro.domanda, spunto: .incontro)
             s.apri(.eve)
         }),
+        // La risposta di Eve mentre arriva (streaming): la bolla cresce con il testo
+        ("240-eve-risposta-in-arrivo", { s in
+            s.clienteAttivoId = "giulia"
+            s.aggiungiMessaggio(MessaggioEve(autore: .utente, testo: "Cos'è l'inflazione, in parole semplici?"), cliente: "giulia", parla: false)
+            s.eveInCorso = true
+            let g = s.flussoEve.inizia(SceltaEve(modalita: .conversazione, pensa: false), motore: "Qwen sul Mac")
+            s.flussoEve.aggiorna(ParzialeEve(testo: "L'inflazione è l'aumento generale dei prezzi nel tempo: con gli stessi soldi, domani compri un po' meno di oggi. Per i risparmi vuol dire che", pensa: false), generazione: g)
+            s.apri(.eve)
+        }),
         ("48-report-commento", { s in
             s.rispostePreparate = true
             s.clienteAttivoId = "giulia"

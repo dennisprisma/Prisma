@@ -24,6 +24,9 @@ struct PrismaApp: App {
         if argomenti.contains("--prova-eve") {
             exit(ProvaEve.esegui())
         }
+        if argomenti.contains("--confronta-modelli") {
+            exit(ConfrontoModelli.daRigaDiComando(argomenti))
+        }
         if argomenti.contains("--prova-carico") {
             exit(ProvaCarico.esegui())
         }

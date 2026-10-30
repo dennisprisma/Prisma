@@ -12,7 +12,12 @@ enum IstruzioniEve {
 
     /// Istruzioni della chat; in sviluppo (`swift run`) ripiega su una versione minima.
     static var chat: String {
-        testo("chat") ?? "Sei Eve, l'assistente di un consulente finanziario italiano (canali Alleanza Assicurazioni e indipendente). Rispondi in italiano, in breve, usando solo i dati della scheda del cliente; non inventare numeri e distingui sempre il canale."
+        testo("chat") ?? "Sei Eve, l'assistente di un consulente finanziario italiano (canali Alleanza Assicurazioni e indipendente). Rispondi in italiano usando solo i dati della scheda del cliente; non inventare numeri e distingui sempre il canale."
+    }
+
+    /// Istruzioni della modalità conversazione (uso generale).
+    static var conversazione: String {
+        testo("conversazione") ?? "Sei Eve, l'assistente di un consulente finanziario italiano. Rispondi in italiano, in modo naturale e utile, a domande di ogni tipo. Non inventare dati dei clienti."
     }
 }
 
@@ -22,32 +27,7 @@ protocol MotoreGenerativo {
     func genera(istruzioni: String, richiesta: String) async throws -> String
 }
 
-/// Le istruzioni e la richiesta per una domanda in chat, uguali per ogni modello.
-enum PromptEve {
-    static func chat(_ r: RichiestaEve) -> (istruzioni: String, prompt: String) {
-        let istruzioni = IstruzioniEve.chat + "\n\nSCHEDA DEL CLIENTE\n" + ContestoEve.scheda(r.fonte)
-        // Le ultime battute, per le domande di seguito (brevi: la finestra del modello è piccola).
-        let storia = r.storia.suffix(4).map { m in
-            "\(m.autore == .utente ? "Consulente" : "Eve"): \(String(m.testo.prefix(500)))"
-        }
-        var prompt = (storia.isEmpty ? "" : "CONVERSAZIONE FIN QUI\n" + storia.joined(separator: "\n") + "\n\n")
-            + "DOMANDA DEL CONSULENTE\n" + r.domanda
-        if r.spunto != nil {
-            // Per gli spunti Prisma prepara già la bozza con i numeri esatti: il modello la rende discorsiva.
-            prompt += "\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n"
-                + String(MotoriEve.sintesi.componi(r).testo.prefix(ContestoEve.limiteCalcoli))
-                + "\n\nRiscrivi la bozza in modo naturale e ordinato e aggiungi al massimo due domande utili da fare al cliente."
-        } else if let s = SpuntoEve.argomento(r.domanda) {
-            // Domanda libera su un argomento che Prisma ha già calcolato: le passo le cifre pertinenti.
-            let calcoli = MotoriEve.sintesi.componi(RichiestaEve(domanda: s.domanda, spunto: s, fonte: r.fonte, storia: [])).testo
-            prompt += "\n\nCALCOLI DI PRISMA PERTINENTI (numeri esatti: usali solo se servono alla domanda, senza cambiarli)\n"
-                + String(calcoli.prefix(ContestoEve.limiteCalcoli))
-        }
-        return (istruzioni, prompt)
-    }
-}
-
-/// I motori di Eve. L'intelligenza artificiale è una sola: Qwen, sul Mac, con Ollama.
+/// I motori di Eve. L'intelligenza artificiale è il modello sul Mac (Qwen con Ollama, o un server compatibile OpenAI).
 /// I calcoli di Prisma (`sintesi`) preparano le cifre esatte che Qwen racconta, ma non rispondono da soli.
 enum MotoriEve {
     static let sintesi = MotoreSintesi()

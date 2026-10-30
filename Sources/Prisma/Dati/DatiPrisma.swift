@@ -408,14 +408,40 @@ struct ImpostazioniEve: Codable, Equatable {
     var riconoscimento = SceltaRiconoscimento.automatico
     /// Modalità diagnostica: sotto il campo di Eve compare l'ultimo passaggio dell'ascolto.
     var mostraPassaggiVoce = false
-    /// Il modello aperto sul Mac (Ollama): solo indirizzi locali, il nome del modello da usare.
+    /// Chi fa girare il modello sul Mac: Ollama oppure un server compatibile OpenAI (MLX, llama.cpp, LM Studio).
+    var fornitore = TipoFornitore.ollama
+    /// Ollama: solo indirizzi locali, il nome del modello da usare.
     var indirizzoLocale = MotoreLocale.indirizzoPredefinito
     var modelloLocale = MotoreLocale.modelloPredefinito
+    /// Server compatibile OpenAI: anche qui solo indirizzi del Mac.
+    var indirizzoCompatibile = FornitoreCompatibileOpenAI.indirizzoPredefinito
+    var modelloCompatibile = ""
+    /// Quando Eve ragiona prima di rispondere.
+    var ragionamento = SceltaRagionamento.automatico
+    /// All'avvio di Prisma Eve apre Ollama (se serve) e carica il modello: è già pronta alla prima domanda.
+    var prontaAllAvvio = true
+    /// Quanto il modello resta in memoria dopo l'ultima risposta (formato di Ollama: «10m»).
+    var restaInMemoria = MotoreLocale.restaInMemoria
+    /// I modelli del confronto (Impostazioni › Eve), separati da virgole.
+    var modelliConfronto = ConfrontoModelli.predefiniti
+
+    /// Il modello del fornitore scelto.
+    var modello: String {
+        get { fornitore == .ollama ? modelloLocale : modelloCompatibile }
+        set { if fornitore == .ollama { modelloLocale = newValue } else { modelloCompatibile = newValue } }
+    }
+
+    /// L'indirizzo del fornitore scelto.
+    var indirizzo: String {
+        get { fornitore == .ollama ? indirizzoLocale : indirizzoCompatibile }
+        set { if fornitore == .ollama { indirizzoLocale = newValue } else { indirizzoCompatibile = newValue } }
+    }
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale, riconoscimento, mostraPassaggiVoce
+        case fornitore, indirizzoCompatibile, modelloCompatibile, ragionamento, prontaAllAvvio, restaInMemoria, modelliConfronto
     }
 
     init(from decoder: Decoder) throws {
@@ -427,7 +453,17 @@ struct ImpostazioniEve: Codable, Equatable {
         leggiTutto = (try? c.decodeIfPresent(Bool.self, forKey: .leggiTutto)) ?? false
         conversazioneContinua = (try? c.decodeIfPresent(Bool.self, forKey: .conversazioneContinua)) ?? true
         indirizzoLocale = (try? c.decodeIfPresent(String.self, forKey: .indirizzoLocale)) ?? MotoreLocale.indirizzoPredefinito
-        modelloLocale = (try? c.decodeIfPresent(String.self, forKey: .modelloLocale)) ?? MotoreLocale.modelloPredefinito
+        let modello = (try? c.decodeIfPresent(String.self, forKey: .modelloLocale)) ?? MotoreLocale.modelloPredefinito
+        // Chi aveva il modello predefinito di prima (qwen3:4b) passa al nuovo; un modello scelto a mano resta
+        modelloLocale = modello == MotoreLocale.modelloPrecedente ? MotoreLocale.modelloPredefinito : modello
+        fornitore = (try? c.decodeIfPresent(TipoFornitore.self, forKey: .fornitore)) ?? .ollama
+        indirizzoCompatibile = (try? c.decodeIfPresent(String.self, forKey: .indirizzoCompatibile)) ?? FornitoreCompatibileOpenAI.indirizzoPredefinito
+        modelloCompatibile = (try? c.decodeIfPresent(String.self, forKey: .modelloCompatibile)) ?? ""
+        ragionamento = (try? c.decodeIfPresent(SceltaRagionamento.self, forKey: .ragionamento)) ?? .automatico
+        prontaAllAvvio = (try? c.decodeIfPresent(Bool.self, forKey: .prontaAllAvvio)) ?? true
+        let memoria = (try? c.decodeIfPresent(String.self, forKey: .restaInMemoria)) ?? ""
+        restaInMemoria = memoria.isEmpty ? MotoreLocale.restaInMemoria : memoria
+        modelliConfronto = (try? c.decodeIfPresent(String.self, forKey: .modelliConfronto)) ?? ConfrontoModelli.predefiniti
         riconoscimento = (try? c.decodeIfPresent(SceltaRiconoscimento.self, forKey: .riconoscimento)) ?? .automatico
         mostraPassaggiVoce = (try? c.decodeIfPresent(Bool.self, forKey: .mostraPassaggiVoce)) ?? false
     }

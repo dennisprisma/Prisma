@@ -12,18 +12,19 @@ Una prima versione di Eve usava modelli Qwen verticalizzati sull'app. Funzionava
 - I **report li impagina l'app** con modelli grafici fissi, coerenti con il tema iOS 5. Eve aggiunge solo i testi di commento.
 - Ogni dato estratto viene **confermato dall'utente** prima di essere salvato, con il riferimento alla pagina del documento da cui viene.
 
-## Motori (intercambiabili)
-Protocollo Swift unico, così il motore si cambia senza riscrivere l'app. Capacità richieste:
-- disponibilità a runtime (con messaggio chiaro se il motore non è utilizzabile)
-- chat con risposta progressiva
-- estrazione strutturata secondo uno schema
-- uso di strumenti dell'app (vedi sotto)
-
-1. **Qwen 3-4B sul Mac** (Ollama, solo all'indirizzo 127.0.0.1) — unico motore di intelligenza artificiale.
-   - Circa 2,5 GB di RAM mentre risponde, poi la memoria torna libera (keep_alive 3 minuti): è la taglia giusta sul MacBook Pro M1 da 8 GB.
-   - Finestra di contesto piccola: la scheda del cliente resta sotto `ContestoEve.limite` e le cifre arrivano già calcolate da Prisma.
-   - Se Ollama è spento o manca il modello, Eve lo dice («Qwen non è pronto») e non risponde: nessuna risposta di riserva.
-   - Il modello Apple (FoundationModels) non si usa più.
+## Il nucleo (fase a: chat testuale)
+Codice in `Sources/Prisma/Eve/`: `FornitoreModello.swift`, `FornitoreOllama.swift`, `FornitoreCompatibileOpenAI.swift`, `NucleoEve.swift`, `MotoreLocale.swift`, `AvvioModello.swift`, `ConfrontoModelli.swift`.
+- **Fornitore intercambiabile** (`FornitoreModello`): costruisce la richiesta in streaming e legge i pezzi della risposta. Due implementazioni: Ollama (`/api/chat`, `stream`, `think`, `tools`, `keep_alive`) e server compatibile OpenAI (`/v1/chat/completions` in SSE: MLX, llama.cpp, LM Studio). Per ora solo indirizzi del Mac (`IndirizzoLocale`). Il resto di Eve non sa quale fornitore c'è: un domani il cloud si aggiunge come terzo fornitore, con un'impostazione.
+- **Modello**: `qwen3.5:4b` con Ollama (circa 3,5 GB di memoria mentre risponde, keep_alive 10 minuti). Si cambia in Impostazioni › Eve.
+- **Due modalità**, scelte dalla domanda (`NucleoEve.modalita`): *lavoro* (domande sul cliente e sui temi di Prisma: scheda, bozze e calcoli di Prisma, temperatura 0,3, istruzioni `chat.md`) e *conversazione* (uso generale: ragionare, spiegare, scrivere, riassumere; temperatura 0,7, niente scheda, istruzioni `conversazione.md`). Una domanda breve di seguito resta nella modalità di prima.
+- **Ragionamento** (`think`): per le domande difficili o se dici «pensaci bene»; in Impostazioni si può forzare (sempre/mai). Il ragionamento non entra mai nel testo mostrato.
+- **Contesto a strati**: istruzioni fisse in testa (Ollama le tiene in cache), poi la storia della conversazione (fino a 40 battute, entro un budget di token della finestra da 8.192), poi l'ultimo messaggio con la riga di contesto (data, app aperte, cliente attivo), la scheda del cliente solo in lavoro, le cifre di Prisma e la domanda.
+- **Streaming**: la risposta compare mentre arriva (`FlussoEve`, bolla in arrivo in `AppEve.swift`).
+- **Pronta all'avvio** (solo Mac): se Ollama non risponde Prisma lo apre (`open -a Ollama`, altrimenti `ollama serve`) e precarica il modello.
+- **Confronto tra modelli**: Impostazioni › Eve › «Confronta» oppure `Prisma --confronta-modelli qwen3.5:4b,qwen3:8b,gemma4:e4b`: stesse domande di prova (sui clienti fittizi) a ogni modello, uno alla volta, con risposte e tempi affiancati in una pagina HTML.
+- **Comandi chiari** («fissa un incontro…», «apri l'agenda») restano una via rapida a regole (`ComandiEve.swift`), prima del modello.
+- **Prove**: `--prova-eve` (`ProvaNucleoEve.swift`) collauda corpi delle richieste, lettura dello streaming dei due fornitori, modalità, contesto e storia, indirizzi non locali rifiutati, impostazioni di prima, con un server Ollama finto dentro il processo.
+- Fasi successive (da aggiungere senza riscrivere il nucleo): documenti con ricerca locale, azioni con tool calling (`OpzioniModello.strumenti`, `PezzoModello.strumento`), voce, memoria persistente.
 
 ## Lettura dei documenti (strumenti nativi, nessuna dipendenza)
 - PDF con testo: PDFKit.
