@@ -481,3 +481,42 @@ jobs:
             sleep $((tentativo * 10))
           done
           exit 1
+
+  # Il link fisso per scaricare Prisma: a ogni push su main con Mac, iOS e .ipa verdi, la release «ultima»
+  # viene rifatta con Prisma.zip (Mac) e Prisma.ipa (iPhone e iPad). Link sempre uguali:
+  #   https://github.com/<repo>/releases/download/ultima/Prisma.zip
+  #   https://github.com/<repo>/releases/download/ultima/Prisma.ipa
+  rilascio:
+    needs: [build, ios, ipa]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica Prisma per Mac
+        uses: actions/download-artifact@v6
+        with:
+          name: Prisma
+          path: rilascio
+
+      - name: Scarica Prisma per iPhone e iPad
+        uses: actions/download-artifact@v6
+        with:
+          name: Prisma-iOS
+          path: rilascio
+
+      - name: Pubblica la release «ultima»
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -la rilascio
+          test -f rilascio/Prisma.zip
+          test -f rilascio/Prisma.ipa
+          NOTE="Prisma al commit ${GITHUB_SHA::7} del $(date -u '+%d/%m/%Y %H:%M') UTC.
+
+          - Prisma.zip: Prisma per Mac (Apple Silicon e Intel). Si apre il zip, si trascina Prisma.app in Applicazioni; la prima volta clic destro → Apri.
+          - Prisma.ipa: Prisma per iPhone e iPad, da installare con AltStore o Sideloadly (ID Apple gratuito)."
+          gh release delete ultima --yes --cleanup-tag 2>/dev/null || true
+          gh release create ultima rilascio/Prisma.zip rilascio/Prisma.ipa \
+            --target "$GITHUB_SHA" --title "Prisma · ultima versione" --notes "$NOTE" --latest
