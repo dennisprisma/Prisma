@@ -1358,7 +1358,8 @@ enum Istantanee {
             print("ERRORE: cartella delle istantanee non creata: \(error.localizedDescription)")
             return 1
         }
-        for scena in scene where solo?.contains(scena.nome) ?? true {
+        // Le scene comuni e quelle della mini finestra di Eve (solo Mac: IstantaneeMiniEve.swift)
+        for scena in scene + sceneMiniEve where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
             let riuscita: Bool = autoreleasepool { () -> Bool in
@@ -1369,8 +1370,17 @@ enum Istantanee {
                 if scuro { stato.dati.impostazioni.aspetto = .scuro }
                 scena.prepara(stato)
                 stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
-                let vista = ShellView()
+                // La mini finestra di Eve è un pannello a parte: qui si disegna sopra la shell, dove compare
+                let vista = ZStack(alignment: .topTrailing) {
+                    ShellView()
+                    if stato.miniEve.aperta {
+                        VistaMiniEve()
+                            .padding(.top, Tema.Misura.barra + Tema.Misura.MiniEve.distanzaBarra - Tema.Misura.MiniEve.margineOmbraSopra)
+                            .padding(.trailing, Tema.Misura.MiniEve.distanzaDestra - Tema.Misura.MiniEve.margineOmbraLati)
+                    }
+                }
                     .environmentObject(stato)
+                    .environmentObject(stato.miniEve)
                     .environment(\.modoIstantanea, true)
                     .environment(\.colorScheme, scuro ? .dark : .light)
                     .frame(width: misura.width, height: misura.height)

@@ -850,6 +850,10 @@ enum ProvaEve {
 
         // Il nucleo della nuova Eve: fornitori, streaming, modalità, contesto, indirizzi solo locali (ProvaNucleoEve.swift)
         ProvaNucleoEve.esegui(controlla)
+        #if os(macOS)
+        // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniEve.swift)
+        ProvaMiniEve.esegui(controlla)
+        #endif
 
         // Ascolto e voce con riconoscimento e microfono finti: tempi brevi, niente audio
         func attendi(_ secondi: TimeInterval, finche condizione: () -> Bool = { false }) {
