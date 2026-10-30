@@ -21,7 +21,8 @@ extension Istantanee {
             ("242-eve-mini-risposta", { s in
                 preparaMiniEve(s)
                 s.apriMiniEve(.scrivi)
-                s.inviaMiniEve(DomandaMiniEve(testo: domandaMiniEve))
+                // Lo spunto delle scadenze: la risposta preparata è breve e sotto si vedono linea del tempo e righe
+                s.inviaMiniEve(DomandaMiniEve(testo: domandaMiniEve, spunto: .scadenze))
             }),
             ("243-eve-mini-scrivi", { s in
                 preparaMiniEve(s)
