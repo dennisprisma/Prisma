@@ -142,6 +142,11 @@ struct BarraSuperiore: View {
                     .modifier(FormaPulsanteBarra())
                 }
 
+                #if os(macOS)
+                // La sfera di Eve: apre la mini finestra (anche ⌥ Spazio, da qualsiasi app)
+                PulsanteSferaEve(mini: stato.miniEve)
+                #endif
+
                 PulsanteBarra(aiuto: "Centro notifiche", azione: { stato.alternaNotifiche() }) {
                     Image(systemName: "bell")
                         .font(Tema.Testo.Shell.simboloBarra)

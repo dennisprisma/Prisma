@@ -213,6 +213,8 @@ final class StatoShell: ObservableObject {
     @Published var disponibilitaLocale = DisponibilitaEve.nonDisponibile("Ollama non ancora verificato.")
     /// La risposta di Eve mentre arriva (osservata solo dalla bolla in arrivo).
     let flussoEve = FlussoEve()
+    /// La mini finestra di Eve (⌥ Spazio, sfera nella barra): osservata solo dal suo pannello e dalla sfera.
+    let miniEve = StatoMiniEve()
     /// La risposta in corso: si interrompe con una nuova conversazione.
     var compitoEve: Task<Void, Never>?
     /// Il confronto tra modelli (Impostazioni › Eve): a che punto è, e dove sta l'ultimo rapporto.
@@ -317,6 +319,8 @@ final class StatoShell: ObservableObject {
             NSApplication.shared.appearance = StatoShell.aspettoMac(dati.impostazioni.aspetto)
             // Stop del Mac e risveglio (RipresaSistema.swift)
             avviaRipresa()
+            // La mini finestra di Eve: ⌥ Spazio da qualsiasi app (PannelloMiniEve.swift)
+            ControlloMiniEve.condiviso.avvia(stato: self)
             #elseif os(iOS)
             // Su iPhone e iPad l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile);
             // background e ritorno in primo piano (RipresaSistema.swift)
