@@ -458,18 +458,10 @@ struct AppEve: View {
                             .id(msg.id)
                     }
                     if stato.eveInCorso {
-                        // Eve sta scrivendo: la sua sfera e una piccola bolla, come nelle chat del Mac
-                        HStack(alignment: .bottom, spacing: m.spazioSfera) {
-                            SferaEve(lato: m.sferaMessaggio, pensa: true, alone: false)
-                            HStack(spacing: m.spazioSezione) {
-                                ProgressView().controlSize(.small)
-                                Text("Eve sta leggendo il dossier…")
-                                    .font(Tema.Testo.EveChat.azione)
-                                    .foregroundColor(Tema.Colore.EveChat.testoSecondario)
-                            }
-                            .padding(m.margineBolla)
-                            .bollaEve(mia: false)
-                            Spacer(minLength: 0)
+                        // Eve sta scrivendo: la risposta compare mentre arriva, nella stessa bolla delle risposte
+                        // Alla prima parola la risposta si legge dall'inizio, come le risposte finite
+                        NuvolaInArrivo(flusso: stato.flussoEve, portafoglio: stato.evePortafoglio) {
+                            withAnimation { lettore.scrollTo("pensa", anchor: .top) }
                         }
                         .id("pensa")
                     }
@@ -661,6 +653,55 @@ private struct OsservaVoce<C: View>: View {
 }
 
 // MARK: - Bolla di un messaggio
+
+/// La risposta di Eve mentre arriva (streaming): prima la sfera che pensa con una riga di stato,
+/// poi il testo che cresce nella bolla delle risposte. Osserva solo `FlussoEve`.
+struct NuvolaInArrivo: View {
+    @ObservedObject var flusso: FlussoEve
+    var portafoglio = false
+    /// Chiamato quando arriva la prima parola.
+    var iniziata: () -> Void = {}
+
+    private var stato: String {
+        if flusso.pensa { return "Eve ci sta pensando…" }
+        if portafoglio || flusso.modalita == .lavoro { return "Eve sta leggendo il dossier…" }
+        return "Eve sta scrivendo…"
+    }
+
+    var body: some View {
+        let m = Tema.Misura.EveChat.self
+        let c = Tema.Colore.EveChat.self
+        HStack(alignment: .bottom, spacing: m.spazioSfera) {
+            SferaEve(lato: m.sferaMessaggio, pensa: true, alone: false)
+            Group {
+                if flusso.testo.isEmpty {
+                    HStack(spacing: m.spazioSezione) {
+                        ProgressView().controlSize(.small)
+                        Text(stato)
+                            .font(Tema.Testo.EveChat.azione)
+                            .foregroundColor(c.testoSecondario)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: m.spazioBolla) {
+                        Text(flusso.motore.isEmpty ? "Eve" : "Eve · \(flusso.motore)")
+                            .font(Tema.Testo.EveChat.autore)
+                            .foregroundColor(c.testoTerziario)
+                            .lineLimit(1)
+                        Text(flusso.testo)
+                            .font(Tema.Testo.EveChat.messaggio)
+                            .foregroundColor(c.testo)
+                            .lineSpacing(m.interlinea)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(m.margineBolla)
+            .bollaEve(mia: false)
+            Spacer(minLength: flusso.testo.isEmpty ? 0 : m.respiroBollaEve)
+        }
+        .onChange(of: flusso.testo.isEmpty) { vuoto in if !vuoto { iniziata() } }
+    }
+}
 
 struct NuvolaEve: View {
     let messaggio: MessaggioEve

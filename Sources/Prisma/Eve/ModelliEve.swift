@@ -16,6 +16,8 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
     var proposte: [PropostaEve]?
     /// Quello che Eve ha fatto su tua richiesta (un appuntamento, un promemoria, una nota): si apre o si annulla.
     var azione: AzioneEve?
+    /// La modalità in cui Eve ha risposto (lavoro o conversazione): una domanda breve di seguito resta lì.
+    var modalita: ModalitaEve?
 
     init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil, proposte: [PropostaEve]? = nil) {
         self.autore = autore
@@ -26,7 +28,7 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
         data = Appuntamento.alMinuto(Date())
     }
 
-    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione }
+    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -38,6 +40,7 @@ struct MessaggioEve: Identifiable, Codable, Equatable {
         data = try c.decodeIfPresent(Date.self, forKey: .data) ?? Date()
         proposte = try? c.decodeIfPresent([PropostaEve].self, forKey: .proposte)
         azione = try? c.decodeIfPresent(AzioneEve.self, forKey: .azione)
+        modalita = try? c.decodeIfPresent(ModalitaEve.self, forKey: .modalita)
     }
 }
 

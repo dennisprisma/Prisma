@@ -848,48 +848,8 @@ enum ProvaEve {
         _ = e.eseguiComandoEve("preparami il report dei costi di Giulia Rossi", oggi: martedi)
         controlla(e.clienteAttivoId == "marco", "Eseguiti: in modalità cliente Eve resta sul cliente davanti a te")
 
-        // Qwen sul Mac: solo indirizzi locali, risposte di Ollama lette bene, scelta del motore
-        let locali: [Bool] = ["http://127.0.0.1:11434", "http://localhost:11434", "http://192.168.1.20:11434", "https://ollama.example.com"]
-            .map { MotoreLocale.indirizzoLocale($0) != nil }
-        controlla(locali == [true, true, false, false], "Qwen: Prisma parla solo con il Mac stesso (127.0.0.1), mai con un altro computer")
-        let elenco: [String] = MotoreLocale.modelli(Data(#"{"models":[{"name":"qwen3:4b","size":1},{"name":"llama3"}]}"#.utf8))
-        controlla(elenco == ["qwen3:4b", "llama3"] && MotoreLocale.stessoModello("qwen3", "qwen3:latest") && !MotoreLocale.stessoModello("qwen3:4b", "qwen3:8b"),
-                  "Qwen: elenco dei modelli di Ollama")
-        controlla(MotoreLocale.testo(Data(#"{"message":{"role":"assistant","content":"<think>ragiono</think>\n**Ciao**, tutto bene."},"done":true}"#.utf8)) == "Ciao, tutto bene.",
-                  "Qwen: la risposta senza il ragionamento e senza markdown")
-        let corpo = MotoreLocale.corpo(modello: "qwen3:4b", messaggi: [("system", "a"), ("user", "b")])
-        let pensa: Bool = (corpo["think"] as? Bool) ?? true
-        let flusso: Bool = (corpo["stream"] as? Bool) ?? true
-        let quanti: Int = (corpo["messages"] as? [[String: String]])?.count ?? 0
-        controlla(!pensa && !flusso && quanti == 2, "Qwen: richiesta senza ragionamento e senza flusso")
-        let qwen = ImpostazioniEve()
-        let sceltoPronto: String = MotoriEve.generativo(qwen, locale: .pronto)?.nome ?? ""
-        let sceltoAssente = MotoriEve.generativo(qwen, locale: .nonDisponibile("no")) == nil
-        controlla(sceltoPronto == "Qwen sul Mac" && sceltoAssente, "Qwen: l'unico motore di Eve, se è pronto")
-        // Senza Qwen Eve non risponde con i calcoli: dice che non è pronto
-        let spento = StatoShell(persistente: false)
-        spento.disponibilitaLocale = .nonDisponibile("Ollama non è aperto.")
-        spento.qwenNonPronto(cliente: spento.clienteAttivoId)
-        let avvisoQwen = spento.conversazione(spento.clienteAttivoId).last
-        controlla(avvisoQwen?.titolo == "Qwen non è pronto" && (avvisoQwen?.testo ?? "").hasPrefix("Ollama non è aperto."),
-                  "Qwen spento: Eve lo dice, con il motivo")
-        var lontano = ImpostazioniEve()
-        lontano.indirizzoLocale = "http://10.0.0.5:11434"
-        let attesa = DispatchSemaphore(value: 0)
-        final class Esito: @unchecked Sendable { var d = DisponibilitaEve.pronto }
-        let esito = Esito()
-        let altroComputer = lontano
-        Task.detached {
-            esito.d = await MotoreLocale.verifica(altroComputer)
-            let qui = await MotoreLocale.verifica(ImpostazioniEve())
-            print("INFO Qwen sul Mac (Ollama) su questo server: \(qui.motivo ?? "pronto")")
-            attesa.signal()
-        }
-        attesa.wait()
-        controlla(!esito.d.pronto && (esito.d.motivo ?? "").contains("127.0.0.1"), "Qwen: un indirizzo di un altro computer è rifiutato senza collegarsi")
-        let vecchieQwen = try? JSONDecoder().decode(ImpostazioniEve.self, from: Data(#"{"motore":"apple"}"#.utf8))
-        let qwenPrima = vecchieQwen ?? ImpostazioniEve()
-        controlla(qwenPrima.modelloLocale == "qwen3:4b" && qwenPrima.indirizzoLocale == "http://127.0.0.1:11434", "Qwen: impostazioni di prima con i valori predefiniti")
+        // Il nucleo della nuova Eve: fornitori, streaming, modalità, contesto, indirizzi solo locali (ProvaNucleoEve.swift)
+        ProvaNucleoEve.esegui(controlla)
 
         // Ascolto e voce con riconoscimento e microfono finti: tempi brevi, niente audio
         func attendi(_ secondi: TimeInterval, finche condizione: () -> Bool = { false }) {
