@@ -49,7 +49,6 @@ final class ControlloMiniEve {
     private var pannello: PannelloMiniEve?
     private var abbonamenti = Set<AnyCancellable>()
     private var timerTenuto: Timer?
-    private var restringi: DispatchWorkItem?
 
     /// All'avvio di Prisma: la scorciatoia globale e il pannello pronto a comparire.
     func avvia(stato: StatoShell) {
@@ -59,10 +58,6 @@ final class ControlloMiniEve {
         mini.$visibile
             .removeDuplicates()
             .sink { [weak self] v in self?.mostra(v) }
-            .store(in: &abbonamenti)
-        mini.$altezza
-            .removeDuplicates()
-            .sink { [weak self] _ in DispatchQueue.main.async { self?.adattaAltezza() } }
             .store(in: &abbonamenti)
         // Durante la presentazione al cliente Eve si ritira
         stato.$presentazione
@@ -117,7 +112,6 @@ final class ControlloMiniEve {
         if visibile {
             let p = pannello ?? crea(stato)
             p.appearance = NSApp.appearance
-            restringi?.cancel()
             posiziona(p, altezza: altezzaPannello())
             p.alphaValue = 1
             p.orderFrontRegardless()
@@ -143,27 +137,11 @@ final class ControlloMiniEve {
         return p
     }
 
+    /// Alto quanto la scheda più alta: la superficie cresce e si accorcia dentro, e sotto di lei il pannello
+    /// è trasparente (i clic passano alle finestre dietro).
     private func altezzaPannello() -> CGFloat {
         let m = Tema.Misura.MiniEve.self
-        let altezza = min(stato?.miniEve.altezza ?? m.altezzaCapsula, m.altezzaMassima)
-        return altezza + m.margineOmbraSopra + m.margineOmbraSotto
-    }
-
-    /// Il pannello cresce subito (la superficie si allunga dentro) e si accorcia a molla finita.
-    private func adattaAltezza() {
-        guard let p = pannello, p.isVisible else { return }
-        let nuova = altezzaPannello()
-        restringi?.cancel()
-        if nuova >= p.frame.height {
-            posiziona(p, altezza: nuova)
-        } else {
-            let lavoro = DispatchWorkItem { [weak self, weak p] in
-                guard let self, let p else { return }
-                self.posiziona(p, altezza: self.altezzaPannello())
-            }
-            restringi = lavoro
-            DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.MiniEve.durataForma + 0.05, execute: lavoro)
-        }
+        return m.altezzaMassima + m.margineOmbraSopra + m.margineOmbraSotto
     }
 
     /// In alto a destra: sotto la barra di Prisma se la sua finestra si vede, altrimenti sotto la barra dei menu.

@@ -306,8 +306,6 @@ final class StatoMiniEve: ObservableObject {
     /// «Mi sto svegliando…»: perché Qwen non è pronto, se la preparazione non è riuscita.
     @Published var motivoNonPronta: String?
     @Published var preparazioneInCorso = false
-    /// L'altezza naturale del contenuto (la superficie la segue con la molla).
-    @Published var altezza = Tema.Misura.MiniEve.altezzaCapsula
 
     /// I passi di «pensa», uno dopo l'altro.
     var passi: [String] = []
@@ -404,7 +402,6 @@ final class StatoMiniEve: ObservableObject {
         testo = ""
         nota = nil
         vai(.scrivi)
-        altezza = Tema.Misura.MiniEve.altezzaCapsula
     }
 
     /// I passi di «pensa» per questa domanda, dai dati veri del cliente.

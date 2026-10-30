@@ -35,20 +35,14 @@ struct VistaMiniEve: View {
         let capsula = mini.fase.capsula
         let raggio = capsula ? m.altezzaCapsula / 2 : Tema.Raggio.MiniEve.scheda
         let forma = FormaVetro.arrotondata(raggio)
-        let altezza = min(mini.altezza, m.altezzaMassima)
         let moto: Animation? = modoIstantanea ? nil : (movimentoRidotto ? Tema.Moto.MiniEve.ridotto : Tema.Moto.MiniEve.forma)
         return contenuto
             .frame(width: mini.larghezza)
             .fixedSize(horizontal: false, vertical: true)
-            .background(GeometryReader { g in Color.clear.preference(key: AltezzaMiniEve.self, value: g.size.height) })
-            .frame(width: mini.larghezza, height: altezza, alignment: .top)
             .clipShape(forma)
             .vetro(.pannello, forma: forma)
             .animation(moto, value: mini.fase)
-            .animation(moto, value: altezza)
-            .onPreferenceChange(AltezzaMiniEve.self) { h in
-                if abs(mini.altezza - h) > 0.5 { mini.altezza = h }
-            }
+            .animation(moto, value: mini.inArrivo)
             .opacity(mostrata ? 1 : 0)
             .scaleEffect(mostrata || movimentoRidotto ? 1 : m.scalaUscita, anchor: .topTrailing)
             .offset(y: mostrata || movimentoRidotto ? 0 : m.salitaUscita)
@@ -70,11 +64,6 @@ struct VistaMiniEve: View {
         .id(mini.fase)
         .transition(.opacity)
     }
-}
-
-private struct AltezzaMiniEve: PreferenceKey {
-    static var defaultValue: CGFloat = Tema.Misura.MiniEve.altezzaCapsula
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 // MARK: - Capsule
@@ -196,7 +185,6 @@ private struct CapsulaNonPronta: View {
 private struct SchedaRisposta: View {
     @EnvironmentObject var stato: StatoShell
     @EnvironmentObject var mini: StatoMiniEve
-    @State private var altezzaCorpo: CGFloat = 0
 
     var body: some View {
         let m = Tema.Misura.MiniEve.self
@@ -223,14 +211,8 @@ private struct SchedaRisposta: View {
             }
             .padding(m.margineTesta)
             // Il corpo scorre se la risposta è lunga: la scheda non supera l'altezza massima
-            ScrollView(.vertical, showsIndicators: altezzaCorpo > corpoMassimo) {
-                corpo
-                    .background(GeometryReader { g in
-                        Color.clear.onAppear { altezzaCorpo = g.size.height }
-                            .onChange(of: g.size.height) { altezzaCorpo = $0 }
-                    })
-            }
-            .frame(height: min(max(altezzaCorpo, 1), corpoMassimo))
+            ScrollView(.vertical) { corpo }
+                .frame(maxHeight: corpoMassimo)
             CampoMiniEve(segnaposto: "Chiedi altro a Eve…")
             PiedeMiniEve()
         }
