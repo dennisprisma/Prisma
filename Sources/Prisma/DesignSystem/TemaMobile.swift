@@ -78,6 +78,16 @@ extension Tema.Misura {
 }
 
 extension Tema.Misura {
+    /// Il mese dell'agenda sull'iPhone (Design/iphone.html, schermata 4).
+    enum AgendaTelefono {
+        static let spazio: CGFloat = 8
+        static let spazioRighe: CGFloat = 2
+        static let spazioPuntini: CGFloat = 3
+        static let puntino: CGFloat = 5
+        static let cella: CGFloat = 42
+        static let raggio: CGFloat = 12
+    }
+
     /// I widget della scrivania dell'iPhone (WidgetTelefono, Design/iphone.html).
     enum ScrivaniaTelefono {
         static let spazioRighe: CGFloat = 4

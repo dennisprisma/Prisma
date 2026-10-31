@@ -903,7 +903,6 @@ private struct MeseTelefono: View {
     private typealias A = Tema.Misura.AgendaTelefono
 
     var body: some View {
-        let cal = Calendar.current
         let giorni = Self.griglia(mese)
         VStack(spacing: A.spazio) {
             HStack {
@@ -923,31 +922,7 @@ private struct MeseTelefono: View {
                 ForEach(Array(Self.iniziali.enumerated()), id: \.offset) { _, s in
                     Text(s).font(Tipo.Mobile.giornoSettimana).foregroundColor(Tema.Colore.inchiostroTerziario)
                 }
-                ForEach(giorni, id: \.self) { d in
-                    let fuori = !cal.isDate(d, equalTo: mese, toGranularity: .month)
-                    let scelto = cal.isDate(d, inSameDayAs: giorno)
-                    let oggi = cal.isDateInToday(d)
-                    Button { giorno = d; if fuori { mese = cal.dateInterval(of: .month, for: d)?.start ?? mese } } label: {
-                        VStack(spacing: A.spazioPuntini) {
-                            Text("\(cal.component(.day, from: d))")
-                                .font(scelto || oggi ? Tipo.Mobile.giornoForte : Tipo.Mobile.giorno)
-                                .foregroundColor(scelto ? Tema.Colore.Componenti.testoSuColore
-                                                 : oggi ? Tema.Colore.rosso
-                                                 : fuori ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro)
-                            HStack(spacing: A.spazioPuntini) {
-                                if conAppuntamenti.contains(d) { punto(scelto ? Tema.Colore.Componenti.testoSuColore : Tema.Colore.accento) }
-                                if conAttivita.contains(d) { punto(scelto ? Tema.Colore.Componenti.testoSuColore : Tema.Colore.arancio) }
-                            }
-                            .frame(height: A.puntino)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: A.cella)
-                        .background {
-                            if scelto { RoundedRectangle(cornerRadius: A.raggio, style: .continuous).fill(Tema.Colore.accento) }
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(StileSemplice())
-                }
+                ForEach(giorni, id: \.self) { d in cella(d) }
             }
             HStack(spacing: A.spazio * 2) {
                 HStack(spacing: A.spazioPuntini * 2) { punto(Tema.Colore.accento); Text("Appuntamenti") }
@@ -962,6 +937,37 @@ private struct MeseTelefono: View {
 
     private func punto(_ c: Color) -> some View {
         Circle().fill(c).frame(width: A.puntino, height: A.puntino)
+    }
+
+    /// Un giorno: il numero (rosso oggi, bianco su accento se scelto, chiaro fuori dal mese) e i suoi puntini.
+    private func cella(_ d: Date) -> some View {
+        let cal = Calendar.current
+        let fuori = !cal.isDate(d, equalTo: mese, toGranularity: .month)
+        let scelto = cal.isDate(d, inSameDayAs: giorno)
+        let oggi = cal.isDateInToday(d)
+        let suColore = Tema.Colore.Componenti.testoSuColore
+        let coloreNumero: Color = scelto ? suColore : oggi ? Tema.Colore.rosso : fuori ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro
+        return Button {
+            giorno = d
+            if fuori { mese = cal.dateInterval(of: .month, for: d)?.start ?? mese }
+        } label: {
+            VStack(spacing: A.spazioPuntini) {
+                Text("\(cal.component(.day, from: d))")
+                    .font(scelto || oggi ? Tipo.Mobile.giornoForte : Tipo.Mobile.giorno)
+                    .foregroundColor(coloreNumero)
+                HStack(spacing: A.spazioPuntini) {
+                    if conAppuntamenti.contains(d) { punto(scelto ? suColore : Tema.Colore.accento) }
+                    if conAttivita.contains(d) { punto(scelto ? suColore : Tema.Colore.arancio) }
+                }
+                .frame(height: A.puntino)
+            }
+            .frame(maxWidth: .infinity, minHeight: A.cella)
+            .background {
+                if scelto { RoundedRectangle(cornerRadius: A.raggio, style: .continuous).fill(Tema.Colore.accento) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(StileSemplice())
     }
 
     private func cambia(_ n: Int) {
