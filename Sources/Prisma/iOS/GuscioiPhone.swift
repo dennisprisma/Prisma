@@ -532,9 +532,23 @@ private struct PosizioniTelefono: View {
     @EnvironmentObject var stato: StatoShell
     @State private var filtro = FiltroPosizioniTelefono.tutte
 
+    /// Le aree con le loro posizioni: le attività dalla più grande, i debiti in fondo.
+    private static func aree(_ elenco: [Posizione]) -> [(AreaPosizione, [Posizione])] {
+        let piene: [(area: AreaPosizione, posizioni: [Posizione], totale: Double)] = AreaPosizione.allCases.compactMap { a in
+            let d = elenco.filter { $0.area == a }
+            let totale: Double = d.reduce(0) { $0 + $1.valore }
+            return d.isEmpty ? nil : (a, d, totale)
+        }
+        let attive = piene.filter { !$0.area.passivo }.sorted { $0.totale > $1.totale }
+        let passive = piene.filter { $0.area.passivo }
+        return (attive + passive).map { ($0.area, $0.posizioni) }
+    }
+
     var body: some View {
         let scelte = filtro.applica(stato.posizioni)
-        let totale = scelte.reduce(0) { $0 + $1.valore }
+        // Il totale e i canali sono le attività: i debiti stanno a parte, in fondo alle aree, in negativo
+        let attive = scelte.filter { !$0.area.passivo }
+        let totale = attive.reduce(0) { $0 + $1.valore }
         FondoTelefono {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: M.spazioTesto * 3) {
@@ -545,16 +559,13 @@ private struct PosizioniTelefono: View {
                 }
             }
             TotaleTelefono(titolo: filtro == .proposte ? "In proposta" : "In essere", totale: totale,
-                           perCanale: filtro.canale == nil ? Canale.allCases.map { c in (c, scelte.filter { $0.canale == c }.reduce(0) { $0 + $1.valore }) } : [])
+                           perCanale: filtro.canale == nil ? Canale.allCases.map { c in (c, attive.filter { $0.canale == c }.reduce(0) { $0 + $1.valore }) } : [])
             if scelte.isEmpty {
                 VuotoTelefono(testo: filtro == .proposte ? "Nessuna proposta aperta." : "Nessuna posizione in essere.")
             } else {
                 SezioneTelefono(titolo: "Per area")
                 VStack(spacing: 0) {
-                    let aree = AreaPosizione.allCases.compactMap { a -> (AreaPosizione, [Posizione])? in
-                        let d = scelte.filter { $0.area == a }
-                        return d.isEmpty ? nil : (a, d)
-                    }.sorted { abs($0.1.reduce(0) { $0 + $1.valore }) > abs($1.1.reduce(0) { $0 + $1.valore }) }
+                    let aree = Self.aree(scelte)
                     ForEach(Array(aree.enumerated()), id: \.element.0) { i, voce in
                         NavigationLink(value: DestinazioneTelefono.area(voce.0.rawValue, filtro: filtro.chiave)) {
                             RigaAreaTelefono(area: voce.0, posizioni: voce.1)
@@ -568,7 +579,7 @@ private struct PosizioniTelefono: View {
                 .padding(.horizontal, M.margineRiga.leading)
                 .vetro(.sottile, forma: .arrotondata(Tema.Raggio.Mobile.riga), ombra: false)
                 SezioneTelefono(titolo: "Le più grandi")
-                ForEach(scelte.sorted { $0.valore > $1.valore }.prefix(5)) { posizione in
+                ForEach(attive.sorted { $0.valore > $1.valore }.prefix(5)) { posizione in
                     NavigationLink(value: DestinazioneTelefono.posizione(posizione.id)) {
                         RigaPosizioneTelefono(posizione: posizione, conCliente: true)
                     }
@@ -611,7 +622,7 @@ enum FiltroPosizioniTelefono: Hashable {
     }
 
     static func tutti(proposte: Int) -> [(FiltroPosizioniTelefono, String)] {
-        [(.tutte, "Tutte")] + Canale.allCases.map { (.canale($0), $0.nome) } + [(.proposte, "Proposte · \(proposte)")]
+        [(.tutte, "Tutte")] + Canale.allCases.map { (.canale($0), $0.nomeBreve) } + [(.proposte, "Proposte · \(proposte)")]
     }
 }
 
@@ -696,9 +707,10 @@ private struct RigaAreaTelefono: View {
                     .font(Tipo.Mobile.rigaDettaglio).foregroundColor(Tema.Colore.inchiostroSecondario)
             }
             Spacer(minLength: M.spazioRiga)
-            Text(Formati.euro(posizioni.reduce(0) { $0 + $1.valore }))
+            // I debiti in negativo e in rosso, come in Posizioni sul Mac
+            Text(Formati.euro((area.passivo ? -1 : 1) * posizioni.reduce(0) { $0 + $1.valore }))
                 .font(Tipo.Mobile.rigaValore)
-                .foregroundColor(Tema.Colore.inchiostro)
+                .foregroundColor(area.passivo ? Tema.Colore.rosso : Tema.Colore.inchiostro)
                 .lineLimit(1)
                 .fixedSize()
             Image(systemName: "chevron.right")
