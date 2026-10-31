@@ -218,7 +218,7 @@ struct DocumentiTelefono: View {
     }
 }
 
-private struct RigaDocumentoTelefono: View {
+struct RigaDocumentoTelefono: View {
     @EnvironmentObject var stato: StatoShell
     let documento: Documento
 

@@ -23,7 +23,7 @@ struct GuscioiPhone: View {
             let sottoBarra = sicuro.top + Tema.Misura.Mobile.Barra.altezza
             let voci = DisposizioneDockMobile.app(.telefono, consentita: { stato.appConsentita($0) }).count + 2
             let lato = DisposizioneDockMobile.lato(elementi: voci, larghezza: misura.width, massimo: D.massimoTelefono)
-            let sopraDock = D.dalBassoTelefono + DisposizioneDockMobile.altezza(lato: lato)
+            let sopraDock = D.dalBassoTelefono + DisposizioneDockMobile.altezza(lato: lato, stile: .telefono)
             ZStack(alignment: .topLeading) {
                 // Sotto una finestra, a movimento finito, la scrivania esce dalla gerarchia: niente vetri da ricampionare.
                 // Nelle istantanee (niente movimento) non c'è già più
@@ -176,6 +176,8 @@ extension View {
             case .cliente(let id): SchedaClienteTelefono(clienteId: id)
             case .posizione(let id): DettaglioPosizioneTelefono(posizioneId: id)
             case .appuntamento(let id): DettaglioAppuntamentoTelefono(appuntamentoId: id)
+            case .area(let a, let filtro):
+                ElencoAreaTelefono(area: AreaPosizione(rawValue: a) ?? .investimento, filtro: FiltroPosizioniTelefono(chiave: filtro))
             }
         }
     }
@@ -329,89 +331,34 @@ private struct RigaClienteTelefono: View {
     }
 }
 
-/// La scheda del cliente in sola lettura: recapiti, patrimonio, posizioni per canale, nota.
+/// La scheda del cliente (Design/iphone.html, schermata 2): chi è e quanto vale in alto, quattro numeri, poi le
+/// schede Sintesi, Posizioni, Agenda e Documenti (non una pagina infinita).
 private struct SchedaClienteTelefono: View {
     @EnvironmentObject var stato: StatoShell
     let clienteId: String
+    @State private var scheda = Scheda.sintesi
+
+    private enum Scheda: String, CaseIterable, Identifiable {
+        case sintesi = "Sintesi", posizioni = "Posizioni", agenda = "Agenda", documenti = "Documenti"
+        var id: String { rawValue }
+    }
 
     var body: some View {
         let cliente = stato.clienti.first { $0.id == clienteId }
-        let posizioni = stato.posizioni.filter { $0.clienteId == clienteId && $0.stato != .chiusa }
-        let inEssere = posizioni.filter { $0.stato == .inEssere }
-        let proposte = posizioni.filter { $0.stato == .proposta }
         FondoTelefono {
             if let cliente {
-                HStack(spacing: M.spazioApertura) {
-                    AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: M.avatarScheda)
-                    VStack(alignment: .leading, spacing: M.spazioTesto) {
-                        Text(cliente.nome)
-                            .font(Tipo.Mobile.titolo)
-                            .foregroundColor(Tema.Colore.inchiostro)
-                        if !cliente.tema.isEmpty {
-                            Text(cliente.tema)
-                                .font(Tipo.Mobile.rigaDettaglio)
-                                .foregroundColor(Tema.Colore.inchiostroSecondario)
-                        }
-                        if let eta = cliente.eta {
-                            Text(cliente.professione.isEmpty ? "\(eta) anni" : "\(eta) anni · \(cliente.professione)")
-                                .font(Tipo.Mobile.rigaDettaglio)
-                                .foregroundColor(Tema.Colore.inchiostroSecondario)
-                        }
-                    }
+                testata(cliente)
+                numeri(cliente)
+                Picker("Sezione", selection: $scheda) {
+                    ForEach(Scheda.allCases) { Text($0.rawValue).tag($0) }
                 }
-                .schedaTelefono()
-
-                VStack(alignment: .leading, spacing: M.spazioRiga) {
-                    Text("Patrimonio in essere")
-                        .font(Tipo.Mobile.etichetta)
-                        .foregroundColor(Tema.Colore.inchiostroSecondario)
-                    Text(Formati.euro(inEssere.reduce(0) { $0 + $1.valore }))
-                        .font(Tipo.Mobile.cifraGrande)
-                        .foregroundColor(Tema.Colore.inchiostro)
-                    ForEach(Canale.allCases) { canale in
-                        let delCanale = inEssere.filter { $0.canale == canale }
-                        if !delCanale.isEmpty {
-                            HStack {
-                                EtichettaCanale(canale: canale, compatta: true)
-                                Spacer(minLength: M.spazioRiga)
-                                Text(Formati.euro(delCanale.reduce(0) { $0 + $1.valore }))
-                                    .font(Tipo.Mobile.rigaValore)
-                                    .foregroundColor(Tema.Colore.inchiostro)
-                            }
-                        }
-                    }
-                    if !proposte.isEmpty {
-                        DatoTelefono("In proposta", "\(proposte.count) · \(Formati.euro(proposte.reduce(0) { $0 + $1.valore }))")
-                    }
-                }
-                .schedaTelefono()
-
-                if !cliente.telefono.isEmpty || !cliente.email.isEmpty || !cliente.indirizzo.isEmpty {
-                    VStack(alignment: .leading, spacing: M.spazioRiga) {
-                        if !cliente.telefono.isEmpty { DatoTelefono("Telefono", cliente.telefono) }
-                        if !cliente.email.isEmpty { DatoTelefono("Email", cliente.email) }
-                        if !cliente.indirizzo.isEmpty { DatoTelefono("Indirizzo", cliente.indirizzo) }
-                    }
-                    .schedaTelefono()
-                }
-
-                SezioneTelefono(titolo: "Posizioni")
-                if posizioni.isEmpty {
-                    VuotoTelefono(testo: "Nessuna posizione in essere o in proposta.")
-                }
-                ForEach(posizioni) { posizione in
-                    NavigationLink(value: DestinazioneTelefono.posizione(posizione.id)) {
-                        RigaPosizioneTelefono(posizione: posizione, conCliente: false)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if !cliente.nota.isEmpty {
-                    SezioneTelefono(titolo: "Nota")
-                    Text(cliente.nota)
-                        .font(Tipo.Mobile.corpo)
-                        .foregroundColor(Tema.Colore.inchiostro)
-                        .schedaTelefono()
+                .pickerStyle(.segmented)
+                .padding(.vertical, M.spazioTesto)
+                switch scheda {
+                case .sintesi: sintesi(cliente)
+                case .posizioni: posizioni
+                case .agenda: agenda
+                case .documenti: documenti
                 }
             } else {
                 VuotoTelefono(testo: "Questo cliente non c'è più nell'archivio.")
@@ -420,47 +367,382 @@ private struct SchedaClienteTelefono: View {
         .navigationTitle(cliente?.nome ?? "Cliente")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    /// Avatar, nome, età e professione con il tema, i canali.
+    private func testata(_ c: Cliente) -> some View {
+        HStack(spacing: M.spazioApertura) {
+            AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: M.avatarScheda)
+            VStack(alignment: .leading, spacing: M.spazioTesto) {
+                Text(c.nome)
+                    .font(Tipo.Mobile.titoloGrande)
+                    .foregroundColor(Tema.Colore.inchiostro)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                let dettagli = [c.eta.map { "\($0) anni" }, c.professione.isEmpty ? nil : c.professione, c.tema.isEmpty ? nil : "«\(c.tema)»"]
+                    .compactMap { $0 }
+                if !dettagli.isEmpty {
+                    Text(dettagli.joined(separator: " · "))
+                        .font(Tipo.Mobile.rigaDettaglio)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                HStack(spacing: M.spazioTesto * 2) {
+                    ForEach(c.canali) { EtichettaCanale(canale: $0, compatta: true) }
+                }
+                .padding(.top, M.spazioTesto)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, M.spazioTesto * 2)
+    }
+
+    /// Il patrimonio netto grande con la barra dei canali, poi quattro numeri su due colonne.
+    private func numeri(_ c: Cliente) -> some View {
+        let r = stato.riepilogoPosizioniCliente(c.id)
+        let incontro = stato.prossimiAppuntamenti.first { $0.clienteId == c.id }
+            .map { "\(Formati.giornoRelativo($0.inizio)) \(Formati.ora.string(from: $0.inizio))" } ?? "—"
+        let aperte = stato.attivitaAperte.filter { $0.clienteId == c.id }.count
+        return VStack(alignment: .leading, spacing: M.spazioRiga) {
+            TotaleTelefono(titolo: "Patrimonio netto", totale: r.patrimonioNetto,
+                           perCanale: Canale.allCases.compactMap { ch in r.perCanale[ch].map { (ch, $0) } })
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: M.spazioSchede), GridItem(.flexible())], spacing: M.spazioSchede) {
+                numero("Prossimo incontro", incontro)
+                numero("Da fare", "\(aperte) \(aperte == 1 ? "attività" : "attività")")
+                numero("Premi all'anno", Formati.euro(r.premiAnnui), sotto: r.contrattiConPremi > 0 ? "\(r.contrattiConPremi) contratti" : nil)
+                numero("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte)",
+                       sotto: r.proposteAperte > 0 ? Formati.euro(r.valoreProposte) : nil)
+            }
+        }
+    }
+
+    private func numero(_ etichetta: String, _ valore: String, sotto: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: M.spazioTesto) {
+            Text(etichetta).font(Tipo.Mobile.etichetta).foregroundColor(Tema.Colore.inchiostroSecondario)
+            Text(valore).font(Tipo.Mobile.rigaValore).foregroundColor(Tema.Colore.inchiostro).lineLimit(1).minimumScaleFactor(0.8)
+            if let sotto {
+                Text(sotto).font(Tipo.Mobile.rigaDettaglio).foregroundColor(Tema.Colore.inchiostroSecondario).lineLimit(1)
+            }
+        }
+        .schedaTelefono()
+    }
+
+    /// Sintesi: da fare (attività aperte e scadenze), obiettivi, recapiti, nota.
+    @ViewBuilder private func sintesi(_ c: Cliente) -> some View {
+        let attivita = stato.attivitaAperte.filter { $0.clienteId == c.id }.sorted { $0.scadenza < $1.scadenza }
+        let scadenze = stato.riepilogoPosizioniCliente(c.id).inScadenza
+        if !attivita.isEmpty || !scadenze.isEmpty {
+            SezioneTelefono(titolo: "Da fare")
+            ForEach(scadenze) { p in
+                NavigationLink(value: DestinazioneTelefono.posizione(p.id)) {
+                    HStack(spacing: M.spazioRiga) {
+                        Image(systemName: "clock").foregroundColor(Tema.Colore.arancio)
+                        VStack(alignment: .leading, spacing: M.spazioTesto) {
+                            Text(p.nome).font(Tipo.Mobile.rigaNome).foregroundColor(Tema.Colore.inchiostro)
+                            HStack(spacing: M.spazioTesto * 2) {
+                                Text("Scade il \(Formati.dataBreve.string(from: p.scadenza ?? Date()))")
+                                    .font(Tipo.Mobile.rigaDettaglio).foregroundColor(Tema.Colore.inchiostroSecondario)
+                                EtichettaCanale(canale: p.canale, compatta: true)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .schedaTelefono()
+                }
+                .buttonStyle(.plain)
+            }
+            ForEach(attivita.prefix(5)) { a in
+                HStack(spacing: M.spazioRiga) {
+                    CasellaSpunta(spuntata: a.completata)
+                    VStack(alignment: .leading, spacing: M.spazioTesto) {
+                        Text(a.titolo).font(Tipo.Mobile.rigaNome).foregroundColor(Tema.Colore.inchiostro)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(Formati.giornoRelativo(a.scadenza)).font(Tipo.Mobile.rigaDettaglio)
+                            .foregroundColor(a.scadenza < Calendar.current.startOfDay(for: Date()) ? Tema.Colore.rosso : Tema.Colore.inchiostroSecondario)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .schedaTelefono()
+            }
+        }
+        let obiettivi = stato.obiettiviCliente(c.id)
+        if !obiettivi.isEmpty {
+            SezioneTelefono(titolo: "Obiettivi")
+            ForEach(obiettivi) { o in
+                HStack(spacing: M.spazioRiga) {
+                    VStack(alignment: .leading, spacing: M.spazioTesto) {
+                        Text(o.titolo).font(Tipo.Mobile.rigaNome).foregroundColor(Tema.Colore.inchiostro)
+                        Text("\(Formati.dataBreve.string(from: o.scadenza)) · \(Formati.euro(o.importo))")
+                            .font(Tipo.Mobile.rigaDettaglio).foregroundColor(Tema.Colore.inchiostroSecondario)
+                    }
+                    Spacer(minLength: M.spazioRiga)
+                    if o.importo > 0 {
+                        Text(Formati.percentuale((min(1, o.accantonato / o.importo) * 100).rounded()))
+                            .font(Tipo.Mobile.rigaValore).foregroundColor(Tema.Colore.inchiostro)
+                    }
+                }
+                .schedaTelefono()
+            }
+        }
+        if !c.telefono.isEmpty || !c.email.isEmpty || !c.indirizzo.isEmpty {
+            SezioneTelefono(titolo: "Recapiti")
+            VStack(alignment: .leading, spacing: M.spazioRiga) {
+                if !c.telefono.isEmpty { DatoTelefono("Telefono", c.telefono) }
+                if !c.email.isEmpty { DatoTelefono("Email", c.email) }
+                if !c.indirizzo.isEmpty { DatoTelefono("Indirizzo", c.indirizzo) }
+            }
+            .schedaTelefono()
+        }
+        if !c.nota.isEmpty {
+            SezioneTelefono(titolo: "Nota")
+            Text(c.nota).font(Tipo.Mobile.corpo).foregroundColor(Tema.Colore.inchiostro).schedaTelefono()
+        }
+    }
+
+    @ViewBuilder private var posizioni: some View {
+        let elenco = stato.posizioni.filter { $0.clienteId == clienteId && $0.stato != .chiusa }.sorted { $0.valore > $1.valore }
+        if elenco.isEmpty { VuotoTelefono(testo: "Nessuna posizione in essere o in proposta.") }
+        ForEach(elenco) { p in
+            NavigationLink(value: DestinazioneTelefono.posizione(p.id)) { RigaPosizioneTelefono(posizione: p, conCliente: false) }
+                .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder private var agenda: some View {
+        let elenco = stato.appuntamenti.filter { $0.clienteId == clienteId && $0.fine > Calendar.current.startOfDay(for: Date()) }
+            .sorted { $0.inizio < $1.inizio }
+        if elenco.isEmpty { VuotoTelefono(testo: "Nessun appuntamento in programma.") }
+        ForEach(elenco) { a in
+            NavigationLink(value: DestinazioneTelefono.appuntamento(a.id)) { RigaAppuntamentoTelefono(appuntamento: a) }
+                .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder private var documenti: some View {
+        let elenco = stato.documentiCliente(clienteId)
+        if elenco.isEmpty { VuotoTelefono(testo: "Nessun documento.") }
+        ForEach(elenco) { RigaDocumentoTelefono(documento: $0) }
+    }
 }
 
 // MARK: - Posizioni
 
+/// Posizioni sull'iPhone (Design/iphone.html, schermata 3): il filtro dei canali, il totale grande con la barra dei
+/// canali, le aree con il loro importo, poi le posizioni più grandi. Il canale si sceglie con un tocco.
 private struct PosizioniTelefono: View {
     @EnvironmentObject var stato: StatoShell
-    @State private var proposte = false
+    @State private var filtro = FiltroPosizioniTelefono.tutte
+
+    /// Le aree con le loro posizioni: le attività dalla più grande, i debiti in fondo.
+    private static func aree(_ elenco: [Posizione]) -> [(AreaPosizione, [Posizione])] {
+        let piene: [(area: AreaPosizione, posizioni: [Posizione], totale: Double)] = AreaPosizione.allCases.compactMap { a in
+            let d = elenco.filter { $0.area == a }
+            let totale: Double = d.reduce(0) { $0 + $1.valore }
+            return d.isEmpty ? nil : (a, d, totale)
+        }
+        let attive = piene.filter { !$0.area.passivo }.sorted { $0.totale > $1.totale }
+        let passive = piene.filter { $0.area.passivo }
+        return (attive + passive).map { ($0.area, $0.posizioni) }
+    }
 
     var body: some View {
-        let scelte = stato.posizioni.filter { $0.stato == (proposte ? .proposta : .inEssere) }
+        let scelte = filtro.applica(stato.posizioni)
+        // Il totale e i canali sono le attività: i debiti stanno a parte, in fondo alle aree, in negativo
+        let attive = scelte.filter { !$0.area.passivo }
+        let totale = attive.reduce(0) { $0 + $1.valore }
         FondoTelefono {
-            Picker("Posizioni", selection: $proposte) {
-                Text("In essere").tag(false)
-                Text("In proposta").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .padding(.bottom, M.spazioTesto)
-            if scelte.isEmpty {
-                VuotoTelefono(testo: proposte ? "Nessuna proposta aperta." : "Nessuna posizione in essere.")
-            }
-            ForEach(Canale.allCases) { canale in
-                let delCanale = scelte.filter { $0.canale == canale }.sorted { $0.valore > $1.valore }
-                if !delCanale.isEmpty {
-                    HStack {
-                        EtichettaCanale(canale: canale)
-                        Spacer(minLength: M.spazioRiga)
-                        Text(Formati.euro(delCanale.reduce(0) { $0 + $1.valore }))
-                            .font(Tipo.Mobile.rigaValore)
-                            .foregroundColor(Tema.Colore.inchiostro)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: M.spazioTesto * 3) {
+                    ForEach(FiltroPosizioniTelefono.tutti(proposte: stato.posizioni.filter { $0.stato == .proposta }.count), id: \.0) { f, titolo in
+                        Button { filtro = f } label: { GettoneFiltroTelefono(titolo: titolo, canale: f.canale, scelto: filtro == f) }
+                            .buttonStyle(StileSemplice())
                     }
-                    .padding(.top, M.spazioRiga)
-                    ForEach(delCanale) { posizione in
-                        NavigationLink(value: DestinazioneTelefono.posizione(posizione.id)) {
-                            RigaPosizioneTelefono(posizione: posizione, conCliente: true)
+                }
+            }
+            TotaleTelefono(titolo: filtro == .proposte ? "In proposta" : "In essere", totale: totale,
+                           perCanale: filtro.canale == nil ? Canale.allCases.map { c in (c, attive.filter { $0.canale == c }.reduce(0) { $0 + $1.valore }) } : [])
+            if scelte.isEmpty {
+                VuotoTelefono(testo: filtro == .proposte ? "Nessuna proposta aperta." : "Nessuna posizione in essere.")
+            } else {
+                SezioneTelefono(titolo: "Per area")
+                VStack(spacing: 0) {
+                    let aree = Self.aree(scelte)
+                    ForEach(Array(aree.enumerated()), id: \.element.0) { i, voce in
+                        NavigationLink(value: DestinazioneTelefono.area(voce.0.rawValue, filtro: filtro.chiave)) {
+                            RigaAreaTelefono(area: voce.0, posizioni: voce.1)
                         }
                         .buttonStyle(.plain)
+                        .overlay(alignment: .top) {
+                            if i > 0 { Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo) }
+                        }
                     }
+                }
+                .padding(.horizontal, M.margineRiga.leading)
+                .vetro(.sottile, forma: .arrotondata(Tema.Raggio.Mobile.riga), ombra: false)
+                SezioneTelefono(titolo: "Le più grandi")
+                ForEach(attive.sorted { $0.valore > $1.valore }.prefix(5)) { posizione in
+                    NavigationLink(value: DestinazioneTelefono.posizione(posizione.id)) {
+                        RigaPosizioneTelefono(posizione: posizione, conCliente: true)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
         .navigationTitle("Posizioni")
+    }
+}
+
+/// Il filtro delle posizioni: tutte in essere, un canale, oppure le proposte.
+enum FiltroPosizioniTelefono: Hashable {
+    case tutte, canale(Canale), proposte
+
+    var canale: Canale? { if case .canale(let c) = self { return c } else { return nil } }
+
+    func applica(_ elenco: [Posizione]) -> [Posizione] {
+        switch self {
+        case .tutte: return elenco.filter { $0.stato == .inEssere }
+        case .canale(let c): return elenco.filter { $0.stato == .inEssere && $0.canale == c }
+        case .proposte: return elenco.filter { $0.stato == .proposta }
+        }
+    }
+
+    /// Per la destinazione di un'area: «tutte», «proposte» o il canale.
+    var chiave: String {
+        switch self {
+        case .tutte: return "tutte"
+        case .proposte: return "proposte"
+        case .canale(let c): return c.rawValue
+        }
+    }
+
+    init(chiave: String) {
+        switch chiave {
+        case "proposte": self = .proposte
+        default: self = Canale(rawValue: chiave).map { .canale($0) } ?? .tutte
+        }
+    }
+
+    static func tutti(proposte: Int) -> [(FiltroPosizioniTelefono, String)] {
+        [(.tutte, "Tutte")] + Canale.allCases.map { (.canale($0), $0.nomeBreve) } + [(.proposte, "Proposte · \(proposte)")]
+    }
+}
+
+/// Un gettone del filtro: pieno quando è scelto, con il puntino del canale.
+private struct GettoneFiltroTelefono: View {
+    let titolo: String
+    let canale: Canale?
+    let scelto: Bool
+
+    var body: some View {
+        HStack(spacing: M.spazioTesto * 2) {
+            if let canale {
+                Circle().fill(Tema.Colore.canale(canale)).frame(width: Tema.Misura.ScrivaniaTelefono.puntino, height: Tema.Misura.ScrivaniaTelefono.puntino)
+            }
+            Text(titolo)
+        }
+        .font(Tipo.Mobile.gettoneFiltro)
+        .foregroundColor(scelto ? Tema.Colore.Componenti.testoSuColore : Tema.Colore.inchiostro)
+        .padding(.horizontal, M.spazioRiga)
+        .frame(height: Tema.Misura.Mobile.gettoneFiltro)
+        .vetro(.chip, forma: .capsula, riempimento: scelto ? Tema.Colore.inchiostro : nil)
+    }
+}
+
+/// Il numero principale: il totale grande, la barra dei canali e l'importo di ciascuno.
+struct TotaleTelefono: View {
+    let titolo: String
+    let totale: Double
+    /// Vuoto: niente barra (un solo canale scelto).
+    let perCanale: [(Canale, Double)]
+
+    var body: some View {
+        let somma = max(perCanale.reduce(0) { $0 + max($1.1, 0) }, 1)
+        VStack(alignment: .leading, spacing: M.spazioTesto * 2) {
+            Text(titolo)
+                .font(Tipo.Mobile.etichetta)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+            Text(Formati.euro(totale))
+                .font(Tipo.Mobile.cifraPrincipale)
+                .foregroundColor(Tema.Colore.inchiostro)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            if !perCanale.isEmpty {
+                GeometryReader { g in
+                    HStack(spacing: 0) {
+                        ForEach(perCanale, id: \.0) { c, v in
+                            Rectangle().fill(Tema.Colore.canale(c)).frame(width: g.size.width * CGFloat(max(v, 0) / somma))
+                        }
+                    }
+                }
+                .frame(height: Tema.Misura.Mobile.barraCanali)
+                .clipShape(Capsule())
+                .padding(.vertical, M.spazioTesto * 2)
+                ForEach(perCanale, id: \.0) { c, v in
+                    HStack {
+                        EtichettaCanale(canale: c, compatta: true)
+                        Spacer(minLength: M.spazioRiga)
+                        Text(Formati.euro(v))
+                            .font(Tipo.Mobile.rigaValore)
+                            .foregroundColor(Tema.Colore.inchiostro)
+                    }
+                }
+            }
+        }
+        .padding(M.margineRiga)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.Mobile.scheda), ombra: false)
+    }
+}
+
+/// Un'area: la striscia del suo colore, il nome, quante posizioni, l'importo.
+private struct RigaAreaTelefono: View {
+    let area: AreaPosizione
+    let posizioni: [Posizione]
+
+    var body: some View {
+        HStack(spacing: M.spazioRiga) {
+            Capsule().fill(Colori.Analisi.area(area)).frame(width: Tema.Misura.Mobile.striscia)
+            VStack(alignment: .leading, spacing: M.spazioTesto) {
+                Text(area.nome).font(Tipo.Mobile.rigaNome).foregroundColor(Tema.Colore.inchiostro)
+                Text("\(posizioni.count) \(posizioni.count == 1 ? "posizione" : "posizioni")")
+                    .font(Tipo.Mobile.rigaDettaglio).foregroundColor(Tema.Colore.inchiostroSecondario)
+            }
+            Spacer(minLength: M.spazioRiga)
+            // I debiti in negativo e in rosso, come in Posizioni sul Mac
+            Text(Formati.euro((area.passivo ? -1 : 1) * posizioni.reduce(0) { $0 + $1.valore }))
+                .font(Tipo.Mobile.rigaValore)
+                .foregroundColor(area.passivo ? Tema.Colore.rosso : Tema.Colore.inchiostro)
+                .lineLimit(1)
+                .fixedSize()
+            Image(systemName: "chevron.right")
+                .font(Tipo.Mobile.etichetta)
+                .foregroundColor(Tema.Colore.inchiostroTerziario)
+        }
+        .padding(.vertical, M.margineRiga.top)
+        .frame(minHeight: M.rigaMinima)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Le posizioni di un'area (dal riquadro «Per area»), con lo stesso filtro.
+struct ElencoAreaTelefono: View {
+    @EnvironmentObject var stato: StatoShell
+    let area: AreaPosizione
+    let filtro: FiltroPosizioniTelefono
+
+    var body: some View {
+        let elenco = filtro.applica(stato.posizioni).filter { $0.area == area }.sorted { $0.valore > $1.valore }
+        FondoTelefono {
+            TotaleTelefono(titolo: area.nome, totale: elenco.reduce(0) { $0 + $1.valore },
+                           perCanale: filtro.canale == nil ? Canale.allCases.map { c in (c, elenco.filter { $0.canale == c }.reduce(0) { $0 + $1.valore }) } : [])
+            ForEach(elenco) { posizione in
+                NavigationLink(value: DestinazioneTelefono.posizione(posizione.id)) {
+                    RigaPosizioneTelefono(posizione: posizione, conCliente: true)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .navigationTitle(area.nome)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -573,35 +855,151 @@ private struct DettaglioPosizioneTelefono: View {
 
 // MARK: - Agenda
 
+/// L'agenda dell'iPhone (Design/iphone.html, schermata 4): il mese intero con un puntino blu per gli appuntamenti
+/// e uno arancio per le cose da fare; sotto, il giorno scelto con i suoi appuntamenti e le sue attività.
 private struct AgendaTelefono: View {
     @EnvironmentObject var stato: StatoShell
-
-    /// Quanti giorni avanti mostra l'agenda dell'iPhone (oggi e le due settimane dopo).
-    private static let giorniAvanti = 14
+    @State private var mese = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+    @State private var giorno = Calendar.current.startOfDay(for: Date())
 
     var body: some View {
         let cal = Calendar.current
-        let oggi = cal.startOfDay(for: Date())
-        let limite = cal.date(byAdding: .day, value: Self.giorniAvanti, to: oggi) ?? oggi
-        let prossimi = stato.appuntamenti
-            .filter { $0.fine > oggi && $0.inizio < limite }
-            .sorted { $0.inizio < $1.inizio }
-        let giorni = Dictionary(grouping: prossimi) { cal.startOfDay(for: $0.inizio) }
+        let delGiorno = stato.appuntamenti.filter { cal.isDate($0.inizio, inSameDayAs: giorno) }.sorted { $0.inizio < $1.inizio }
+        let daFare = stato.attivitaAperte.filter { cal.isDate($0.scadenza, inSameDayAs: giorno) }
         FondoTelefono {
-            if prossimi.isEmpty {
-                VuotoTelefono(testo: "Nessun appuntamento nelle prossime due settimane.")
+            MeseTelefono(mese: $mese, giorno: $giorno,
+                         conAppuntamenti: Set(stato.appuntamenti.map { cal.startOfDay(for: $0.inizio) }),
+                         conAttivita: Set(stato.attivitaAperte.map { cal.startOfDay(for: $0.scadenza) }))
+            SezioneTelefono(titolo: Formati.dataLunga.string(from: giorno) + " · appuntamenti")
+            if delGiorno.isEmpty {
+                VuotoTelefono(testo: "Nessun appuntamento.")
             }
-            ForEach(giorni.keys.sorted(), id: \.self) { giorno in
-                SezioneTelefono(titolo: Formati.giornoRelativo(giorno))
-                ForEach(giorni[giorno] ?? []) { appuntamento in
-                    NavigationLink(value: DestinazioneTelefono.appuntamento(appuntamento.id)) {
-                        RigaAppuntamentoTelefono(appuntamento: appuntamento)
+            ForEach(delGiorno) { appuntamento in
+                NavigationLink(value: DestinazioneTelefono.appuntamento(appuntamento.id)) {
+                    RigaAppuntamentoTelefono(appuntamento: appuntamento)
+                }
+                .buttonStyle(.plain)
+            }
+            if !daFare.isEmpty {
+                SezioneTelefono(titolo: "Da fare")
+                ForEach(daFare) { a in
+                    HStack(spacing: M.spazioRiga) {
+                        CasellaSpunta(spuntata: a.completata)
+                        VStack(alignment: .leading, spacing: M.spazioTesto) {
+                            Text(a.titolo)
+                                .font(Tipo.Mobile.rigaNome)
+                                .foregroundColor(Tema.Colore.inchiostro)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let c = stato.cliente(a.clienteId) {
+                                Text(c.nome).font(Tipo.Mobile.rigaDettaglio).foregroundColor(Tema.Colore.inchiostroSecondario)
+                            }
+                        }
+                        Spacer(minLength: 0)
                     }
-                    .buttonStyle(.plain)
+                    .schedaTelefono()
                 }
             }
         }
         .navigationTitle("Agenda")
+    }
+}
+
+/// Il mese: le frecce, i giorni della settimana, i giorni con i loro puntini; il giorno scelto pieno dell'accento,
+/// oggi in rosso. Un tocco sceglie il giorno.
+private struct MeseTelefono: View {
+    @Binding var mese: Date
+    @Binding var giorno: Date
+    let conAppuntamenti: Set<Date>
+    let conAttivita: Set<Date>
+
+    private typealias A = Tema.Misura.AgendaTelefono
+
+    var body: some View {
+        let giorni = Self.griglia(mese)
+        VStack(spacing: A.spazio) {
+            HStack {
+                Button { cambia(-1) } label: { Image(systemName: "chevron.left") }
+                    .buttonStyle(StileVetro())
+                    .accessibilityLabel("Mese prima")
+                Spacer()
+                Text(Formati.meseAnno.string(from: mese).prefix(1).uppercased() + Formati.meseAnno.string(from: mese).dropFirst())
+                    .font(Tipo.Mobile.titoloMese)
+                    .foregroundColor(Tema.Colore.inchiostro)
+                Spacer()
+                Button { cambia(1) } label: { Image(systemName: "chevron.right") }
+                    .buttonStyle(StileVetro())
+                    .accessibilityLabel("Mese dopo")
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: A.spazioRighe) {
+                ForEach(Array(Self.iniziali.enumerated()), id: \.offset) { _, s in
+                    Text(s).font(Tipo.Mobile.giornoSettimana).foregroundColor(Tema.Colore.inchiostroTerziario)
+                }
+                ForEach(giorni, id: \.self) { d in cella(d) }
+            }
+            HStack(spacing: A.spazio * 2) {
+                HStack(spacing: A.spazioPuntini * 2) { punto(Tema.Colore.accento); Text("Appuntamenti") }
+                HStack(spacing: A.spazioPuntini * 2) { punto(Tema.Colore.arancio); Text("Da fare") }
+            }
+            .font(Tipo.Mobile.rigaDettaglio)
+            .foregroundColor(Tema.Colore.inchiostroSecondario)
+        }
+        .padding(M.margineRiga)
+        .vetro(.sottile, forma: .arrotondata(Tema.Raggio.Mobile.scheda), ombra: false)
+    }
+
+    private func punto(_ c: Color) -> some View {
+        Circle().fill(c).frame(width: A.puntino, height: A.puntino)
+    }
+
+    /// Un giorno: il numero (rosso oggi, bianco su accento se scelto, chiaro fuori dal mese) e i suoi puntini.
+    private func cella(_ d: Date) -> some View {
+        let cal = Calendar.current
+        let fuori = !cal.isDate(d, equalTo: mese, toGranularity: .month)
+        let scelto = cal.isDate(d, inSameDayAs: giorno)
+        let oggi = cal.isDateInToday(d)
+        let suColore = Tema.Colore.Componenti.testoSuColore
+        let coloreNumero: Color = scelto ? suColore : oggi ? Tema.Colore.rosso : fuori ? Tema.Colore.inchiostroTerziario : Tema.Colore.inchiostro
+        return Button {
+            giorno = d
+            if fuori { mese = cal.dateInterval(of: .month, for: d)?.start ?? mese }
+        } label: {
+            VStack(spacing: A.spazioPuntini) {
+                Text("\(cal.component(.day, from: d))")
+                    .font(scelto || oggi ? Tipo.Mobile.giornoForte : Tipo.Mobile.giorno)
+                    .foregroundColor(coloreNumero)
+                HStack(spacing: A.spazioPuntini) {
+                    if conAppuntamenti.contains(d) { punto(scelto ? suColore : Tema.Colore.accento) }
+                    if conAttivita.contains(d) { punto(scelto ? suColore : Tema.Colore.arancio) }
+                }
+                .frame(height: A.puntino)
+            }
+            .frame(maxWidth: .infinity, minHeight: A.cella)
+            .background {
+                if scelto { RoundedRectangle(cornerRadius: A.raggio, style: .continuous).fill(Tema.Colore.accento) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(StileSemplice())
+    }
+
+    private func cambia(_ n: Int) {
+        mese = Calendar.current.date(byAdding: .month, value: n, to: mese) ?? mese
+    }
+
+    /// L'iniziale dei giorni da lunedì.
+    static let iniziali = ["L", "M", "M", "G", "V", "S", "D"]
+
+    /// I giorni da mostrare: le settimane intere (da lunedì) che contengono il mese.
+    static func griglia(_ mese: Date) -> [Date] {
+        var cal = Calendar.current
+        cal.firstWeekday = 2
+        guard let intervallo = cal.dateInterval(of: .month, for: mese) else { return [] }
+        let primo = intervallo.start
+        let spostamento = (cal.component(.weekday, from: primo) - cal.firstWeekday + 7) % 7
+        let inizio = cal.date(byAdding: .day, value: -spostamento, to: primo) ?? primo
+        let giorniMese = cal.range(of: .day, in: .month, for: mese)?.count ?? 30
+        let celle = Int(ceil(Double(spostamento + giorniMese) / 7)) * 7
+        return (0..<celle).compactMap { cal.date(byAdding: .day, value: $0, to: inizio) }.map { cal.startOfDay(for: $0) }
     }
 }
 

@@ -3,7 +3,8 @@ import SwiftUI
 
 /// Il dock del tema in vetro (.dock) su iPhone e iPad: capsula di vetro sottile con raggio `Tema.Raggio.dock`, la
 /// Scrivania, il divisore e le app. Il lato delle icone viene da `fitDock` del tema (DisposizioneDockMobile): tutte
-/// le icone restano in vista, senza scorrere. I nomi sotto le icone solo dove ci stanno (passo ≥ 56 punti).
+/// le icone restano in vista, senza scorrere. Sul telefono niente nomi sotto le icone (Design/iphone.html: dock
+/// compatto e centrato); sull'iPad i nomi solo dove ci stanno (passo ≥ 56 punti).
 /// - telefono: Scrivania | Clienti, Posizioni, Agenda, Attività | «Tutte le app»;
 /// - iPad: Scrivania | tutte le app consentite, come il Dock del Mac (⌥0…⌥9 con la tastiera).
 struct DockMobile: View {
@@ -25,7 +26,7 @@ struct DockMobile: View {
         let elementi = voci.count + (stile == .telefono ? 2 : 1)
         let massimo = stile == .telefono ? D.massimoTelefono : D.massimoiPad
         let lato = DisposizioneDockMobile.lato(elementi: elementi, larghezza: larghezza, massimo: massimo)
-        let nomi = DisposizioneDockMobile.conNomi(lato: lato)
+        let nomi = DisposizioneDockMobile.conNomi(lato: lato, stile: stile)
         let spazio = lato * D.quotaSpazio
         let margine = lato * D.quotaMargine
         HStack(alignment: .top, spacing: spazio) {
@@ -213,15 +214,15 @@ enum DisposizioneDockMobile {
         return max(D.minimo, (s / D.passo).rounded(.down) * D.passo)
     }
 
-    /// I nomi sotto le icone solo se il passo (lato + spazio) è almeno quello del dock del Mac.
-    static func conNomi(lato s: CGFloat) -> Bool {
-        s * (1 + D.quotaSpazio) >= D.passoPerNomi - 0.001
+    /// I nomi sotto le icone: mai sul telefono; sull'iPad solo se il passo (lato + spazio) è almeno quello del dock del Mac.
+    static func conNomi(lato s: CGFloat, stile: StileDockMobile = .iPad) -> Bool {
+        stile == .iPad && s * (1 + D.quotaSpazio) >= D.passoPerNomi - 0.001
     }
 
     /// L'altezza del dock con il lato `s` (margini, icona e, se ci stanno, i nomi).
-    static func altezza(lato s: CGFloat) -> CGFloat {
+    static func altezza(lato s: CGFloat, stile: StileDockMobile = .iPad) -> CGFloat {
         let m = Tema.Misura.Shell.self
-        let nomi = conNomi(lato: s) ? m.etichettaSpazio + m.etichettaDock : 0
+        let nomi = conNomi(lato: s, stile: stile) ? m.etichettaSpazio + m.etichettaDock : 0
         return max(D.tocco, s + nomi) + 2 * s * D.quotaMargine
     }
 }

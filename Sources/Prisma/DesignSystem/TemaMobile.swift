@@ -36,6 +36,10 @@ extension Tema.Misura {
         /// Segnaposto «In arrivo su iPad».
         static let iconaInArrivo: CGFloat = 72
         static let testoInArrivoMassimo: CGFloat = 460
+        /// Posizioni sull'iPhone: il gettone del filtro, la barra dei canali, la striscia delle aree.
+        static let gettoneFiltro: CGFloat = 32
+        static let barraCanali: CGFloat = 8
+        static let striscia: CGFloat = 4
 
         // MARK: Impaginazione adattiva dell'iPad (le viste App* del Mac dentro la colonna di dettaglio)
         // La colonna di dettaglio dell'iPad va da circa 470 pt (11" verticale con la barra laterale) a circa
@@ -74,6 +78,34 @@ extension Tema.Misura {
 }
 
 extension Tema.Misura {
+    /// Il mese dell'agenda sull'iPhone (Design/iphone.html, schermata 4).
+    enum AgendaTelefono {
+        static let spazio: CGFloat = 8
+        static let spazioRighe: CGFloat = 2
+        static let spazioPuntini: CGFloat = 3
+        static let puntino: CGFloat = 5
+        static let cella: CGFloat = 42
+        static let raggio: CGFloat = 12
+    }
+
+    /// I widget della scrivania dell'iPhone (WidgetTelefono, Design/iphone.html).
+    enum ScrivaniaTelefono {
+        static let spazioRighe: CGFloat = 4
+        static let spazioTesto: CGFloat = 3
+        static let spazioPulsanti: CGFloat = 8
+        static let avatar: CGFloat = 36
+        static let puntino: CGFloat = 8
+        static let pulsante: CGFloat = 44
+        /// Il segno colorato di «Richiede attenzione» e quante voci al massimo.
+        static let segno: CGFloat = 30
+        static let raggioSegno: CGFloat = 9
+        static let massimoAttenzione = 4
+        /// La sfera di Eve nella sua riga.
+        static let sfera: CGFloat = 32
+        /// Altezza del widget del portafoglio sul telefono.
+        static let portafoglio: CGFloat = 250
+    }
+
     /// Eve sull'iPhone (EveTelefono): la chat del Mac a tutta larghezza, il contesto in una riga in alto.
     enum EveTelefono {
         static let margine: CGFloat = 16
@@ -127,6 +159,14 @@ extension Tipo {
         /// Il saluto della scrivania sul telefono (.hero h1 a 28 sotto i 760 punti).
         static let salutoTelefono = Tipo.sistema(28, .bold)
         static let spaziaturaSaluto = Tema.Testo.spaziatura(-0.024, 28)
+        /// La data sopra il saluto sul telefono.
+        static let dataSaluto = Tipo.sistema(13.5, .medium)
+        static let gettoneFiltro = Tipo.sistema(13.5, .semibold)
+        /// Il mese dell'agenda.
+        static let titoloMese = Tipo.sistema(19, .bold)
+        static let giornoSettimana = Tipo.sistema(11, .semibold)
+        static let giorno = Tipo.arrotondato(16, .medium)
+        static let giornoForte = Tipo.arrotondato(16, .bold)
         /// Barra superiore: «Prisma» (.bar-brand) e il nome dell'app in primo piano (.bar-app).
         static let barraMarchio = Tipo.sistema(14, .bold)
         static let barraApp = Tipo.sistema(14, .medium)
@@ -148,6 +188,12 @@ extension Tipo {
         static let simboloChiudi = Tipo.sistema(12, .bold)
         static let marchio = Tipo.sistema(17, .bold)
         static let stato = Tipo.sistema(11.5, .semibold)
+        /// La cifra principale di una schermata (l'ora del prossimo incontro, il patrimonio, il totale): 34 pt.
+        static let cifraPrincipale = Tipo.arrotondato(34, .bold)
+        static let occhielloIncontro = Tipo.sistema(12.5, .semibold)
+        static let spaziaturaOcchiello = Tema.Testo.spaziatura(0.04, 12.5)
+        static let titoloIncontro = Tipo.sistema(17, .semibold)
+        static let simboloAttenzione = Tipo.sistema(14, .bold)
         /// Eve sull'iPhone: il gettone di chi si parla, lo stato di Qwen, l'avviso, il campo.
         static let eveGettone = Tipo.sistema(15, .semibold)
         static let eveStato = Tipo.sistema(12.5, .medium)
@@ -234,8 +280,9 @@ extension Tema.Misura.Mobile {
 
     /// Il dock (.dock) con il lato delle icone di `fitDock` del tema.
     enum Dock {
-        /// Lato massimo delle icone: quello del Mac (Tema.Misura.dockIcona).
-        static let massimoTelefono: CGFloat = Tema.Misura.dockIcona
+        /// Lato massimo delle icone: sull'iPhone 46 (dock compatto e centrato, senza nomi: Design/iphone.html),
+        /// sull'iPad quello del Mac (Tema.Misura.dockIcona).
+        static let massimoTelefono: CGFloat = 46
         static let massimoiPad: CGFloat = Tema.Misura.dockIcona
         /// Sotto, l'iPad mini in verticale non ci starebbe: è la misura più piccola ammessa.
         static let minimo: CGFloat = 36
