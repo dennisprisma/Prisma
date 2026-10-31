@@ -138,6 +138,10 @@ extension Tema.Misura {
         static let spazioDomanda: CGFloat = 1
         static let margineCorpo = EdgeInsets(top: 12, leading: 16, bottom: 4, trailing: 16)
         static let interlinea: CGFloat = 7
+        /// Le parole della risposta (.answer .w): lo spazio fra loro, l'aria fra i paragrafi, la sfocatura d'entrata.
+        static let spazioParola: CGFloat = 3.8
+        static let spazioParagrafo: CGFloat = 6
+        static let sfocaturaParola: CGFloat = 3
         static let spazioBlocchi: CGFloat = 12
         static let spazioRighe: CGFloat = 8
         static let barreParla = 3
@@ -252,6 +256,8 @@ extension Tema.Moto {
         static let comparsa = Tema.Moto.uscita(0.5)
         /// La risposta si scrive una parola alla volta (.answer .w: 55 ms l'una).
         static let parola: UInt64 = 55_000_000
+        /// L'entrata di una parola: da sfocata e trasparente a nitida (wi .35s --out).
+        static let parolaEntra = Tema.Moto.uscita(0.35)
         /// I blocchi della risposta (.reveal): uno ogni 0,16 s.
         static let ritardoBlocco: Double = 0.16
         /// Le aste della linea del tempo (.pin: molla di 0,6 s, la seconda 0,18 s dopo la prima).
@@ -273,5 +279,36 @@ extension Tema.Moto {
         static let fotogrammi: Double = 30
         /// ⌥ Spazio tenuto premuto oltre questa soglia = parla.
         static let sogliaTenuto: Double = 0.3
+    }
+}
+
+// MARK: - La finestra di Prisma che Eve legge (LetturaEveFinestra, «Dentro Prisma, non sopra»)
+
+extension Tema.Misura {
+    enum LetturaEve {
+        static let filo: CGFloat = 1
+        static let anello: CGFloat = 1.5
+        static let alone: CGFloat = 10
+        /// L'altezza della luce che percorre la finestra.
+        static let fascia: CGFloat = 140
+    }
+}
+
+extension Tema.Colore {
+    /// Dal template: color-mix(accent 30%) per il filo, accent 55% per l'anello, accent 9% per la luce.
+    enum LetturaEve {
+        static let filo = Tema.Colore.accento.opacity(0.3)
+        static let anello = Tema.Colore.accento.opacity(0.55)
+        static let alone = Tema.Colore.accento.opacity(0.35)
+        static let luce = Tema.Colore.accento.opacity(0.09)
+    }
+}
+
+extension Tema.Moto {
+    enum LetturaEve {
+        static let passaggio: Double = 1.4
+        static let durataLuce: Double = 1.6
+        static let cambio = Animation.easeOut(duration: 0.5)
+        static let spegni = Animation.easeOut(duration: 0.9)
     }
 }

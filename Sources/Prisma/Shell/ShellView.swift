@@ -112,7 +112,7 @@ struct CorpoShell: View {
 
                 if let testo = stato.avviso {
                     let posto = postoAvviso(misura: geo.size, area: area)
-                    VistaAvviso(testo: testo)
+                    VistaAvviso(testo: testo, sfera: stato.avvisoDiEve)
                         .padding(.horizontal, Misure.Avvisi.margineLato)
                         .frame(width: posto.width, height: posto.height, alignment: .bottom)
                         .offset(x: posto.minX, y: posto.minY)

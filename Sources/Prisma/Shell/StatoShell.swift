@@ -58,6 +58,8 @@ final class StatoShell: ObservableObject {
     let derivati = DerivatiDati()
 
     @Published private(set) var avviso: String?
+    /// L'avviso è il commiato di Eve (con la sfera): dopo un pulsante della mini finestra.
+    @Published private(set) var avvisoDiEve = false
     @Published var schermoIntero = false
     @Published var schedaImpostazioni: SchedaImpostazioni = .esperienza
     @Published var schedaCliente: SchedaCliente = .panoramica
@@ -2885,8 +2887,9 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Avvisi
 
-    func mostraAvviso(_ testo: String) {
+    func mostraAvviso(_ testo: String, daEve: Bool = false) {
         lavoroAvviso?.cancel()
+        avvisoDiEve = daEve
         withAnimation(Animazioni.avviso) { avviso = testo }
         let lavoro = DispatchWorkItem { [weak self] in
             withAnimation(Animazioni.avviso) { self?.avviso = nil }
