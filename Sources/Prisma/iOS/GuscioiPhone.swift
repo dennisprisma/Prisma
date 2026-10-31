@@ -300,6 +300,8 @@ private struct RigaClienteTelefono: View {
 
     var body: some View {
         let posizioni = stato.posizioni.filter { $0.clienteId == cliente.id && $0.stato != .chiusa }
+        let canali = Canale.allCases.filter { c in posizioni.contains { $0.canale == c } }
+        // Il nome ha tutta la riga: i canali stanno sotto, mai al posto del nome (sul telefono c'è poco spazio)
         HStack(spacing: M.spazioRiga) {
             AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: M.avatarElenco)
             VStack(alignment: .leading, spacing: M.spazioTesto) {
@@ -311,11 +313,14 @@ private struct RigaClienteTelefono: View {
                     .font(Tipo.Mobile.rigaDettaglio)
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
                     .lineLimit(1)
+                if !canali.isEmpty {
+                    HStack(spacing: M.spazioTesto * 2) {
+                        ForEach(canali) { canale in EtichettaCanale(canale: canale, compatta: true) }
+                    }
+                    .padding(.top, M.spazioTesto)
+                }
             }
-            Spacer(minLength: 0)
-            ForEach(Canale.allCases.filter { c in posizioni.contains { $0.canale == c } }) { canale in
-                EtichettaCanale(canale: canale, compatta: true)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.right")
                 .font(Tipo.Mobile.etichetta)
                 .foregroundColor(Tema.Colore.inchiostroTerziario)
@@ -624,11 +629,13 @@ private struct RigaAppuntamentoTelefono: View {
                     .font(Tipo.Mobile.rigaDettaglio)
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
                     .lineLimit(1)
+                // Il canale sotto, non accanto: titolo e cliente restano interi
+                if let canale = appuntamento.canale {
+                    EtichettaCanale(canale: canale, compatta: true)
+                        .padding(.top, M.spazioTesto)
+                }
             }
-            Spacer(minLength: 0)
-            if let canale = appuntamento.canale {
-                EtichettaCanale(canale: canale, compatta: true)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .schedaTelefono()
         .opacity(appuntamento.stato == .concluso ? 0.6 : 1)
