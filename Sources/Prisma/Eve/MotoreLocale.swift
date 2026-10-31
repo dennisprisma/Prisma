@@ -19,7 +19,9 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
     let restaInMemoria: String
 
     init(_ eve: ImpostazioniEve, disponibilita: DisponibilitaEve, sessione: URLSession = .shared) {
-        fornitore = FornitoriEve.crea(eve, sessione: sessione)
+        // Con la sessione di sempre il fornitore di questo dispositivo (su iPhone e iPad il ponte verso il Mac);
+        // con una sessione data (le prove, il server finto) quello delle impostazioni, come sul Mac
+        fornitore = sessione === URLSession.shared ? FornitoriEve.diQuestoDispositivo(eve) : FornitoriEve.crea(eve, sessione: sessione)
         self.disponibilita = disponibilita
         restaInMemoria = eve.restaInMemoria
     }
@@ -45,15 +47,20 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
 
     /// Pronto se il fornitore risponde e ha il modello scelto.
     static func verifica(_ eve: ImpostazioniEve) async -> DisponibilitaEve {
-        #if os(iOS)
-        // Su iPhone e iPad: Qwen del Mac abbinato, in rete locale (PonteEve). Se il Mac non c'è, Eve lo dice e non risponde
-        return await PonteEve.collega(eve)
-        #else
         let f = FornitoriEve.crea(eve)
         guard IndirizzoLocale.url(f.indirizzo) != nil else {
             return .nonDisponibile("L'indirizzo di \(f.nome) deve essere sul Mac (127.0.0.1): un altro computer riceverebbe i dati dei clienti.")
         }
         return await f.verifica()
+    }
+
+    /// Pronto su questo dispositivo: sul Mac il modello locale; su iPhone e iPad Qwen del Mac abbinato, in rete
+    /// locale (PonteEve). Se il Mac non c'è, Eve lo dice e non risponde.
+    static func verificaDispositivo(_ eve: ImpostazioniEve) async -> DisponibilitaEve {
+        #if os(iOS)
+        return await PonteEve.collega(eve)
+        #else
+        return await verifica(eve)
         #endif
     }
 

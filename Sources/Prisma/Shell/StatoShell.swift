@@ -1630,7 +1630,7 @@ final class StatoShell: ObservableObject {
         let eve = dati.impostazioni.eve
         eveInCorso = true
         Task { @MainActor in
-            let d = await MotoreLocale.verifica(eve)
+            let d = await MotoreLocale.verificaDispositivo(eve)
             if self.disponibilitaLocale != d { self.disponibilitaLocale = d }
             self.eveInCorso = false
             if let m = self.generativo { poi(m) } else { self.qwenNonPronto(cliente: id) }
@@ -1649,7 +1649,7 @@ final class StatoShell: ObservableObject {
         guard persistente else { return }
         let eve = dati.impostazioni.eve
         Task {
-            let d = await MotoreLocale.verifica(eve)
+            let d = await MotoreLocale.verificaDispositivo(eve)
             DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
         }
     }

@@ -241,18 +241,23 @@ enum SceltaRagionamento: String, Codable, CaseIterable, Identifiable {
 
 /// Il fornitore scelto nelle impostazioni.
 enum FornitoriEve {
-    static func crea(_ eve: ImpostazioniEve, sessione: URLSession = .shared) -> FornitoreModello {
+    /// Il fornitore che usa questo dispositivo: sul Mac quello scelto, su iPhone e iPad il ponte verso il Mac.
+    static func diQuestoDispositivo(_ eve: ImpostazioniEve, sessione: URLSession = .shared) -> FornitoreModello {
         #if os(iOS)
-        // Su iPhone e iPad il modello è quello del Mac, attraverso il ponte cifrato in rete locale
         return PonteEve.fornitore(eve, sessione: sessione)
         #else
+        return crea(eve, sessione: sessione)
+        #endif
+    }
+
+    /// Il fornitore scelto nelle impostazioni (quello del Mac), sempre a un indirizzo locale.
+    static func crea(_ eve: ImpostazioniEve, sessione: URLSession = .shared) -> FornitoreModello {
         switch eve.fornitore {
         case .ollama:
             return FornitoreOllama(indirizzo: eve.indirizzoLocale, modello: eve.modelloLocale.trimmingCharacters(in: .whitespaces), sessione: sessione)
         case .compatibileOpenAI:
             return FornitoreCompatibileOpenAI(indirizzo: eve.indirizzoCompatibile, modello: eve.modelloCompatibile.trimmingCharacters(in: .whitespaces), sessione: sessione)
         }
-        #endif
     }
 }
 
