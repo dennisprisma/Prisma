@@ -93,6 +93,8 @@ extension Tema.Misura {
         static let altezzaMassima: CGFloat = 640
         static let margineSchermo: CGFloat = 24
         static let altezzaMinima: CGFloat = 320
+        /// I blocchi della risposta salgono di tanto mentre compaiono (.reveal: translateY(6px)).
+        static let salitaComparsa: CGFloat = 6
         /// Testa, campo e piede della scheda: il resto dell'altezza è del corpo della risposta.
         static let cornice: CGFloat = 170
         /// Entrata e uscita (.screen[data-open="0"] .eve): su di 14 e al 90%.
@@ -248,6 +250,14 @@ extension Tema.Moto {
         static let ridotto = Animation.easeInOut(duration: 0.15)
         /// Il contenuto che compare (.reveal: rise .5 s).
         static let comparsa = Tema.Moto.uscita(0.5)
+        /// La risposta si scrive una parola alla volta (.answer .w: 55 ms l'una).
+        static let parola: UInt64 = 55_000_000
+        /// I blocchi della risposta (.reveal): uno ogni 0,16 s.
+        static let ritardoBlocco: Double = 0.16
+        /// Le aste della linea del tempo (.pin: molla di 0,6 s, la seconda 0,18 s dopo la prima).
+        static let asta = Animation.spring(response: 0.6, dampingFraction: 0.62)
+        static let ritardoAsta: Double = 0.25
+        static let passoAsta: Double = 0.18
         /// I passi di «pensa» (uno ogni 0,85 s) e il lampeggio del cursore.
         static let passoPensiero: Double = 0.85
         static let lampeggio: Double = 1

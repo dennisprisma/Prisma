@@ -236,8 +236,9 @@ private struct SchedaRisposta: View {
             TestoRispostaMiniEve(testo: mini.risposta)
             if mostra {
                 Group {
-                    if let l = cifre.linea { LineaTempoVista(linea: l).padding(.top, m.spazioBlocchi) }
-                    if !cifre.righe.isEmpty { RigheMiniEve(righe: cifre.righe).padding(.top, m.spazioRighe) }
+                    // .reveal del template: linea del tempo, righe, fonte, pulsanti e spunti salgono uno dopo l'altro
+                    if let l = cifre.linea { LineaTempoVista(linea: l).padding(.top, m.spazioBlocchi).comparsaMiniEve(0) }
+                    if !cifre.righe.isEmpty { RigheMiniEve(righe: cifre.righe).padding(.top, m.spazioRighe).comparsaMiniEve(1) }
                     if let f = cifre.fonte {
                         HStack(spacing: m.spazioFonte) {
                             Image(systemName: "doc.text").font(.system(size: m.simboloFonte))
@@ -246,6 +247,7 @@ private struct SchedaRisposta: View {
                         .font(Tema.Testo.MiniEve.fonte)
                         .foregroundColor(Tema.Colore.MiniEve.testoTerziario)
                         .padding(.top, m.spazioRighe)
+                        .comparsaMiniEve(2)
                     }
                     if !cifre.azioni.isEmpty {
                         DisposizioneAcapoRicerca(spazio: m.spazioPulsante) {
@@ -254,15 +256,18 @@ private struct SchedaRisposta: View {
                             }
                         }
                         .padding(.top, m.spazioBlocchi)
+                        .comparsaMiniEve(3)
                     }
                     if !cifre.seguiti.isEmpty {
-                        EtichettaMiniEve(testo: "Puoi chiedermi anche")
-                        DisposizioneAcapoRicerca(spazio: m.spazioSpunti) {
-                            ForEach(cifre.seguiti) { s in SpuntoMiniEveVista(spunto: s) }
+                        VStack(alignment: .leading, spacing: 0) {
+                            EtichettaMiniEve(testo: "Puoi chiedermi anche")
+                            DisposizioneAcapoRicerca(spazio: m.spazioSpunti) {
+                                ForEach(cifre.seguiti) { s in SpuntoMiniEveVista(spunto: s) }
+                            }
                         }
+                        .comparsaMiniEve(4)
                     }
                 }
-                .transition(.opacity.combined(with: .offset(y: 6)))
             }
         }
         .padding(m.margineCorpo)
@@ -338,15 +343,38 @@ private struct SchedaScrivi: View {
 /// Il testo della risposta, con le cifre in grassetto (come nel template).
 private struct TestoRispostaMiniEve: View {
     let testo: String
+    @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
+    @Environment(\.modoIstantanea) private var modoIstantanea
+    /// Le parole già scritte: la risposta si scrive una parola alla volta, come se Eve parlasse (.answer .w).
+    /// Mentre Qwen scrive il testo cresce a blocchi; qui le parole lo seguono con un ritmo regolare.
+    @State private var scritte = 0
+    @State private var precedente = ""
+
+    private var parole: [Substring] { testo.split(separator: " ", omittingEmptySubsequences: false) }
 
     var body: some View {
-        TestoRispostaMiniEve.conCifre(testo)
+        let tutte = parole
+        let n = (movimentoRidotto || modoIstantanea) ? tutte.count : min(scritte, tutte.count)
+        let visibile = tutte.prefix(n).joined(separator: " ")
+        let resto = n < tutte.count ? " " + tutte.dropFirst(n).joined(separator: " ") : ""
+        // Il resto c'è già ma trasparente: la scheda non cambia altezza a ogni parola
+        return (TestoRispostaMiniEve.conCifre(visibile) + Text(resto).foregroundColor(.clear))
             .font(Tema.Testo.MiniEve.risposta)
             .foregroundColor(Tema.Colore.MiniEve.testo)
             .lineSpacing(Tema.Misura.MiniEve.interlinea / 2)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .task(id: testo) {
+                // Una risposta nuova riparte da capo; una che cresce continua da dove era arrivata
+                if !testo.hasPrefix(precedente) { scritte = 0 }
+                precedente = testo
+                let totale = parole.count
+                while scritte < totale && !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: Tema.Moto.MiniEve.parola)
+                    scritte += 1
+                }
+            }
     }
 
     private static let cifre = try? NSRegularExpression(pattern: #"€\s?\d[\d.,]*|\d[\d.,]*\s?(?:%|€|euro\b)|\b\d+\s(?:posizion[ei]|mesi|anni|scadenze)\b"#)
@@ -410,7 +438,12 @@ private struct LineaTempoVista: View {
             asse(s)
             mesi(s)
             oggi(s)
-            ForEach(Array(linea.punti.enumerated()), id: \.offset) { _, p in punto(p, s) }
+            ForEach(Array(linea.punti.enumerated()), id: \.offset) { i, p in
+                // .pin del template: ogni asta cresce dall'asse con una molla, una dopo l'altra
+                CrescitaMiniEve(indice: i, ancora: UnitPoint(x: s.x(p.mesi) / max(w, 1), y: s.y / m.altezzaLineaTempo)) {
+                    punto(p, s)
+                }
+            }
             if let o = linea.oltre { oltre(o, s) }
         }
     }
@@ -790,6 +823,52 @@ private struct StilePressioneMiniEve: ButtonStyle {
 }
 
 // MARK: - Movimenti piccoli
+
+/// .reveal: un blocco della risposta sale di 6 punti e compare, dopo i blocchi prima di lui (0,16 s l'uno).
+private struct ComparsaMiniEve: ViewModifier {
+    let indice: Int
+    @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
+    @Environment(\.modoIstantanea) private var modoIstantanea
+    @State private var visibile = false
+
+    func body(content: Content) -> some View {
+        let fermo = movimentoRidotto || modoIstantanea
+        content
+            .opacity(fermo || visibile ? 1 : 0)
+            .offset(y: fermo || visibile ? 0 : Tema.Misura.MiniEve.salitaComparsa)
+            .onAppear {
+                guard !fermo else { return }
+                withAnimation(Tema.Moto.MiniEve.comparsa.delay(Tema.Moto.MiniEve.ritardoBlocco * Double(indice))) { visibile = true }
+            }
+    }
+}
+
+extension View {
+    fileprivate func comparsaMiniEve(_ indice: Int) -> some View { modifier(ComparsaMiniEve(indice: indice)) }
+}
+
+/// .pin: l'asta di una scadenza cresce dall'asse con una molla, dopo la comparsa della linea del tempo.
+private struct CrescitaMiniEve<Contenuto: View>: View {
+    let indice: Int
+    let ancora: UnitPoint
+    @ViewBuilder let contenuto: () -> Contenuto
+    @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
+    @Environment(\.modoIstantanea) private var modoIstantanea
+    @State private var cresciuta = false
+
+    var body: some View {
+        let fermo = movimentoRidotto || modoIstantanea
+        contenuto()
+            .scaleEffect(x: 1, y: fermo || cresciuta ? 1 : 0.001, anchor: ancora)
+            .opacity(fermo || cresciuta ? 1 : 0)
+            .onAppear {
+                guard !fermo else { return }
+                withAnimation(Tema.Moto.MiniEve.asta.delay(Tema.Moto.MiniEve.ritardoAsta + Tema.Moto.MiniEve.passoAsta * Double(indice))) {
+                    cresciuta = true
+                }
+            }
+    }
+}
 
 /// Il cursore che lampeggia (.caret).
 private struct CursoreMiniEve: View {
