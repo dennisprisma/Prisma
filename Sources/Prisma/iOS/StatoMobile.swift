@@ -20,6 +20,8 @@ enum DestinazioneTelefono: Hashable {
     case cliente(String)
     case posizione(String)
     case appuntamento(String)
+    /// Le posizioni di un'area (rawValue di AreaPosizione) con il filtro di Posizioni.
+    case area(String, filtro: String)
 }
 
 /// Il file che l'iPad chiede di scegliere con `.fileImporter` (`StatoShell.sceltaFileMobile`): sul Mac sono

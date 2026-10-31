@@ -144,7 +144,7 @@ struct CollegamentoApp: View {
 }
 
 /// Testata di un widget (.w-head): icona dell'app, titolo e collegamento a destra.
-private struct IntestazioneWidget<Destra: View>: View {
+struct IntestazioneWidget<Destra: View>: View {
     let titolo: String
     var icona: AppPrisma? = nil
     @ViewBuilder let destra: () -> Destra

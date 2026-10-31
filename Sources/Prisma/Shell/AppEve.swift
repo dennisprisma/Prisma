@@ -839,7 +839,9 @@ struct SferaEve: View {
     var alone = true
 
     var body: some View {
-        IconaApp(app: .eve, lato: lato)
+        // Un solo simbolo per Eve ovunque: la sfera d'acqua luminosa (quella della mini finestra), che si muove
+        // solo mentre Eve pensa
+        SferaAcquaEve(lato: lato, velocita: pensa ? Tema.Moto.MiniEve.velocitaPensiero : 1, animata: pensa)
             .shadow(color: alone || pensa ? Colori.Widget.eveAlone.opacity(pensa ? 0.9 : 0.55) : .clear,
                     radius: pensa ? 10 : 6)
     }

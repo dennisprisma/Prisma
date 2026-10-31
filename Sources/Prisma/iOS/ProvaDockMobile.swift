@@ -34,10 +34,10 @@ enum ProvaDockMobile {
             verifica("lato fra \(D.minimo) e \(massimo) a \(Int(w)) pt (\(n) elementi): \(lato)", lato >= D.minimo && lato <= massimo)
             verifica("dock largo \(Int(larghezza.rounded())) ≤ \(Int(w - D.bordo)) a \(Int(w)) pt", larghezza <= w - D.bordo)
         }
-        func nomi(_ w: CGFloat, _ n: Int, _ massimo: CGFloat) -> Bool {
-            DisposizioneDockMobile.conNomi(lato: DisposizioneDockMobile.lato(elementi: n, larghezza: w, massimo: massimo))
+        func nomi(_ w: CGFloat, _ n: Int, _ massimo: CGFloat, _ stile: StileDockMobile = .iPad) -> Bool {
+            DisposizioneDockMobile.conNomi(lato: DisposizioneDockMobile.lato(elementi: n, larghezza: w, massimo: massimo), stile: stile)
         }
-        verifica("nomi sotto le icone sull'iPhone (393)", nomi(393, telefono, D.massimoTelefono))
+        verifica("niente nomi sotto le icone sull'iPhone (393): dock compatto", !nomi(393, telefono, D.massimoTelefono, .telefono))
         verifica("nomi sotto le icone sull'iPad in orizzontale (1376)", nomi(1376, iPad, D.massimoiPad))
         verifica("niente nomi sull'iPad in verticale (834)", !nomi(834, iPad, D.massimoiPad))
         verifica("niente nomi sull'iPad mini in verticale (744)", !nomi(744, iPad, D.massimoiPad))

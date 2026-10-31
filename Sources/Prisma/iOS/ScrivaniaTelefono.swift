@@ -27,7 +27,6 @@ struct ScrivaniaTelefono: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     introduzione
-                    intestazioneBacheca
                     bacheca
                     piede
                     // Lo spazio del dock, in fondo: la scrivania scorre fino a mostrare il piede sopra il dock
@@ -50,62 +49,30 @@ struct ScrivaniaTelefono: View {
         .padding(.top, alto)
     }
 
-    /// .hero: il saluto con il sottotitolo, poi i pulsanti di vetro a capo (flex-wrap del tema).
+    /// In alto, sull'acqua: la data e il saluto (Design/iphone.html). Cerca e le app aperte stanno nella barra e nel dock.
     private var introduzione: some View {
-        VStack(alignment: .leading, spacing: S.salutoPulsanti) {
-            SalutoScrivaniaMobile(carattere: Tipo.Mobile.salutoTelefono, spaziatura: Tipo.Mobile.spaziaturaSaluto)
-            HStack(spacing: Tema.Misura.Shell.pulsantiSpazio) {
-                Button {
-                    stato.cercaOvunque()
-                } label: {
-                    Label("Cerca ovunque", systemImage: "magnifyingglass")
-                }
-                Button {
-                    stato.apriGuida(.introduzione(0))
-                } label: {
-                    Label("Come funziona", systemImage: "questionmark.circle")
-                }
+        VStack(alignment: .leading, spacing: Tema.Misura.Mobile.spazioTesto) {
+            TimelineView(.everyMinute) { contesto in
+                Text(Formati.dataLunga.string(from: contesto.date).prefix(1).uppercased() + Formati.dataLunga.string(from: contesto.date).dropFirst())
+                    .font(Tipo.Mobile.dataSaluto)
+                    .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
             }
-            .buttonStyle(StilePulsanteVetro())
-            .labelStyle(EtichettaPulsante())
-            .gruppoVetro()
+            SalutoScrivaniaMobile(carattere: Tipo.Mobile.salutoTelefono, spaziatura: Tipo.Mobile.spaziaturaSaluto, sottotitolo: false)
         }
+        .aloneSfondo()
         .padding(.top, S.salutoAlto)
-    }
-
-    /// .sec-head: «La tua giornata» e quante app sono aperte (apre «Tutte le app»).
-    private var intestazioneBacheca: some View {
-        HStack {
-            Text("La tua giornata")
-                .font(Tema.Testo.sezione)
-                .tracking(Tema.Testo.spaziaturaSezione)
-                .foregroundColor(Tema.Colore.inchiostroSfondo)
-                .aloneSfondo()
-            Spacer(minLength: Tema.Misura.Shell.pulsantiSpazio)
-            Button {
-                mobile.pannello = .tutteLeApp
-            } label: {
-                HStack(spacing: Tema.Misura.Shell.pulsanteVetroSpazio) {
-                    TestoAppAperteMobile()
-                    Image(systemName: "square.grid.2x2.fill")
-                }
-            }
-            .buttonStyle(StilePulsanteVetro(piccolo: true))
-        }
-        .padding(.top, Tema.Misura.Shell.sezioneAlto)
-        .padding(.bottom, Tema.Misura.Shell.sezioneBasso)
         .padding(.horizontal, Tema.Misura.Shell.sezioneLato)
+        .padding(.bottom, Tema.Misura.Shell.sezioneBasso * 2)
     }
 
-    /// .board a una colonna: i sei widget del Mac, i vetri campionati insieme.
+    /// .board a una colonna, in ordine di importanza (Design/iphone.html): il prossimo incontro in grande, ciò che
+    /// richiede attenzione, Eve, il portafoglio. Alti quanto il contenuto; i vetri campionati insieme.
     private var bacheca: some View {
         VStack(spacing: Tema.Misura.grigliaSpazio) {
-            WidgetAgenda().frame(height: S.agenda)
-            WidgetCliente().frame(height: S.cliente)
-            WidgetEve().frame(height: Tema.Misura.widgetEve)
-            WidgetAttivita().frame(height: S.attivita)
-            WidgetScadenze().frame(height: S.scadenze)
-            WidgetPortafoglio().frame(height: S.portafoglio)
+            WidgetIncontroTelefono()
+            WidgetAttenzioneTelefono()
+            BarraEveTelefono()
+            WidgetPortafoglio().frame(height: Tema.Misura.ScrivaniaTelefono.portafoglio)
         }
         .gruppoVetro()
     }
@@ -130,6 +97,8 @@ struct SalutoScrivaniaMobile: View {
     @EnvironmentObject var stato: StatoShell
     let carattere: Font
     let spaziatura: CGFloat
+    /// «Tutto il tuo lavoro, a portata di mano.» sotto il saluto (sull'iPhone c'è la data sopra, al suo posto).
+    var sottotitolo = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tema.Misura.Shell.salutoSpazio) {
@@ -141,9 +110,11 @@ struct SalutoScrivaniaMobile: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            Text("Tutto il tuo lavoro, a portata di mano.")
-                .font(Tema.Testo.sottotitoloSaluto)
-                .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
+            if sottotitolo {
+                Text("Tutto il tuo lavoro, a portata di mano.")
+                    .font(Tema.Testo.sottotitoloSaluto)
+                    .foregroundColor(Tema.Colore.inchiostroSfondoSecondario)
+            }
         }
         .aloneSfondo()
     }
