@@ -88,6 +88,9 @@ extension Tema.Misura {
         static let tesseraData = CGSize(width: 40, height: 44)
         /// Avviso temporaneo (.toast).
         static let avviso = EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
+        /// La sfera di Eve nel suo commiato (.toast .orb.sm: 17 px) e lo spazio prima del testo.
+        static let sferaAvviso: CGFloat = 17
+        static let spazioSferaAvviso: CGFloat = 9
         /// Campo di testo (.field): margine laterale, altezza minima e margine verticale.
         static let margineCampo: CGFloat = 12
         static let campoPiccolo: CGFloat = 32
@@ -845,13 +848,20 @@ struct IconaAgenda: View {
 /// sopra il dock): capsula di vetro dei pannelli con il riempimento coprente, che non lascia leggere sotto.
 struct VistaAvviso: View {
     let testo: String
+    /// Il commiato di Eve (.toast di Design/eve-mini.html): la sfera prima del testo.
+    var sfera = false
 
     var body: some View {
-        Text(testo)
-            .font(Tema.Testo.Componenti.avviso)
-            .foregroundColor(Tema.Colore.inchiostro)
-            .multilineTextAlignment(.center)
-            .padding(Tema.Misura.Componenti.avviso)
-            .vetro(.pannello, forma: .capsula, riempimento: Tema.Colore.PannelliShell.coprente)
+        HStack(spacing: Tema.Misura.Componenti.spazioSferaAvviso) {
+            if sfera {
+                SferaAcquaEve(lato: Tema.Misura.Componenti.sferaAvviso, velocita: Tema.Moto.MiniEve.velocitaAscolto)
+            }
+            Text(testo)
+                .font(Tema.Testo.Componenti.avviso)
+                .foregroundColor(Tema.Colore.inchiostro)
+                .multilineTextAlignment(.center)
+        }
+        .padding(Tema.Misura.Componenti.avviso)
+        .vetro(.pannello, forma: .capsula, riempimento: Tema.Colore.PannelliShell.coprente)
     }
 }

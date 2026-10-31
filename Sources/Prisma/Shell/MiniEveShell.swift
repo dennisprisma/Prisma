@@ -262,17 +262,28 @@ extension StatoShell {
     /// Un pulsante della risposta: porta Prisma davanti, apre l'app e chiude la mini finestra.
     func eseguiMiniEve(_ a: AzioneMiniEve) {
         let id = miniEve.contesto?.clienteId
+        let nome = id.flatMap { cliente($0)?.nome }
         portaDavantiPrisma()
         if let id, clienteAttivoId != id { clienteAttivoId = id }
+        let commiato: String
         switch a.tipo {
-        case .posizioni: apri(.posizioni)
+        case .posizioni:
+            apri(.posizioni)
+            commiato = "Ti porto in Posizioni" + (nome.map { " · \($0)" } ?? "")
         case .agenda:
             if let id { filtroClienteAgenda = id }
             apri(.agenda)
-        case .prospetto(let s): apriProspetto(s)
-        case .azioneEve(let e): apriAzioneEve(e)
+            commiato = "Ti porto in Agenda" + (nome.map { " · \($0)" } ?? "")
+        case .prospetto(let s):
+            apriProspetto(s)
+            commiato = "Il prospetto è pronto in Prospetti e report"
+        case .azioneEve(let e):
+            apriAzioneEve(e)
+            commiato = a.titolo
         }
         chiudiMiniEve()
+        // Il commiato (.toast del template): Eve si ritira verso la sua sfera e dice dove ti ha portato
+        mostraAvviso(commiato, daEve: true)
     }
 
     /// La freccia: la stessa conversazione nell'app Eve completa.

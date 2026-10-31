@@ -350,31 +350,66 @@ private struct TestoRispostaMiniEve: View {
     @State private var scritte = 0
     @State private var precedente = ""
 
-    private var parole: [Substring] { testo.split(separator: " ", omittingEmptySubsequences: false) }
-
     var body: some View {
-        let tutte = parole
-        let n = (movimentoRidotto || modoIstantanea) ? tutte.count : min(scritte, tutte.count)
-        let visibile = tutte.prefix(n).joined(separator: " ")
-        let resto = n < tutte.count ? " " + tutte.dropFirst(n).joined(separator: " ") : ""
-        // Il resto c'è già ma trasparente: la scheda non cambia altezza a ogni parola
-        return (TestoRispostaMiniEve.conCifre(visibile) + Text(resto).foregroundColor(.clear))
-            .font(Tema.Testo.MiniEve.risposta)
-            .foregroundColor(Tema.Colore.MiniEve.testo)
-            .lineSpacing(Tema.Misura.MiniEve.interlinea / 2)
-            .textSelection(.enabled)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .task(id: testo) {
-                // Una risposta nuova riparte da capo; una che cresce continua da dove era arrivata
-                if !testo.hasPrefix(precedente) { scritte = 0 }
-                precedente = testo
-                let totale = parole.count
-                while scritte < totale && !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: Tema.Moto.MiniEve.parola)
-                    scritte += 1
-                }
+        let tutte = Self.parole(testo)
+        let fermo = movimentoRidotto || modoIstantanea
+        let n = fermo ? tutte.count : min(scritte, tutte.count)
+        let m = Tema.Misura.MiniEve.self
+        // Ogni parola affiora da sfocata a nitida (.w: opacità e blur 3 px, 0,35 s); quelle non ancora scritte
+        // ci sono già, invisibili: la scheda non cambia altezza a ogni parola
+        return ParoleACapoMiniEve(spazio: m.spazioParola, interlinea: m.interlinea / 2, paragrafo: m.spazioParagrafo) {
+            ForEach(tutte) { p in
+                let scritta = p.id < n
+                Text(p.testo)
+                    .font(p.forte ? Tema.Testo.MiniEve.rispostaForte : Tema.Testo.MiniEve.risposta)
+                    .opacity(scritta ? 1 : 0)
+                    .blur(radius: scritta ? 0 : m.sfocaturaParola)
+                    .animation(fermo ? nil : Tema.Moto.MiniEve.parolaEntra, value: scritta)
+                    .layoutValue(key: InizioParagrafoMiniEve.self, value: p.aCapo)
             }
+        }
+        .foregroundColor(Tema.Colore.MiniEve.testo)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(testo)
+        .task(id: testo) {
+            // Una risposta nuova riparte da capo; una che cresce continua da dove era arrivata
+            if !testo.hasPrefix(precedente) { scritte = 0 }
+            precedente = testo
+            let totale = Self.parole(testo).count
+            while scritte < totale && !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: Tema.Moto.MiniEve.parola)
+                scritte += 1
+            }
+        }
+    }
+
+    /// Una parola della risposta: in grassetto se fa parte di una cifra, con l'a capo se apre un paragrafo.
+    struct Parola: Identifiable {
+        let id: Int
+        let testo: String
+        let forte: Bool
+        let aCapo: Bool
+    }
+
+    private static let spazi = try? NSRegularExpression(pattern: #"\S+"#)
+
+    /// Le parole del testo, nell'ordine, con le cifre (euro, percentuali, quantità) in grassetto.
+    static func parole(_ s: String) -> [Parola] {
+        guard let r = spazi else { return [] }
+        let ns = s as NSString
+        let tutto = NSRange(location: 0, length: ns.length)
+        let forti = cifre?.matches(in: s, range: tutto).map(\.range) ?? []
+        var esito: [Parola] = []
+        var fine = 0
+        for m in r.matches(in: s, range: tutto) {
+            let tra = ns.substring(with: NSRange(location: fine, length: m.range.location - fine))
+            let forte = forti.contains { NSIntersectionRange($0, m.range).length > 0 }
+            esito.append(Parola(id: esito.count, testo: ns.substring(with: m.range), forte: forte,
+                                aCapo: !esito.isEmpty && tra.contains("\n")))
+            fine = m.range.location + m.range.length
+        }
+        return esito
     }
 
     private static let cifre = try? NSRegularExpression(pattern: #"€\s?\d[\d.,]*|\d[\d.,]*\s?(?:%|€|euro\b)|\b\d+\s(?:posizion[ei]|mesi|anni|scadenze)\b"#)
@@ -823,6 +858,53 @@ private struct StilePressioneMiniEve: ButtonStyle {
 }
 
 // MARK: - Movimenti piccoli
+
+/// La parola apre un paragrafo (dopo un a capo nel testo).
+private struct InizioParagrafoMiniEve: LayoutValueKey {
+    static let defaultValue = false
+}
+
+/// Le parole della risposta a capo come un testo: spazio fra le parole, interlinea, un po' d'aria fra i paragrafi.
+private struct ParoleACapoMiniEve: Layout {
+    var spazio: CGFloat
+    var interlinea: CGFloat
+    var paragrafo: CGFloat
+
+    private func posizioni(larghezza: CGFloat, _ subviews: Subviews) -> (punti: [CGPoint], misura: CGSize) {
+        var punti: [CGPoint] = []
+        var x: CGFloat = 0, y: CGFloat = 0, riga: CGFloat = 0, destra: CGFloat = 0
+        for (i, s) in subviews.enumerated() {
+            let d = s.sizeThatFits(.unspecified)
+            if i > 0 && s[InizioParagrafoMiniEve.self] {
+                y += riga + interlinea + paragrafo
+                x = 0
+                riga = 0
+            } else if x > 0 && x + d.width > larghezza {
+                y += riga + interlinea
+                x = 0
+                riga = 0
+            }
+            punti.append(CGPoint(x: x, y: y))
+            destra = max(destra, x + d.width)
+            x += d.width + spazio
+            riga = max(riga, d.height)
+        }
+        return (punti, CGSize(width: destra, height: y + riga))
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let larghezza = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? .greatestFiniteMagnitude
+        let m = posizioni(larghezza: larghezza, subviews).misura
+        return CGSize(width: proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? m.width, height: m.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let punti = posizioni(larghezza: bounds.width, subviews).punti
+        for (s, p) in zip(subviews, punti) {
+            s.place(at: CGPoint(x: bounds.minX + p.x, y: bounds.minY + p.y), proposal: .unspecified)
+        }
+    }
+}
 
 /// .reveal: un blocco della risposta sale di 6 punti e compare, dopo i blocchi prima di lui (0,16 s l'uno).
 private struct ComparsaMiniEve: ViewModifier {

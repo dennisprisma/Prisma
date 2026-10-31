@@ -33,6 +33,12 @@ struct FinestraInterna: View {
         // Il contenuto si taglia prima del vetro: dopo taglierebbe anche le ombre
         .clipShape(forma)
         .vetro(.finestra(attiva: attiva), forma: forma)
+        #if os(macOS)
+        // La finestra in primo piano è quella che Eve legge mentre pensa e che si illumina quando risponde
+        .overlay {
+            if attiva { LetturaEveFinestra(mini: stato.miniEve, forma: forma) }
+        }
+        #endif
         .overlay(alignment: .bottomTrailing) {
             if !finestra.ingrandita { maniglia }
         }
