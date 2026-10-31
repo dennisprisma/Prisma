@@ -1,0 +1,487 @@
+<!doctype html>
+<!--
+  Prisma · iPhone — proposta di gerarchia (v1, 31 ottobre 2026)
+  Non è il Mac rimpicciolito: sul telefono si guarda una cosa alla volta, la più importante in alto, grande.
+  Stesso materiale del tema Liquid Glass (Design/tema-liquid-glass.html): acqua, vetro, canali sempre riconoscibili.
+  Cinque schermate: Oggi, Cliente, Posizioni, Agenda, Eve. Dati dimostrativi (i clienti di prova).
+-->
+<html lang="it" data-scheme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prisma iPhone proposta</title>
+<style>
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Inter, system-ui, sans-serif;
+  --font-d: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif;
+  --font-r: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+  --red: #FF3B30; --orange: #FF9500; --green: #34C759;
+}
+html[data-scheme="light"] {
+  color-scheme: light;
+  --accent: #007AFF; --link: #0064D6; --ch-a: #2563EB; --ch-i: #B06E12;
+  --ink: rgba(0,0,0,.86); --ink-2: rgba(0,0,0,.56); --ink-3: rgba(0,0,0,.36); --sep: rgba(0,0,0,.09);
+  --wall-ink: rgba(8,26,38,.9); --wall-ink-2: rgba(8,26,38,.6);
+  --g-fill: rgba(255,255,255,.62); --g-strong: rgba(255,255,255,.84);
+  --g-hi: rgba(255,255,255,.95); --g-edge: rgba(255,255,255,.6);
+  --g-shadow: 0 18px 36px -22px rgba(8,40,60,.4), 0 3px 10px -4px rgba(8,40,60,.14);
+  --chip: rgba(255,255,255,.55); --chip-edge: rgba(255,255,255,.8);
+  --well: rgba(0,0,0,.055); --card: rgba(255,255,255,.78); --card-edge: rgba(0,0,0,.06);
+  --aq1: #E7F0F4; --aq2: #BCD5E0; --aq3: #7FA5BA; --aqh1: rgba(255,255,255,.75); --aqh2: rgba(100,155,182,.42);
+  --page: #DDE6EC; --page-ink: rgba(8,26,38,.86); --page-ink-2: rgba(8,26,38,.58);
+}
+html[data-scheme="dark"] {
+  color-scheme: dark;
+  --accent: #0A84FF; --link: #8CC4FF; --ch-a: #5B8CFF; --ch-i: #BF8430;
+  --ink: rgba(255,255,255,.94); --ink-2: rgba(255,255,255,.64); --ink-3: rgba(255,255,255,.42); --sep: rgba(255,255,255,.1);
+  --wall-ink: #fff; --wall-ink-2: rgba(255,255,255,.68);
+  --g-fill: rgba(14,28,38,.6); --g-strong: rgba(18,30,40,.86);
+  --g-hi: rgba(255,255,255,.3); --g-edge: rgba(255,255,255,.16);
+  --g-shadow: 0 22px 44px -24px rgba(0,0,0,.75), 0 4px 14px -4px rgba(0,0,0,.35);
+  --chip: rgba(255,255,255,.1); --chip-edge: rgba(255,255,255,.14);
+  --well: rgba(255,255,255,.07); --card: rgba(255,255,255,.06); --card-edge: rgba(255,255,255,.08);
+  --aq1: #0E2533; --aq2: #123648; --aq3: #081A25; --aqh1: rgba(110,170,205,.28); --aqh2: rgba(20,90,120,.35);
+  --page: #0B161E; --page-ink: rgba(255,255,255,.92); --page-ink-2: rgba(255,255,255,.6);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 400 14px/1.4 var(--font); background: var(--page); color: var(--page-ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+
+/* ---------- pagina ---------- */
+.page { max-width: 1320px; margin: 0 auto; padding: 28px 16px 56px; }
+.head { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; }
+.head h1 { margin: 0; font: 700 26px/1.1 var(--font-d); letter-spacing: -.01em; }
+.head p { margin: 6px 0 0; max-width: 720px; color: var(--page-ink-2); }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--well); }
+.seg button { height: 30px; padding: 0 14px; border-radius: 999px; font-size: 12.5px; font-weight: 500; color: var(--page-ink-2); }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--page-ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.phones { display: flex; gap: 26px; overflow-x: auto; padding: 6px 4px 18px; scroll-snap-type: x mandatory; }
+.cap { flex: none; width: 360px; scroll-snap-align: center; }
+.cap h2 { margin: 0 0 4px; font: 600 15px/1.2 var(--font-d); }
+.cap p { margin: 0 0 12px; font-size: 12.5px; color: var(--page-ink-2); min-height: 52px; }
+@media (max-width: 420px) { .cap { width: calc(100vw - 32px); } }
+
+/* ---------- il telefono ---------- */
+.phone {
+  position: relative; width: 100%; aspect-ratio: 390 / 844; border-radius: 46px; overflow: hidden;
+  background:
+    radial-gradient(60% 45% at 18% 22%, var(--aqh1), transparent 70%),
+    radial-gradient(55% 50% at 82% 78%, var(--aqh2), transparent 70%),
+    linear-gradient(160deg, var(--aq1), var(--aq2) 55%, var(--aq3));
+  box-shadow: 0 0 0 9px #111, 0 0 0 10px #333, 0 30px 60px -20px rgba(0,0,0,.5);
+  color: var(--ink); font-size: 14px; container-type: inline-size;
+}
+.status { position: absolute; inset: 0 0 auto; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 6px 30px 0 36px; font: 600 15px var(--font); color: var(--wall-ink); z-index: 5; }
+.island { position: absolute; left: 50%; top: 11px; translate: -50% 0; width: 112px; height: 32px; border-radius: 20px; background: #000; z-index: 6; }
+.scroll { position: absolute; inset: 50px 0 0; overflow: auto; padding: 4px 16px 120px; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+.glass {
+  position: relative; border-radius: 22px; background: var(--g-fill);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: var(--g-shadow), inset 0 0 0 .5px var(--g-edge), inset 0 1px 0 var(--g-hi);
+}
+.glass.strong { background: var(--g-strong); }
+
+/* testata della schermata */
+.top { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 14px; }
+.top h1 { margin: 0; font: 700 30px/1.1 var(--font-d); letter-spacing: -.02em; color: var(--wall-ink); }
+.top small { display: block; font-size: 13px; font-weight: 500; color: var(--wall-ink-2); margin-bottom: 2px; }
+.round { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; }
+.round svg { width: 17px; height: 17px; }
+.av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 600 13px var(--font-r); color: #fff; background: radial-gradient(120% 120% at 30% 18%, #5AA0D8, #2C5E8C); flex: none; }
+.av.gr { background: radial-gradient(120% 120% at 30% 18%, #F2A6B8, #C4567A); }
+.av.mb { background: radial-gradient(120% 120% at 30% 18%, #8FB4E3, #3D68A8); }
+.av.lm { background: radial-gradient(120% 120% at 30% 18%, #C5B2EA, #7A5DB8); }
+.av.sr { background: radial-gradient(120% 120% at 30% 18%, #EBCB8B, #B88A2E); }
+.av.ac { background: radial-gradient(120% 120% at 30% 18%, #9FD6C0, #3E8E74); }
+.av.xl { width: 56px; height: 56px; font-size: 19px; }
+
+/* sezioni */
+.lbl { margin: 18px 4px 8px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--wall-ink-2); display: flex; justify-content: space-between; align-items: baseline; }
+.lbl a { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--link); text-decoration: none; font-weight: 500; }
+.card { padding: 14px 16px; }
+.card + .card { margin-top: 10px; }
+
+/* l'elemento principale: grande, una cosa sola */
+.hero small { font-size: 12.5px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; }
+.hero .when { font: 700 34px/1.05 var(--font-r); letter-spacing: -.02em; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.hero .what { font: 600 17px/1.3 var(--font-d); }
+.hero .who { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.hero .who span { color: var(--ink-2); font-size: 13px; }
+.hero .who b { display: block; font-size: 14.5px; color: var(--ink); }
+.cta { display: flex; gap: 8px; margin-top: 14px; }
+.btn { flex: 1; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 7px; font-weight: 600; font-size: 14.5px; background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge), inset 0 1px 0 var(--g-hi); }
+.btn.primary { background: var(--accent); color: #fff; box-shadow: 0 6px 16px -8px var(--accent); }
+.btn svg { width: 16px; height: 16px; }
+
+/* righe */
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 0; min-height: 56px; }
+.row + .row { border-top: .5px solid var(--sep); }
+.row .t { flex: 1; min-width: 0; }
+.row .t b { display: block; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .t span { display: block; font-size: 13px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .v { text-align: right; font: 600 15px var(--font-r); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row .v small { display: block; font: 500 12px var(--font); color: var(--ink-2); }
+.row .chev { color: var(--ink-3); font-size: 18px; }
+.tag { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px 0 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.tag i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.tag.a { --c: var(--ch-a); background: color-mix(in srgb, var(--ch-a) 16%, var(--chip)); }
+.tag.i { --c: var(--ch-i); background: color-mix(in srgb, var(--ch-i) 18%, var(--chip)); }
+.dots { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: 1px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; }
+.dots .a { background: var(--ch-a); } .dots .i { background: var(--ch-i); }
+.stripe { width: 4px; align-self: stretch; border-radius: 4px; background: var(--c); flex: none; }
+
+/* attenzioni */
+.warn { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; }
+.warn + .warn { border-top: .5px solid var(--sep); }
+.warn .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; color: #fff; }
+.warn .ic svg { width: 15px; height: 15px; }
+.warn .ic.r { background: var(--red); } .warn .ic.o { background: var(--orange); } .warn .ic.b { background: var(--accent); }
+.warn b { display: block; font-size: 14.5px; font-weight: 600; }
+.warn span { font-size: 13px; color: var(--ink-2); }
+
+/* numeri */
+.big { font: 700 34px/1.05 var(--font-r); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.sub { font-size: 13px; color: var(--ink-2); }
+.bar { display: flex; height: 8px; border-radius: 8px; overflow: hidden; margin: 12px 0 10px; background: var(--well); }
+.bar i { display: block; height: 100%; }
+.split { display: flex; justify-content: space-between; font-size: 13px; }
+.split b { font: 600 14px var(--font-r); font-variant-numeric: tabular-nums; }
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.kpi { padding: 12px 14px; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge); }
+.kpi small { display: block; font-size: 12px; color: var(--ink-2); }
+.kpi b { font: 600 19px/1.25 var(--font-r); font-variant-numeric: tabular-nums; }
+.kpi em { display: block; font-style: normal; font-size: 12px; color: var(--ink-2); }
+
+/* schede (tabs interne) */
+.tabs { display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--well); margin: 14px 0 4px; }
+.tabs b { flex: 1; text-align: center; height: 32px; line-height: 32px; border-radius: 9px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.tabs b.on { background: var(--g-strong); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
+
+/* filtro dei canali */
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: 2px 0 4px; scrollbar-width: none; }
+.chips span { flex: none; height: 32px; padding: 0 13px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge); }
+.chips span.on { background: var(--ink); color: var(--g-strong); }
+.chips i { width: 7px; height: 7px; border-radius: 50%; }
+
+/* agenda */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 10px 8px; }
+.week div { text-align: center; padding: 6px 0; border-radius: 12px; }
+.week small { display: block; font-size: 11px; color: var(--ink-2); font-weight: 500; }
+.week b { font: 600 17px var(--font-r); }
+.week i { display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin: 3px auto 0; }
+.week .on { background: var(--accent); color: #fff; } .week .on small { color: rgba(255,255,255,.8); } .week .on i { background: #fff; }
+.slot { display: flex; gap: 12px; padding: 12px 0; }
+.slot + .slot { border-top: .5px solid var(--sep); }
+.slot .h { width: 50px; flex: none; font: 600 15px var(--font-r); font-variant-numeric: tabular-nums; }
+.slot .h small { display: block; font: 500 12px var(--font); color: var(--ink-2); }
+.slot b { display: block; font-size: 15px; font-weight: 600; }
+.slot span { font-size: 13px; color: var(--ink-2); }
+.slot .tag { margin-top: 6px; }
+
+/* eve */
+.orb { width: 34px; height: 34px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #fff 0 6%, transparent 30%), radial-gradient(circle at 30% 40%, #3FA3D6, transparent 60%), radial-gradient(circle at 70% 55%, #A9E2F5, transparent 55%), radial-gradient(circle at 50% 80%, #8E96E6, transparent 55%), radial-gradient(circle, #12486E, #0A2A42 70%); box-shadow: 0 0 14px -2px rgba(60,160,215,.6); }
+.bubble { padding: 12px 14px; border-radius: 20px; font-size: 15px; line-height: 1.45; max-width: 88%; }
+.bubble.me { margin-left: auto; background: var(--accent); color: #fff; border-bottom-right-radius: 6px; }
+.bubble.eve { border-bottom-left-radius: 6px; }
+.bubble b { font-weight: 600; }
+.msg { display: flex; gap: 8px; align-items: flex-end; margin: 10px 0; }
+.mini-rows { margin-top: 10px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge); padding: 0 12px; }
+.mini-rows .row { min-height: 0; padding: 9px 0; }
+.mini-rows .row .t b { font-size: 13.5px; } .mini-rows .row .v { font-size: 13.5px; }
+.status-eve { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.status-eve i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.composer { position: absolute; left: 12px; right: 12px; bottom: 98px; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 16px; border-radius: 26px; z-index: 4; }
+.composer span { flex: 1; color: var(--ink-3); font-size: 15px; }
+.send { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; }
+.send svg { width: 16px; height: 16px; }
+.sugg { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 6px 0; }
+.sugg span { flex: none; height: 34px; padding: 0 13px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 13.5px; background: var(--chip); box-shadow: inset 0 0 0 .5px var(--chip-edge); }
+
+/* barra delle schede in basso (al posto del dock del Mac) */
+.tabbar { position: absolute; left: 12px; right: 12px; bottom: 24px; height: 64px; border-radius: 32px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; z-index: 5; }
+.tabbar div { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; color: var(--ink-2); }
+.tabbar svg { width: 22px; height: 22px; }
+.tabbar .on { color: var(--accent); }
+.home-ind { position: absolute; left: 50%; bottom: 8px; translate: -50% 0; width: 134px; height: 5px; border-radius: 3px; background: var(--wall-ink); opacity: .7; z-index: 6; }
+
+/* note */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 24px; }
+.note { padding: 16px 18px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 .5px var(--card-edge); }
+html[data-scheme="light"] .note { background: rgba(255,255,255,.7); }
+.note h3 { margin: 0 0 8px; font: 600 14px var(--font-d); }
+.note ul { margin: 0; padding-left: 18px; color: var(--page-ink-2); font-size: 13px; line-height: 1.55; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>Prisma su iPhone · proposta</h1>
+      <p>Non il Mac rimpicciolito: ogni schermata ha <b>una cosa principale</b>, grande e in alto; sotto, le poche cose che servono per decidere; il resto si apre con un tocco. In basso cinque schede fisse al posto del dock. Stesso vetro, stessa acqua, canali sempre riconoscibili.</p>
+    </div>
+    <div class="seg" id="scheme"><button data-v="light" aria-pressed="true">Chiaro</button><button data-v="dark" aria-pressed="false">Scuro</button></div>
+  </div>
+
+  <div class="phones">
+
+    <!-- ================= 1. OGGI ================= -->
+    <section class="cap">
+      <h2>1 · Oggi</h2>
+      <p>Al posto della scrivania: il prossimo incontro in grande, poi solo ciò che richiede attenzione, poi il portafoglio.</p>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="scroll">
+          <div class="top">
+            <div><small>Venerdì 31 ottobre</small><h1>Buongiorno, Denis</h1></div>
+            <span class="av">DV</span>
+          </div>
+
+          <div class="glass strong card hero">
+            <small>Tra 25 minuti</small>
+            <div class="when">09:30</div>
+            <div class="what">Il punto sul progetto casa</div>
+            <div class="who"><span class="av gr">GR</span><div><b>Giulia Rossi <span class="dots"><i class="a"></i><i class="i"></i></span></b><span>In studio · 45 min</span></div></div>
+            <div class="cta">
+              <span class="btn primary"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="6"/></svg>Prepara con Eve</span>
+              <span class="btn">Apri la scheda</span>
+            </div>
+          </div>
+
+          <div class="lbl">Richiede attenzione <a>Tutto</a></div>
+          <div class="glass card" style="padding-top:2px;padding-bottom:2px">
+            <div class="warn"><span class="ic r"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 4v5M8 11.5v.5"/></svg></span><div><b>Consenso commerciale scaduto</b><span>Giulia Rossi · dal 30 agosto</span></div></div>
+            <div class="warn"><span class="ic o"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2 1.3" stroke-linecap="round"/></svg></span><div><b>Infortuni famiglia scade tra 45 giorni</b><span>Marco Bianchi · <span class="tag a" style="height:18px;font-size:11px"><i></i>Alleanza</span></span></div></div>
+            <div class="warn"><span class="ic b"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 8.5 6.5 12 13 4.5"/></svg></span><div><b>2 attività per oggi</b><span>Riepilogo per l'incontro · chiamare Sofia</span></div></div>
+          </div>
+
+          <div class="lbl">Portafoglio <a>Posizioni</a></div>
+          <div class="glass card">
+            <div class="big">1.124.350 €</div>
+            <div class="sub">in essere · 5 clienti</div>
+            <div class="bar"><i style="width:47%;background:var(--ch-a)"></i><i style="width:53%;background:var(--ch-i)"></i></div>
+            <div class="split"><span><span class="tag a"><i></i>Alleanza</span> <b>529.950 €</b></span><span><span class="tag i"><i></i>Indip.</span> <b>594.400 €</b></span></div>
+          </div>
+
+          <div class="lbl">Dopo</div>
+          <div class="glass card" style="padding-top:0;padding-bottom:0">
+            <div class="row"><span class="stripe" style="--c:#3D68A8"></span><div class="t"><b>Nuovi progetti di famiglia</b><span>Marco Bianchi · Videochiamata</span></div><div class="v">11:00</div></div>
+            <div class="row"><span class="stripe" style="--c:#7A5DB8"></span><div class="t"><b>Un progetto tutto suo</b><span>Laura Moretti · domani</span></div><div class="v">10:00</div></div>
+          </div>
+        </div>
+        <nav class="tabbar glass strong">
+          <div class="on"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c1.6.8 2.7 2.6 3 5.4" stroke-linecap="round"/></svg>Clienti</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V5M16 20v-7M22 20H2"/></svg>Posizioni</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>Agenda</div>
+          <div><span class="orb" style="width:22px;height:22px"></span>Eve</div>
+        </nav>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- ================= 2. CLIENTE ================= -->
+    <section class="cap">
+      <h2>2 · Cliente</h2>
+      <p>Chi è e quanto vale in un colpo d'occhio; quattro numeri; cosa fare. Le sezioni (Posizioni, Agenda, Documenti) sono schede, non una pagina infinita.</p>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="scroll">
+          <div class="top" style="margin-bottom:10px">
+            <span class="round glass"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 3 5 8l5 5"/></svg></span>
+            <span class="round glass"><span class="orb" style="width:20px;height:20px"></span></span>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;margin:0 2px">
+            <span class="av gr xl">GR</span>
+            <div><div style="font:700 26px/1.1 var(--font-d);letter-spacing:-.02em;color:var(--wall-ink)">Giulia Rossi</div>
+              <div style="color:var(--wall-ink-2);font-size:13.5px;margin-top:2px">37 anni · Architetta · «Una casa, un nuovo inizio»</div>
+              <div style="display:flex;gap:6px;margin-top:8px"><span class="tag a"><i></i>Alleanza</span><span class="tag i"><i></i>Indipendente</span></div></div>
+          </div>
+
+          <div class="glass strong card" style="margin-top:16px">
+            <div class="sub">Patrimonio netto</div>
+            <div class="big">204.050 €</div>
+            <div class="bar" style="margin-bottom:0"><i style="width:4%;background:var(--ch-a)"></i><i style="width:96%;background:var(--ch-i)"></i></div>
+            <div class="kpis">
+              <div class="kpi"><small>Prossimo incontro</small><b>Oggi 09:30</b></div>
+              <div class="kpi"><small>Da fare</small><b>2 attività</b></div>
+              <div class="kpi"><small>Premi all'anno</small><b>5.664 €</b><em>3 contratti</em></div>
+              <div class="kpi"><small>Proposte aperte</small><b>1</b><em>2.400 €</em></div>
+            </div>
+          </div>
+
+          <div class="tabs"><b class="on">Sintesi</b><b>Posizioni</b><b>Agenda</b><b>Documenti</b></div>
+
+          <div class="lbl">Da fare</div>
+          <div class="glass card" style="padding-top:2px;padding-bottom:2px">
+            <div class="warn"><span class="ic r"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 4v5M8 11.5v.5"/></svg></span><div><b>Rinnovare il consenso commerciale</b><span>Scaduto il 30 agosto</span></div></div>
+            <div class="warn"><span class="ic o"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2 1.3" stroke-linecap="round"/></svg></span><div><b>Conto deposito si svincola</b><span>12 gennaio · 15.000 € · <span class="tag i" style="height:18px;font-size:11px"><i></i>Indip.</span></span></div></div>
+          </div>
+          <div class="lbl">Obiettivi</div>
+          <div class="glass card" style="padding-top:0;padding-bottom:0">
+            <div class="row"><div class="t"><b>Anticipo per la casa</b><span>tra 3 anni · 60.000 €</span></div><div class="v" style="color:var(--green)">in linea</div></div>
+            <div class="row"><div class="t"><b>Un margine di serenità</b><span>tra 1 anno · 12.000 €</span></div><div class="v">78%</div></div>
+          </div>
+        </div>
+        <nav class="tabbar glass strong">
+          <div><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Oggi</div>
+          <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c1.6.8 2.7 2.6 3 5.4" stroke-linecap="round"/></svg>Clienti</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V5M16 20v-7M22 20H2"/></svg>Posizioni</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>Agenda</div>
+          <div><span class="orb" style="width:22px;height:22px"></span>Eve</div>
+        </nav>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- ================= 3. POSIZIONI ================= -->
+    <section class="cap">
+      <h2>3 · Posizioni</h2>
+      <p>Il fulcro: prima il totale e la divisione per canale, poi le aree con il loro peso, poi le singole posizioni. Il canale si filtra con un tocco.</p>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="scroll">
+          <div class="top"><div><small>Tutti i clienti</small><h1>Posizioni</h1></div><span class="round glass"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="4.6"/><path d="m10.5 10.5 3.6 3.6" stroke-linecap="round"/></svg></span></div>
+          <div class="chips"><span class="on">Tutte</span><span><i style="background:var(--ch-a)"></i>Alleanza</span><span><i style="background:var(--ch-i)"></i>Indipendente</span><span>Proposte · 6</span></div>
+
+          <div class="glass strong card" style="margin-top:10px">
+            <div class="sub">In essere</div>
+            <div class="big">1.124.350 €</div>
+            <div class="bar"><i style="width:47%;background:var(--ch-a)"></i><i style="width:53%;background:var(--ch-i)"></i></div>
+            <div class="split"><span>Alleanza <b>529.950 €</b></span><span>Indipendente <b>594.400 €</b></span></div>
+          </div>
+
+          <div class="lbl">Per area</div>
+          <div class="glass card" style="padding-top:0;padding-bottom:0">
+            <div class="row"><span class="stripe" style="--c:#A8907A"></span><div class="t"><b>Immobili</b><span>2 posizioni</span></div><div class="v">490.000 €<small>44%</small></div><span class="chev">›</span></div>
+            <div class="row"><span class="stripe" style="--c:#5C7FA3"></span><div class="t"><b>Investimento</b><span>5 posizioni</span></div><div class="v">219.800 €<small>20%</small></div><span class="chev">›</span></div>
+            <div class="row"><span class="stripe" style="--c:#7FA48E"></span><div class="t"><b>Risparmio</b><span>4 posizioni</span></div><div class="v">143.050 €<small>13%</small></div><span class="chev">›</span></div>
+            <div class="row"><span class="stripe" style="--c:#8B7FB8"></span><div class="t"><b>Previdenza</b><span>3 posizioni</span></div><div class="v">96.400 €<small>9%</small></div><span class="chev">›</span></div>
+          </div>
+
+          <div class="lbl">Le più grandi</div>
+          <div class="glass card" style="padding-top:0;padding-bottom:0">
+            <div class="row"><span class="stripe" style="--c:var(--ch-a)"></span><div class="t"><b>Polizza multiramo</b><span>Marco Bianchi · Investimento</span></div><div class="v">62.000 €</div></div>
+            <div class="row"><span class="stripe" style="--c:var(--ch-a)"></span><div class="t"><b>Polizza rivalutabile a premio unico</b><span>Marco Bianchi · Risparmio</span></div><div class="v">54.300 €</div></div>
+            <div class="row"><span class="stripe" style="--c:var(--ch-i)"></span><div class="t"><b>ETF azionario globale</b><span>Giulia Rossi · Investimento</span></div><div class="v">36.400 €</div></div>
+          </div>
+        </div>
+        <nav class="tabbar glass strong">
+          <div><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c1.6.8 2.7 2.6 3 5.4" stroke-linecap="round"/></svg>Clienti</div>
+          <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V5M16 20v-7M22 20H2"/></svg>Posizioni</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>Agenda</div>
+          <div><span class="orb" style="width:22px;height:22px"></span>Eve</div>
+        </nav>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- ================= 4. AGENDA ================= -->
+    <section class="cap">
+      <h2>4 · Agenda</h2>
+      <p>La settimana in una striscia, sotto il giorno scelto. Titolo e cliente sempre interi; il canale sotto, mai al loro posto.</p>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="scroll">
+          <div class="top"><div><small>Ottobre – novembre</small><h1>Agenda</h1></div><span class="round glass" style="font-size:22px;font-weight:300">+</span></div>
+          <div class="glass week">
+            <div><small>lun</small><b>27</b></div><div><small>mar</small><b>28</b></div><div><small>mer</small><b>29</b><i></i></div><div><small>gio</small><b>30</b></div>
+            <div class="on"><small>ven</small><b>31</b><i></i></div><div><small>sab</small><b>1</b><i></i></div><div><small>dom</small><b>2</b></div>
+          </div>
+          <div class="lbl">Oggi · 2 incontri</div>
+          <div class="glass card" style="padding-top:0;padding-bottom:0">
+            <div class="slot"><div class="h">09:30<small>45 min</small></div><div><b>Il punto sul progetto casa</b><span>Giulia Rossi · In studio</span><br><span class="tag i"><i></i>Indipendente</span></div></div>
+            <div class="slot"><div class="h">11:00<small>60 min</small></div><div><b>Nuovi progetti di famiglia</b><span>Marco Bianchi · Videochiamata</span><br><span class="tag a"><i></i>Alleanza</span></div></div>
+          </div>
+          <div class="lbl">Domani</div>
+          <div class="glass card" style="padding-top:0;padding-bottom:0">
+            <div class="slot"><div class="h">10:00<small>45 min</small></div><div><b>Un progetto tutto suo</b><span>Laura Moretti · In studio</span><br><span class="tag i"><i></i>Indipendente</span></div></div>
+          </div>
+        </div>
+        <nav class="tabbar glass strong">
+          <div><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c1.6.8 2.7 2.6 3 5.4" stroke-linecap="round"/></svg>Clienti</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V5M16 20v-7M22 20H2"/></svg>Posizioni</div>
+          <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>Agenda</div>
+          <div><span class="orb" style="width:22px;height:22px"></span>Eve</div>
+        </nav>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- ================= 5. EVE ================= -->
+    <section class="cap">
+      <h2>5 · Eve</h2>
+      <p>Una chat vera da telefono: di chi si parla in alto, le risposte con le cifre di Prisma dentro la bolla, il campo sempre a portata di pollice.</p>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="scroll" style="padding-bottom:170px">
+          <div class="top" style="margin-bottom:8px">
+            <span class="glass" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 4px;border-radius:999px;font-weight:600"><span class="av gr" style="width:28px;height:28px;font-size:11px">GR</span>Giulia Rossi ▾</span>
+            <span class="status-eve"><i></i>Qwen sul Mac</span>
+          </div>
+          <div class="msg"><div class="bubble me">Cosa ha in scadenza nei prossimi mesi?</div></div>
+          <div class="msg"><span class="orb" style="width:26px;height:26px"></span>
+            <div class="bubble eve glass strong">Due posizioni, per <b>39.000 €</b> in tutto. È liquidità che può andare verso l'anticipo della casa: ne parlerei con lei <b>prima di gennaio</b>.
+              <div class="mini-rows">
+                <div class="row"><span class="stripe" style="--c:var(--ch-i)"></span><div class="t"><b>Conto deposito</b><span>12 gen 2027</span></div><div class="v">15.000 €</div></div>
+                <div class="row"><span class="stripe" style="--c:var(--ch-a)"></span><div class="t"><b>Piano di risparmio</b><span>3 mar 2027</span></div><div class="v">24.000 €</div></div>
+              </div>
+              <div style="font-size:11.5px;color:var(--ink-3);margin-top:8px">Cifre dai calcoli di Posizioni · oggi 9:12</div>
+            </div>
+          </div>
+          <div class="sugg"><span>Basta per l'anticipo casa?</span><span>E il fondo pensione?</span><span>Prepara l'incontro</span></div>
+        </div>
+        <div class="composer glass strong"><span>Chiedi a Eve…</span><span class="send"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></span></div>
+        <nav class="tabbar glass strong">
+          <div><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Oggi</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c1.6.8 2.7 2.6 3 5.4" stroke-linecap="round"/></svg>Clienti</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V5M16 20v-7M22 20H2"/></svg>Posizioni</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>Agenda</div>
+          <div class="on"><span class="orb" style="width:22px;height:22px"></span>Eve</div>
+        </nav>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h3>Gerarchia</h3><ul>
+      <li>Una cosa principale per schermata, grande (34 pt) e in alto: il prossimo incontro, il patrimonio, il totale.</li>
+      <li>Sotto, solo ciò che serve per decidere: «Richiede attenzione» in rosso e arancio, poi i numeri.</li>
+      <li>Il resto si apre con un tocco (schede, frecce), mai tutto nella stessa pagina.</li>
+    </ul></div>
+    <div class="note"><h3>Navigazione</h3><ul>
+      <li>Cinque schede fisse in basso al posto del dock: Oggi, Clienti, Posizioni, Agenda, Eve.</li>
+      <li>Le altre app (Analisi 360, Documenti, Prospetti, Impostazioni…) dal tuo avatar in alto.</li>
+      <li>Niente finestre con la ✕ sul telefono: si torna indietro con la freccia o con lo scorrimento.</li>
+    </ul></div>
+    <div class="note"><h3>Leggibilità</h3><ul>
+      <li>Testi da 13 a 15 pt, righe alte almeno 56 pt, pulsanti alti 44 pt.</li>
+      <li>Nomi e titoli mai tagliati per far posto alle etichette: il canale va sotto o diventa una striscia di colore.</li>
+      <li>Canale sempre visibile: blu Alleanza, cuoio indipendente (etichetta, puntino o striscia).</li>
+    </ul></div>
+    <div class="note"><h3>Cosa resta del tema</h3><ul>
+      <li>L'acqua animata sotto, il vetro delle schede, i colori chiari e scuri, i caratteri.</li>
+      <li>Eve: la stessa sfera, le cifre di Prisma dentro le risposte, «Qwen sul Mac» in alto.</li>
+      <li>iPad: dopo l'iPhone, con la stessa gerarchia su due colonne.</li>
+    </ul></div>
+  </div>
+</div>
+<script>
+(function () {
+  var seg = document.getElementById('scheme');
+  function set(v) {
+    document.documentElement.dataset.scheme = v;
+    seg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.v === v ? 'true' : 'false'); });
+  }
+  seg.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) set(b.dataset.v); });
+  if (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+})();
+</script>
+</body>
+</html>
