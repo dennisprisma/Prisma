@@ -321,6 +321,10 @@ final class StatoShell: ObservableObject {
             avviaRipresa()
             // La mini finestra di Eve: ⌥ Spazio da qualsiasi app (PannelloMiniEve.swift)
             ControlloMiniEve.condiviso.avvia(stato: self)
+            // Il ponte di Eve per iPhone e iPad (ServerPonteEve.swift): acceso solo se scelto in Impostazioni › Eve
+            $dati.map(\.impostazioni.eve).removeDuplicates()
+                .sink { ServerPonteEve.condiviso.aggiorna($0) }
+                .store(in: &abbonamenti)
             #elseif os(iOS)
             // Su iPhone e iPad l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile);
             // background e ritorno in primo piano (RipresaSistema.swift)
@@ -1626,7 +1630,7 @@ final class StatoShell: ObservableObject {
         let eve = dati.impostazioni.eve
         eveInCorso = true
         Task { @MainActor in
-            let d = await MotoreLocale.verifica(eve)
+            let d = await MotoreLocale.verificaDispositivo(eve)
             if self.disponibilitaLocale != d { self.disponibilitaLocale = d }
             self.eveInCorso = false
             if let m = self.generativo { poi(m) } else { self.qwenNonPronto(cliente: id) }
@@ -1645,7 +1649,7 @@ final class StatoShell: ObservableObject {
         guard persistente else { return }
         let eve = dati.impostazioni.eve
         Task {
-            let d = await MotoreLocale.verifica(eve)
+            let d = await MotoreLocale.verificaDispositivo(eve)
             DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
         }
     }
@@ -1703,7 +1707,7 @@ final class StatoShell: ObservableObject {
     /// Una domanda a Eve sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
     /// Qwen le racconta senza cambiarle (se cambia una cifra restano quelle di Prisma).
     @discardableResult
-    func chiediEvePortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil) -> Bool {
+    func chiediEvePortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil, breve: Bool = false) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty, !eveInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
@@ -1720,6 +1724,7 @@ final class StatoShell: ObservableObject {
         }
         let scheda = EvePortafoglio.scheda(dati)
         let istruzioni = (IstruzioniEve.testo("chat") ?? "") + "\nQui parli del portafoglio del consulente (tutti i clienti), non di un singolo cliente."
+            + (breve ? "\n\n" + IstruzioniEve.mini : "")
         let richiesta = "SCHEDA DEL PORTAFOGLIO (calcolata da Prisma)\n\(scheda)\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n\(bozza.testo)\n\nDOMANDA DEL CONSULENTE: \(testo)"
         conQwen(cliente: id) { modello in
             self.eveInCorso = true
@@ -1898,7 +1903,7 @@ final class StatoShell: ObservableObject {
 
     /// Manda una domanda a Eve per il cliente attivo.
     @discardableResult
-    func chiediEve(_ domanda: String, spunto: SpuntoEve? = nil) -> Bool {
+    func chiediEve(_ domanda: String, spunto: SpuntoEve? = nil, breve: Bool = false) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty, !eveInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
@@ -1917,7 +1922,9 @@ final class StatoShell: ObservableObject {
         }
         // Le azioni proposte restano quelle calcolate da Prisma, anche quando il testo lo scrive Qwen
         let proposte = richiesta.spunto == .proposte ? MotoriEve.sintesi.componi(richiesta).proposte : nil
-        let piano = NucleoEve.piano(richiesta, impostazioni: dati.impostazioni.eve, ambiente: ambienteEve(cliente: id))
+        var ambiente = ambienteEve(cliente: id)
+        ambiente.breve = breve
+        let piano = NucleoEve.piano(richiesta, impostazioni: dati.impostazioni.eve, ambiente: ambiente)
         conQwen(cliente: id) { _ in
             // La risposta arriva a pezzi e si vede mentre Eve la scrive (FlussoEve, bolla in arrivo)
             let motore = self.qwen

@@ -73,6 +73,30 @@ extension Tema.Misura {
     }
 }
 
+extension Tema.Misura {
+    /// Eve sull'iPhone (EveTelefono): la chat del Mac a tutta larghezza, il contesto in una riga in alto.
+    enum EveTelefono {
+        static let margine: CGFloat = 16
+        /// La riga in alto: di chi si parla (menu) e lo stato di Qwen sul Mac.
+        static let testata: CGFloat = 44
+        static let gettone: CGFloat = 32
+        static let spazioGettone: CGFloat = 6
+        static let pallino: CGFloat = 7
+        /// L'avviso quando il Mac non risponde.
+        static let margineAvviso = EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+        static let spazioAvviso: CGFloat = 8
+        /// Bolle e spunti.
+        static let spazioMessaggi: CGFloat = 14
+        static let spazioSpunti: CGFloat = 8
+        static let sferaBenvenuto: CGFloat = 56
+        /// Il campo di scrittura: alto almeno quanto un dito, i tasti a 36.
+        static let margineCampo = EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 6)
+        static let campoMinimo: CGFloat = 44
+        static let spazioCampo: CGFloat = 8
+        static let margineScrittura = EdgeInsets(top: 8, leading: 12, bottom: 12, trailing: 12)
+    }
+}
+
 extension Tema.Raggio {
     enum Mobile {
         static let scheda: CGFloat = Tema.Raggio.scheda
@@ -124,6 +148,14 @@ extension Tipo {
         static let simboloChiudi = Tipo.sistema(12, .bold)
         static let marchio = Tipo.sistema(17, .bold)
         static let stato = Tipo.sistema(11.5, .semibold)
+        /// Eve sull'iPhone: il gettone di chi si parla, lo stato di Qwen, l'avviso, il campo.
+        static let eveGettone = Tipo.sistema(15, .semibold)
+        static let eveStato = Tipo.sistema(12.5, .medium)
+        static let eveAvvisoTitolo = Tipo.sistema(15, .semibold)
+        static let eveAvviso = Tipo.sistema(14)
+        static let eveCampo = Tipo.sistema(16)
+        static let eveBenvenuto = Tipo.sistema(22, .bold)
+        static let eveBenvenutoTesto = Tipo.sistema(15)
     }
 }
 

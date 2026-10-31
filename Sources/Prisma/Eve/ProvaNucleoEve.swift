@@ -13,6 +13,7 @@ enum ProvaNucleoEve {
         contesto(controlla)
         impostazioni(controlla)
         serverFinto(controlla)
+        ponte(controlla)
     }
 
     /// Aspetta un lavoro asincrono dal thread delle prove.
@@ -361,6 +362,58 @@ enum ProvaNucleoEve {
 }
 
 /// Il risultato di un lavoro asincrono, letto dal thread delle prove.
+extension ProvaNucleoEve {
+    /// Il ponte di Eve per iPhone e iPad: codice, buste cifrate e, sul Mac, il server vero in rete (su 127.0.0.1)
+    /// davanti al server Ollama finto. Il telefono lo fa FornitorePonte, lo stesso codice che gira sull'iPhone.
+    fileprivate static func ponte(_ controlla: (Bool, String) -> Void) {
+        let codice = PonteEve.nuovoCodice()
+        controlla(PonteEve.normalizza(codice) != nil && codice.count == 14, "Ponte: codice di abbinamento in tre gruppi (\(codice))")
+        controlla(PonteEve.normalizza(codice.lowercased().replacingOccurrences(of: "-", with: " ")) == PonteEve.normalizza(codice),
+                  "Ponte: il codice vale anche scritto in minuscolo e con gli spazi")
+        controlla(PonteEve.normalizza("ABCD-EFGH-IJK0") == nil, "Ponte: un codice con lettere che si confondono non vale")
+        guard let k = PonteEve.chiave(codice), let altra = PonteEve.chiave(PonteEve.nuovoCodice()) else {
+            return controlla(false, "Ponte: chiave dal codice")
+        }
+        let b = BustaPonte(quando: Date().timeIntervalSince1970, percorso: "api/chat", corpo: Data("{}".utf8))
+        let sigillata = (try? b.sigillata(k)) ?? Data()
+        controlla(BustaPonte.apri(sigillata, k) == b, "Ponte: la busta si apre con lo stesso codice")
+        controlla(BustaPonte.apri(sigillata, altra) == nil, "Ponte: con un altro codice la busta non si apre")
+        controlla(BustaPonte.apri(sigillata, k, adesso: Date().addingTimeInterval(600)) == nil, "Ponte: una busta vecchia non vale (niente richieste rimandate)")
+        controlla(!String(decoding: sigillata, as: UTF8.self).contains("api/chat"), "Ponte: il contenuto della busta non si legge in chiaro")
+        #if os(macOS)
+        let configurazione = URLSessionConfiguration.ephemeral
+        configurazione.protocolClasses = [ServerFinto.self]
+        let finta = URLSession(configuration: configurazione)
+        var eve = ImpostazioniEve()
+        eve.ponte.condividi = true
+        eve.ponte.codice = codice
+        let server = ServerPonteEve()
+        server.aggiorna(eve, sessione: finta, porta: 0, annuncia: false)
+        let scadenza = Date().addingTimeInterval(5)
+        while server.porta == nil && Date() < scadenza { Thread.sleep(forTimeInterval: 0.05) }
+        guard let porta = server.porta else { return controlla(false, "Ponte: il server del Mac ascolta") }
+        defer { server.ferma() }
+        let rete = URLSession(configuration: .ephemeral)
+        let telefono = FornitorePonte(indirizzo: "http://127.0.0.1:\(porta)", codice: codice, tipo: .ollama, modello: "qwen3.5:4b", sessione: rete)
+        let sbagliato = FornitorePonte(indirizzo: "http://127.0.0.1:\(porta)", codice: PonteEve.nuovoCodice(), tipo: .ollama, modello: "qwen3.5:4b", sessione: rete)
+        let (pronto, rifiutato) = aspetta { (await telefono.verifica(), await sbagliato.verifica()) }
+        controlla(pronto.pronto && PonteEve.ultimo?.modello == "qwen3.5:4b", "Ponte: il telefono vede Qwen pronto sul Mac (\(pronto.motivo ?? "pronto"))")
+        controlla(!rifiutato.pronto, "Ponte: con il codice sbagliato il Mac non risponde")
+        let risposta: String = aspetta {
+            var testo = ""
+            do {
+                for try await p in telefono.flusso([MessaggioModello(ruolo: .utente, testo: "Ciao")], opzioni: OpzioniModello()) {
+                    if case .testo(let t) = p { testo += t }
+                }
+            } catch { testo = "errore: \(error.localizedDescription)" }
+            return testo
+        }
+        controlla(risposta == ServerFinto.risposta, "Ponte: la risposta di Qwen arriva al telefono a pezzi, cifrata («\(risposta)»)")
+        controlla((ServerFinto.ricevuto("/api/chat")?["model"] as? String) == eve.modello, "Ponte: il Mac usa sempre il suo modello")
+        #endif
+    }
+}
+
 private final class ScatolaProva<T>: @unchecked Sendable {
     var valore: T?
 }

@@ -15,7 +15,8 @@ struct GuscioiPad: View {
     @EnvironmentObject var stato: StatoShell
 
     /// Le app portate sull'iPad: tutte tranne Eve, che arriva con Qwen in rete locale (giro 4).
-    static let appPronte: Set<AppPrisma> = Set(AppPrisma.allCases).subtracting([.eve])
+    /// Tutte le app del Mac, Eve compresa (Qwen del Mac in Wi‑Fi, PonteEve).
+    static let appPronte: Set<AppPrisma> = Set(AppPrisma.allCases)
 
     private typealias D = Tema.Misura.Mobile.Dock
 
@@ -68,17 +69,12 @@ struct GuscioiPad: View {
     }
 }
 
-/// Il contenuto della finestra dell'iPad: l'app del Mac, o il segnaposto di Eve (giro 4).
+/// Il contenuto della finestra dell'iPad: l'app del Mac.
 private struct ContenutoiPad: View {
     let app: AppPrisma
 
     var body: some View {
-        if GuscioiPad.appPronte.contains(app) {
-            ContenutoApp(app: app)
-        } else {
-            InArrivoMobile(app: app, titolo: "Eve non è ancora disponibile qui", testo: MotoreLocale.nonSuiOS)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        ContenutoApp(app: app)
     }
 }
 

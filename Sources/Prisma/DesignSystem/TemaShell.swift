@@ -111,6 +111,8 @@ extension Tema.Misura {
         /// `@container w (max-width: 430px)` del tema: sotto questa larghezza del contenuto il widget Agenda ha la
         /// colonna del giorno stretta. Succede solo su iPhone e iPad (sul Mac il widget è largo almeno 480).
         static let sogliaAgendaStretta: CGFloat = 430
+        /// Sotto questa larghezza (il telefono) il giorno va in una riga sopra gli incontri.
+        static let sogliaAgendaTelefono: CGFloat = 400
         static let colonnaGiornoStretta: CGFloat = 96
         static let colonnaGiornoStrettaMargine = EdgeInsets(top: 4, leading: 4, bottom: 6, trailing: 8)
         static let avatarCliente: CGFloat = 46
@@ -225,6 +227,8 @@ extension Tema.Testo {
         /// Il numero del giorno nella colonna stretta (.wa-num a 50, solo su iPhone e iPad).
         static let giornoAgendaStretto = Tema.Testo.sf(50, .light)
         static let spaziaturaGiornoAgendaStretto = Tema.Testo.spaziatura(-0.045, 50)
+        /// Il giorno in una riga sopra gli incontri (solo telefono): «30 ottobre».
+        static let giornoAgendaTelefono = Tema.Testo.sfFisso(17, .semibold)
         static let meseAgenda = Tema.Testo.sfFisso(14)
         static let riepilogoAgenda = Tema.Testo.sfFisso(12)
         static let riepilogoAgendaForte = Tema.Testo.sfFisso(13, .semibold)

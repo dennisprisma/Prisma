@@ -112,7 +112,7 @@ final class ControlloMiniEve {
         if visibile {
             let p = pannello ?? crea(stato)
             p.appearance = NSApp.appearance
-            posiziona(p, altezza: altezzaPannello())
+            posiziona(p)
             p.alphaValue = 1
             p.orderFrontRegardless()
             p.makeKey()
@@ -137,26 +137,25 @@ final class ControlloMiniEve {
         return p
     }
 
-    /// Alto quanto la scheda più alta: la superficie cresce e si accorcia dentro, e sotto di lei il pannello
-    /// è trasparente (i clic passano alle finestre dietro).
-    private func altezzaPannello() -> CGFloat {
-        let m = Tema.Misura.MiniEve.self
-        return m.altezzaMassima + m.margineOmbraSopra + m.margineOmbraSotto
-    }
-
     /// In alto a destra: sotto la barra di Prisma se la sua finestra si vede, altrimenti sotto la barra dei menu.
-    private func posiziona(_ p: NSPanel, altezza: CGFloat) {
+    /// Il pannello arriva fino in fondo allo schermo: la superficie è alta quanto serve (la scheda della risposta
+    /// non scorre se c'è posto) e sotto di lei il pannello è trasparente (i clic passano alle finestre dietro).
+    private func posiziona(_ p: NSPanel) {
         let m = Tema.Misura.MiniEve.self
         let larghezza = m.larghezzaScheda + 2 * m.margineOmbraLati
         let destra: CGFloat, alto: CGFloat
-        if let f = PannelloMiniEve.finestraPrisma(), f.isVisible, !f.isMiniaturized, f.occlusionState.contains(.visible) {
+        let finestra = PannelloMiniEve.finestraPrisma()
+        let schermo = (finestra?.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        if let f = finestra, f.isVisible, !f.isMiniaturized, f.occlusionState.contains(.visible) {
             destra = f.frame.maxX - m.distanzaDestra
             alto = f.frame.maxY - Tema.Misura.barra - m.distanzaBarra
         } else {
-            let schermo = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             destra = schermo.maxX - m.distanzaDestra
             alto = schermo.maxY - m.distanzaBarra
         }
+        let disponibile = max(m.altezzaMinima, alto - schermo.minY - m.margineSchermo - m.margineOmbraSotto)
+        if let mini = stato?.miniEve, mini.altezzaMassima != disponibile { mini.altezzaMassima = disponibile }
+        let altezza = disponibile + m.margineOmbraSopra + m.margineOmbraSotto
         let cornice = NSRect(x: destra + m.margineOmbraLati - larghezza, y: alto + m.margineOmbraSopra - altezza,
                              width: larghezza, height: altezza)
         if p.frame != cornice { p.setFrame(cornice, display: true) }

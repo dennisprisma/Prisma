@@ -26,6 +26,8 @@ struct AmbienteEve {
     var oggi = Date()
     var appAperte: [String] = []
     var cliente: String?
+    /// La domanda arriva dalla mini finestra: risposta breve (Eve/Istruzioni/mini.md), le cifre le mostra la scheda.
+    var breve = false
 }
 
 /// Tutto quello che va al fornitore per una risposta.
@@ -156,6 +158,7 @@ enum NucleoEve {
                              + String(calcoli.prefix(ContestoEve.limiteCalcoli)))
             }
         }
+        if ambiente.breve { parti.append("COME RISPONDERE\n" + IstruzioniEve.mini) }
         parti.append("DOMANDA DEL CONSULENTE\n" + r.domanda)
         return parti.joined(separator: "\n\n")
     }

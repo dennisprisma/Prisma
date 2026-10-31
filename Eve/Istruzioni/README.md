@@ -4,6 +4,8 @@
 
 - `conversazione.md`: istruzioni di sistema della modalità conversazione (uso generale: ragionare, spiegare, scrivere, riassumere), senza scheda del cliente.
 
+- `mini.md`: come rispondere nella mini finestra di Eve (⌥ Spazio): poche frasi, senza elenchi, perché le cifre nel dettaglio le mostra la scheda sotto la risposta. Si aggiunge all'ultimo messaggio solo per le domande fatte lì.
+
 - `estrazione.md`: istruzioni per leggere gli appunti degli Incontri e proporre bisogni, eventi di vita e attività in un formato a righe che l'app controlla (`EstrattoreIncontro`). Le proposte vanno sempre confermate dal consulente.
 
 - `commento.md`: istruzioni per scrivere il commento del consulente che apre i report per il cliente (pagina «Due parole per te»). Il modello riscrive la bozza composta da Prisma con le cifre del report; se compare una cifra che non è nella bozza, l'app tiene la bozza (`CommentoEve`). Il consulente rilegge e salva.

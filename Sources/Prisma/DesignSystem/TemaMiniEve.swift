@@ -6,6 +6,10 @@ import SwiftUI
 extension Tema.Colore {
     /// Colori della mini finestra di Eve: dai gettoni comuni del tema, più la sfera d'acqua del template.
     enum MiniEve {
+        /// Il vetro della superficie (.glass.panel: bianco al 70% sfocato di 30 px). La mini finestra è un pannello a sé,
+        /// sopra le altre finestre e app: la sfocatura di ciò che sta dietro non è garantita, quindi il velo è più
+        /// coprente e il testo della finestra sotto non si legge attraverso (come nel template).
+        static let fondo = Color.dinamico(chiaro: Color(r: 247, g: 247, b: 251, a: 0.92), scuro: Color(r: 18, g: 29, b: 38, a: 0.93))
         static let testo = Tema.Colore.inchiostro
         static let testoSecondario = Tema.Colore.inchiostroSecondario
         static let testoTerziario = Tema.Colore.inchiostroTerziario
@@ -84,8 +88,15 @@ extension Tema.Misura {
         static let margineOmbraLati: CGFloat = 28
         static let margineOmbraSopra: CGFloat = 12
         static let margineOmbraSotto: CGFloat = 48
-        /// La scheda non supera questa altezza: oltre, la risposta scorre.
+        /// La scheda non supera l'altezza dello schermo sotto la barra (meno `margineSchermo`); questa è quella
+        /// delle istantanee e il minimo. Oltre, la risposta scorre.
         static let altezzaMassima: CGFloat = 640
+        static let margineSchermo: CGFloat = 24
+        static let altezzaMinima: CGFloat = 320
+        /// I blocchi della risposta salgono di tanto mentre compaiono (.reveal: translateY(6px)).
+        static let salitaComparsa: CGFloat = 6
+        /// Testa, campo e piede della scheda: il resto dell'altezza è del corpo della risposta.
+        static let cornice: CGFloat = 170
         /// Entrata e uscita (.screen[data-open="0"] .eve): su di 14 e al 90%.
         static let salitaUscita: CGFloat = -14
         static let scalaUscita: CGFloat = 0.9
@@ -239,6 +250,14 @@ extension Tema.Moto {
         static let ridotto = Animation.easeInOut(duration: 0.15)
         /// Il contenuto che compare (.reveal: rise .5 s).
         static let comparsa = Tema.Moto.uscita(0.5)
+        /// La risposta si scrive una parola alla volta (.answer .w: 55 ms l'una).
+        static let parola: UInt64 = 55_000_000
+        /// I blocchi della risposta (.reveal): uno ogni 0,16 s.
+        static let ritardoBlocco: Double = 0.16
+        /// Le aste della linea del tempo (.pin: molla di 0,6 s, la seconda 0,18 s dopo la prima).
+        static let asta = Animation.spring(response: 0.6, dampingFraction: 0.62)
+        static let ritardoAsta: Double = 0.25
+        static let passoAsta: Double = 0.18
         /// I passi di «pensa» (uno ogni 0,85 s) e il lampeggio del cursore.
         static let passoPensiero: Double = 0.85
         static let lampeggio: Double = 1

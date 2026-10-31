@@ -19,7 +19,9 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
     let restaInMemoria: String
 
     init(_ eve: ImpostazioniEve, disponibilita: DisponibilitaEve, sessione: URLSession = .shared) {
-        fornitore = FornitoriEve.crea(eve, sessione: sessione)
+        // Con la sessione di sempre il fornitore di questo dispositivo (su iPhone e iPad il ponte verso il Mac);
+        // con una sessione data (le prove, il server finto) quello delle impostazioni, come sul Mac
+        fornitore = sessione === URLSession.shared ? FornitoriEve.diQuestoDispositivo(eve) : FornitoriEve.crea(eve, sessione: sessione)
         self.disponibilita = disponibilita
         restaInMemoria = eve.restaInMemoria
     }
@@ -35,7 +37,11 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
         return lettere.isEmpty ? "Modello sul Mac" : String(lettere.prefix(1)).uppercased() + String(lettere.dropFirst()) + " sul Mac"
     }
 
+    #if os(iOS)
+    var descrizione: String { "\(modello) sul Mac, in Wi‑Fi e cifrato: nessun dato esce dai tuoi dispositivi." }
+    #else
     var descrizione: String { "\(modello) con \(fornitore.nome), sul Mac: nessun dato esce dal computer." }
+    #endif
 
     // MARK: - Disponibilità
 
@@ -45,18 +51,18 @@ struct MotoreLocale: MotoreEve, MotoreGenerativo {
         guard IndirizzoLocale.url(f.indirizzo) != nil else {
             return .nonDisponibile("L'indirizzo di \(f.nome) deve essere sul Mac (127.0.0.1): un altro computer riceverebbe i dati dei clienti.")
         }
-        #if os(iOS)
-        // Su iPhone e iPad il modello non c'è ancora (arriverà dal Mac in rete locale): Eve lo dice e non risponde
-        return .nonDisponibile(nonSuiOS)
-        #else
         return await f.verifica()
-        #endif
     }
 
-    #if os(iOS)
-    /// Il motivo per cui Eve non risponde su iPhone e iPad (in questa versione).
-    static let nonSuiOS = "Eve su iPhone e iPad non è ancora disponibile: Qwen lavora sul Mac. Usa Eve da Prisma sul Mac."
-    #endif
+    /// Pronto su questo dispositivo: sul Mac il modello locale; su iPhone e iPad Qwen del Mac abbinato, in rete
+    /// locale (PonteEve). Se il Mac non c'è, Eve lo dice e non risponde.
+    static func verificaDispositivo(_ eve: ImpostazioniEve) async -> DisponibilitaEve {
+        #if os(iOS)
+        return await PonteEve.collega(eve)
+        #else
+        return await verifica(eve)
+        #endif
+    }
 
     // MARK: - Risposte
 

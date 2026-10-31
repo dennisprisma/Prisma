@@ -162,7 +162,9 @@ extension StatoShell {
         mini.pensa(testo, passi: StatoMiniEve.passi(domanda: testo, fonte: fonte, modalita: modalita))
         let cifre = CifreMiniEve.calcola(domanda: testo, fonte: fonte, modalita: modalita, app: mini.contesto?.app)
         if d.aVoce { rispostaAVoce = dati.impostazioni.eve.risposteAVoce != .mai }
-        let partita = suPortafoglio ? chiediEvePortafoglio(testo, spunto: d.portafoglio) : chiediEve(testo, spunto: d.spunto)
+        // Nella mini finestra la risposta è breve: le cifre le mostra la scheda (linea del tempo, righe, fonte)
+        let partita = suPortafoglio ? chiediEvePortafoglio(testo, spunto: d.portafoglio, breve: true)
+                                    : chiediEve(testo, spunto: d.spunto, breve: true)
         guard partita else {
             rispostaAVoce = false
             mini.vai(.scrivi)

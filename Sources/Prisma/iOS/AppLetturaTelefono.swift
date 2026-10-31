@@ -292,6 +292,37 @@ struct ImpostazioniTelefono: View {
             }
             .schedaTelefono()
 
+            SezioneTelefono(titolo: "Eve")
+            VStack(alignment: .leading, spacing: M.spazioRiga) {
+                VStack(alignment: .leading, spacing: M.spazioTesto * 2) {
+                    Text("Codice del Mac")
+                        .font(Tipo.Mobile.rigaNome)
+                        .foregroundColor(Tema.Colore.inchiostro)
+                    Text(stato.dati.impostazioni.eve.ponte.abbinato
+                         ? (stato.disponibilitaLocale.motivo ?? "Collegata: Eve risponde con Qwen del tuo Mac, in Wi‑Fi e cifrato")
+                         : "Sul Mac apri Impostazioni › Eve, attiva «iPhone e iPad» e scrivi qui il codice che compare (arriva anche aprendo un backup del Mac)")
+                        .font(Tipo.Mobile.rigaDettaglio)
+                        .foregroundColor(stato.disponibilitaLocale.pronto ? Tema.Colore.Mobile.riuscita : Tema.Colore.inchiostroSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
+                    TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.eve.ponte.codice)
+                        .font(Tipo.Mobile.rigaValore)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit { stato.verificaMotoreLocale() }
+                        .padding(.horizontal, M.margineRiga.leading)
+                        .frame(height: M.altezzaControllo)
+                        .background(RoundedRectangle(cornerRadius: Tema.Raggio.Mobile.riga, style: .continuous).fill(Tema.Colore.pozzetto))
+                }
+                Button { stato.verificaMotoreLocale() } label: {
+                    Label("Collega al Mac", systemImage: "arrow.clockwise")
+                        .font(Tipo.Mobile.pulsante)
+                        .frame(maxWidth: .infinity, minHeight: M.altezzaControllo)
+                }
+                .buttonStyle(StileVetro())
+            }
+            .schedaTelefono()
+
             SezioneTelefono(titolo: "Archivio")
             ArchivioMobile()
         }

@@ -210,8 +210,16 @@ private struct CorpoWidgetAgenda: View, Equatable {
         // La regola del tema `@container w (max-width: 430px)`: colonna del giorno 96 e numero a 50 punti.
         // Sul Mac (finestra di almeno 1100 punti, widget di almeno 480) non scatta mai: il ramo resta quello di sempre
         GeometryReader { geo in
-            corpo(stretto: geo.size.width < Tema.Misura.Shell.sogliaAgendaStretta)
-                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+            Group {
+                if geo.size.width < Tema.Misura.Shell.sogliaAgendaTelefono {
+                    // Sul telefono il giorno va in una riga in alto e gli incontri prendono tutta la larghezza:
+                    // con la colonna del giorno a fianco nomi, titoli e luoghi si tagliavano
+                    corpoTelefono
+                } else {
+                    corpo(stretto: geo.size.width < Tema.Misura.Shell.sogliaAgendaStretta)
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
         #else
         corpo(stretto: false)
@@ -229,6 +237,36 @@ private struct CorpoWidgetAgenda: View, Equatable {
                 .padding(.leading, Tema.Misura.widgetMargine)
         }
     }
+
+    #if os(iOS)
+    /// Il telefono: «Venerdì 30 ottobre» e il riepilogo di oggi in una riga, sotto gli incontri a tutta larghezza.
+    private var corpoTelefono: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TimelineView(.everyMinute) { contesto in
+                let oggi = contesto.date
+                let incontriOggi = stato.appuntamentiDiOggi.count
+                HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.Shell.rigaSpazio) {
+                    Text(Formati.giornoSettimana.string(from: oggi).capitalized)
+                        .font(Tema.Testo.Shell.giornoSettimana)
+                        .foregroundColor(Tema.Colore.rosso)
+                    Text(Formati.giorno.string(from: oggi) + " " + (Formati.meseAnno.string(from: oggi).components(separatedBy: " ").first ?? ""))
+                        .font(Tema.Testo.Shell.giornoAgendaTelefono)
+                        .foregroundColor(Tema.Colore.inchiostro)
+                    Spacer(minLength: Tema.Misura.Shell.rigaSpazio)
+                    Text(incontriOggi == 0 ? "Nessun incontro oggi" : "\(incontriOggi) \(incontriOggi == 1 ? "incontro" : "incontri") oggi")
+                        .font(Tema.Testo.Shell.riepilogoAgenda)
+                        .foregroundColor(Tema.Colore.inchiostroSecondario)
+                }
+                .lineLimit(1)
+            }
+            .padding(.horizontal, Tema.Misura.Shell.colonnaGiornoStrettaMargine.leading)
+            .padding(.bottom, Tema.Misura.widgetMargine / 2)
+            Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
+                .padding(.bottom, Tema.Misura.widgetMargine / 2)
+            incontri
+        }
+    }
+    #endif
 
     /// Il giorno grande: giorno della settimana in rosso, numero, mese e il riepilogo di oggi.
     /// `stretto`: la colonna stretta del tema (solo su iPhone e iPad).
@@ -403,37 +441,62 @@ private struct CorpoWidgetCliente: View, Equatable {
         // Il GeometryReader fissa la misura del widget alla sua cella: anche l'ultima variante,
         // se mai non ci stesse, resta dentro la cornice invece di sporgere sui vicini.
         GeometryReader { geo in
+            // Sul telefono i numeri vanno su due colonne e i canali sotto il nome: su tre colonne si tagliavano
+            let telefono = Self.telefono(geo.size.width)
             ViewThatFits(in: .vertical) {
-                contenuto(numeri, righe: 2, nota: true, pulsanti: true)
-                contenuto(numeri, righe: 2, nota: false, pulsanti: true)
-                contenuto(numeri, righe: 2, nota: true, pulsanti: false)
-                contenuto(numeri, righe: 2, nota: false, pulsanti: false)
-                contenuto(numeri, righe: 1, nota: false, pulsanti: true)
-                contenuto(numeri, righe: 1, nota: false, pulsanti: false)
-                contenuto(numeri, righe: 0, nota: false, pulsanti: false)
+                contenuto(numeri, righe: 2, nota: true, pulsanti: true, telefono: telefono)
+                contenuto(numeri, righe: 2, nota: false, pulsanti: true, telefono: telefono)
+                contenuto(numeri, righe: 2, nota: true, pulsanti: false, telefono: telefono)
+                contenuto(numeri, righe: 2, nota: false, pulsanti: false, telefono: telefono)
+                contenuto(numeri, righe: 1, nota: false, pulsanti: true, telefono: telefono)
+                contenuto(numeri, righe: 1, nota: false, pulsanti: false, telefono: telefono)
+                contenuto(numeri, righe: 0, nota: false, pulsanti: false, telefono: telefono)
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
     }
 
-    private func contenuto(_ n: Numeri, righe: Int, nota: Bool, pulsanti: Bool) -> some View {
+    /// Il widget è largo quanto un telefono (mai sul Mac).
+    private static func telefono(_ larghezza: CGFloat) -> Bool {
+        #if os(iOS)
+        return larghezza < Tema.Misura.Shell.sogliaAgendaTelefono
+        #else
+        return false
+        #endif
+    }
+
+    private func contenuto(_ n: Numeri, righe: Int, nota: Bool, pulsanti: Bool, telefono: Bool = false) -> some View {
         let r = n.riepilogo
         let m = Tema.Misura.Shell.self
+        let proposte = r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euro(r.valoreProposte))"
         return VStack(alignment: .leading, spacing: m.clienteSpazio) {
-            testata
-            // I numeri (.kpis): griglia di tre colonne sul chip di vetro
+            testata(telefono: telefono)
+            // I numeri (.kpis): griglia di tre colonne sul chip di vetro (due sul telefono, i quattro che contano)
             if righe >= 1 {
                 VStack(alignment: .leading, spacing: m.kpiSpazioRighe) {
-                    HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
-                        dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
-                        dato("Prossimo incontro", n.incontro)
-                        dato("Da fare", "\(n.aperte) attività")
-                    }
-                    if righe >= 2 {
+                    if telefono {
                         HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
-                            dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
-                            dato("Premi annui", Formati.euro(r.premiAnnui))
-                            dato("Proposte aperte", r.proposteAperte == 0 ? "nessuna" : "\(r.proposteAperte) · \(Formati.euro(r.valoreProposte))")
+                            dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
+                            dato("Prossimo incontro", n.incontro)
+                        }
+                        if righe >= 2 {
+                            HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
+                                dato("Da fare", "\(n.aperte) attività")
+                                dato("Proposte aperte", proposte)
+                            }
+                        }
+                    } else {
+                        HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
+                            dato("Patrimonio netto", Formati.euro(r.patrimonioNetto))
+                            dato("Prossimo incontro", n.incontro)
+                            dato("Da fare", "\(n.aperte) attività")
+                        }
+                        if righe >= 2 {
+                            HStack(alignment: .top, spacing: m.kpiSpazioColonne) {
+                                dato("Capitale assicurato", Formati.euro(r.capitaleAssicurato))
+                                dato("Premi annui", Formati.euro(r.premiAnnui))
+                                dato("Proposte aperte", proposte)
+                            }
                         }
                     }
                 }
@@ -468,8 +531,8 @@ private struct CorpoWidgetCliente: View, Equatable {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// Avatar, occhiello, nome (con la scelta del cliente), tema e canali.
-    private var testata: some View {
+    /// Avatar, occhiello, nome (con la scelta del cliente), tema e canali (sul telefono sotto il tema).
+    private func testata(telefono: Bool) -> some View {
         let m = Tema.Misura.Shell.self
         return HStack(alignment: .center, spacing: m.rigaSpazio) {
             if let c = stato.clienteAttivo {
@@ -495,10 +558,17 @@ private struct CorpoWidgetCliente: View, Equatable {
                     .font(Tema.Testo.Shell.temaCliente)
                     .foregroundColor(Tema.Colore.inchiostroSecondario)
                     .lineLimit(1)
+                if telefono {
+                    HStack(spacing: m.canaliSpazio) {
+                        ForEach(stato.clienteAttivo?.canali ?? []) { EtichettaCanale(canale: $0, compatta: true) }
+                    }
+                }
             }
             Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: m.canaliSpazio) {
-                ForEach(stato.clienteAttivo?.canali ?? []) { CapsulaCanale(canale: $0) }
+            if !telefono {
+                VStack(alignment: .trailing, spacing: m.canaliSpazio) {
+                    ForEach(stato.clienteAttivo?.canali ?? []) { CapsulaCanale(canale: $0) }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -655,9 +725,21 @@ private struct CorpoWidgetScadenze: View, Equatable {
             HStack(spacing: m.rigaSpazio) {
                 PiastrellaData(data: p.scadenza ?? Date())
                 VStack(alignment: .leading, spacing: m.rigaTestoSpazio) {
+                    #if os(iOS)
+                    // iPhone e iPad: il canale accanto al nome del cliente (riga corta), così prodotto e giorni
+                    // alla scadenza hanno tutta la larghezza
+                    HStack(spacing: m.rigaSpazio) {
+                        Text(stato.cliente(p.clienteId)?.nome ?? "")
+                            .font(Tema.Testo.Shell.secondarioRiga)
+                            .foregroundColor(Tema.Colore.inchiostroSecondario)
+                        Spacer(minLength: 0)
+                        CapsulaCanale(canale: p.canale, compatta: true)
+                    }
+                    #else
                     Text(stato.cliente(p.clienteId)?.nome ?? "")
                         .font(Tema.Testo.Shell.secondarioRiga)
                         .foregroundColor(Tema.Colore.inchiostroSecondario)
+                    #endif
                     Text(p.nome)
                         .font(Tema.Testo.Shell.nomeRiga)
                         .foregroundColor(Tema.Colore.inchiostro)
@@ -670,8 +752,10 @@ private struct CorpoWidgetScadenze: View, Equatable {
                     .font(Tema.Testo.Shell.secondarioRiga)
                 }
                 .lineLimit(1)
+                #if os(macOS)
                 Spacer(minLength: 0)
                 CapsulaCanale(canale: p.canale, compatta: true)
+                #endif
             }
             .padding(m.rigaMargine)
             .frame(maxWidth: .infinity)
