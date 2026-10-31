@@ -3,7 +3,8 @@ import Foundation
 // Il nucleo di Eve parla con un modello attraverso un «fornitore»: Ollama, oppure un server compatibile con
 // le API di OpenAI (MLX, llama.cpp, LM Studio). Il resto di Eve non sa quale: costruisce i messaggi,
 // riceve i pezzi della risposta mentre arrivano e li mostra. Per ora i fornitori accettano solo indirizzi
-// del Mac stesso (IndirizzoLocale): nessun dato dei clienti esce dal computer.
+// del Mac stesso (IndirizzoLocale): nessun dato dei clienti esce dal computer. iPhone e iPad usano il modello
+// del Mac attraverso il ponte cifrato in rete locale (PonteEve), mai un servizio esterno.
 
 /// Un messaggio per il modello.
 struct MessaggioModello: Equatable {
@@ -241,12 +242,17 @@ enum SceltaRagionamento: String, Codable, CaseIterable, Identifiable {
 /// Il fornitore scelto nelle impostazioni.
 enum FornitoriEve {
     static func crea(_ eve: ImpostazioniEve, sessione: URLSession = .shared) -> FornitoreModello {
+        #if os(iOS)
+        // Su iPhone e iPad il modello è quello del Mac, attraverso il ponte cifrato in rete locale
+        return PonteEve.fornitore(eve, sessione: sessione)
+        #else
         switch eve.fornitore {
         case .ollama:
             return FornitoreOllama(indirizzo: eve.indirizzoLocale, modello: eve.modelloLocale.trimmingCharacters(in: .whitespaces), sessione: sessione)
         case .compatibileOpenAI:
             return FornitoreCompatibileOpenAI(indirizzo: eve.indirizzoCompatibile, modello: eve.modelloCompatibile.trimmingCharacters(in: .whitespaces), sessione: sessione)
         }
+        #endif
     }
 }
 

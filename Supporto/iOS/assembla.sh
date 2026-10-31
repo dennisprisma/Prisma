@@ -127,6 +127,7 @@ if [ -d "$RADICE/Eve/Istruzioni" ]; then
     test -f "$APP/Eve/Istruzioni/chat.md" || errore "Eve/Istruzioni/chat.md mancante"
     test -f "$APP/Eve/Istruzioni/commento.md" || errore "Eve/Istruzioni/commento.md mancante"
     test -f "$APP/Eve/Istruzioni/conversazione.md" || errore "Eve/Istruzioni/conversazione.md mancante"
+    test -f "$APP/Eve/Istruzioni/mini.md" || errore "Eve/Istruzioni/mini.md mancante"
 fi
 
 codesign --verify --strict --verbose=2 "$APP"

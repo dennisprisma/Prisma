@@ -424,6 +424,8 @@ struct ImpostazioniEve: Codable, Equatable {
     var restaInMemoria = MotoreLocale.restaInMemoria
     /// I modelli del confronto (Impostazioni › Eve), separati da virgole.
     var modelliConfronto = ConfrontoModelli.predefiniti
+    /// iPhone e iPad usano Qwen di questo Mac in rete locale, cifrato con il codice di abbinamento (PonteEve).
+    var ponte = ImpostazioniPonte()
 
     /// Il modello del fornitore scelto.
     var modello: String {
@@ -441,7 +443,7 @@ struct ImpostazioniEve: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale, riconoscimento, mostraPassaggiVoce
-        case fornitore, indirizzoCompatibile, modelloCompatibile, ragionamento, prontaAllAvvio, restaInMemoria, modelliConfronto
+        case fornitore, indirizzoCompatibile, modelloCompatibile, ragionamento, prontaAllAvvio, restaInMemoria, modelliConfronto, ponte
     }
 
     init(from decoder: Decoder) throws {
@@ -466,6 +468,7 @@ struct ImpostazioniEve: Codable, Equatable {
         modelliConfronto = (try? c.decodeIfPresent(String.self, forKey: .modelliConfronto)) ?? ConfrontoModelli.predefiniti
         riconoscimento = (try? c.decodeIfPresent(SceltaRiconoscimento.self, forKey: .riconoscimento)) ?? .automatico
         mostraPassaggiVoce = (try? c.decodeIfPresent(Bool.self, forKey: .mostraPassaggiVoce)) ?? false
+        ponte = (try? c.decodeIfPresent(ImpostazioniPonte.self, forKey: .ponte)) ?? ImpostazioniPonte()
     }
 }
 

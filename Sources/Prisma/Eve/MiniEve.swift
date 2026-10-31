@@ -311,6 +311,8 @@ final class StatoMiniEve: ObservableObject {
     /// «Mi sto svegliando…»: perché Qwen non è pronto, se la preparazione non è riuscita.
     @Published var motivoNonPronta: String?
     @Published var preparazioneInCorso = false
+    /// Quanto può allungarsi la scheda: lo schermo sotto la barra (lo misura il pannello sul Mac).
+    @Published var altezzaMassima = Tema.Misura.MiniEve.altezzaMassima
 
     /// I passi di «pensa», uno dopo l'altro.
     var passi: [String] = []

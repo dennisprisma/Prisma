@@ -127,10 +127,7 @@ struct AppTelefono: View {
         case .note: NoteTelefono()
         case .documenti: DocumentiTelefono()
         case .impostazioni: ImpostazioniTelefono()
-        case .eve:
-            InArrivoMobile(app: .eve, titolo: "Eve è sul Mac", testo: MotoreLocale.nonSuiOS)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .navigationTitle(app.titolo)
+        case .eve: EveTelefono().navigationTitle(app.titolo)
         default:
             InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

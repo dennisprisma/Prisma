@@ -445,6 +445,39 @@ struct AppImpostazioni: View {
         }
     }
 
+    #if os(iOS)
+    /// Su iPhone e iPad Eve usa Qwen del Mac abbinato, in Wi‑Fi (PonteEve): lo stato del collegamento e il codice.
+    private var gruppoEve: some View {
+        let ponte = stato.dati.impostazioni.eve.ponte
+        return GruppoImpostazioni(titolo: "Eve") {
+            RigaImpostazione(titolo: "Qwen sul Mac",
+                             sottotitolo: stato.disponibilitaLocale.motivo ?? "Collegata: \(stato.qwen.descrizione)",
+                             avvertenza: stato.disponibilitaLocale.pronto ? nil : "Eve usa Qwen del tuo Mac: Prisma aperto sul Mac, «iPhone e iPad» attivo in Impostazioni › Eve, stessa rete Wi‑Fi") {
+                Button { stato.verificaMotoreLocale() } label: { Label("Verifica", systemImage: "arrow.clockwise") }
+                    .buttonStyle(StileVetro(margine: margineVetro))
+            }
+            RigaImpostazione(titolo: "Codice del Mac",
+                             sottotitolo: ponte.abbinato ? "Abbinato. Lo trovi sul Mac in Impostazioni › Eve (arriva anche con il backup)"
+                                                         : "Scrivi il codice che compare sul Mac in Impostazioni › Eve › iPhone e iPad") {
+                TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.eve.ponte.codice)
+                    .campoTesto()
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .frame(width: 170)
+                    .onSubmit { stato.verificaMotoreLocale() }
+            }
+            RigaImpostazione(titolo: "Ragionamento", sottotitolo: "Automatico: Eve ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
+                MenuTendina(selezione: $stato.dati.impostazioni.eve.ragionamento,
+                            opzioni: SceltaRagionamento.allCases.map { ($0, $0.nome) }, larghezza: 170)
+            }
+            RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier del cliente, su questo dispositivo", ultima: true) {
+                Toggle("", isOn: $stato.dati.impostazioni.eve.conservaConversazioni)
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+            }
+        }
+    }
+    #else
     private var gruppoEve: some View {
         let eve = stato.dati.impostazioni.eve
         return GruppoImpostazioni(titolo: "Eve") {
@@ -493,6 +526,28 @@ struct AppImpostazioni: View {
                         .disabled(stato.avanzamentoConfronto != nil)
                 }
             }
+            RigaImpostazione(titolo: "iPhone e iPad",
+                             sottotitolo: eve.ponte.condividi
+                                ? "Codice \(eve.ponte.codice): scrivilo in Prisma su iPhone e iPad (Impostazioni › Eve), oppure apri lì un backup di questo Mac. Stessa rete Wi‑Fi, tutto cifrato"
+                                : "iPhone e iPad usano Qwen di questo Mac attraverso la rete di casa o dello studio, cifrato con un codice. Mai internet") {
+                HStack(spacing: 8) {
+                    if eve.ponte.condividi {
+                        Button { stato.dati.impostazioni.eve.ponte.codice = PonteEve.nuovoCodice() } label: {
+                            Label("Nuovo codice", systemImage: "key")
+                        }
+                        .buttonStyle(StileVetro(margine: margineVetro))
+                        .help("Il codice vecchio smette di valere: va riscritto su iPhone e iPad")
+                    }
+                    Toggle("", isOn: Binding(get: { eve.ponte.condividi }, set: { attivo in
+                        if attivo, !stato.dati.impostazioni.eve.ponte.abbinato {
+                            stato.dati.impostazioni.eve.ponte.codice = PonteEve.nuovoCodice()
+                        }
+                        stato.dati.impostazioni.eve.ponte.condividi = attivo
+                    }))
+                    .toggleStyle(StileInterruttore())
+                    .labelsHidden()
+                }
+            }
             RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier del cliente, sul Mac e nei backup", ultima: true) {
                 Toggle("", isOn: $stato.dati.impostazioni.eve.conservaConversazioni)
                     .toggleStyle(StileInterruttore())
@@ -500,6 +555,7 @@ struct AppImpostazioni: View {
             }
         }
     }
+    #endif
 
     /// La voce di Eve e la conversazione a voce: tutto sul Mac (sintesi e dettatura di macOS).
     private var gruppoVoce: some View {

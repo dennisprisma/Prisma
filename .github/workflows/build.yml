@@ -117,6 +117,7 @@ jobs:
           test -f "$APP/Contents/Resources/Eve/Istruzioni/chat.md"
           test -f "$APP/Contents/Resources/Eve/Istruzioni/commento.md"
           test -f "$APP/Contents/Resources/Eve/Istruzioni/conversazione.md"
+          test -f "$APP/Contents/Resources/Eve/Istruzioni/mini.md"
           "$APP/Contents/MacOS/Prisma" --prova-eve
           # Prova dei prospetti: cifre, impaginazione A4 e PDF
           "$APP/Contents/MacOS/Prisma" --prova-prospetti

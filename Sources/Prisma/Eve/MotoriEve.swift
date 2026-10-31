@@ -15,6 +15,11 @@ enum IstruzioniEve {
         testo("chat") ?? "Sei Eve, l'assistente di un consulente finanziario italiano (canali Alleanza Assicurazioni e indipendente). Rispondi in italiano usando solo i dati della scheda del cliente; non inventare numeri e distingui sempre il canale."
     }
 
+    /// La risposta breve della mini finestra di Eve.
+    static var mini: String {
+        testo("mini") ?? "Rispondi in al massimo tre frasi brevi, senza elenchi: le cifre nel dettaglio le mostra Prisma sotto la risposta."
+    }
+
     /// Istruzioni della modalità conversazione (uso generale).
     static var conversazione: String {
         testo("conversazione") ?? "Sei Eve, l'assistente di un consulente finanziario italiano. Rispondi in italiano, in modo naturale e utile, a domande di ogni tipo. Non inventare dati dei clienti."

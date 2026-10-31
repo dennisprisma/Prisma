@@ -31,5 +31,11 @@
     <string>Eve ti ascolta quando le parli. L'audio resta sul Mac.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Eve trasforma in testo quello che le dici, solo sul Mac: l'audio non viene mai inviato fuori dal computer.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Eve usa Qwen del tuo Mac attraverso la rete di casa o dello studio, cifrato con il codice di abbinamento. Nessun dato va su internet.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_prisma-eve._tcp</string>
+    </array>
 </dict>
 </plist>

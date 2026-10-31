@@ -183,6 +183,21 @@ enum IstantaneeMobile {
                     m.apri(.documenti)
                 },
                 Scena(nome: "49-in-arrivo") { m in m.apri(.analisi360) },
+                // Eve sull'iPhone: Qwen del Mac in Wi‑Fi. Prima il Mac non collegato, poi una conversazione
+                Scena(nome: "50-eve-mac-assente") { m in
+                    m.stato.clienteAttivoId = "giulia"
+                    m.stato.disponibilitaLocale = .nonDisponibile(PonteEve.macNonTrovato)
+                    m.apri(.eve)
+                },
+                Scena(nome: "51-eve-conversazione") { m in
+                    m.stato.clienteAttivoId = "giulia"
+                    m.stato.disponibilitaLocale = .pronto
+                    m.stato.aggiungiMessaggio(MessaggioEve(autore: .utente, testo: "Cosa ha Giulia in scadenza nei prossimi mesi?"),
+                                              cliente: "giulia", parla: false)
+                    m.stato.aggiungiMessaggio(MessaggioEve(autore: .eve, testo: "Nei prossimi 12 mesi Giulia ha 2 posizioni in scadenza: il conto deposito a gennaio (indipendente) e il piano di risparmio a marzo (Alleanza). È liquidità che può andare verso l'anticipo della casa: ne parlerei con lei prima di gennaio.",
+                                                           motore: "Qwen sul Mac"), cliente: "giulia", parla: false)
+                    m.apri(.eve)
+                },
             ]
         }
         return elenco

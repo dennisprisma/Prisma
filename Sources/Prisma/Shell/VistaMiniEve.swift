@@ -40,7 +40,7 @@ struct VistaMiniEve: View {
             .frame(width: mini.larghezza)
             .fixedSize(horizontal: false, vertical: true)
             .clipShape(forma)
-            .vetro(.pannello, forma: forma)
+            .vetro(.pannello, forma: forma, riempimento: Tema.Colore.MiniEve.fondo)
             .animation(moto, value: mini.fase)
             .animation(moto, value: mini.inArrivo)
             .opacity(mostrata ? 1 : 0)
@@ -218,8 +218,9 @@ private struct SchedaRisposta: View {
         }
     }
 
-    /// Lo spazio del corpo: l'altezza massima meno testa, campo e piede.
-    private var corpoMassimo: CGFloat { Tema.Misura.MiniEve.altezzaMassima - 170 }
+    /// Lo spazio del corpo: l'altezza disponibile sullo schermo meno testa, campo e piede. La scheda è alta quanto
+    /// serve; scorre solo se la risposta non sta nello schermo.
+    private var corpoMassimo: CGFloat { mini.altezzaMassima - Tema.Misura.MiniEve.cornice }
 
     private var corpo: some View {
         let m = Tema.Misura.MiniEve.self
