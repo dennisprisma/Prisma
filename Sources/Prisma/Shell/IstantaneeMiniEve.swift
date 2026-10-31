@@ -23,6 +23,12 @@ extension Istantanee {
                 s.apriMiniEve(.scrivi)
                 // Lo spunto delle scadenze: la risposta preparata è breve e sotto si vedono linea del tempo e righe
                 s.inviaMiniEve(DomandaMiniEve(testo: domandaMiniEve, spunto: .scadenze))
+                // Nell'app la risposta della mini finestra la scrive Qwen, breve (Eve/Istruzioni/mini.md); qui, senza
+                // Qwen, una risposta breve come quella: le cifre sotto restano quelle calcolate da Prisma
+                let m = s.miniEve
+                let totale = m.cifre.linea?.totale ?? ""
+                m.rispondi(testo: "Nei prossimi 12 mesi Giulia ha 2 posizioni in scadenza, per \(totale) in tutto: il conto deposito a gennaio e il piano di risparmio a marzo. È liquidità che può andare verso l'anticipo della casa: ne parlerei con lei prima di gennaio.",
+                           titolo: nil, cifre: m.cifre, inArrivo: false)
             }),
             ("243-eve-mini-scrivi", { s in
                 preparaMiniEve(s)
@@ -58,6 +64,11 @@ extension Istantanee {
         s.aggiungiMessaggio(ieri, cliente: "marco", parla: false)
         s.clienteAttivoId = "giulia"
         s.apri(.posizioni)
+        // Lo schermo delle istantanee (900 punti): la scheda si allunga fin quasi in fondo, come sul Mac
+        let m = Tema.Misura.MiniEve.self
+        s.miniEve.altezzaMassima = Istantanee.altezzaSchermoMiniEve - Tema.Misura.barra - m.distanzaBarra - m.margineSchermo - m.margineOmbraSotto
     }
+
+    nonisolated static let altezzaSchermoMiniEve: CGFloat = 900
 }
 #endif
